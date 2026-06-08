@@ -187,65 +187,164 @@ export default async function Home() {
             {/* Report header bar */}
             <div className="flex items-center justify-between border-b border-border bg-[#f5f5f4] px-5 py-2.5">
               <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                Instagram Audit · @versediscovery
+                Instagram Audit · Sample Report
               </span>
               <span className="rounded-full bg-[color:var(--green-muted)] px-2 py-0.5 font-mono text-[0.6rem] font-semibold uppercase text-[color:var(--green)]">
                 Generated
               </span>
             </div>
-            {/* Report body */}
-            <div className="px-6 py-6 sm:px-8 sm:py-8">
+            {/* Report body — scrollable */}
+            <div className="max-h-[520px] overflow-y-auto px-6 py-6 sm:px-8 sm:py-8">
+              {/* Label + handle */}
               <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[color:var(--accent)]">
                 Instagram Account Audit
               </p>
               <h3 className="mt-0.5 text-xl font-bold tracking-[-0.02em]">
-                @versediscovery
+                @glowstate
               </h3>
               <p className="mt-1 text-xs text-muted-foreground">
-                Verséa Discovery — Mitochondrial biology for everyday wellness
+                Premium adaptogenic supplements — functional mushrooms, nootropics, and plant-based wellness.
               </p>
-              <div className="mt-4 flex flex-wrap gap-2 text-[0.65rem] text-muted-foreground">
+              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] text-muted-foreground">
                 <span>📅 June 2026</span>
-                <span className="text-border">|</span>
                 <span>📊 Public data + Social Blade</span>
-                <span className="text-border">|</span>
                 <span>⏱ 14-day analysis window</span>
               </div>
 
-              {/* Metrics row */}
-              <div className="mt-5 grid grid-cols-4 gap-2">
-                <div className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
-                  <div className="font-mono text-lg font-semibold leading-none">11K</div>
-                  <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">Followers</div>
+              {/* ── Score Bar Graph ── */}
+              <div className="mt-5 rounded-[var(--radius)] border border-border bg-[#fcfcfb] p-4 sm:p-5">
+                <div className="mb-3 flex items-baseline justify-between border-b border-border pb-3">
+                  <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-muted-foreground">Score Breakdown</span>
+                  <span className="font-mono text-xl font-semibold">48<span className="text-xs font-normal text-muted-foreground">/100</span></span>
                 </div>
-                <div className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
-                  <div className="font-mono text-lg font-semibold leading-none text-[color:var(--red)]">1.96%</div>
-                  <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">Engagement</div>
-                </div>
-                <div className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
-                  <div className="font-mono text-lg font-semibold leading-none">178</div>
-                  <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">Avg Likes</div>
-                </div>
-                <div className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
-                  <div className="font-mono text-lg font-semibold leading-none text-[color:var(--green)]">+149</div>
-                  <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">14-Day Growth</div>
-                </div>
+                {[
+                  { label: "Content Strategy", pct: 32, color: "bg-[color:var(--red)]" },
+                  { label: "Growth Momentum", pct: 18, color: "bg-[color:var(--red)]" },
+                  { label: "Engagement Depth", pct: 55, color: "bg-[color:var(--amber)]" },
+                  { label: "Platform Optimization", pct: 40, color: "bg-[color:var(--amber)]" },
+                  { label: "Brand Cohesion", pct: 68, color: "bg-[color:var(--green)]" },
+                  { label: "Conversion Architecture", pct: 22, color: "bg-[color:var(--red)]" },
+                ].map((dim) => (
+                  <div key={dim.label} className="mb-2 flex items-center gap-3 text-xs last:mb-0">
+                    <span className="w-36 flex-shrink-0 text-right font-medium text-muted-foreground">{dim.label}</span>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#f0efed]">
+                      <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.pct}%` }} />
+                    </div>
+                    <span className="w-6 flex-shrink-0 text-right font-mono font-semibold">{dim.pct}</span>
+                  </div>
+                ))}
               </div>
 
-              {/* Sample section */}
+              {/* ── Key Metrics ── */}
+              <h4 className="mt-5 text-sm font-bold">Key Metrics</h4>
+              <div className="mt-3 grid grid-cols-4 gap-2">
+                {[
+                  { value: "24.8K", label: "Followers", tone: "" },
+                  { value: "1.42%", label: "Engagement", tone: "text-[color:var(--red)]" },
+                  { value: "312", label: "Avg Likes", tone: "" },
+                  { value: "+0.3%", label: "30-Day Growth", tone: "text-[color:var(--amber)]" },
+                ].map((m) => (
+                  <div key={m.label} className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
+                    <div className={`font-mono text-lg font-semibold leading-none ${m.tone}`}>{m.value}</div>
+                    <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">{m.label}</div>
+                  </div>
+                ))}
+              </div>
+              <table className="mt-3 w-full border-collapse text-[0.72rem]">
+                <thead>
+                  <tr className="border-b-2 border-border text-left text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                    <th className="pb-2 pr-3">Metric</th><th className="pb-2 pr-3 text-right">@glowstate</th><th className="pb-2 pr-3 text-right">Benchmark</th><th className="pb-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-border">
+                    <td className="py-1.5 pr-3 font-medium">Engagement Rate</td>
+                    <td className="py-1.5 pr-3 text-right font-mono text-[color:var(--red)]">1.42%</td>
+                    <td className="py-1.5 pr-3 text-right font-mono">~3.5%</td>
+                    <td className="py-1.5"><span className="rounded-sm bg-[color:var(--red-muted)] px-1.5 py-0.5 text-[0.6rem] font-semibold text-[color:var(--red)]">Below</span></td>
+                  </tr>
+                  <tr className="border-b border-border">
+                    <td className="py-1.5 pr-3 font-medium">30-Day Growth</td>
+                    <td className="py-1.5 pr-3 text-right font-mono text-[color:var(--amber)]">+0.3%</td>
+                    <td className="py-1.5 pr-3 text-right font-mono">+1.2%</td>
+                    <td className="py-1.5"><span className="rounded-sm bg-[color:var(--amber-muted)] px-1.5 py-0.5 text-[0.6rem] font-semibold text-[color:var(--amber)]">Slow</span></td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 pr-3 font-medium">Reel Adoption</td>
+                    <td className="py-1.5 pr-3 text-right font-mono text-[color:var(--red)]">22%</td>
+                    <td className="py-1.5 pr-3 text-right font-mono">60%+</td>
+                    <td className="py-1.5"><span className="rounded-sm bg-[color:var(--red-muted)] px-1.5 py-0.5 text-[0.6rem] font-semibold text-[color:var(--red)]">Under</span></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* ── Executive Summary ── */}
               <h4 className="mt-5 text-sm font-bold">Executive Summary</h4>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                Verséa Discovery brings <strong className="text-foreground">world-class mitochondrial science</strong> to Instagram — but the account reads like a lab notebook, not a consumer brand. With <strong className="text-foreground">1.96% engagement</strong> at 11K followers, the audience is real and engaged. The bottleneck is <strong className="text-foreground">content packaging</strong>: the feed leans on dense text slides that bury the brand&rsquo;s most compelling asset — the science itself, translated into stories people can feel.
+                @glowstate operates in one of Instagram&rsquo;s fastest-growing niches — functional wellness — with a product line that genuinely differentiates: dual-extract lion&rsquo;s mane, cordyceps-schisandra blends, and nootropic stacks backed by third-party testing. The brand has <strong className="text-foreground">24.8K followers</strong> and a clean, recognizable visual identity anchored in deep forest greens and warm amber tones. But the numbers tell a different story from the aesthetics.
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                Engagement sits at <strong className="text-foreground">1.42%</strong> — barely half the 3.5% benchmark for the 20K–50K tier. Thirty-day follower growth is effectively flat at +0.3%. The account posts consistently (4–5× per week) but the content mix is heavily skewed toward static product photography and ingredient close-ups. Reels account for only 22% of output despite being the highest-reach format on the platform. The comment section is quiet — most posts generate likes but not discussion. When questions do appear, response time averages 18 hours, well outside the critical first-hour engagement window.
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                The root cause is not product quality or brand positioning — it&rsquo;s <strong className="text-foreground">format strategy and community activation</strong>. @glowstate treats Instagram as a catalog when it should treat it as a publication. The fix is structural: shift 60% of output to Reels, introduce a weekly founder Q&A, shorten reply latency, and build a highlight architecture that educates new visitors instead of just displaying products. With these changes, the account can realistically reach 40K followers and 3%+ engagement within 90 days.
               </p>
 
-              <h4 className="mt-4 text-sm font-bold">Strengths</h4>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                <strong className="text-foreground">1. Scientific Authority.</strong> CSO-led, mitochondrial focus — no other wellness brand owns this lane with this depth.{" "}
-                <strong className="text-foreground">2. Loyal Community.</strong> 32 avg comments per post with high-quality discussion threads — rare at this tier.
-              </p>
+              {/* ── Strengths ── */}
+              <h4 className="mt-5 text-sm font-bold">Top Strengths</h4>
+              <div className="mt-2 space-y-2">
+                {[
+                  { n: "1", title: "Product Differentiation", body: "Dual-extract formulations and third-party lab testing are rare in the adaptogen space — this is a structural moat that most competitors cannot replicate." },
+                  { n: "2", title: "Visual Identity", body: "Forest green + amber palette is consistent and memorable. The grid reads as intentional and premium at a glance, which builds trust before a single word is read." },
+                  { n: "3", title: "Posting Consistency", body: "4–5 posts per week maintained over 8+ months. The habit infrastructure is already in place — it just needs a format upgrade." },
+                ].map((s) => (
+                  <div key={s.n} className="rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-3">
+                    <p className="text-xs"><strong className="text-foreground">{s.n}. {s.title}.</strong> <span className="text-muted-foreground">{s.body}</span></p>
+                  </div>
+                ))}
+              </div>
 
-              <p className="mt-4 text-[0.65rem] italic text-muted-foreground">
-                + 13 more sections in the full report — weaknesses, growth bottlenecks, content gaps, viral opportunities, competitive comparison, monetization, 90-day plan, and visual branding blueprint.
+              {/* ── Weaknesses ── */}
+              <h4 className="mt-5 text-sm font-bold">Top Weaknesses</h4>
+              <div className="mt-2 space-y-2">
+                {[
+                  { n: "1", title: "Reel Under-Adoption", body: "Only 22% of posts are Reels. Instagram&rsquo;s algorithm weights native video 3–5× over static images. This alone explains roughly half the engagement gap." },
+                  { n: "2", title: "Silent Community", body: "Average reply latency of 18 hours. Comments that go unanswered in the first 60 minutes signal low engagement depth to the algorithm, capping reach." },
+                  { n: "3", title: "No Highlight Architecture", body: "The profile lacks organized story highlights — no education, no founder story, no testimonials. New visitors have no guided path after the bio." },
+                ].map((w) => (
+                  <div key={w.n} className="rounded-[var(--radius-sm)] border-l-2 border-[color:var(--red)]/30 bg-[color:var(--red-muted)]/30 p-3">
+                    <p className="text-xs"><strong className="text-foreground">{w.n}. {w.title}.</strong> <span className="text-muted-foreground">{w.body}</span></p>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Competitive Comparison snippet ── */}
+              <h4 className="mt-5 text-sm font-bold">Competitive Context</h4>
+              <table className="mt-2 w-full border-collapse text-[0.72rem]">
+                <thead>
+                  <tr className="border-b-2 border-border text-left text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                    <th className="pb-2 pr-2"></th><th className="pb-2 pr-2">@glowstate</th><th className="pb-2 pr-2">Peer A</th><th className="pb-2">Peer B</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-border">
+                    <td className="py-1.5 pr-2 font-medium">Followers</td>
+                    <td className="py-1.5 pr-2 font-mono">24.8K</td><td className="py-1.5 pr-2 font-mono">31K</td><td className="py-1.5 font-mono">19K</td>
+                  </tr>
+                  <tr className="border-b border-border">
+                    <td className="py-1.5 pr-2 font-medium">Engagement</td>
+                    <td className="py-1.5 pr-2 font-mono text-[color:var(--red)]">1.42%</td><td className="py-1.5 pr-2 font-mono text-[color:var(--green)]">3.8%</td><td className="py-1.5 font-mono text-[color:var(--green)]">2.9%</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 pr-2 font-medium">Reel Share</td>
+                    <td className="py-1.5 pr-2 font-mono text-[color:var(--red)]">22%</td><td className="py-1.5 pr-2 font-mono">65%</td><td className="py-1.5 font-mono">48%</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Teaser */}
+              <p className="mt-5 text-[0.65rem] italic text-muted-foreground">
+                + 10 more sections in the full report — content gaps, audience psychology patterns, viral opportunities, content ideas, the 90-day growth map, content mix &amp; weekly calendar, the four-hour engagement window, visual branding blueprint, right hashtags, and how often to re-audit.
               </p>
             </div>
           </div>
