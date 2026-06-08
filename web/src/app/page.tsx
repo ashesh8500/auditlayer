@@ -129,12 +129,25 @@ export default async function Home() {
           <h1 className="mt-3 text-4xl font-bold leading-tight tracking-[-0.02em] sm:text-5xl">
             Social Media Analysis That Reads Like Research
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground">
-            Deep, structured competitive intelligence for media managers,
-            creators, food &amp; beverage brands, and personal brands. The
-            product is the report — a beautiful, self-contained analysis you
-            can take into any room.
+          <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground">
+            Competitive intelligence for media managers, creators, and personal
+            brands. Built from real social media data — designed to turn
+            performance into direction.
           </p>
+          <ul className="mx-auto mt-6 max-w-sm space-y-2 text-left text-sm text-muted-foreground">
+            <li className="flex items-start gap-2">
+              <span>📊</span> Understand what&rsquo;s working
+            </li>
+            <li className="flex items-start gap-2">
+              <span>🔎</span> Spot what&rsquo;s missing
+            </li>
+            <li className="flex items-start gap-2">
+              <span>🧠</span> Get clear, actionable insight
+            </li>
+            <li className="flex items-start gap-2">
+              <span>🚀</span> Grow with a custom playbook
+            </li>
+          </ul>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <Link href={primaryHref}>
               <Button size="lg" className="font-semibold">
