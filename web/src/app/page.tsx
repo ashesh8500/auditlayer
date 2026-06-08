@@ -154,30 +154,6 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Metric preview */}
-        <section className="mt-14">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            A glance at the numbers
-          </h2>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {PREVIEW_METRICS.map((metric) => (
-              <div
-                key={metric.label}
-                className="rounded-[var(--radius)] border border-border bg-card px-4 py-5 text-center"
-              >
-                <div
-                  className={`font-mono text-2xl font-medium leading-none ${metric.tone}`}
-                >
-                  {metric.value}
-                </div>
-                <div className="mt-2 text-[0.72rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">
-                  {metric.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* What you get — live report preview */}
         <section className="mt-14">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
