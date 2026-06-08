@@ -75,7 +75,7 @@ const PRICING = [
   },
   {
     name: "Enterprise",
-    price: "Let's talk",
+    price: "Let's Talk",
     cadence: "",
     audits: "Unlimited audits",
     features: [
