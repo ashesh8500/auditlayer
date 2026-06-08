@@ -326,6 +326,29 @@ export default async function Home() {
           </div>
         </section>
 
+        {/* Six questions */}
+        <section className="mt-14">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Six questions every report answers
+          </h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {REPORT_ANSWERS.map((item) => (
+              <div
+                key={item.label}
+                className="rounded-[var(--radius)] border border-border bg-card p-5"
+              >
+                <span className="font-mono text-xs font-medium text-[color:var(--accent)]">
+                  {item.label}
+                </span>
+                <h3 className="mt-1 text-base font-semibold">{item.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {item.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Pricing */}
         <section id="pricing" className="mt-16 scroll-mt-20">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
