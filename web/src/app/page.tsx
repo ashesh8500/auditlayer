@@ -6,34 +6,34 @@ import { getSession } from "@/lib/auth";
 
 const REPORT_ANSWERS = [
   {
-    label: "01",
-    title: "Where you're at",
-    body: "A calibrated read on your current standing — followers, engagement, format mix, and authority.",
+    label: "📊",
+    title: "Baseline reality",
+    body: "A precise read of your current distribution state — audience scale, engagement efficiency, content composition, and authority signals.",
   },
   {
-    label: "02",
-    title: "What's holding you back",
-    body: "The specific structural gaps suppressing reach, ranked by impact and effort to fix.",
+    label: "🔒",
+    title: "Primary constraints",
+    body: "The highest-leverage friction points limiting growth, mapped by severity and implementation cost.",
   },
   {
-    label: "03",
-    title: "Who's doing it better",
-    body: "Same-tier peers benchmarked head-to-head — credentials, formats, and cadence.",
+    label: "⚖️",
+    title: "Relative position",
+    body: "A structured comparison against comparable creators — identifying differentiation, gaps, and outperforming patterns.",
   },
   {
-    label: "04",
-    title: "What to post next week",
-    body: "A concrete content calendar with formats, pillars, and ready-to-film examples.",
+    label: "⚡",
+    title: "Immediate execution plan",
+    body: "A constrained, high-probability content set for the next 7 days — defined by format, narrative intent, and performance rationale.",
   },
   {
-    label: "05",
-    title: "When you hit the next milestone",
-    body: "A phased 90-day map with follower and engagement targets you can actually track.",
+    label: "📈",
+    title: "Trajectory model",
+    body: "A 90-day projection of growth milestones grounded in observable velocity, not aspiration — with measurable checkpoints.",
   },
   {
-    label: "06",
-    title: "The money move",
-    body: "The highest-leverage monetization path, matched to your audience and credibility.",
+    label: "💰",
+    title: "Monetization architecture",
+    body: "The most viable revenue pathway based on audience behavior, trust depth, and conversion surface area.",
   },
 ];
 
@@ -337,7 +337,7 @@ export default async function Home() {
                 key={item.label}
                 className="rounded-[var(--radius)] border border-border bg-card p-5"
               >
-                <span className="font-mono text-xs font-medium text-[color:var(--accent)]">
+                <span className="text-lg">
                   {item.label}
                 </span>
                 <h3 className="mt-1 text-base font-semibold">{item.title}</h3>
