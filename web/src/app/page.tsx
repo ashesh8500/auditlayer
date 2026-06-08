@@ -120,20 +120,22 @@ export default async function Home() {
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-7 py-16 sm:py-24">
         {/* Hero */}
-        <section className="border-b border-border pb-12">
+        <section className="border-b border-border pb-12 text-center">
+          {/* Colored header banner */}
+          <div className="mx-auto mb-8 h-1.5 w-20 rounded-full bg-gradient-to-r from-[color:var(--accent)] to-emerald-400" />
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--accent)]">
             Evidence-based competitive intelligence
           </p>
           <h1 className="mt-3 text-4xl font-bold leading-tight tracking-[-0.02em] sm:text-5xl">
-            Social media audits that read like research.
+            Social Media Analysis That Reads Like Research
           </h1>
-          <p className="mt-4 max-w-2xl text-base text-muted-foreground">
+          <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground">
             Deep, structured competitive intelligence for media managers,
             creators, food &amp; beverage brands, and personal brands. The
             product is the report — a beautiful, self-contained analysis you
             can take into any room.
           </p>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <Link href={primaryHref}>
               <Button size="lg" className="font-semibold">
                 Start Your Free Audit
