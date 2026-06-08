@@ -416,7 +416,11 @@ export default async function Home() {
         </section>
 
         <footer className="mt-16 border-t border-border pt-6 text-xs text-muted-foreground">
-          AuditLayer · Evidence-based competitive intelligence for creators
+          <p className="font-semibold text-foreground">AuditLayerMedia</p>
+          <p className="mt-1 max-w-2xl leading-relaxed">
+            AuditLayerMedia provides social media competitive intelligence reports based on publicly available data, platform benchmarks, and industry-standard analytics. We are not affiliated with, endorsed by, or partnered with Instagram, TikTok, YouTube, X (Twitter), or any other platform we audit. All trademarks and handles referenced in our reports belong to their respective owners. Our reports are strategic assessments — not financial, legal, or investment advice. Metrics are estimates drawn from indexed public content and third-party data sources; exact platform analytics may differ. Always verify independently before making business decisions.
+          </p>
+          <p className="mt-3">© {new Date().getFullYear()} AuditLayerMedia. All rights reserved.</p>
         </footer>
       </main>
     </div>
