@@ -124,7 +124,10 @@ export default async function Home() {
           {/* Colored header banner */}
           <div className="mx-auto mb-8 h-1.5 w-20 rounded-full bg-gradient-to-r from-[color:var(--accent)] to-emerald-400" />
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--accent)]">
-            Evidence-based competitive intelligence
+            📊 Understand what&rsquo;s working &nbsp;·&nbsp;
+            🔎 Spot what&rsquo;s missing &nbsp;·&nbsp;
+            🧠 Get clear, actionable insight &nbsp;·&nbsp;
+            🚀 Grow with a custom playbook
           </p>
           <h1 className="mt-3 text-4xl font-bold leading-tight tracking-[-0.02em] sm:text-5xl">
             Social Media Analysis That Reads Like a Strategic Breakdown
@@ -133,12 +136,6 @@ export default async function Home() {
             Competitive intelligence for media managers, creators, and personal
             brands. Built from real social media data — designed to turn
             performance into direction.
-          </p>
-          <p className="mx-auto mt-5 max-w-lg text-center text-sm text-muted-foreground">
-            📊 Understand what&rsquo;s working &nbsp;·&nbsp;
-            🔎 Spot what&rsquo;s missing &nbsp;·&nbsp;
-            🧠 Get clear, actionable insight &nbsp;·&nbsp;
-            🚀 Grow with a custom playbook
           </p>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <Link href={primaryHref}>
