@@ -127,7 +127,7 @@ export default async function Home() {
             Evidence-based competitive intelligence
           </p>
           <h1 className="mt-3 text-4xl font-bold leading-tight tracking-[-0.02em] sm:text-5xl">
-            Social Media Analysis That Reads Like Research
+            Social Media Analysis That Reads Like a Strategic Breakdown
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground">
             Competitive intelligence for media managers, creators, and personal
