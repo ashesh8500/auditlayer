@@ -415,6 +415,41 @@ export default async function Home() {
           </div>
         </section>
 
+        {/* Blueprint Audit */}
+        <section className="mt-10">
+          <div className="mx-auto max-w-md rounded-[calc(var(--radius)+2px)] border border-[color:var(--accent)]/30 bg-gradient-to-r from-[color:var(--accent-muted)]/60 to-transparent p-6 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <h3 className="text-base font-semibold">Blueprint Audit</h3>
+              <span className="rounded-full bg-[color:var(--accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--accent)]">One-time</span>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">For those building an account from the ground up</p>
+            <div className="mt-3 flex items-baseline justify-center gap-1">
+              <span className="font-mono text-2xl font-semibold">$79</span>
+              <span className="text-xs text-muted-foreground">one-time</span>
+            </div>
+            <ul className="mx-auto mt-4 max-w-xs space-y-2 text-left">
+              {[
+                "Full 15-section pre-launch assessment",
+                "Niche positioning & handle evaluation",
+                "Competitive landscape mapping",
+                "90-day launch playbook with weekly milestones",
+                "Content pillar architecture & first 10 content ideas",
+                "Platform-by-platform setup guide",
+              ].map((f) => (
+                <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <Check className="mt-0.5 size-3.5 shrink-0 text-[color:var(--green)]" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <Link href={primaryHref} className="mt-5 inline-block">
+              <Button variant="outline" className="font-medium">
+                Get the Blueprint
+              </Button>
+            </Link>
+          </div>
+        </section>
+
         {/* FAQ */}
         <section className="mt-16">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
