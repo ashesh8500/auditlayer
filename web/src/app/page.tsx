@@ -154,29 +154,6 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Six questions */}
-        <section className="mt-14">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Six questions every report answers
-          </h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {REPORT_ANSWERS.map((item) => (
-              <div
-                key={item.label}
-                className="rounded-[var(--radius)] border border-border bg-card p-5"
-              >
-                <span className="font-mono text-xs font-medium text-[color:var(--accent)]">
-                  {item.label}
-                </span>
-                <h3 className="mt-1 text-base font-semibold">{item.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {item.body}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* Metric preview */}
         <section className="mt-14">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
@@ -198,6 +175,79 @@ export default async function Home() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* What you get — live report preview */}
+        <section className="mt-14">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            What You Get At a Glance
+          </h2>
+          <div className="mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-md)]">
+            {/* Report header bar */}
+            <div className="flex items-center justify-between border-b border-border bg-[#f5f5f4] px-5 py-2.5">
+              <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                Instagram Audit · @versediscovery
+              </span>
+              <span className="rounded-full bg-[color:var(--green-muted)] px-2 py-0.5 font-mono text-[0.6rem] font-semibold uppercase text-[color:var(--green)]">
+                Generated
+              </span>
+            </div>
+            {/* Report body */}
+            <div className="px-6 py-6 sm:px-8 sm:py-8">
+              <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[color:var(--accent)]">
+                Instagram Account Audit
+              </p>
+              <h3 className="mt-0.5 text-xl font-bold tracking-[-0.02em]">
+                @versediscovery
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Verséa Discovery — Mitochondrial biology for everyday wellness
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2 text-[0.65rem] text-muted-foreground">
+                <span>📅 June 2026</span>
+                <span className="text-border">|</span>
+                <span>📊 Public data + Social Blade</span>
+                <span className="text-border">|</span>
+                <span>⏱ 14-day analysis window</span>
+              </div>
+
+              {/* Metrics row */}
+              <div className="mt-5 grid grid-cols-4 gap-2">
+                <div className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
+                  <div className="font-mono text-lg font-semibold leading-none">11K</div>
+                  <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">Followers</div>
+                </div>
+                <div className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
+                  <div className="font-mono text-lg font-semibold leading-none text-[color:var(--red)]">1.96%</div>
+                  <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">Engagement</div>
+                </div>
+                <div className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
+                  <div className="font-mono text-lg font-semibold leading-none">178</div>
+                  <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">Avg Likes</div>
+                </div>
+                <div className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
+                  <div className="font-mono text-lg font-semibold leading-none text-[color:var(--green)]">+149</div>
+                  <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">14-Day Growth</div>
+                </div>
+              </div>
+
+              {/* Sample section */}
+              <h4 className="mt-5 text-sm font-bold">Executive Summary</h4>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Verséa Discovery brings <strong className="text-foreground">world-class mitochondrial science</strong> to Instagram — but the account reads like a lab notebook, not a consumer brand. With <strong className="text-foreground">1.96% engagement</strong> at 11K followers, the audience is real and engaged. The bottleneck is <strong className="text-foreground">content packaging</strong>: the feed leans on dense text slides that bury the brand&rsquo;s most compelling asset — the science itself, translated into stories people can feel.
+              </p>
+
+              <h4 className="mt-4 text-sm font-bold">Strengths</h4>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                <strong className="text-foreground">1. Scientific Authority.</strong> CSO-led, mitochondrial focus — no other wellness brand owns this lane with this depth.{" "}
+                <strong className="text-foreground">2. Loyal Community.</strong> 32 avg comments per post with high-quality discussion threads — rare at this tier.
+              </p>
+
+              <p className="mt-4 text-[0.65rem] italic text-muted-foreground">
+                + 13 more sections in the full report — weaknesses, growth bottlenecks, content gaps, viral opportunities, competitive comparison, monetization, 90-day plan, and visual branding blueprint.
+              </p>
+            </div>
           </div>
         </section>
 
