@@ -134,24 +134,12 @@ export default async function Home() {
             brands. Built from real social media data — designed to turn
             performance into direction.
           </p>
-          <div className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-3">
-            <div className="rounded-[var(--radius)] border border-border bg-card p-4 text-center">
-              <div className="text-2xl">📊</div>
-              <p className="mt-1 text-xs font-medium text-muted-foreground">Understand what&rsquo;s working</p>
-            </div>
-            <div className="rounded-[var(--radius)] border border-border bg-card p-4 text-center">
-              <div className="text-2xl">🔎</div>
-              <p className="mt-1 text-xs font-medium text-muted-foreground">Spot what&rsquo;s missing</p>
-            </div>
-            <div className="rounded-[var(--radius)] border border-border bg-card p-4 text-center">
-              <div className="text-2xl">🧠</div>
-              <p className="mt-1 text-xs font-medium text-muted-foreground">Get clear, actionable insight</p>
-            </div>
-            <div className="rounded-[var(--radius)] border border-border bg-card p-4 text-center">
-              <div className="text-2xl">🚀</div>
-              <p className="mt-1 text-xs font-medium text-muted-foreground">Grow with a custom playbook</p>
-            </div>
-          </div>
+          <p className="mx-auto mt-5 max-w-lg text-center text-sm text-muted-foreground">
+            📊 Understand what&rsquo;s working &nbsp;·&nbsp;
+            🔎 Spot what&rsquo;s missing &nbsp;·&nbsp;
+            🧠 Get clear, actionable insight &nbsp;·&nbsp;
+            🚀 Grow with a custom playbook
+          </p>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <Link href={primaryHref}>
               <Button size="lg" className="font-semibold">
