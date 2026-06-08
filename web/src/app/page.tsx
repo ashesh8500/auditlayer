@@ -159,30 +159,21 @@ export default async function Home() {
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Six questions every report answers
           </h2>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span className="text-base">📍</span> Where you&rsquo;re at
-            </span>
-            <span className="hidden sm:inline text-border">·</span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-base">🔍</span> What&rsquo;s holding you back
-            </span>
-            <span className="hidden sm:inline text-border">·</span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-base">⚖️</span> Who&rsquo;s doing it better
-            </span>
-            <span className="hidden sm:inline text-border">·</span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-base">📋</span> What to post next week
-            </span>
-            <span className="hidden sm:inline text-border">·</span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-base">🎯</span> When you hit the next milestone
-            </span>
-            <span className="hidden sm:inline text-border">·</span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-base">💰</span> The money move
-            </span>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {REPORT_ANSWERS.map((item) => (
+              <div
+                key={item.label}
+                className="rounded-[var(--radius)] border border-border bg-card p-5"
+              >
+                <span className="font-mono text-xs font-medium text-[color:var(--accent)]">
+                  {item.label}
+                </span>
+                <h3 className="mt-1 text-base font-semibold">{item.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {item.body}
+                </p>
+              </div>
+            ))}
           </div>
         </section>
 
