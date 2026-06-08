@@ -129,7 +129,8 @@ export default async function Home() {
               Evidence-based competitive intelligence
             </p>
             <h1 className="relative mt-4 text-4xl font-bold leading-tight tracking-[-0.02em] sm:text-5xl">
-              Social Media Analysis That Reads Like a Strategic Breakdown
+              <span style={{ fontFamily: "'Times New Roman', serif", fontStyle: "italic" }}>Social Media</span> Analysis That Reads Like a{" "}
+              <span style={{ fontFamily: "'Times New Roman', serif", fontStyle: "italic" }}>Strategic Breakdown</span>
             </h1>
             <p className="relative mx-auto mt-4 max-w-xl text-base text-muted-foreground">
               Competitive intelligence for media managers, creators, and personal
