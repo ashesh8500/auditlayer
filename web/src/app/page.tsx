@@ -121,11 +121,14 @@ export default async function Home() {
       <main className="mx-auto w-full max-w-3xl flex-1 px-7 py-16 sm:py-24">
         {/* Hero */}
         <section className="border-b border-border pb-12 text-center">
-          {/* Colored header banner */}
-          <div className="mx-auto mb-8 h-1.5 w-20 rounded-full bg-gradient-to-r from-[color:var(--accent)] to-emerald-400" />
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--accent)]">
-            Evidence-based competitive intelligence
-          </p>
+          {/* Gradient header banner */}
+          <div className="relative mx-auto mb-10 max-w-lg overflow-hidden rounded-2xl bg-gradient-to-br from-[color:var(--accent)]/10 via-[color:var(--accent-muted)] to-transparent p-5">
+            <div className="absolute -right-8 -top-8 size-32 rounded-full bg-[color:var(--accent)]/10 blur-3xl" />
+            <div className="absolute -bottom-4 -left-4 size-24 rounded-full bg-emerald-400/10 blur-2xl" />
+            <p className="relative inline-block rounded-full border border-[color:var(--accent)]/20 bg-[color:var(--accent)]/10 px-4 py-1.5 font-mono text-[0.62rem] font-bold uppercase tracking-[0.15em] text-[color:var(--accent)] backdrop-blur">
+              Evidence-based competitive intelligence
+            </p>
+          </div>
           <h1 className="mt-3 text-4xl font-bold leading-tight tracking-[-0.02em] sm:text-5xl">
             Social Media Analysis That Reads Like a Strategic Breakdown
           </h1>
