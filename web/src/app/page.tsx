@@ -134,20 +134,24 @@ export default async function Home() {
             brands. Built from real social media data — designed to turn
             performance into direction.
           </p>
-          <ul className="mx-auto mt-6 max-w-sm space-y-2 text-left text-sm text-muted-foreground">
-            <li className="flex items-start gap-2">
-              <span>📊</span> Understand what&rsquo;s working
-            </li>
-            <li className="flex items-start gap-2">
-              <span>🔎</span> Spot what&rsquo;s missing
-            </li>
-            <li className="flex items-start gap-2">
-              <span>🧠</span> Get clear, actionable insight
-            </li>
-            <li className="flex items-start gap-2">
-              <span>🚀</span> Grow with a custom playbook
-            </li>
-          </ul>
+          <div className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-3">
+            <div className="rounded-[var(--radius)] border border-border bg-card p-4 text-center">
+              <div className="text-2xl">📊</div>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">Understand what&rsquo;s working</p>
+            </div>
+            <div className="rounded-[var(--radius)] border border-border bg-card p-4 text-center">
+              <div className="text-2xl">🔎</div>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">Spot what&rsquo;s missing</p>
+            </div>
+            <div className="rounded-[var(--radius)] border border-border bg-card p-4 text-center">
+              <div className="text-2xl">🧠</div>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">Get clear, actionable insight</p>
+            </div>
+            <div className="rounded-[var(--radius)] border border-border bg-card p-4 text-center">
+              <div className="text-2xl">🚀</div>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">Grow with a custom playbook</p>
+            </div>
+          </div>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <Link href={primaryHref}>
               <Button size="lg" className="font-semibold">
