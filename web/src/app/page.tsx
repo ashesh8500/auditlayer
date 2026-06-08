@@ -319,9 +319,14 @@ export default async function Home() {
               </table>
 
               {/* Teaser */}
-              <p className="mt-5 text-[0.65rem] italic text-muted-foreground">
-                + 10 more sections in the full report — content gaps, audience psychology patterns, viral opportunities, content ideas, the 90-day growth map, content mix &amp; weekly calendar, the four-hour engagement window, visual branding blueprint, right hashtags, and how often to re-audit.
-              </p>
+              <div className="mt-5 rounded-[var(--radius)] border border-[color:var(--accent)]/20 bg-gradient-to-r from-[color:var(--accent-muted)] to-transparent p-4">
+                <p className="text-xs font-semibold text-[color:var(--accent)]">
+                  🔒 + 10 more sections in the full report
+                </p>
+                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                  Content gaps · Audience psychology patterns · Viral opportunities · Content ideas · 90-day growth map · Content mix &amp; weekly calendar · The four-hour engagement window · Visual branding blueprint · Right hashtags · How often to re-audit
+                </p>
+              </div>
             </div>
           </div>
         </section>
