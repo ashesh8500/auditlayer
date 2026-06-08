@@ -7,32 +7,32 @@ import { getSession } from "@/lib/auth";
 const REPORT_ANSWERS = [
   {
     label: "📊",
-    title: "Baseline reality",
+    title: "Baseline Reality",
     body: "A precise read of your current distribution state — audience scale, engagement efficiency, content composition, and authority signals.",
   },
   {
     label: "🔒",
-    title: "Primary constraints",
+    title: "Primary Constraints",
     body: "The highest-leverage friction points limiting growth, mapped by severity and implementation cost.",
   },
   {
     label: "⚖️",
-    title: "Relative position",
+    title: "Relative Position",
     body: "A structured comparison against comparable creators — identifying differentiation, gaps, and outperforming patterns.",
   },
   {
     label: "⚡",
-    title: "Immediate execution plan",
+    title: "Immediate Execution Plan",
     body: "A constrained, high-probability content set for the next 7 days — defined by format, narrative intent, and performance rationale.",
   },
   {
     label: "📈",
-    title: "Trajectory model",
+    title: "Trajectory Model",
     body: "A 90-day projection of growth milestones grounded in observable velocity, not aspiration — with measurable checkpoints.",
   },
   {
     label: "💰",
-    title: "Monetization architecture",
+    title: "Monetization Architecture",
     body: "The most viable revenue pathway based on audience behavior, trust depth, and conversion surface area.",
   },
 ];
