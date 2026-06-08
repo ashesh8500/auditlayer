@@ -455,7 +455,7 @@ export default async function Home() {
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             FAQ
           </h2>
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 space-y-3">
             {[
               {
                 q: "What exactly do I get?",
@@ -486,10 +486,13 @@ export default async function Home() {
                 a: "A social media manager executes — they create content, manage communities, and run your day-to-day presence. AuditLayerMedia provides the strategic layer: competitive intelligence, format analysis, growth diagnostics, and monetization architecture. They're complementary. Our report gives you (or your manager) the roadmap. Many of our users bring their audit to their social media manager and use it to align on priorities. If you don't have a manager yet, the report includes a content calendar and content ideas to get you started on your own.",
               },
             ].map((faq) => (
-              <div key={faq.q} className="rounded-[var(--radius)] border border-border bg-card p-5">
-                <h3 className="text-sm font-semibold">{faq.q}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>
-              </div>
+              <details key={faq.q} className="group rounded-[var(--radius)] border border-border bg-card transition-all">
+                <summary className="flex cursor-pointer items-center justify-between p-5 text-sm font-semibold select-none [&::-webkit-details-marker]:hidden">
+                  {faq.q}
+                  <span className="ml-2 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180">▼</span>
+                </summary>
+                <p className="px-5 pb-5 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>
+              </details>
             ))}
           </div>
         </section>
