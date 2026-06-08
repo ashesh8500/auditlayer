@@ -415,6 +415,50 @@ export default async function Home() {
           </div>
         </section>
 
+        {/* FAQ */}
+        <section className="mt-16">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            FAQ
+          </h2>
+          <div className="mt-6 space-y-4">
+            {[
+              {
+                q: "What exactly do I get?",
+                a: "You get a comprehensive 15-section competitive intelligence report — an evidence-based analysis of your social media presence. It includes your current distribution state, primary growth constraints, peer benchmarking against same-tier accounts, an immediate execution plan for the next 7 days, a 90-day trajectory model with measurable checkpoints, and a monetization architecture recommendation. The report is delivered as a self-contained HTML file you can view in any browser, share with your team, or print.",
+              },
+              {
+                q: "How long does an audit take?",
+                a: "Most audits are generated in 6–8 minutes. Our system researches your account across multiple data sources, analyzes content patterns, benchmarks against comparable accounts in your tier, and synthesizes everything into a structured report. You'll see the progress live as each phase completes — from data collection through scoring to final assembly.",
+              },
+              {
+                q: "What platforms do you audit?",
+                a: "We currently support Instagram, TikTok, and YouTube, with X (Twitter) and LinkedIn coming soon. Each platform audit is calibrated to its specific algorithm dynamics, content formats, and engagement benchmarks — so an Instagram audit and a TikTok audit for the same account may surface different insights.",
+              },
+              {
+                q: "Why should I trust your score?",
+                a: "Our scoring framework evaluates accounts across six weighted dimensions — Content Strategy, Growth Momentum, Engagement Depth, Platform Optimization, Brand Cohesion, and Conversion Architecture — using publicly available data and industry-standard benchmarks. Every dimension is broken down in the report so you can see exactly what contributed to the score. We don't use black-box algorithms or vanity metrics. If something in the analysis doesn't match what you know about your account, you can refine any section through follow-up questions.",
+              },
+              {
+                q: "Who is this for?",
+                a: "AuditLayerMedia is built for creators, personal brands, media managers, and small-to-mid-size agencies who need deep competitive intelligence without the overhead of a full-time analyst. It's most valuable for accounts in the 1K–500K follower range — where the difference between good and great strategy has measurable business impact. If you manage a brand account, run a creator business, or pitch clients on social strategy, this is for you.",
+              },
+              {
+                q: "What happens after I get the report?",
+                a: "The report is designed to be immediately actionable. The 'Immediate Execution Plan' section gives you a constrained, high-probability content set for the next 7 days — specific formats, narrative angles, and posting rationale. The 90-day trajectory model gives you monthly checkpoints to track against. You can also ask follow-up questions to refine any section — adjust the competitive set, deepen a specific recommendation, or add context the system couldn't see from public data alone.",
+              },
+              {
+                q: "How is this different from hiring a social media manager?",
+                a: "A social media manager executes — they create content, manage communities, and run your day-to-day presence. AuditLayerMedia provides the strategic layer: competitive intelligence, format analysis, growth diagnostics, and monetization architecture. They're complementary. Our report gives you (or your manager) the roadmap. Many of our users bring their audit to their social media manager and use it to align on priorities. If you don't have a manager yet, the report includes a content calendar and content ideas to get you started on your own.",
+              },
+            ].map((faq) => (
+              <div key={faq.q} className="rounded-[var(--radius)] border border-border bg-card p-5">
+                <h3 className="text-sm font-semibold">{faq.q}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <footer className="mt-16 border-t border-border pt-6 text-xs text-muted-foreground">
           <p className="font-semibold text-foreground">AuditLayerMedia</p>
           <p className="mt-1 max-w-2xl leading-relaxed">
