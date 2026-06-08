@@ -99,7 +99,7 @@ export default async function Home() {
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
           <span className="flex items-center gap-2 text-sm font-semibold tracking-tight">
             <span className="grid size-6 place-items-center rounded-md bg-[color:var(--accent)] font-mono text-[10px] text-white">
-              AL
+              ALM
             </span>
             AuditLayerMedia
           </span>
