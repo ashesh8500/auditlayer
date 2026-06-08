@@ -101,7 +101,7 @@ export default async function Home() {
             <span className="grid size-6 place-items-center rounded-md bg-[color:var(--accent)] font-mono text-[10px] text-white">
               AL
             </span>
-            AuditLayer
+            AuditLayerMedia
           </span>
           <div className="flex items-center gap-2">
             <Link href="#pricing">
