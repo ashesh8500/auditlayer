@@ -14,18 +14,22 @@ triggers:
 
 # AuditLayer — Product & Domain Knowledge
 
-## Architecture
+## Architecture (v2 — current)
 
 ```
-User Browser → Cloudflare Tunnel → Flask/FastAPI portal (~500 lines)
-    → API proxy (auth, rate limiting, input validation)
-    → Hermes API → social-media-audit skill → HTML report
+Browser → Next.js portal (web/, Vercel)
+    → Supabase (Auth, Postgres, Storage, Realtime)
+    → Python worker (worker/, long-running) → Hermes Gateway :8642/v1
+    → social-media-audit skill → HTML + PDF in Storage
 ```
 
-Single CX22 VM (Hetzner, 100.83.195.75). No database initially — reports are static HTML files.
+Legacy v1 WSGI portal archived in `legacy/`. **Start here for agents:** `docs/agent-handoff.md`.
 
 ## Core Documents
 
+- `docs/agent-handoff.md` — Live URLs, quick commands (`make check-v2`, `make worker-run`), file map, open work
+- `docs/architecture-contract.md` — Authoritative schema, enums, RLS
+- `docs/deployment.md` — Vercel + Supabase + worker env vars
 - `docs/product-spec.md` — Product vision, user flow (3-question wizard), pricing ($30/$50/Enterprise), 4-phase roadmap, 9 key product decisions
 - `docs/audit-methodology.md` — 15-section framework, research sweep, weighted scoring (8 dimensions), HTML report CSS classes, delivery conventions
 - `docs/creator-strategy.md` — 15-question knowledge base: growth signals, algorithmic patterns, audience psychology, trust compounding
@@ -38,7 +42,7 @@ Single CX22 VM (Hetzner, 100.83.195.75). No database initially — reports are s
 
 1. **Three questions, not five** — Handle + Goal + Optional context. Less friction.
 2. **Peer auto-suggest, never free-choice** — Users can't pick comparables. System auto-selects 3 same-tier peers. Prevents aspirational-comparison demoralization.
-3. **Credential filter** — Only evidence-based biohacking accounts (PhD, MD, NP, researcher). "AuditLayer audited" is a trust signal.
+3. **Intake scope** — Broad media/marketing creators (credential gate removed in v2). `needs_review` only when platform is unknown.
 4. **Six audit outputs** — Where you're at, What's holding you back, Who's doing it better, What to post next week, When you hit the milestone, The money move.
 5. **Milestone computation per tier** — 300→2K, 2K→10K, 10K→20K, 50K→100K, 100K→250K. Never hardcoded.
 6. **Content format priority** — Podcasts > Reels > Bite-size paper breakdowns (biohacking space specific).

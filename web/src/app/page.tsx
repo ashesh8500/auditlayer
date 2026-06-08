@@ -376,7 +376,7 @@ export default async function Home() {
                   )}
                 </div>
                 <div className="mt-3 flex items-baseline gap-1">
-                  <span className="font-mono text-2xl font-semibold">
+                  <span className={`text-2xl font-semibold ${tier.price.startsWith("$") ? "font-mono" : ""}`}>
                     {tier.price}
                   </span>
                   <span className="text-xs text-muted-foreground">

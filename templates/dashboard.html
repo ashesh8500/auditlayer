@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - AuditLayer{% endblock %}
+{% block content %}
+<section>
+  <div class="row" style="justify-content: space-between;">
+    <div>
+      <p class="badge">Client dashboard</p>
+      <h1>{{ client.name or client.email }}</h1>
+      <p>{{ client.plan }} plan · {{ client.subscription_status }} · {{ client.onboarding_status.replace("_", " ") }}</p>
+    </div>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="secondary" type="submit">Logout</button>
+    </form>
+  </div>
+  <div class="grid">
+    <div class="metric"><span>Total audits</span><strong>{{ usage.total }}</strong></div>
+    <div class="metric"><span>Ready</span><strong>{{ usage.ready }}</strong></div>
+    <div class="metric"><span>In progress</span><strong>{{ usage.active }}</strong></div>
+  </div>
+</section>
+
+<section class="panel" style="margin-top: 22px;">
+  <h2>Plan</h2>
+  <p>Upgrade when your free audit is used or you need more volume. Starter includes 5 audits. Pro includes 15 audits plus competitive comparison and trajectory features.</p>
+  <div class="row">
+    <form method="post" action="/billing/checkout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="plan" value="starter">
+      <button type="submit">Upgrade to Starter</button>
+    </form>
+    <form method="post" action="/billing/checkout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="plan" value="pro">
+      <button class="secondary" type="submit">Upgrade to Pro</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel" style="margin-top: 22px;">
+  <h2>Your audits</h2>
+  <table>
+    <thead><tr><th>Handle</th><th>Status</th><th>Goal</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for audit in audits %}
+        <tr>
+          <td>@{{ audit.handle }}<br><span class="small">{{ audit.platform }} · {{ audit.created_at }}</span></td>
+          <td><strong class="{{ audit.status }}">{{ audit.status.replace("_", " ") }}</strong></td>
+          <td>{{ audit.goal.replace("_", " ") }}</td>
+          <td>
+            <a href="/audits/{{ audit.id }}">Status</a>
+            {% if audit.report_path %} · <a href="/reports/{{ audit.id }}">Report</a> · <a href="/reports/{{ audit.id }}/pdf">PDF</a>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not audits %}
+    <p>No audits yet. Start one from the intake page.</p>
+  {% endif %}
+</section>
+{% endblock %}

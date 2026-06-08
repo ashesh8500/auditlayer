@@ -1,6 +1,8 @@
 # AGENTS.md — AuditLayer
 
-Guidelines for AI agents (Hermes, Claude Code, Codex) working on this repository.
+Guidelines for AI agents (Hermes, Claude Code, Codex, Cursor) working on this repository.
+
+**Handoff / quick commands / live state:** [`docs/agent-handoff.md`](docs/agent-handoff.md) — read before starting work.
 
 ---
 
@@ -12,24 +14,38 @@ AuditLayer is a social media competitive intelligence platform for evidence-base
 
 ---
 
-## Architecture
+## Architecture (v2 — production rebuild)
 
 ```
 User Browser
     ↓
-Cloudflare Tunnel → Flask/FastAPI portal (~500 lines)
+Next.js portal on Vercel (`web/`)
     ↓
-API proxy (thin — auth, rate limiting, input validation)
+Supabase — Postgres + RLS + Auth + Storage + Realtime
     ↓
-Hermes API → social-media-audit skill → HTML report generation
+Hetzner Hermes worker (`worker/`) claims queued audits via service-role
     ↓
-Result: self-contained HTML saved to disk, viewer rendered
+Hermes Gateway API (`127.0.0.1:8642/v1`) → social-media-audit skill → HTML report
+    ↓
+Result: self-contained HTML + PDF in Supabase Storage; signed URLs per request
 ```
 
-- **Infra:** Single CX22 VM (Hetzner, 100.83.195.75, 2 vCPU/4GB RAM). No database needed initially — reports are static HTML files.
-- **Payments:** Stripe Checkout + webhook handler
-- **Exposure:** Cloudflare Tunnel (no open ports)
-- **Deployment:** Flask/FastAPI behind systemd. Portal code goes in `src/`.
+| Layer | Location | Role |
+|---|---|---|
+| **Web app** | `web/` | Next.js (App Router, TS, Tailwind, shadcn). Auth, intake, billing, live stream, report viewer, admin console. Deployed on **Vercel**. |
+| **Control plane** | `supabase/` | Postgres schema, RLS, private Storage buckets (`reports`, `pdfs`), Realtime on `audit_events`. Contract: `docs/architecture-contract.md`. |
+| **Hermes worker** | `worker/` | Python service on **Hetzner CX22**. Claims `queued` audits, runs generation, streams `audit_events.phase`, uploads HTML/PDF. Self-contained (`auditlayer_worker/core.py`). |
+| **Legacy v1** | `legacy/` | Archived stdlib WSGI + SQLite portal. Reference only — do not extend for new features. |
+
+- **Auth:** Supabase magic link + Google OAuth. Admin gating via `profiles.role = 'admin'` (Ashesh + Narin).
+- **Billing:** Stripe Checkout ($30 Starter, $50 Pro) + Customer Portal + webhook → `profiles.plan` via service-role. Plan limits in `web/src/lib/domain.ts` / worker `core.py`.
+- **Reports:** Private buckets; **re-sign per request** from `report_path` (not long-lived stored URLs). Sandboxed iframe viewer.
+- **Live stream:** Supabase Realtime on `audit_events`; timeline keyed off `phase` (not just `event_type`).
+- **Refinements:** `queued → running → done/failed`; web enqueues with `status='queued'` via service-role; treats `done` as success.
+- **Intake:** `evaluateIntake` in `web/src/lib/domain.ts` + `worker/auditlayer_worker/core.py`. No credential gate; `needs_review` only when platform is unknown. Bare handles default to Instagram.
+- **Magic link auth:** Use Resend (`RESEND_API_KEY`) or Supabase `token_hash` email template — default Supabase PKCE links fail in mail apps. Callback: `web/src/app/auth/callback/route.ts`.
+- **Hermes:** Worker reads `app_settings` (model, toolsets, caps). `HERMES_API_KEY` must match Gateway `API_SERVER_KEY`. Real generation runs on Hetzner only.
+- **Infra:** Cloudflare DNS → Vercel. Hetzner worker behind systemd (`worker/infra/auditlayer-worker.service`). No open ports on the VM for the portal.
 
 ---
 
@@ -40,6 +56,8 @@ Result: self-contained HTML saved to disk, viewer rendered
 3. **Three screens max.** Handle input → goal selection → beautiful report. Not a dashboard, not a platform, not a SaaS app with 14 nav items.
 4. **Static over dynamic.** Reports are self-contained HTML files that survive offline, in email, in print.
 5. **No signup wall.** First audit is free. Paywall after that. Let the report sell itself.
+6. **Agentic where it matters, deterministic where it must be.** Hermes does research and report synthesis. The portal owns auth, billing, state transitions, event logs, delivery, and safety checks.
+7. **Founder-operable.** Ashesh/Narin should be able to see client onboarding state, audit status, limitations, billing status, generation events, and blocked-review notes from the admin console — no raw SQL required.
 
 ---
 
@@ -54,6 +72,15 @@ All product decisions, methodologies, design systems, and implementation pattern
 - Inter for body, JetBrains Mono for numbers
 - Zero external dependencies in reports — all CSS inline
 - See `docs/report-design-system.md` for full component library and tokens
+
+### App-layer boundaries
+- The Next.js app is not the report-generation brain. It orchestrates intake, plan limits, auth, billing, queue state, delivery, report storage, refinements, and observability.
+- Hermes is called only from the **worker** (`worker/auditlayer_worker/`). The web app never calls the gateway directly.
+- Local tests must not spend model tokens. Use `AUDITLAYER_GENERATOR=mock` for worker QA; Hermes validation is explicit (`diagnose-hermes`, `validate-hermes` on Hetzner).
+- Founder/admin actions must write `audit_events`. Silent state changes are not acceptable.
+- Client-facing pages must reflect business limitations plainly: credential uncertainty, platform/data access limits, plan caps, same-tier comparison policy, and founder review states.
+- **Service-role** for admin writes, Stripe webhook, refinement enqueue, signed URLs. Lock `profiles.plan` / Stripe columns from client mutation.
+- Keep reports as static artifacts in Supabase Storage; viewing uses short-lived signed URLs, not live model calls.
 
 ### Git conventions
 - Branch: `master` (not `main`)
@@ -75,15 +102,20 @@ The core engine lives in `~/.hermes/skills/productivity/social-media-audit/`. Th
 
 | Location | Purpose |
 |---|---|
-| `docs/product-spec.md` | Product vision, user flow, pricing, architecture, roadmap, decisions |
-| `docs/audit-methodology.md` | 15-section framework, research sweep, scoring, delivery |
-| `docs/creator-strategy.md` | 15-question creator growth knowledge base |
-| `docs/comparison-frameworks.md` | Competitive/peer/blueprint comparison structures |
-| `docs/report-design-system.md` | CSS tokens, component library, typography, print styles |
-| `docs/implementation-patterns.md` | Deployment, git ops, cache invalidation, server infra |
-| `docs/media-manager-wishlist.md` | Narin's feature requests and UX priorities |
-| `src/` | Application code (portal, API proxy) |
-| `templates/` | HTML templates for reports and portal pages |
+| `docs/agent-handoff.md` | **Start here** — live URLs, quick scripts, file map, open work |
+| `docs/architecture-contract.md` | **Authoritative** schema, enums, RLS, phases, plan limits |
+| `docs/deployment.md` | Vercel + Supabase + Hetzner worker setup and env vars |
+| `docs/hermes-vm.md` | SSH, `make hermes-vm-sync`, VM credentials, systemd |
+| `web/AGENTS.md` | Next.js portal conventions and routes |
+| `docs/data-sources-and-billing.md` | Inflow/outflow diagrams, per-audit cost drivers |
+| `docs/product-spec.md` | Product vision, user flow, pricing, roadmap |
+| `docs/audit-methodology.md` | 15-section framework, research sweep, scoring |
+| `docs/report-design-system.md` | CSS tokens, component library, print styles |
+| `docs/production-readiness-checklist.md` | Gates before paid traffic |
+| `web/` | Next.js portal (Vercel) |
+| `worker/` | Hetzner Hermes worker (`worker/AGENTS.md`) |
+| `supabase/` | Migrations, seed, config (`supabase/README.md`) |
+| `legacy/` | Archived v1 WSGI + SQLite app |
 | `.hermes/SKILL.md` | Repo-local Hermes skill |
 
 ---
@@ -102,6 +134,38 @@ The core engine lives in `~/.hermes/skills/productivity/social-media-audit/`. Th
 - Commit after each comparison addition
 
 ### When building portal features
-- Light theme only — this is client-facing, not developer-facing
+- Light theme only — client-facing, not developer-facing
 - Three screens max — no feature creep
 - The guided question flow is sacrosanct — don't add steps to the wizard
+- Preserve founder/admin operability: every new workflow needs a visible state, an event log entry, and a test.
+- Preserve client isolation: reports, refinements, dashboard data, and PDF exports must be owner-session or admin gated.
+- Do not call live Hermes in ordinary tests.
+
+### Quick commands (full list in `docs/agent-handoff.md`)
+
+```bash
+make check-v2          # web QA + worker pytest — run before claiming stability
+make dev-web           # local Next.js
+make worker-run        # queue worker (needs worker/.env)
+make worker-once       # single audit drain
+make deploy-prod       # Vercel production deploy
+```
+
+```bash
+# Worker Hermes checks (on gateway host)
+cd worker && uv run python -m auditlayer_worker diagnose-hermes
+cd worker && uv run python -m auditlayer_worker validate-hermes
+cd worker && uv run python -m auditlayer_worker regen-pdf --audit-id <uuid>
+```
+
+`diagnose-hermes` must show `tcp_reachable=true`, `auth_ok=true`, `api_server_state=connected`, `ok=true`. `validate-hermes` must return `ok=True` and `skipped=False`. HTTP 401 → `HERMES_API_KEY` must match gateway `API_SERVER_KEY`.
+
+### Component ownership
+
+| Agent task | Primary path | Do not touch |
+|---|---|---|
+| Portal UI / auth / billing | `web/` | `worker/` Hermes prompts |
+| Schema / RLS / storage | `supabase/` | — |
+| Generation / PDF / refinements | `worker/` | `web/` calling Hermes |
+| Report HTML content / CSS | docs + skill | Random new portal features |
+| Legacy reference | `legacy/` | Production paths |

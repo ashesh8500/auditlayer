@@ -1,0 +1,25 @@
+# User-level paths for the Syncthing-synced repo on hermes-vm (asheshkaji).
+# Install:
+#   sudo cp worker/infra/auditlayer-worker.vm.service /etc/systemd/system/auditlayer-worker.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now auditlayer-worker
+[Unit]
+Description=AuditLayer Hermes worker (claims queued audits from Supabase)
+After=network-online.target hermes-gateway.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=asheshkaji
+WorkingDirectory=/home/asheshkaji/projects/auditlayer/worker
+EnvironmentFile=/home/asheshkaji/projects/auditlayer/worker/.env
+Environment=PATH=/home/asheshkaji/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/asheshkaji/.local/bin/uv run python -m auditlayer_worker run
+Restart=always
+RestartSec=5
+MemoryMax=2G
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Founder Admin - AuditLayer{% endblock %}
+{% block content %}
+<section>
+  <p class="badge">Founder operating view</p>
+  <h1>Audit pipeline</h1>
+  {% if created %}<p class="panel">Created {{ created }}. Review state and run generation from the audit row.</p>{% endif %}
+  <div class="grid">
+    <div class="metric"><span>Clients</span><strong>{{ metrics.clients }}</strong></div>
+    <div class="metric"><span>Audits</span><strong>{{ metrics.audits }}</strong></div>
+    <div class="metric"><span>Ready</span><strong>{{ metrics.ready }}</strong></div>
+    <div class="metric"><span>Needs review</span><strong>{{ metrics.needs_review }}</strong></div>
+    <div class="metric"><span>Paid clients</span><strong>{{ metrics.paid_clients }}</strong></div>
+  </div>
+</section>
+
+<section class="panel" style="margin-top: 22px;">
+  <h2>Audits</h2>
+  <table>
+    <thead>
+      <tr><th>Handle</th><th>Status</th><th>Goal</th><th>Limitations</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+    {% for audit in audits %}
+      <tr>
+        <td>
+          <strong>@{{ audit.handle }}</strong><br>
+          <span class="small">{{ audit.platform }} · {{ audit.created_at }}</span>
+        </td>
+        <td><strong class="{{ audit.status }}">{{ audit.status.replace("_", " ") }}</strong></td>
+        <td>{{ audit.goal.replace("_", " ") }}</td>
+        <td>
+          {% if audit.limitations %}
+            <ul>
+              {% for limitation in audit.limitations %}<li class="small">{{ limitation }}</li>{% endfor %}
+            </ul>
+          {% else %}
+            <span class="small">none</span>
+          {% endif %}
+          {% if audit.admin_notes %}<p class="small"><strong>Admin:</strong> {{ audit.admin_notes }}</p>{% endif %}
+        </td>
+        <td>
+          <div class="stack">
+            {% if audit.status == "needs_review" %}
+              <form method="post" action="/admin/audits/{{ audit.id }}/approve{{ admin_query }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input name="note" placeholder="Approval note">
+                <button type="submit">Approve</button>
+              </form>
+            {% endif %}
+            {% if audit.status in ["queued", "failed"] %}
+              <form method="post" action="/admin/audits/{{ audit.id }}/run{{ admin_query }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit">Run generation</button>
+              </form>
+            {% endif %}
+            {% if audit.status not in ["ready", "blocked"] %}
+              <form method="post" action="/admin/audits/{{ audit.id }}/block{{ admin_query }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input name="note" required placeholder="Why blocked">
+                <button class="secondary" type="submit">Block</button>
+              </form>
+            {% endif %}
+            <form method="post" action="/admin/audits/{{ audit.id }}/note{{ admin_query }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input name="note" required placeholder="Founder note">
+              <button class="secondary" type="submit">Add note</button>
+            </form>
+            {% if audit.report_path %}
+              <a class="button secondary" href="/reports/{{ audit.id }}{{ admin_query }}">View report</a>
+              <a class="button secondary" href="/reports/{{ audit.id }}/pdf{{ admin_query }}">PDF</a>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="panel" style="margin-top: 22px;">
+  <h2>Clients</h2>
+  <table>
+    <thead><tr><th>Email</th><th>Name</th><th>Plan</th><th>Billing</th><th>Onboarding</th></tr></thead>
+    <tbody>
+    {% for client in clients %}
+      <tr>
+        <td>{{ client.email }}</td>
+        <td>{{ client.name or "Unknown" }}</td>
+        <td>{{ client.plan }}</td>
+        <td>
+          {{ client.subscription_status }}
+          {% if client.current_period_end %}<br><span class="small">renews/ends {{ client.current_period_end }}</span>{% endif %}
+        </td>
+        <td>
+          <form method="post" action="/admin/clients/{{ client.id }}/onboarding{{ admin_query }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <select name="onboarding_status">
+              {% for status in onboarding_statuses %}
+                <option value="{{ status }}" {% if status == client.onboarding_status %}selected{% endif %}>{{ status.replace("_", " ") }}</option>
+              {% endfor %}
+            </select>
+            <button class="secondary" type="submit">Update</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="panel" style="margin-top: 22px;">
+  <h2>Recent events</h2>
+  <table>
+    <thead><tr><th>Time</th><th>Event</th><th>Actor</th><th>Detail</th></tr></thead>
+    <tbody>
+    {% for event in events %}
+      <tr>
+        <td class="small">{{ event.created_at }}</td>
+        <td>{{ event.event_type.replace("_", " ") }}</td>
+        <td>{{ event.actor }}</td>
+        <td class="small">{{ event.detail or event.audit_id or "" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

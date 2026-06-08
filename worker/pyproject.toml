@@ -1,0 +1,29 @@
+[project]
+name = "auditlayer-worker"
+version = "0.1.0"
+description = "AuditLayer Hermes worker: claims queued audits from Supabase, runs guardrailed Hermes generation, streams a granular event timeline, and uploads HTML/PDF reports."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "AuditLayer" }]
+dependencies = [
+    "httpx>=0.27",
+    "supabase>=2.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+auditlayer-worker = "auditlayer_worker.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["auditlayer_worker"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

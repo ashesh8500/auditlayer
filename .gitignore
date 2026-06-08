@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+var/data/*.db
+var/data/*.db-*
+var/reports/*.html
+var/*.log
+.env
+.vercel

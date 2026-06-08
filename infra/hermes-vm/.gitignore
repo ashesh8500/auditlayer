@@ -1,0 +1,2 @@
+# Local-only secrets for hermes-vm-sync (never commit)
+.supabase-access-token

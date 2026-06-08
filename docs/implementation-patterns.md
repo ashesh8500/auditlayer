@@ -2,6 +2,10 @@
 
 Deployment, operations, and integration patterns discovered while building the AuditLayer demo and running the audit pipeline.
 
+> **v2 production stack:** See [`deployment.md`](deployment.md) and [`agent-handoff.md`](agent-handoff.md)
+> for Vercel + Supabase + worker commands. This doc retains demo-era patterns (GitHub Pages,
+> Hermes skill loading, report editing) that still apply to report content work.
+
 ---
 
 ## Deployment Pattern: GitHub Pages Sub-Root

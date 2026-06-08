@@ -1,0 +1,19 @@
+[Unit]
+Description=AuditLayer web portal
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=asheshkaji
+WorkingDirectory=/home/asheshkaji/projects/auditlayer
+EnvironmentFile=/etc/auditlayer/auditlayer.env
+ExecStart=/home/asheshkaji/projects/auditlayer/.venv/bin/python -m auditlayer serve
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}New Audit - AuditLayer{% endblock %}
+{% block content %}
+<section class="grid">
+  <div>
+    <p class="badge">Evidence-based biohacking audits</p>
+    <h1>Client intake that reflects the real audit constraints.</h1>
+    <p>Three questions stay intact for clients: handle, goal, and context. The system still tracks plan limits, credential uncertainty, data access limits, and whether founder review is needed before Hermes spends tokens.</p>
+  </div>
+  <form class="panel" method="post" action="/audits">
+    <h2>Start audit</h2>
+    <label>Email
+      <input name="email" type="email" required placeholder="client@example.com">
+    </label>
+    <label>Name
+      <input name="name" placeholder="Dr Jane Smith">
+    </label>
+    <label>Handle or profile URL
+      <input name="handle" required placeholder="@janesmithphd">
+    </label>
+    <label>Goal
+      <select name="goal">
+        {% for goal in goals %}
+          <option value="{{ goal.value }}">{{ goal.value.replace("_", " ").title() }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Context
+      <textarea name="context" placeholder="Credentials, niche, offer, audience, launch timing, or known constraints."></textarea>
+    </label>
+    <div class="grid">
+      <label>Platform
+        <select name="platform">
+          {% for platform in platforms %}
+            <option value="{{ platform.value }}">{{ platform.value.title() }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Plan
+        <select name="plan">
+          {% for plan in plans %}
+            <option value="{{ plan.value }}">{{ plan.value.title() }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <p class="small">Free includes one audit. Starter includes five. Pro includes same-tier comparison and trajectory. Enterprise is operationally uncapped.</p>
+    <button type="submit">Create tracked audit</button>
+  </form>
+</section>
+{% endblock %}
+

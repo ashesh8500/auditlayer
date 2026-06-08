@@ -2,6 +2,10 @@
 
 The product spec captures what was validated through the interactive demo and viability planning. This document is the bridge between the static demo at `asheshkaji.com/auditlayer/` and the production implementation.
 
+> **v2 implementation:** Next.js portal in `web/`, Supabase control plane, Python worker in `worker/`.
+> Operational handoff: [`agent-handoff.md`](agent-handoff.md). Schema: [`architecture-contract.md`](architecture-contract.md).
+> Intake scope broadened beyond PhD/med-only creators; credential gating removed — see `web/src/lib/domain.ts`.
+
 ---
 
 ## Product Vision

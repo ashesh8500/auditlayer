@@ -1,0 +1,10 @@
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.uv/
+
+# Local env + outputs
+.env
+var/

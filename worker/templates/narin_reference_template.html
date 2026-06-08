@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instagram Audit — @hemalpatelphd</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #fafaf9; --surface: #ffffff; --text: #1c1917; --muted: #78716c; --line: #e7e5e4; --accent: #0d9488; --accent-muted: #f0fdfa; --green: #059669; --amber: #d97706; --red: #dc2626; --red-muted: #fef2f2; --green-muted: #ecfdf5; --amber-muted: #fffbeb; --blue: #2563eb; --blue-muted: #eff6ff; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); line-height: 1.625; -webkit-font-smoothing: antialiased; }
+  .container { max-width: 760px; margin: 0 auto; padding: 60px 28px 120px; }
+  .report-header { margin-bottom: 52px; padding-bottom: 36px; border-bottom: 1px solid var(--line); }
+  .report-header .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); margin-bottom: 8px; }
+  .report-header h1 { font-size: 2.1rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 10px; color: var(--text); }
+  .report-header .subtitle { font-size: 0.95rem; color: var(--muted); font-weight: 400; }
+  .report-header .meta { display: flex; gap: 24px; margin-top: 16px; font-size: 0.8rem; color: var(--muted); font-weight: 500; flex-wrap: wrap; }
+  section { margin-bottom: 48px; }
+  section h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 20px; color: var(--text); padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  section h3 { font-size: 1.05rem; font-weight: 600; margin: 28px 0 12px; color: var(--text); }
+  section p { margin-bottom: 14px; font-size: 0.95rem; color: #44403c; }
+  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0; }
+  .metric-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 16px; text-align: center; }
+  .metric-card .value { font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 500; color: var(--text); line-height: 1; margin-bottom: 4px; }
+  .metric-card .value.red { color: var(--red); } .metric-card .value.green { color: var(--green); } .metric-card .value.amber { color: var(--amber); }
+  .metric-card .label { font-size: 0.72rem; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 16px 0; }
+  .data-table th { text-align: left; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 10px 14px; border-bottom: 2px solid var(--line); }
+  .data-table td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .data-table td:first-child { font-weight: 500; }
+  .data-table .num { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; text-align: right; }
+  .data-table tr.highlight { background: var(--accent-muted); }
+  .tag { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 2px 10px; border-radius: 4px; letter-spacing: 0.03em; }
+  .tag.strength { background: var(--green-muted); color: var(--green); }
+  .tag.weakness { background: var(--red-muted); color: var(--red); }
+  .tag.neutral { background: var(--blue-muted); color: var(--blue); }
+  .sw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .sw-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; }
+  .sw-card.strength { border-left: 3px solid var(--green); }
+  .sw-card.weakness { border-left: 3px solid var(--red); }
+  .sw-card .sw-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .sw-card.strength .sw-label { color: var(--green); } .sw-card.weakness .sw-label { color: var(--red); }
+  .sw-card h4 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+  .sw-card p { font-size: 0.85rem; color: #57534e; margin: 0; }
+  .rec-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; margin-bottom: 14px; position: relative; padding-left: 60px; }
+  .rec-card .num { position: absolute; left: 18px; top: 20px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent); background: var(--accent-muted); width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .rec-card h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; }
+  .rec-card p { font-size: 0.85rem; color: #57534e; margin: 0; }
+  .calendar-grid { display: grid; grid-template-columns: 100px 80px 160px 1fr; gap: 0; margin: 16px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .calendar-grid .ch { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 10px 14px; background: #f5f5f4; border-bottom: 1px solid var(--line); }
+  .calendar-grid .cr { padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 0.85rem; }
+  .timeline-item { display: flex; gap: 16px; margin-bottom: 20px; }
+  .timeline-item .t-dot { flex-shrink: 0; width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; }
+  .timeline-item .t-dot.green { background: var(--green); } .timeline-item .t-dot.red { background: var(--red); } .timeline-item .t-dot.accent { background: var(--accent); }
+  .timeline-item .t-content h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
+  .timeline-item .t-content p { font-size: 0.85rem; color: #57534e; margin: 0; }
+  .callout { background: var(--blue-muted); border-left: 3px solid var(--blue); padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0; }
+  .callout p { font-size: 0.9rem; color: #1e3a5f; margin: 0; font-weight: 500; }
+  .callout.accent { background: var(--accent-muted); border-left-color: var(--accent); }
+  .callout.accent p { color: #0f766e; }
+  .upgrade-box { background: linear-gradient(135deg, #0d9488, #0f766e); border-radius: 12px; padding: 32px; margin: 32px 0; color: #fff; text-align: center; }
+  .upgrade-box h3 { color: #fff; font-size: 1.25rem; margin: 0 0 12px; }
+  .upgrade-box p { color: #ccfbf1; font-size: 0.92rem; margin-bottom: 20px; }
+  .upgrade-box .cta-btn { display: inline-block; background: #fff; color: #0d9488; font-weight: 700; font-size: 0.9rem; padding: 12px 28px; border-radius: 8px; text-decoration: none; letter-spacing: 0.02em; }
+  .report-footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 0.78rem; color: var(--muted); }
+  .score-diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px 20px; margin-bottom: 48px; }
+  .score-diagram .sd-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .score-diagram .sd-header .sd-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .score-diagram .sd-header .sd-overall { font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 600; color: var(--text); line-height: 1; }
+  .score-diagram .sd-header .sd-overall span { font-size: 0.85rem; color: var(--muted); font-weight: 400; }
+  .sd-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .sd-row .sd-name { width: 160px; font-size: 0.8rem; font-weight: 500; color: var(--text); text-align: right; flex-shrink: 0; }
+  .sd-row .sd-track { flex: 1; height: 8px; background: #f0efed; border-radius: 4px; overflow: hidden; }
+  .sd-row .sd-fill { height: 100%; border-radius: 4px; }
+  .sd-row .sd-fill.high { background: var(--green); }
+  .sd-row .sd-fill.mid { background: var(--amber); }
+  .sd-row .sd-fill.low { background: var(--red); }
+  .sd-row .sd-num { width: 28px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 500; color: var(--muted); text-align: right; flex-shrink: 0; }
+  .idea-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; margin-bottom: 14px; border-left: 3px solid var(--accent); }
+  .idea-card h4 { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
+  .idea-card p { font-size: 0.85rem; color: #57534e; margin: 0 0 10px; }
+  .idea-card .idea-meta { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  @media (max-width: 680px) { .container { padding: 32px 16px 80px; } .report-header h1 { font-size: 1.6rem; } .metric-grid { grid-template-columns: repeat(2, 1fr); } .sw-grid { grid-template-columns: 1fr; } .calendar-grid { grid-template-columns: 80px 60px 120px 1fr; font-size: 0.78rem; } .score-diagram { padding: 18px 16px 16px; } .sd-row .sd-name { width: 110px; font-size: 0.72rem; } }
+  @media print { body { background: white; } .container { max-width: 100%; padding: 20px 0; } .sw-card, .rec-card, .metric-card, .idea-card { break-inside: avoid; } section { break-inside: avoid; } .upgrade-box { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="report-header">
+    <div class="label">Instagram Audit Report</div>
+    <h1>@hemalpatelphd</h1>
+    <div class="subtitle">Dr. Hemal Patel — UCSD Professor & Vice-Chair for Research, VA Research Career Scientist, NASA Twins Study collaborator, CSO Verséa Discovery. 186 publications. Caveolin & mitochondrial biology.</div>
+    <div class="meta"><span>June 2026</span><span>Data: Instagram, UCSD Profiles, Social Blade</span><span>AuditLayer Report</span></div>
+  </header>
+  <!-- 1. SCORE -->
+  <section>
+    <h2>1. Overall Score — 36/100</h2>
+  <div class="score-diagram">
+    <div class="sd-header"><span class="sd-label">Overall Score</span><span class="sd-overall">36<span>/ 100</span></span></div>
+    <div class="sd-row"><span class="sd-name">Scientific Authority</span><div class="sd-track"><div class="sd-fill high" style="width:95%"></div></div><span class="sd-num">95</span></div>
+    <div class="sd-row"><span class="sd-name">Research Translation</span><div class="sd-track"><div class="sd-fill low" style="width:20%"></div></div><span class="sd-num">20</span></div>
+    <div class="sd-row"><span class="sd-name">Format Diversity</span><div class="sd-track"><div class="sd-fill low" style="width:15%"></div></div><span class="sd-num">15</span></div>
+    <div class="sd-row"><span class="sd-name">Community Quality</span><div class="sd-track"><div class="sd-fill mid" style="width:40%"></div></div><span class="sd-num">40</span></div>
+    <div class="sd-row"><span class="sd-name">Growth Velocity</span><div class="sd-track"><div class="sd-fill mid" style="width:35%"></div></div><span class="sd-num">35</span></div>
+    <div class="sd-row"><span class="sd-name">Platform Optimization</span><div class="sd-track"><div class="sd-fill low" style="width:12%"></div></div><span class="sd-num">12</span></div>
+  </div>
+  <div class="callout accent"><p>World-class research program, hobbyist-grade Instagram. 186 publications, NASA Twins Study, a paper in the 99th percentile — and a 1.96% engagement rate. But growth is accelerating: 12K followers, up from 11K in May. The substance is unstoppable. The packaging is catching up.</p></div>
+  </section>
+  <!-- 2. RAW NUMBERS -->
+  <section>
+    <h2>2. What the Account Is Showing — The Raw Numbers</h2>
+    <div class="metric-grid">
+      <div class="metric-card"><div class="value">12K</div><div class="label">Followers</div></div>
+      <div class="metric-card"><div class="value red">1.96%</div><div class="label">Engagement Rate</div></div>
+      <div class="metric-card"><div class="value">185</div><div class="label">Avg Likes/Post</div></div>
+      <div class="metric-card"><div class="value green">32</div><div class="label">Avg Comments</div></div>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>Metric</th><th>@hemalpatelphd</th><th>Benchmark (10K tier)</th><th>Assessment</th></tr></thead>
+      <tbody>
+        <tr><td>Followers</td><td class="num">~12,000</td><td class="num">—</td><td><span class="tag strength">Steady growth</span></td></tr>
+        <tr><td>Following</td><td class="num">46</td><td class="num">—</td><td><span class="tag strength">Elite ratio (239:1)</span></td></tr>
+        <tr><td>Total Posts</td><td class="num">178</td><td class="num">—</td><td><span class="tag neutral">Moderate volume</span></td></tr>
+        <tr class="highlight"><td>Engagement Rate</td><td class="num" style="color:var(--red)">1.96%</td><td class="num">~4.0%</td><td><span class="tag weakness">Half of benchmark</span></td></tr>
+        <tr><td>Avg Likes/Post</td><td class="num">178</td><td class="num">—</td><td><span class="tag neutral">Consistent</span></td></tr>
+        <tr><td>Avg Comments/Post</td><td class="num">32</td><td class="num">—</td><td><span class="tag strength">Strong reply depth</span></td></tr>
+        <tr><td>Comment/Like Ratio</td><td class="num" style="color:var(--green)">18%</td><td class="num">—</td><td><span class="tag strength">Genuine conversation</span></td></tr>
+        <tr><td>Monthly Growth</td><td class="num" style="color:var(--green)">~1,000 (+8.3%)</td><td class="num">—</td><td><span class="tag strength">Organic, no spikes</span></td></tr>
+        <tr><td>Posting Cadence</td><td class="num">~0.5/day</td><td class="num">—</td><td><span class="tag strength">Consistent</span></td></tr>
+      </tbody>
+    </table>
+    <p>The headline: <strong>1.96% engagement at 12K followers</strong> is half what a 10K-tier account should expect. The community that does engage is real — 18% comment-to-like ratio, genuine replies, organic growth. The issue isn't the audience. It's that the content strategy isn't built to expand it.</p>
+  </section>
+  <!-- 3. TOP 5 STRENGTHS -->
+  <section>
+    <h2>3. Top 5 Strengths</h2>
+    <div class="sw-grid">
+      <div class="sw-card strength"><div class="sw-label">Strength 1</div><h4>Unmatched Academic Credibility</h4><p>Tenured UCSD professor. VA Research Career Scientist. NASA Twins Study. 186 publications. Communications Biology paper at the 99th percentile. At 12K followers with 46 following, the bio doesn't need to persuade — it needs to be visible. The foundation is there.</p></div>
+      <div class="sw-card strength"><div class="sw-label">Strength 2</div><h4>Research-to-Product Loop Is Closed</h4><p>As CSO of Verséa Discovery, Hemal doesn't just study mitochondrial function — he built the $699 test that measures it. Peer accounts translate <em>other people's</em> research. Hemal translates <em>his own</em>. This closes a loop most academic accounts can't touch.</p></div>
+      <div class="sw-card strength"><div class="sw-label">Strength 3</div><h4>Genuine Community, Not a Crowd</h4><p>32 comments averaging 18% of likes — real conversation, not passive scrolling. Follower growth is steady with no suspicious spikes. This is an audience that chose to be here. The hardest asset to fake is already genuine.</p></div>
+      <div class="sw-card strength"><div class="sw-label">Strength 4</div><h4>Cross-Platform Flywheel Already Spinning</h4><p>Podcast appearances (Flex Diet, Wise Athletes, DrTalks — 10,400+ views) drive followers back to Instagram. Joe Dispenza paper breakdown collaborations hit 1.2M and 1M views — proving the appetite for his research in accessible formats. The pipeline exists. It's not being used systematically.</p></div>
+      <div class="sw-card strength"><div class="sw-label">Strength 5</div><h4>Three Years of Content Already Written</h4><p>186 publications. Every paper = 3–5 posts. Every research thread = a carousel. Every finding = a 60-second Reel. Most accounts run out of things to say. Hemal has the opposite problem — a content mine with no extraction system. The calendar for the next 36 months is already in his CV.</p></div>
+    </div>
+  </section>
+  <!-- 4. TOP 7 WEAKNESSES -->
+  <section>
+    <h2>4. Top 7 Weaknesses</h2>
+    <div class="sw-grid">
+      <div class="sw-card weakness"><div class="sw-label">Weakness 1</div><h4>~50% Promotional Mix</h4><p>Roughly half of visible posts are direct mescreen promotions. Instagram classifies high-promo accounts as commercial and suppresses organic reach. Peers at this tier run 5–10% promo. The product is legitimate — the ratio is telling the algorithm this is an ad account, not an education account.</p></div>
+      <div class="sw-card weakness"><div class="sw-label">Weakness 2</div><h4>Missing Carousels — The Save Format</h4><p>Carousels get 2–3× the reach of static posts and drive saves — Instagram's strongest algorithmic signal. The account has essentially zero carousels. His research — caveolae biology, mitochondrial profiles, meditation biochemistry — is perfect carousel material. The format that would perform best is absent.</p></div>
+      <div class="sw-card weakness"><div class="sw-label">Weakness 3</div><h4>Minimal Reels — The Growth Engine</h4><p>Reels reach non-followers at 3–5× the rate of any other format. The account runs &lt;1 Reel/week. Peers run 3–4. He admitted on the Flex Diet Podcast: "I don't do very well with Instagram." The honesty is appreciated. The format gap is costing reach every day.</p></div>
+      <div class="sw-card weakness"><div class="sw-label">Weakness 4</div><h4>Dormant Stories — No Daily Presence</h4><p>No visible Story strategy — no polls, no Q&A boxes, no behind-the-scenes of the lab. Stories keep an account in followers' feeds between posts. Peers run daily polls, Q&As, and reply loops. Hemal's silent Stories mean the algorithm forgets he exists between posts.</p></div>
+      <div class="sw-card weakness"><div class="sw-label">Weakness 5</div><h4>The Lab Is the Best Unfilmed Content on Instagram</h4><p>A UCSD mitochondrial biology lab is a content goldmine: pipetting, microscopes, liquid nitrogen, cell cultures, the mescreen analyzer. The audience for "what does mitochondrial research actually look like" is massive. The feed shows almost none of it.</p></div>
+      <div class="sw-card weakness"><div class="sw-label">Weakness 6</div><h4>No Save-Designed Content</h4><p>Nothing on the feed is built to be bookmarked. No protocol guides. No "5 things about X" swipe-throughs. No research summaries formatted for reference. Peers produce carousels that followers save — every save is a permanent algorithmic credential. The account is rich in substance and empty of save bait.</p></div>
+      <div class="sw-card weakness"><div class="sw-label">Weakness 7</div><h4>No Hashtag Strategy</h4><p>Posts either use no hashtags or generic ones (#science, #health). Niche hashtags in the mitochondrial and meditation space have 50K–500K posts — small enough to rank, large enough to matter. The account is invisible in every hashtag feed that its ideal audience browses. The lowest-effort, highest-ROI fix available.</p></div>
+    </div>
+  </section>
+  <!-- 5. THREE IMMEDIATE ACTIONS -->
+  <section>
+    <h2>5. Three Immediate Actions — This Week</h2>
+    <div class="timeline-item"><div class="t-dot accent"></div><div class="t-content"><h4>1. Turn the 99th-percentile paper into a carousel</h4><p>The Communications Biology paper announcement got 179 likes and strong comments. Repackage the findings as a 7-slide carousel: what the study asked, how it was designed, the 3 key findings, and what it means for meditation practice. First slide = bold finding. Last slide = "Save · Share with a colleague." One post. Highest-leverage content available today.</p></div></div>
+    <div class="timeline-item"><div class="t-dot accent"></div><div class="t-content"><h4>2. Film 5 minutes of B-roll in the lab</h4><p>Pipetting. The mescreen analyzer. Cell cultures. Liquid nitrogen. One filming session = weeks of Reel B-roll. The lab is the most underutilized content asset in science communication. Five minutes of footage unlocks the Behind the Lab Reel format for the next month.</p></div></div>
+    <div class="timeline-item"><div class="t-dot accent"></div><div class="t-content"><h4>3. Post a Story with a poll today</h4><p>"Cold plunge or sauna — which is better for your mitochondria?" Simple. Engaging. Starts the daily Story habit. Reply to every answer within the first hour. The lowest-effort, highest-signal change available — and it works instantly.</p></div></div>
+  </section>
+  <!-- 6. COMPARISON TABLE -->
+  <section>
+    <h2>6. Competitive Comparison — Three Accounts at the Same Tier</h2>
+    <p>Three PhD-level creators in the health/science space at similar follower counts. These are peers, not aspirational accounts — operating with similar resources and constraints. None have stronger credentials than Hemal. All have stronger format execution.</p>
+    <table class="data-table">
+      <thead><tr><th></th><th>@hemalpatelphd</th><th>@ayuswellnessuk</th><th>@brain_and_beyond_</th><th>@juliettehanphd</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Followers</strong></td><td class="num">12K</td><td class="num">~36K</td><td class="num">~15K</td><td class="num">~12K</td></tr>
+        <tr><td><strong>Niche</strong></td><td>Mitochondria + meditation</td><td>Longevity + clinical nutrition</td><td>Neuroscience + brain health</td><td>Neuroscience + career science</td></tr>
+        <tr><td><strong>Engagement Rate</strong></td><td class="num" style="color:var(--red)">1.96%</td><td class="num" style="color:var(--green)">~4.5%</td><td class="num" style="color:var(--green)">~5.5%</td><td class="num" style="color:var(--amber)">~3.5%</td></tr>
+        <tr class="highlight"><td><strong>Primary Format</strong></td><td>Static posts + text</td><td>Reels (50%) + Carousels (35%)</td><td>Carousels (55%) + Reels (30%)</td><td>Carousels (45%) + Stories (daily)</td></tr>
+        <tr><td><strong>Reels/week</strong></td><td class="num" style="color:var(--red)">&lt;1</td><td class="num" style="color:var(--green)">3–4</td><td class="num" style="color:var(--green)">2–3</td><td class="num" style="color:var(--green)">1–2</td></tr>
+        <tr><td><strong>Carousels/week</strong></td><td class="num" style="color:var(--red)">~0</td><td class="num" style="color:var(--green)">1–2</td><td class="num" style="color:var(--green)">2–3</td><td class="num" style="color:var(--green)">2</td></tr>
+        <tr><td><strong>Promo ratio</strong></td><td class="num" style="color:var(--red)">~50%</td><td class="num" style="color:var(--green)">~10%</td><td class="num" style="color:var(--green)">~10%</td><td class="num" style="color:var(--green)">~5%</td></tr>
+        <tr><td><strong>Story engagement</strong></td><td class="num" style="color:var(--red)">Minimal</td><td class="num" style="color:var(--green)">Daily</td><td class="num" style="color:var(--green)">Daily</td><td class="num" style="color:var(--green)">Daily</td></tr>
+        <tr><td><strong>Save content</strong></td><td class="num" style="color:var(--red)">None</td><td class="num" style="color:var(--green)">Guides, checklists</td><td class="num" style="color:var(--green)">Research summaries</td><td class="num" style="color:var(--green)">Visual explainers</td></tr>
+      </tbody>
+    </table>
+    <div class="callout"><p>Every comparable investigator posts more Reels, more carousels, and more Stories — with fewer credentials to draw from. None has a NASA Twins Study. None has a product they can point to as proof. The variable isn't the quality of the research. It's the quality of the translation.</p></div>
+  </section>
+  <!-- 7. THREE CONTENT IDEAS -->
+  <section>
+    <h2>7. Three Content Ideas That Match the Account's Vibe</h2>
+    <p>These aren't generic suggestions. Each one is built specifically for a UCSD mitochondrial biologist with NASA credentials and a meditation research track — formats that feel native to the account, not forced.</p>
+    <div class="idea-card"><div class="idea-meta">Content Idea 1</div><h4>"Mitochondria Mondays" — Weekly Carousel Series</h4><p><strong>Format:</strong> 7-slide carousel. Slide 1 = bold finding. Slides 2–6 = one key insight with a visual (cell diagram, data chart, microscopy image). Slide 7 = "Save · Share with someone who needs to hear this."</p><p><strong>Why it fits:</strong> Structured, educational, low-production. Hemal already thinks in research frameworks — this just serializes them. After 12 weeks, he has a library of saveable content that compounds.</p><p><strong>First three topics:</strong> "5 signs your mitochondria are struggling" · "What 10 minutes of meditation actually does to your cells" · "The caveolae-mitochondria connection in 6 slides"</p></div>
+    <div class="idea-card"><div class="idea-meta">Content Idea 2</div><h4>"Paper to Post" — 60-Second Reel Breakdowns</h4><p><strong>Format:</strong> 60-second Reel. Hook: one surprising finding from a paper. B-roll: lab footage, pipetting, the mescreen analyzer. Text overlay: 3 key results. End: "Full paper in bio. Follow for more."</p><p><strong>Why it fits:</strong> His Dispenza collabs proved the format works — 1.2M views on a paper breakdown. This just makes it recurring instead of one-off. One paper = one Reel. 186 papers = 186 Reels. The content already exists.</p><p><strong>First three papers:</strong> Communications Biology meditation study · NASA Twins Study overview · Caveolin-mitochondria review</p></div>
+    <div class="idea-card"><div class="idea-meta">Content Idea 3</div><h4>"Ask a Mitochondrial Biologist" — Weekly Story Q&A</h4><p><strong>Format:</strong> Story sticker on Monday: "Ask me anything about mitochondria, meditation, or longevity." Collect questions all day. Answer the best 5–7 in a Tuesday Reel or carousel — face on camera or voiceover with lab B-roll.</p><p><strong>Why it fits:</strong> Hemal's community already asks genuine questions in comments (32/post, strong depth). This channels that curiosity into a recurring format that builds parasocial trust and generates content from audience input instead of from scratch.</p><p><strong>Also works as:</strong> Live session once a month — push notification to all followers, save to grid after.</p></div>
+  </section>
+  <!-- 8. 90-DAY MAP -->
+  <section>
+    <h2>8. The 90-Day Map</h2>
+    <p>Three phases. Target: <strong>12K → 22K followers, 1.96% → 4%+ engagement.</strong></p>
+    <div class="timeline-item"><div class="t-dot accent"></div><div class="t-content"><h4>Phase 1 — Foundation (Days 1–30): 12K → 14.5K</h4><p>Switch to 80/20 value-to-promo ratio. Launch 2 carousels + 3 Reels/week. Start daily Story engagement: 1 poll + 1 Q&A. Reply to first 20 comments within 1 hour of every post. Pin top 3 educational posts to grid. <em>Endpoint: engagement crossing 2.5%. First carousel hitting 30+ saves.</em></p></div></div>
+    <div class="timeline-item"><div class="t-dot accent"></div><div class="t-content"><h4>Phase 2 — Acceleration (Days 31–60): 14.5K → 18K</h4><p>Activate podcast funnel: pre-arranged on-air callout, clip → carousel → Story. Execute first Instagram Collab post with a peer creator. Double down on Phase 1 A/B winners. One "viral swing" Reel/week. Repurpose top carousel as an X/Twitter thread. <em>Endpoint: one Reel crossing 10K views. Collab driving 200+ new followers.</em></p></div></div>
+    <div class="timeline-item"><div class="t-dot accent"></div><div class="t-content"><h4>Phase 3 — Compound (Days 61–90): 18K → 22K+</h4><p>Execute second Collab post. Repurpose top 3 IG Reels to TikTok. Go live once — save to grid. Weekly calendar on autopilot: 2 carousels, 3 Reels, 1 promo max, daily Stories. Build a proven protocol from 12+ A/B tests. <em>Endpoint: engagement at 4%+. 100+ new followers/day organically.</em></p></div></div>
+    <table class="data-table" style="margin-top:24px;">
+      <thead><tr><th>Phase</th><th>Timeline</th><th>New Followers</th><th>Engagement Rate</th><th>Mechanism</th></tr></thead>
+      <tbody>
+        <tr><td>1 — Foundation</td><td class="num">Days 1–30</td><td class="num" style="color:var(--green)">+2,500</td><td class="num">1.96% → 2.5%</td><td>Format shift + engagement system</td></tr>
+        <tr><td>2 — Acceleration</td><td class="num">Days 31–60</td><td class="num" style="color:var(--green)">+3,500</td><td class="num">2.5% → 3.5%</td><td>Podcast funnel + Collab + A/B wins</td></tr>
+        <tr><td>3 — Compound</td><td class="num">Days 61–90</td><td class="num" style="color:var(--green)">+4,000+</td><td class="num">3.5% → 4%+</td><td>Systems + cross-platform + protocol</td></tr>
+        <tr class="highlight"><td><strong>Total</strong></td><td class="num"><strong>90 days</strong></td><td class="num" style="color:var(--green)"><strong>+10,000</strong></td><td class="num"><strong>1.96% → 4%+</strong></td><td><strong>→ 22K followers</strong></td></tr>
+      </tbody>
+    </table>
+  </section>
+  <!-- 9. STORIES + HIGHLIGHTS -->
+  <section>
+    <h2>9. Leveraging Stories & Highlights</h2>
+    <p>Stories are the daily touchpoint that keeps an account alive between posts. Highlights are the permanent portfolio that every new profile visitor sees. Hemal is using neither. Here's the fix.</p>
+    <h3>Daily Story Protocol</h3>
+    <table class="data-table">
+      <thead><tr><th>Time</th><th>Format</th><th>Content</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>Morning</td><td>Photo + poll</td><td>Lab BTS photo with a question: "Cold plunge or sauna?"</td><td>Engagement signal, algorithm warmth</td></tr>
+        <tr><td>Midday</td><td>Share + sticker</td><td>Reshare an old carousel: "Still relevant?" with slider</td><td>Content recycling, saves boost</td></tr>
+        <tr><td>Evening</td><td>Q&A box</td><td>"Ask me anything about mitochondria"</td><td>DM generation, content ideas, community</td></tr>
+      </tbody>
+    </table>
+    <h3>Highlight Covers — Three to Build First</h3>
+    <div class="sw-grid">
+      <div class="sw-card strength"><h4>Research</h4><p>Paper breakdowns, carousel summaries, key findings. The evidence portfolio. What a new visitor checks to decide if you know what you're talking about.</p></div>
+      <div class="sw-card strength"><h4>Behind the Lab</h4><p>Pipetting, microscopes, liquid nitrogen, the mescreen analyzer, team members. The "how it's made" of mitochondrial science. Highest trust-builder available.</p></div>
+      <div class="sw-card strength"><h4>Q&A</h4><p>Best answers from weekly Story questions. Shows you respond. Shows the community is real. Turns one-to-one DMs into one-to-many content.</p></div>
+    </div>
+    <div class="callout"><p>One filming session in the lab = a week of Story content. The footage exists. It just needs 15 minutes of phone camera work per week.</p></div>
+  </section>
+  <!-- 10. CONTENT SCHEDULE -->
+  <section>
+    <h2>10. Hypothetical Content Schedule</h2>
+    <p>A week on the feed once the protocol is running at full tempo.</p>
+    <div class="calendar-grid">
+      <div class="ch">Day</div><div class="ch">Format</div><div class="ch">Pillar</div><div class="ch">Example</div>
+      <div class="cr"><strong>Mon</strong></div><div class="cr">Carousel</div><div class="cr">Mitochondria Explained</div><div class="cr">"5 things damaging your mitochondria right now"</div>
+      <div class="cr"><strong>Tue</strong></div><div class="cr">Reel</div><div class="cr">Behind the Lab</div><div class="cr">60s: running the mescreen assay — from drop of blood to result</div>
+      <div class="cr"><strong>Wed</strong></div><div class="cr">Story-only</div><div class="cr">Community</div><div class="cr">Full Q&A day via question sticker — collect, answer tomorrow</div>
+      <div class="cr"><strong>Thu</strong></div><div class="cr">Reel</div><div class="cr">Paper to Post</div><div class="cr">"Our Communications Biology findings in 60 seconds"</div>
+      <div class="cr"><strong>Fri</strong></div><div class="cr">Carousel</div><div class="cr">Research Summary</div><div class="cr">"What 10 minutes of meditation actually does to your cells"</div>
+      <div class="cr"><strong>Sat</strong></div><div class="cr">Reel</div><div class="cr">One Thing</div><div class="cr">"One mitochondrial fact that will change how you think about aging"</div>
+      <div class="cr"><strong>Sun</strong></div><div class="cr">Static + Story</div><div class="cr">Personal + Product</div><div class="cr">Weekend reflection or 1-in-5 mescreen mention (framed as logical conclusion)</div>
+    </div>
+  </section>
+  <!-- 11. COMMENT RESPONSE -->
+  <section>
+    <h2>11. The Four-Hour Window & Why Bots Hurt Accounts Under 30K</h2>
+    <h3>The Four-Hour Rule</h3>
+    <p>Instagram's algorithm weighs engagement in the <strong>first four hours after posting</strong> more heavily than any other signal in the first 24 hours. A post that gets 15 comments in the first hour will be shown to more followers than a post that gets 30 comments spread across the day. The window is real. The math: reply to every comment within the first hour, and the algorithm treats your post as "generating conversation" — which triggers broader distribution.</p>
+    <p>For Hemal specifically: at 32 comments/post, he's already getting conversation. If he replied to every comment within the first hour — not just liked, replied — the algorithm sees a post with 32 comments <em>and</em> 32 replies. That's 64 engagements on one post. The reach compounds.</p>
+    <h3>Why Bots Are a Trap Under 30K</h3>
+    <p>At 12K followers, <strong>every engagement is visible.</strong> Instagram's spam detection is tuned to flag accounts with sudden engagement spikes that don't match follower demographics. A bot that auto-replies "Great post!" or fires generic comments will:</p>
+    <p><strong>1. Get detected.</strong> Instagram's AI flags templated language faster at small accounts — there's less noise to hide in.</p>
+    <p><strong>2. Damage trust.</strong> A PhD-level audience can spot a bot reply instantly. One "Thanks for sharing!" under a mitochondria research post and the credibility edge is gone.</p>
+    <p><strong>3. Worsen the ratio.</strong> Bots inflate engagement numbers without real conversation. Instagram tracks <em>meaningful</em> interaction — reply depth, time spent, profile visits after commenting. Bots produce none of these. The numbers go up. The algorithmic weight goes down.</p>
+    <div class="callout"><p>The rule for accounts under 30K: <strong>reply manually, reply fast, reply like a human.</strong> At this size, authenticity is the algorithm. When Hemal crosses 30K and engagement volume exceeds what one person can handle, a human-assisted template system becomes viable. Until then: hands on keyboard.</p></div>
+  </section>
+  <!-- 12. PRESENTABLE FEED -->
+  <section>
+    <h2>12. Building a Presentable Feed — Color, Thumbnails & Visual Consistency</h2>
+    <p>A new visitor decides whether to follow in under 3 seconds. The first thing they see isn't a caption — it's the grid. Here's what Hemal's grid is saying versus what it should be saying.</p>
+    <h3>Current State</h3>
+    <p>The grid is a mix of product graphics, text-heavy static posts, occasional conference photos, and paper announcements. No visual through-line. A visitor scrolling the grid can't tell at a glance whether this is a research account, a product account, or a personal account. The bio says "UCSD Professor." The grid says "unclear."</p>
+    <h3>What to Fix</h3>
+    <table class="data-table">
+      <thead><tr><th>Element</th><th>Current</th><th>Recommended</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Color palette</strong></td><td>Mixed — product colors, varied backgrounds</td><td>Stick to 3 colors: UCSD navy (#182B49), teal (#0d9488), warm white (#fafaf9). Consistent backgrounds signal intentionality.</td></tr>
+        <tr><td><strong>Thumbnail style</strong></td><td>No consistent thumbnail design</td><td>Every carousel and Reel gets a designed cover with: headline text top-third, visual middle, no more than 8 words. Same font weights and spacing every time.</td></tr>
+        <tr><td><strong>Grid rhythm</strong></td><td>Random</td><td>Alternate: carousel (wide graphic) → Reel (face or lab shot) → carousel → Reel. Creates visual predictability. Visitors scroll the grid, see a pattern, and trust that the next post will deliver.</td></tr>
+        <tr><td><strong>Text on images</strong></td><td>Dense paragraphs on static posts</td><td>Move text to captions. Images should have ONE bold statement + visual. Captions carry the detail. The feed looks clean; the value lives in the caption.</td></tr>
+        <tr><td><strong>Profile picture</strong></td><td>Professional headshot</td><td>Keep. It's strong. Consider a version with a lab coat or microscope in frame — adds context in a 50px circle.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout"><p>The grid is the storefront. Right now it's a warehouse — everything's in there, nothing is arranged. Three colors, consistent thumbnails, and a predictable rhythm turn the grid from "what is this account?" to "I need to follow this account" — in under 3 seconds.</p></div>
+  </section>
+  <!-- 13. HASHTAGS -->
+  <section>
+    <h2>13. The Right Hashtags — What to Use & How to Use Them</h2>
+    <h3>The Rule: 3–5 Niche Hashtags, Not 30 Generic Ones</h3>
+    <p>Instagram rewards <strong>relevance, not volume.</strong> Using 30 hashtags signals desperation. Using 3–5 targeted hashtags signals you know exactly who you're talking to. The algorithm looks at whether people who engage with your post also engage with that hashtag. If they do, your post gets shown to more people in that hashtag feed.</p>
+    <h3>Hashtag Tiers for @hemalpatelphd</h3>
+    <table class="data-table">
+      <thead><tr><th>Tier</th><th>Size</th><th>Examples</th><th>When to Use</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Niche (Priority)</strong></td><td>10K–100K posts</td><td>#mitochondrialhealth #caveolae #cellularbiology #meditationscience #mitoresearch</td><td>Every post. These are where your audience lives. Small enough to rank, large enough to matter.</td></tr>
+        <tr><td><strong>Community</strong></td><td>100K–500K posts</td><td>#phdlife #sciencecommunication #longevityscience #academiclife</td><td>Carousels and Reels where the topic has broader appeal.</td></tr>
+        <tr><td><strong>Reach (Sparingly)</strong></td><td>500K+ posts</td><td>#science #health #wellness</td><td>One per post max. Mostly for Reels. Your post will be buried in seconds — use only when the content has mass appeal.</td></tr>
+      </tbody>
+    </table>
+    <h3>How to Find New Hashtags (Weekly Habit)</h3>
+    <p>Search one of your niche hashtags on Instagram. Look at the top posts. Open 3–4 of them. Scroll to their hashtags. Find 2–3 you haven't used that fall in the 10K–200K post range. Add them to a running list. <strong>Rotate hashtags between posts</strong> — using the same 5 every time signals repetition to the algorithm. A pool of 20–25 hashtags, with 3–5 used per post, rotated weekly.</p>
+    <h3>Where to Put Them</h3>
+    <p><strong>In the caption</strong> (not the first comment). Instagram confirmed captions are indexed for search. First comment hashtags are not. Put them at the bottom of the caption after a line break. They disappear into the "...more" fold — visible to the algorithm, invisible to the reader.</p>
+  </section>
+  <!-- 14. AUDIT CADENCE -->
+  <section>
+    <h2>14. How Often to Run an Audit</h2>
+    <table class="data-table">
+      <thead><tr><th>Cadence</th><th>Purpose</th><th>What to Check</th><th>Time</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Weekly</strong> — Pulse Check</td><td>Quick glance. Don't overthink it.</td><td>Engagement rate trend, best-performing post, worst-performing post, Story replies count, new followers.</td><td class="num">10 min</td></tr>
+        <tr><td><strong>Monthly</strong> — Signal Read</td><td>Spot format trends before they become problems.</td><td>Reel views average, carousel save count, promo ratio check, hashtag performance, top 3 content pillars by engagement.</td><td class="num">30 min</td></tr>
+        <tr><td><strong>Quarterly</strong> — Full Audit</td><td>Deep reassessment. Compare against peers. Update the protocol.</td><td>All metrics vs. last quarter, format mix adherence, A/B winners applied, new peer landscape, audience segment shifts.</td><td class="num">2–3 hrs</td></tr>
+        <tr><td><strong>Post-Viral</strong> — Spike Review</td><td>Understand what happened so you can do it again.</td><td>Which post spiked. What was the hook. What time was it posted. Which hashtags. Did followers stick or bounce. What's the replication plan.</td><td class="num">45 min</td></tr>
+      </tbody>
+    </table>
+    <div class="callout"><p>The account that audits consistently outperforms the account that posts more. One post-viral review is worth a month of guessing. Next quarterly audit: <strong>August 2026.</strong></p></div>
+  </section>
+  <!-- 15. UPGRADE INVITATION -->
+  <section>
+    <h2>15. What Comes Next</h2>
+    <div class="upgrade-box">
+      <h3>This audit is a snapshot. The real work is the follow-through.</h3>
+      <p>AuditLayer Pro unlocks: monthly reassessments with updated peer benchmarks, weekly content prompts built from your top-performing formats, hashtag performance tracking, competitor monitoring, and a dedicated strategy session to adapt the protocol as your account grows.</p>
+      <p style="font-size:0.82rem;opacity:0.85;margin-top:8px;">Every account moves differently. The protocol that gets you from 12K to 22K is not the protocol that gets you from 22K to 50K. Pro keeps the playbook current.</p>
+      <a href="#" class="cta-btn">Upgrade to Pro →</a>
+    </div>
+  </section>
+  <footer class="report-footer">
+    <p><strong>@hemalpatelphd Instagram Audit</strong> · Prepared June 2026 · Data via Instagram, UCSD Profiles, Social Blade, Viralist.ai, public podcast appearances · For strategic use only · Not affiliated with Instagram or Meta</p>
+    <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--line);text-align:center;">
+      <span style="display:inline-block;background:var(--accent);color:#fff;font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;padding:5px 14px;border-radius:4px;">AuditLayer Report</span>
+      <p style="margin-top:8px;font-size:0.72rem;color:var(--muted);">narinfazlalipour.com · June 2026</p>
+    </div>
+  </footer>
+</div>
+</body>
+</html>
