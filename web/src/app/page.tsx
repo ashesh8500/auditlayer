@@ -121,37 +121,37 @@ export default async function Home() {
       <main className="mx-auto w-full max-w-3xl flex-1 px-7 py-16 sm:py-24">
         {/* Hero */}
         <section className="border-b border-border pb-12 text-center">
-          {/* Gradient header banner */}
-          <div className="relative mx-auto mb-10 max-w-lg overflow-hidden rounded-2xl bg-gradient-to-br from-[color:var(--accent)]/10 via-[color:var(--accent-muted)] to-transparent p-5">
-            <div className="absolute -right-8 -top-8 size-32 rounded-full bg-[color:var(--accent)]/10 blur-3xl" />
-            <div className="absolute -bottom-4 -left-4 size-24 rounded-full bg-emerald-400/10 blur-2xl" />
+          {/* Gradient header banner — full hero card */}
+          <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl bg-gradient-to-br from-[color:var(--accent)]/10 via-[color:var(--accent-muted)] to-transparent px-6 py-10 sm:px-12 sm:py-14">
+            <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-[color:var(--accent)]/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-8 -left-8 size-32 rounded-full bg-emerald-400/10 blur-2xl" />
             <p className="relative inline-block rounded-full border border-[color:var(--accent)]/20 bg-[color:var(--accent)]/10 px-4 py-1.5 font-mono text-[0.62rem] font-bold uppercase tracking-[0.15em] text-[color:var(--accent)] backdrop-blur">
               Evidence-based competitive intelligence
             </p>
+            <h1 className="relative mt-4 text-4xl font-bold leading-tight tracking-[-0.02em] sm:text-5xl">
+              Social Media Analysis That Reads Like a Strategic Breakdown
+            </h1>
+            <p className="relative mx-auto mt-4 max-w-xl text-base text-muted-foreground">
+              Competitive intelligence for media managers, creators, and personal
+              brands. Built from real social media data — designed to turn
+              performance into direction.
+            </p>
+            <div className="relative mt-7 flex flex-wrap items-center justify-center gap-3">
+              <Link href={primaryHref}>
+                <Button size="lg" className="font-semibold">
+                  Start Your Free Audit
+                </Button>
+              </Link>
+              <Link href="#pricing">
+                <Button size="lg" variant="outline" className="font-semibold">
+                  See Pricing
+                </Button>
+              </Link>
+            </div>
+            <p className="relative mt-4 text-xs text-muted-foreground">
+              First audit is free · No credit card required
+            </p>
           </div>
-          <h1 className="mt-3 text-4xl font-bold leading-tight tracking-[-0.02em] sm:text-5xl">
-            Social Media Analysis That Reads Like a Strategic Breakdown
-          </h1>
-          <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground">
-            Competitive intelligence for media managers, creators, and personal
-            brands. Built from real social media data — designed to turn
-            performance into direction.
-          </p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <Link href={primaryHref}>
-              <Button size="lg" className="font-semibold">
-                Start Your Free Audit
-              </Button>
-            </Link>
-            <Link href="#pricing">
-              <Button size="lg" variant="outline" className="font-semibold">
-                See Pricing
-              </Button>
-            </Link>
-          </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            First audit is free · No credit card required
-          </p>
         </section>
 
         {/* Six questions */}
