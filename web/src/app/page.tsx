@@ -124,10 +124,7 @@ export default async function Home() {
           {/* Colored header banner */}
           <div className="mx-auto mb-8 h-1.5 w-20 rounded-full bg-gradient-to-r from-[color:var(--accent)] to-emerald-400" />
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--accent)]">
-            📊 Understand what&rsquo;s working &nbsp;·&nbsp;
-            🔎 Spot what&rsquo;s missing &nbsp;·&nbsp;
-            🧠 Get clear, actionable insight &nbsp;·&nbsp;
-            🚀 Grow with a custom playbook
+            Evidence-based competitive intelligence
           </p>
           <h1 className="mt-3 text-4xl font-bold leading-tight tracking-[-0.02em] sm:text-5xl">
             Social Media Analysis That Reads Like a Strategic Breakdown
