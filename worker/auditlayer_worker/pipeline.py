@@ -31,6 +31,7 @@ from .core import (
     replace_section,
 )
 from .generation import ReportGenerator
+from .supabase_client import _utcnow
 
 
 class EventSink(Protocol):
@@ -173,7 +174,7 @@ class GenerationPipeline:
         except Exception as exc:  # noqa: BLE001 - record failure, never crash the loop
             sink.emit("failed", f"Generation error: {exc}")
             if gateway is not None:
-                gateway.update_audit(audit.id, status=AuditStatus.FAILED.value, admin_notes=str(exc)[:500])
+                gateway.update_audit(audit.id, status=AuditStatus.FAILED.value, admin_notes=str(exc)[:500], last_failed_at=_utcnow())
             return RunSummary(
                 audit_id=audit.id,
                 status=AuditStatus.FAILED.value,

@@ -123,6 +123,60 @@ class SupabaseGateway:
             return None  # lost the race; try again next poll
         return upd.data[0]
 
+    # -- retry sweep --------------------------------------------------------
+
+    def sweep_retryable(self) -> int:
+        """Re-queue failed audits that are eligible for retry.
+
+        Returns the number of audits re-queued. Audits are eligible when:
+        - status = 'failed'
+        - retry_count < MAX_RETRIES
+        - enough time has passed since last_failed_at (exponential backoff)
+
+        Gracefully no-ops if the retry columns haven't been migrated yet.
+        """
+        from datetime import timedelta
+
+        from .core import MAX_RETRIES, RETRY_BACKOFF_BASE_SECONDS
+
+        # Find all failed audits
+        try:
+            res = (
+                self.client.table("audits")
+                .select("id,retry_count,last_failed_at")
+                .eq("status", "failed")
+                .execute()
+            )
+        except Exception:
+            return 0  # columns probably don't exist yet
+
+        re_queued = 0
+        now = datetime.now(timezone.utc)
+        for row in (res.data or []):
+            retry_count = row.get("retry_count") or 0
+            if retry_count >= MAX_RETRIES:
+                continue
+            last_failed = row.get("last_failed_at")
+            if last_failed:
+                backoff = min(
+                    (2 ** retry_count) * RETRY_BACKOFF_BASE_SECONDS,
+                    3600,  # cap at 1 hour
+                )
+                eligible_at = datetime.fromisoformat(last_failed) + timedelta(seconds=backoff)
+                if now < eligible_at:
+                    continue
+            # Re-queue
+            try:
+                self.client.table("audits").update({
+                    "status": "queued",
+                    "retry_count": retry_count + 1,
+                    "updated_at": _utcnow(),
+                }).eq("id", row["id"]).eq("status", "failed").execute()
+                re_queued += 1
+            except Exception:
+                pass
+        return re_queued
+
     def claim_next_refinement(self) -> dict | None:
         res = (
             self.client.table("refinements")

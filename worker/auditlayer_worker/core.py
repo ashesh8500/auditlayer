@@ -86,6 +86,10 @@ PLAN_LIMITS = {
     Plan.ENTERPRISE: 10_000,
 }
 
+# Retry configuration for failed audits.
+MAX_RETRIES = 3
+RETRY_BACKOFF_BASE_SECONDS = 60  # 1min, 2min, 4min exponential
+
 INSTAGRAM_LIMITATION = (
     "Instagram limits what unauthenticated collection can read from profiles (login-walled as of May 2026). "
     "The audit uses indexed public content, any context you provide, and comparable accounts; "
@@ -533,15 +537,28 @@ REFINE_SYSTEM_PROMPT = (
 
 
 def extract_html(content: str) -> str:
-    fenced = re.search(r"```html\s*(.*?)```", content, flags=re.DOTALL | re.IGNORECASE)
+    """Extract a complete HTML report from a model response.
+
+    Tries markdown fences first, then doctype, then partial <html> tags.
+    Falls back to wrapping partial content in a minimal document so a
+    truncated generation doesn't block the entire audit.
+    """
+    fenced = re.search(r"```html\\s*(.*?)```", content, flags=re.DOTALL | re.IGNORECASE)
     if fenced:
         return fenced.group(1).strip()
     doctype = re.search(r"(<!doctype html.*)", content, flags=re.DOTALL | re.IGNORECASE)
     if doctype:
         return doctype.group(1).strip()
-    if "<html" in content.lower():
+    if "<html" in content.lower() and "</html>" in content.lower():
         return content.strip()
-    raise ValueError("Hermes response did not contain a complete HTML report")
+    # Partial recovery: if the model started generating HTML but got cut off,
+    # extract what we have and close any open tags.
+    if "<html" in content.lower() or "<body" in content.lower() or "<head" in content.lower():
+        partial = content.strip()
+        if "<html" in partial.lower() and "</html>" not in partial.lower():
+            partial += "</body></html>"
+        return partial
+    raise ValueError("Hermes response did not contain an HTML report (no <html>, <body>, or fenced block found)")
 
 
 def extract_fragment(content: str) -> str:

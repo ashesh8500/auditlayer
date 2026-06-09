@@ -45,6 +45,9 @@ def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
     try:
         while True:
             worked = _drain_once(settings, gateway, runtime)
+            retried = gateway.sweep_retryable()
+            if retried:
+                print(f"[worker] re-queued {retried} failed audit(s) for retry")
             runtime.tick_idle(worked)
             if once:
                 return
