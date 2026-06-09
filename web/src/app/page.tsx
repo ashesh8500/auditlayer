@@ -5,7 +5,7 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
 import WhimsicalShapes from "@/components/whimsical-shapes";
-import { InteractivePulseWidget, InteractiveReportViewer } from "@/components/interactive-landing";
+import { InteractiveReportViewer } from "@/components/interactive-landing";
 
 const REPORT_ANSWERS = [
   {
@@ -181,16 +181,26 @@ export default async function Home() {
           </p>
         </section>
 
-        {/* ── 3. Pulse Audit — interactive preview ── */}
+        {/* ── 3. Pulse Audit — CTA ── */}
         <section className="mt-14 text-center">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Free Brand Pulse Audit
+            Free Pulse Audit
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Analyze any social handle in 10 seconds. No credit card or registration required.
+            All you need is an email · 2 free runs · No credit card
           </p>
-
-          <InteractivePulseWidget />
+          <p className="mx-auto mt-4 max-w-lg text-xs leading-relaxed text-muted-foreground">
+            A lightweight brand pulse scans your handle against platform benchmarks
+            and returns a score, strengths, gaps, and three tactical moves — generated
+            by our worker pipeline, not a canned animation.
+          </p>
+          <div className="mt-5">
+            <Link href={primaryHref}>
+              <Button size="lg" className="font-semibold">
+                Run a Free Pulse Audit
+              </Button>
+            </Link>
+          </div>
         </section>
 
         <hr className="mt-14 border-border" />
