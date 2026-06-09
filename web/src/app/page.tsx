@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
+import WhimsicalShapes from "@/components/whimsical-shapes";
+import { InteractivePulseWidget, InteractiveReportViewer } from "@/components/interactive-landing";
 
 const REPORT_ANSWERS = [
   {
@@ -49,7 +52,7 @@ const PRICING = [
     name: "Starter",
     price: "$30",
     cadence: "/mo",
-    audits: "5 audits / month",
+    audits: "2 accounts · 5 audits / month",
     features: [
       "Full 15-section report",
       "Same-tier peer benchmarks",
@@ -63,11 +66,12 @@ const PRICING = [
     name: "Pro",
     price: "$50",
     cadence: "/mo",
-    audits: "15 audits / month",
+    audits: "5 accounts · 15 audits / month",
     features: [
-      "Everything in Starter",
+      "Full 20-section report",
       "Priority generation queue",
       "Deeper competitive context",
+      "Branding & account growth insights",
       "Founder review on request",
     ],
     cta: "Go Pro",
@@ -91,16 +95,16 @@ const PRICING = [
 
 export default async function Home() {
   const user = await getSession();
-  const primaryHref = user ? "/dashboard" : "/login";
+  if (user) redirect("/dashboard");
+  const primaryHref = "/login";
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
+    <div className="relative flex min-h-full flex-1 flex-col">
+      <WhimsicalShapes />
       <header className="sticky top-0 z-20 border-b border-border bg-[color:var(--bg)]/85 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
           <span className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-            <span className="grid size-6 place-items-center rounded-md bg-[color:var(--accent)] font-mono text-[10px] text-white">
-              ALM
-            </span>
+            <span className="grid size-6 place-items-center rounded-md bg-[#1c1917] text-[10px] font-bold text-white">ALM</span>
             AuditLayerMedia
           </span>
           <div className="flex items-center gap-2">
@@ -118,28 +122,28 @@ export default async function Home() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-7 py-16 sm:py-24">
-        {/* Hero */}
+      <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-7 py-16 sm:py-24">
+        {/* ── 1. Hero ── */}
         <section className="border-b border-border pb-12 text-center">
           {/* Gradient header banner — full hero card */}
           <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl bg-gradient-to-br from-[color:var(--accent)]/10 via-[color:var(--accent-muted)] to-transparent px-6 py-10 sm:px-12 sm:py-14">
             <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-[color:var(--accent)]/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-8 -left-8 size-32 rounded-full bg-emerald-400/10 blur-2xl" />
             <p className="relative inline-block rounded-full border border-[color:var(--accent)]/20 bg-[color:var(--accent)]/10 px-4 py-1.5 font-mono text-[0.62rem] font-bold uppercase tracking-[0.15em] text-[color:var(--accent)] backdrop-blur">
-              Evidence-based competitive intelligence
+              Media strategy, behavioral science, and AI for repeatable social growth
             </p>
             <h1 className="relative mt-4 text-4xl font-bold leading-tight tracking-[-0.02em] sm:text-5xl">
               Social Media Analysis That Reads Like a Strategic Breakdown
             </h1>
             <p className="relative mx-auto mt-4 max-w-xl text-base text-muted-foreground">
-              Competitive intelligence for media managers, creators, and personal
-              brands. Built from real social media data — designed to turn
-              performance into direction.
+              Stop guessing. Get a strategic read on your social presence — built
+              from real data, calibrated to your niche, and delivered as an
+              executable playbook.
             </p>
             <div className="relative mt-7 flex flex-wrap items-center justify-center gap-3">
               <Link href={primaryHref}>
                 <Button size="lg" className="font-semibold">
-                  Start Your Free Audit
+                  Run a Free Pulse Audit
                 </Button>
               </Link>
               <Link href="#pricing">
@@ -148,190 +152,10 @@ export default async function Home() {
                 </Button>
               </Link>
             </div>
-            <p className="relative mt-4 text-xs text-muted-foreground">
-              First audit is free · No credit card required
-            </p>
           </div>
         </section>
 
-        {/* What you get — live report preview */}
-        <section className="mt-14">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            What You Get At a Glance
-          </h2>
-          <div className="mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-md)]">
-            {/* Report header bar */}
-            <div className="flex items-center justify-between border-b border-border bg-[#f5f5f4] px-5 py-2.5">
-              <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                Instagram Audit · Sample Report
-              </span>
-              <span className="rounded-full bg-[color:var(--green-muted)] px-2 py-0.5 font-mono text-[0.6rem] font-semibold uppercase text-[color:var(--green)]">
-                Generated
-              </span>
-            </div>
-            {/* Report body — scrollable */}
-            <div className="max-h-[520px] overflow-y-auto px-6 py-6 sm:px-8 sm:py-8">
-              {/* Label + handle */}
-              <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[color:var(--accent)]">
-                Instagram Account Audit
-              </p>
-              <h3 className="mt-0.5 text-xl font-bold tracking-[-0.02em]">
-                @glowstate
-              </h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Premium adaptogenic supplements — functional mushrooms, nootropics, and plant-based wellness.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] text-muted-foreground">
-                <span>📅 June 2026</span>
-                <span>📊 Public data + Social Blade</span>
-                <span>⏱ 14-day analysis window</span>
-              </div>
-
-              {/* ── Score Bar Graph ── */}
-              <div className="mt-5 rounded-[var(--radius)] border border-border bg-[#fcfcfb] p-4 sm:p-5">
-                <div className="mb-3 flex items-baseline justify-between border-b border-border pb-3">
-                  <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-muted-foreground">Score Breakdown</span>
-                  <span className="font-mono text-xl font-semibold">48<span className="text-xs font-normal text-muted-foreground">/100</span></span>
-                </div>
-                {[
-                  { label: "Content Strategy", pct: 32, color: "bg-[color:var(--red)]" },
-                  { label: "Growth Momentum", pct: 18, color: "bg-[color:var(--red)]" },
-                  { label: "Engagement Depth", pct: 55, color: "bg-[color:var(--amber)]" },
-                  { label: "Platform Optimization", pct: 40, color: "bg-[color:var(--amber)]" },
-                  { label: "Brand Cohesion", pct: 68, color: "bg-[color:var(--green)]" },
-                  { label: "Conversion Architecture", pct: 22, color: "bg-[color:var(--red)]" },
-                ].map((dim) => (
-                  <div key={dim.label} className="mb-2 flex items-center gap-3 text-xs last:mb-0">
-                    <span className="w-36 flex-shrink-0 text-right font-medium text-muted-foreground">{dim.label}</span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#f0efed]">
-                      <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.pct}%` }} />
-                    </div>
-                    <span className="w-6 flex-shrink-0 text-right font-mono font-semibold">{dim.pct}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* ── Key Metrics ── */}
-              <h4 className="mt-5 text-sm font-bold">Key Metrics</h4>
-              <div className="mt-3 grid grid-cols-4 gap-2">
-                {[
-                  { value: "24.8K", label: "Followers", tone: "" },
-                  { value: "1.42%", label: "Engagement", tone: "text-[color:var(--red)]" },
-                  { value: "312", label: "Avg Likes", tone: "" },
-                  { value: "+0.3%", label: "30-Day Growth", tone: "text-[color:var(--amber)]" },
-                ].map((m) => (
-                  <div key={m.label} className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
-                    <div className={`font-mono text-lg font-semibold leading-none ${m.tone}`}>{m.value}</div>
-                    <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">{m.label}</div>
-                  </div>
-                ))}
-              </div>
-              <table className="mt-3 w-full border-collapse text-[0.72rem]">
-                <thead>
-                  <tr className="border-b-2 border-border text-left text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-                    <th className="pb-2 pr-3">Metric</th><th className="pb-2 pr-3 text-right">@glowstate</th><th className="pb-2 pr-3 text-right">Benchmark</th><th className="pb-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-border">
-                    <td className="py-1.5 pr-3 font-medium">Engagement Rate</td>
-                    <td className="py-1.5 pr-3 text-right font-mono text-[color:var(--red)]">1.42%</td>
-                    <td className="py-1.5 pr-3 text-right font-mono">~3.5%</td>
-                    <td className="py-1.5"><span className="rounded-sm bg-[color:var(--red-muted)] px-1.5 py-0.5 text-[0.6rem] font-semibold text-[color:var(--red)]">Below</span></td>
-                  </tr>
-                  <tr className="border-b border-border">
-                    <td className="py-1.5 pr-3 font-medium">30-Day Growth</td>
-                    <td className="py-1.5 pr-3 text-right font-mono text-[color:var(--amber)]">+0.3%</td>
-                    <td className="py-1.5 pr-3 text-right font-mono">+1.2%</td>
-                    <td className="py-1.5"><span className="rounded-sm bg-[color:var(--amber-muted)] px-1.5 py-0.5 text-[0.6rem] font-semibold text-[color:var(--amber)]">Slow</span></td>
-                  </tr>
-                  <tr>
-                    <td className="py-1.5 pr-3 font-medium">Reel Adoption</td>
-                    <td className="py-1.5 pr-3 text-right font-mono text-[color:var(--red)]">22%</td>
-                    <td className="py-1.5 pr-3 text-right font-mono">60%+</td>
-                    <td className="py-1.5"><span className="rounded-sm bg-[color:var(--red-muted)] px-1.5 py-0.5 text-[0.6rem] font-semibold text-[color:var(--red)]">Under</span></td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* ── Executive Summary ── */}
-              <h4 className="mt-5 text-sm font-bold">Executive Summary</h4>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                @glowstate operates in one of Instagram&rsquo;s fastest-growing niches — functional wellness — with a product line that genuinely differentiates: dual-extract lion&rsquo;s mane, cordyceps-schisandra blends, and nootropic stacks backed by third-party testing. The brand has <strong className="text-foreground">24.8K followers</strong> and a clean, recognizable visual identity anchored in deep forest greens and warm amber tones. But the numbers tell a different story from the aesthetics.
-              </p>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Engagement sits at <strong className="text-foreground">1.42%</strong> — barely half the 3.5% benchmark for the 20K–50K tier. Thirty-day follower growth is effectively flat at +0.3%. The account posts consistently (4–5× per week) but the content mix is heavily skewed toward static product photography and ingredient close-ups. Reels account for only 22% of output despite being the highest-reach format on the platform. The comment section is quiet — most posts generate likes but not discussion. When questions do appear, response time averages 18 hours, well outside the critical first-hour engagement window.
-              </p>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                The root cause is not product quality or brand positioning — it&rsquo;s <strong className="text-foreground">format strategy and community activation</strong>. @glowstate treats Instagram as a catalog when it should treat it as a publication. The fix is structural: shift 60% of output to Reels, introduce a weekly founder Q&A, shorten reply latency, and build a highlight architecture that educates new visitors instead of just displaying products. With these changes, the account can realistically reach 40K followers and 3%+ engagement within 90 days.
-              </p>
-
-              {/* ── Strengths ── */}
-              <h4 className="mt-5 text-sm font-bold">Top Strengths</h4>
-              <div className="mt-2 space-y-2">
-                {[
-                  { n: "1", title: "Product Differentiation", body: "Dual-extract formulations and third-party lab testing are rare in the adaptogen space — this is a structural moat that most competitors cannot replicate." },
-                  { n: "2", title: "Visual Identity", body: "Forest green + amber palette is consistent and memorable. The grid reads as intentional and premium at a glance, which builds trust before a single word is read." },
-                  { n: "3", title: "Posting Consistency", body: "4–5 posts per week maintained over 8+ months. The habit infrastructure is already in place — it just needs a format upgrade." },
-                ].map((s) => (
-                  <div key={s.n} className="rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-3">
-                    <p className="text-xs"><strong className="text-foreground">{s.n}. {s.title}.</strong> <span className="text-muted-foreground">{s.body}</span></p>
-                  </div>
-                ))}
-              </div>
-
-              {/* ── Weaknesses ── */}
-              <h4 className="mt-5 text-sm font-bold">Top Weaknesses</h4>
-              <div className="mt-2 space-y-2">
-                {[
-                  { n: "1", title: "Reel Under-Adoption", body: "Only 22% of posts are Reels. Instagram&rsquo;s algorithm weights native video 3–5× over static images. This alone explains roughly half the engagement gap." },
-                  { n: "2", title: "Silent Community", body: "Average reply latency of 18 hours. Comments that go unanswered in the first 60 minutes signal low engagement depth to the algorithm, capping reach." },
-                  { n: "3", title: "No Highlight Architecture", body: "The profile lacks organized story highlights — no education, no founder story, no testimonials. New visitors have no guided path after the bio." },
-                ].map((w) => (
-                  <div key={w.n} className="rounded-[var(--radius-sm)] border-l-2 border-[color:var(--red)]/30 bg-[color:var(--red-muted)]/30 p-3">
-                    <p className="text-xs"><strong className="text-foreground">{w.n}. {w.title}.</strong> <span className="text-muted-foreground">{w.body}</span></p>
-                  </div>
-                ))}
-              </div>
-
-              {/* ── Competitive Comparison snippet ── */}
-              <h4 className="mt-5 text-sm font-bold">Competitive Context</h4>
-              <table className="mt-2 w-full border-collapse text-[0.72rem]">
-                <thead>
-                  <tr className="border-b-2 border-border text-left text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-                    <th className="pb-2 pr-2"></th><th className="pb-2 pr-2">@glowstate</th><th className="pb-2 pr-2">Peer A</th><th className="pb-2">Peer B</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-border">
-                    <td className="py-1.5 pr-2 font-medium">Followers</td>
-                    <td className="py-1.5 pr-2 font-mono">24.8K</td><td className="py-1.5 pr-2 font-mono">31K</td><td className="py-1.5 font-mono">19K</td>
-                  </tr>
-                  <tr className="border-b border-border">
-                    <td className="py-1.5 pr-2 font-medium">Engagement</td>
-                    <td className="py-1.5 pr-2 font-mono text-[color:var(--red)]">1.42%</td><td className="py-1.5 pr-2 font-mono text-[color:var(--green)]">3.8%</td><td className="py-1.5 font-mono text-[color:var(--green)]">2.9%</td>
-                  </tr>
-                  <tr>
-                    <td className="py-1.5 pr-2 font-medium">Reel Share</td>
-                    <td className="py-1.5 pr-2 font-mono text-[color:var(--red)]">22%</td><td className="py-1.5 pr-2 font-mono">65%</td><td className="py-1.5 font-mono">48%</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Teaser */}
-              <div className="mt-5 rounded-[var(--radius)] border border-[color:var(--accent)]/20 bg-gradient-to-r from-[color:var(--accent-muted)] to-transparent p-4">
-                <p className="text-xs font-semibold text-[color:var(--accent)]">
-                  🔒 + 10 more sections in the full report
-                </p>
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                  Content gaps · Audience psychology patterns · Viral opportunities · Content ideas · 90-day growth map · Content mix &amp; weekly calendar · The four-hour engagement window · Visual branding blueprint · Right hashtags · How often to re-audit
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Six questions */}
+        {/* ── 2. Six Questions — the value proposition ── */}
         <section className="mt-14">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Six questions every report answers
@@ -352,15 +176,43 @@ export default async function Home() {
               </div>
             ))}
           </div>
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Here&rsquo;s how every question gets answered — starting free ↓
+          </p>
         </section>
 
-        {/* Pricing */}
+        {/* ── 3. Pulse Audit — interactive preview ── */}
+        <section className="mt-14 text-center">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Free Brand Pulse Audit
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Analyze any social handle in 10 seconds. No credit card or registration required.
+          </p>
+
+          <InteractivePulseWidget />
+        </section>
+
+        <hr className="mt-14 border-border" />
+
+        {/* ── 4. Full Mock Report — the evidence ── */}
+        <section className="mt-14">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Full 15-Section Report At a Glance
+          </h2>
+
+          <InteractiveReportViewer />
+        </section>
+
+        <hr className="mt-14 border-border" />
+
+        {/* ── 5. Pricing ── */}
         <section id="pricing" className="mt-16 scroll-mt-20">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Pricing
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Start free with one audit. Upgrade when the reports earn their keep.
+            Start with free Pulse audits. Upgrade when the reports earn their keep.
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             {PRICING.map((tier) => (
@@ -415,20 +267,22 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Blueprint Audit */}
+        {/* ── 6. Blueprint Audit ── */}
         <section className="mt-10">
           <div className="mx-auto max-w-md rounded-[calc(var(--radius)+2px)] border border-[color:var(--accent)]/30 bg-gradient-to-r from-[color:var(--accent-muted)]/60 to-transparent p-6 text-center">
             <div className="flex items-center justify-center gap-2">
               <h3 className="text-base font-semibold">Blueprint Audit</h3>
               <span className="rounded-full bg-[color:var(--accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--accent)]">One-time</span>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">For those building an account from the ground up</p>
+            <p className="mt-2 text-xs text-muted-foreground">Set up to two accounts with a complete pre-launch strategy</p>
+            <p className="mt-1 text-[0.65rem] font-medium text-[color:var(--accent)]">Suggested for accounts 0–1K followers</p>
             <div className="mt-3 flex items-baseline justify-center gap-1">
               <span className="font-mono text-2xl font-semibold">$79</span>
               <span className="text-xs text-muted-foreground">one-time</span>
             </div>
             <ul className="mx-auto mt-4 max-w-xs space-y-2 text-left">
               {[
+                "Covers up to 2 accounts",
                 "Full 15-section pre-launch assessment",
                 "Niche positioning & handle evaluation",
                 "Competitive landscape mapping",
@@ -450,7 +304,7 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* FAQ */}
+        {/* ── 7. FAQ ── */}
         <section className="mt-16">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             FAQ
@@ -475,7 +329,7 @@ export default async function Home() {
               },
               {
                 q: "Who is this for?",
-                a: "AuditLayerMedia is built for creators, personal brands, media managers, and small-to-mid-size agencies who need deep competitive intelligence without the overhead of a full-time analyst. It's most valuable for accounts in the 1K–500K follower range — where the difference between good and great strategy has measurable business impact. If you manage a brand account, run a creator business, or pitch clients on social strategy, this is for you.",
+                a: "AuditLayerMedia is built for creators, personal brands, media managers, and small-to-mid-size agencies who need deep competitive intelligence without the overhead of a full-time analyst. Our reports work for accounts of any size — the methodology adapts to your current distribution state. For accounts in the 500–2K follower range just getting started, we recommend the Blueprint Audit: a one-time pre-launch assessment that maps your niche, content pillars, and 90-day launch plan before you scale.",
               },
               {
                 q: "What happens after I get the report?",
@@ -499,6 +353,10 @@ export default async function Home() {
 
         <footer className="mt-16 border-t border-border pt-6 text-xs text-muted-foreground">
           <p className="font-semibold text-foreground">AuditLayerMedia</p>
+          <p className="mt-1 flex items-center gap-1.5 text-[color:var(--accent)]">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5"/></svg>
+            @auditlayermedia
+          </p>
           <p className="mt-1 max-w-2xl leading-relaxed">
             AuditLayerMedia provides social media competitive intelligence reports based on publicly available data, platform benchmarks, and industry-standard analytics. We are not affiliated with, endorsed by, or partnered with Instagram, TikTok, YouTube, X (Twitter), or any other platform we audit. All trademarks and handles referenced in our reports belong to their respective owners. Our reports are strategic assessments — not financial, legal, or investment advice. Metrics are estimates drawn from indexed public content and third-party data sources; exact platform analytics may differ. Always verify independently before making business decisions.
           </p>

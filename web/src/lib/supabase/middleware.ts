@@ -11,6 +11,8 @@ import {
 const PROTECTED_PREFIXES = ["/dashboard", "/audits", "/admin"];
 
 function isProtected(pathname: string): boolean {
+  // /s/ routes are public share links — skip auth
+  if (pathname === "/s" || pathname.startsWith("/s/")) return false;
   return PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );

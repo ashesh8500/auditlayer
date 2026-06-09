@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { InstagramConnect } from "@/components/instagram-connect";
 import { StatusBadge } from "@/components/status-badge";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -19,7 +20,7 @@ import {
   openBillingPortal,
 } from "@/lib/actions/billing";
 
-export const metadata = { title: "Dashboard — AuditLayer" };
+export const metadata = { title: "Dashboard — AuditLayerMedia" };
 
 const BILLING_MESSAGES: Record<string, { tone: string; text: string }> = {
   success: {
@@ -37,9 +38,10 @@ const BILLING_MESSAGES: Record<string, { tone: string; text: string }> = {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ billing?: string }>;
+  searchParams: Promise<{ billing?: string; instagram_connected?: string; instagram_error?: string }>;
 }) {
-  const { billing } = await searchParams;
+  const params = await searchParams;
+  const { billing, instagram_connected, instagram_error } = params;
   const profile = await requireProfile();
   const supabase = await createClient();
 
@@ -54,6 +56,16 @@ export default async function DashboardPage({
   const usage = list.filter((a) =>
     USAGE_STATUSES.includes(a.status as AuditStatus),
   ).length;
+
+  // Fetch connected Instagram account (if any)
+  const { data: igConnections } = await (supabase as any)
+    .from("instagram_connections")
+    .select("*")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const connectedIg = igConnections?.[0] ?? null;
+
   const limit = auditLimitForProfile(profile);
   const atCap = !isAdminUnlimited(profile.role) && usage >= limit;
   const billingMsg = billing ? BILLING_MESSAGES[billing] : undefined;
@@ -162,17 +174,26 @@ export default async function DashboardPage({
         </div>
       </section>
 
+      {/* Instagram connect */}
+      <section className="mt-6">
+        <InstagramConnect
+          connectedAccount={connectedIg}
+          plan={profile.plan}
+          searchParams={{ instagram_connected, instagram_error }}
+        />
+      </section>
+
       {/* Audit list */}
       <section className="mt-8">
         {list.length === 0 ? (
           <div className="rounded-[var(--radius)] border border-dashed border-border bg-card p-10 text-center">
             <h2 className="text-base font-semibold">No audits yet</h2>
             <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-              Run your first audit free. Drop a handle, pick a goal, and watch
+              Run your first Pulse audit free. Drop a handle, pick a goal, and watch
               the analysis come together live.
             </p>
             <Link href="/audits/new" className="mt-5 inline-block">
-              <Button className="font-medium">Start your free audit</Button>
+              <Button className="font-medium">Run a Free Pulse Audit</Button>
             </Link>
           </div>
         ) : (

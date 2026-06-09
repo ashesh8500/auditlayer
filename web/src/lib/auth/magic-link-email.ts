@@ -19,7 +19,7 @@ function magicLinkHtml(signInUrl: string): string {
             <p style="margin:0;font-size:14px;color:#64748b;">Tap below to open your account. This link expires in one hour and works once.</p>
           </td></tr>
           <tr><td style="padding:24px 32px 28px;">
-            <a href="${signInUrl}" style="display:inline-block;background:#0d9488;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 20px;border-radius:8px;">Sign in to AuditLayer</a>
+            <a href="${signInUrl}" style="display:inline-block;background:#0d9488;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 20px;border-radius:8px;">Sign in to AuditLayerMedia</a>
           </td></tr>
         </table>
       </td></tr>
@@ -39,7 +39,7 @@ async function sendResendEmail({
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   const from =
-    process.env.AUTH_EMAIL_FROM ?? "AuditLayer <onboarding@resend.dev>";
+    process.env.AUTH_EMAIL_FROM ?? "AuditLayerMedia <onboarding@resend.dev>";
 
   if (!apiKey) {
     return { ok: false, message: "RESEND_API_KEY is not configured." };
@@ -92,7 +92,7 @@ export async function sendBrandedMagicLink(
 
   return sendResendEmail({
     to: email,
-    subject: "Sign in to AuditLayer",
+    subject: "Sign in to AuditLayerMedia",
     html: magicLinkHtml(signInUrl),
   });
 }

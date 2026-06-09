@@ -15,7 +15,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AuditLayer — Social media competitive intelligence",
+  title: "AuditLayerMedia — Social media competitive intelligence",
   description:
     "Deep, structured social media audits for creators, brands, and media managers. The report is the product.",
 };

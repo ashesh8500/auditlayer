@@ -57,6 +57,41 @@ class SupabaseGateway:
             cost_cap_usd=float(row.get("cost_cap_usd") or self.settings.cost_cap_usd),
         )
 
+    # -- instagram token ---------------------------------------------------
+
+    def get_instagram_token(self, ig_username: str) -> tuple[str, int] | None:
+        """Look up a live long-lived access token + IG user ID for an Instagram username.
+
+        Returns ``(access_token, ig_user_id)`` if an active, non-expired token
+        exists, or ``None`` if no token is available (expired, inactive, or
+        simply not connected).
+        """
+        res = (
+            self.client.table("instagram_connections")
+            .select(
+                "ig_user_id, long_lived_token, long_lived_expires_at, is_active"
+            )
+            .eq("ig_username", ig_username)
+            .eq("is_active", True)
+            .order("created_at", ascending=False)
+            .limit(1)
+            .execute()
+        )
+        rows = res.data or []
+        if not rows:
+            return None
+        row = rows[0]
+        token = row.get("long_lived_token")
+        if not token:
+            return None
+        expires = row.get("long_lived_expires_at")
+        if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
+            return None
+        ig_user_id = row.get("ig_user_id")
+        if ig_user_id is None:
+            return None
+        return (str(token), int(ig_user_id))
+
     # -- queue claim -------------------------------------------------------
 
     def claim_next_queued(self) -> dict | None:

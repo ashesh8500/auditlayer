@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, BookOpen } from "lucide-react";
 
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -15,8 +15,10 @@ import {
   ReportViewer,
   type RefinementRow,
 } from "@/components/report-viewer";
+import { ShareLinks } from "@/components/share-links";
+import type { ShareLinkRow } from "@/lib/actions/shares";
 
-export const metadata = { title: "Audit — AuditLayer" };
+export const metadata = { title: "Audit — AuditLayerMedia" };
 
 export default async function AuditDetailPage({
   params,
@@ -122,11 +124,46 @@ async function ReadyReport({
     .eq("audit_id", auditId)
     .order("created_at", { ascending: false });
 
+  // Fetch share links (table may not exist yet if migration hasn't been run)
+  let shareLinks: ShareLinkRow[] = [];
+  try {
+    const { data } = await (supabase as any)
+      .from("share_links")
+      .select("*")
+      .eq("audit_id", auditId)
+      .order("created_at", { ascending: false });
+    shareLinks = (data ?? []) as ShareLinkRow[];
+  } catch {
+    // Table doesn't exist yet — no share links
+  }
+
   return (
-    <ReportViewer
-      auditId={auditId}
-      reportReady={Boolean(audit.report_path)}
-      refinements={(refinementRows ?? []) as RefinementRow[]}
-    />
+    <div className="space-y-6">
+      {/* Read full report button */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          Report
+        </h2>
+        <Link
+          href={`/audits/${auditId}/read`}
+          className="inline-flex items-center gap-1.5 rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[color:var(--accent)]/90 transition-colors"
+        >
+          <BookOpen className="size-3.5" />
+          Read full report
+        </Link>
+      </div>
+
+      <ReportViewer
+        auditId={auditId}
+        reportReady={Boolean(audit.report_path)}
+        refinements={(refinementRows ?? []) as RefinementRow[]}
+      />
+
+      {/* Share links */}
+      <ShareLinks
+        auditId={auditId}
+        links={(shareLinks ?? []) as ShareLinkRow[]}
+      />
+    </div>
   );
 }

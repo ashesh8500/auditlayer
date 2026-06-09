@@ -141,6 +141,41 @@ The core engine lives in `~/.hermes/skills/productivity/social-media-audit/`. Th
 - Preserve client isolation: reports, refinements, dashboard data, and PDF exports must be owner-session or admin gated.
 - Do not call live Hermes in ordinary tests.
 
+### Deployment pipeline: dev → QA → production
+
+**Never push directly to `master` with portal changes.** Every feature goes through
+a preview deployment on Vercel, gets smoke-tested, then merges to production.
+
+```
+Feature branch → git push → Vercel preview deploy (automatic)
+                    ↓
+              QA smoke test (manual + automated)
+                    ↓
+              Merge to master → Vercel production deploy (manual: `make deploy-prod`)
+```
+
+**Rules:**
+- **Feature branches:** `feat/descriptive-name` or `fix/descriptive-name`. Branch from `master`.
+- **Preview deploy:** Every push to any branch auto-deploys to a unique Vercel preview URL. No manual step.
+- **QA gate:** Before merging, verify on the preview URL:
+  - Landing page loads (no errors)
+  - Login / Google OAuth works
+  - Core flow: new audit → timeline → report viewer → PDF download
+  - New feature works as expected
+  - No regressions on existing features
+- **Production deploy:** Merge to `master`, then `make deploy-prod` (or `cd web && npx vercel deploy --prod`).
+- **Rollback:** `vercel rollback` reverts the production deployment instantly. Git `master` stays clean — fix forward in a new branch.
+- **DB migrations:** Run against the linked Supabase project BEFORE merging portal code that depends on new tables. Use `npx supabase db push` after code review. Schema changes must be in `supabase/migrations/` with idempotent SQL.
+- **Worker deploy:** Worker code on Hetzner syncs via Syncthing. Restart with `sudo systemctl restart auditlayer-worker` on the VM after worker changes land on `master`.
+
+**Git commit conventions:**
+- `feat:` — new feature
+- `fix:` — bug fix
+- `refactor:` — code restructure, no behavior change
+- `docs:` — documentation only
+- `chore:` — maintenance, deps, config
+- One commit per logical change. Commits are independently revertible.
+
 ### Quick commands (full list in `docs/agent-handoff.md`)
 
 ```bash
