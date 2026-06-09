@@ -163,7 +163,7 @@ export default async function Home() {
             {REPORT_ANSWERS.map((item) => (
               <div
                 key={item.label}
-                className="rounded-[var(--radius)] border border-border bg-card p-5"
+                className="rounded-[var(--radius)] border border-border bg-card p-5 shadow-[var(--shadow-sm)]"
               >
                 <span className="text-lg">
                   {item.label}
@@ -225,18 +225,18 @@ export default async function Home() {
                 Premium adaptogenic supplements — functional mushrooms, nootropics, and plant-based wellness.
               </p>
 
-              <div className="mt-5 rounded-[var(--radius)] border border-border bg-[#fcfcfb] p-4 sm:p-5">
+              <div className="mt-5 rounded-[var(--radius)] bg-[#fcfcfb] p-4 sm:p-5">
                 <div className="mb-3 flex items-baseline justify-between border-b border-border pb-3">
                   <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-muted-foreground">Score Breakdown</span>
                   <span className="font-mono text-xl font-semibold">48<span className="text-xs font-normal text-muted-foreground">/100</span></span>
                 </div>
                 {[
-                  { label: "Content Strategy", pct: 32, color: "bg-[color:var(--red)]" },
-                  { label: "Growth Momentum", pct: 18, color: "bg-[color:var(--red)]" },
-                  { label: "Engagement Depth", pct: 55, color: "bg-[color:var(--amber)]" },
-                  { label: "Platform Optimization", pct: 40, color: "bg-[color:var(--amber)]" },
-                  { label: "Brand Cohesion", pct: 68, color: "bg-[color:var(--green)]" },
-                  { label: "Conversion Architecture", pct: 22, color: "bg-[color:var(--red)]" },
+                  { label: "Content Strategy", pct: 32, color: "bg-gradient-to-r from-[color:var(--red)] to-[color:var(--red)]/70" },
+                  { label: "Growth Momentum", pct: 18, color: "bg-gradient-to-r from-[color:var(--red)] to-[color:var(--red)]/70" },
+                  { label: "Engagement Depth", pct: 55, color: "bg-gradient-to-r from-[color:var(--amber)] to-[color:var(--amber)]/70" },
+                  { label: "Platform Optimization", pct: 40, color: "bg-gradient-to-r from-[color:var(--amber)] to-[color:var(--amber)]/70" },
+                  { label: "Brand Cohesion", pct: 68, color: "bg-gradient-to-r from-[color:var(--green)] to-[color:var(--green)]/70" },
+                  { label: "Conversion Architecture", pct: 22, color: "bg-gradient-to-r from-[color:var(--red)] to-[color:var(--red)]/70" },
                 ].map((dim) => (
                   <div key={dim.label} className="mb-2 flex items-center gap-3 text-xs last:mb-0">
                     <span className="w-36 flex-shrink-0 text-right font-medium text-muted-foreground">{dim.label}</span>
@@ -246,29 +246,35 @@ export default async function Home() {
                     <span className="w-6 flex-shrink-0 text-right font-mono font-semibold">{dim.pct}</span>
                   </div>
                 ))}
-              </div>
 
-              <div className="mt-5">
-                <h4 className="text-sm font-bold">Key Metrics</h4>
-                <div className="mt-3 grid grid-cols-4 gap-2">
-                  {[
-                    { value: "24.8K", label: "Followers" },
-                    { value: "1.42%", label: "Engagement", tone: "text-[color:var(--red)]" },
-                    { value: "312", label: "Avg Likes" },
-                    { value: "+0.3%", label: "30-Day Growth", tone: "text-[color:var(--amber)]" },
-                  ].map((m) => (
-                    <div key={m.label} className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
-                      <div className={`font-mono text-lg font-semibold leading-none ${m.tone || ""}`}>{m.value}</div>
-                      <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">{m.label}</div>
-                    </div>
-                  ))}
+                <div className="mt-5">
+                  <h4 className="text-sm font-bold">Key Metrics</h4>
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {[
+                      { value: "24.8K", label: "Followers" },
+                      { value: "1.42%", label: "Engagement", tone: "text-[color:var(--red)]" },
+                      { value: "312", label: "Avg Likes" },
+                      { value: "+0.3%", label: "30-Day Growth", tone: "text-[color:var(--amber)]" },
+                    ].map((m) => (
+                      <div key={m.label} className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
+                        <div className={`font-mono text-lg font-semibold leading-none ${m.tone || ""}`}>{m.value}</div>
+                        <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">{m.label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
+
+              <div className="mt-5 border-b border-border" />
 
               <h4 className="mt-5 text-sm font-bold">Executive Summary</h4>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 @glowstate operates in one of Instagram&rsquo;s fastest-growing niches — functional wellness. The brand holds <strong className="text-foreground">24.8K followers</strong> with a clean visual identity, but engagement sits at <strong className="text-foreground">1.42%</strong> — half the 3.5% benchmark. Reels account for only 22% of output despite being the highest-reach format. The root cause is <strong className="text-foreground">format strategy and community activation</strong>: the account treats Instagram as a catalog rather than a publication. Shifting to 60% Reels, reducing reply latency, and building story highlight architecture can realistically reach 40K followers within 90 days.
               </p>
+
+              <div className="mt-5 border-b border-border" />
+
+              <div className="mt-5 rounded-[var(--radius)] bg-[#fcfcfb] p-4 sm:p-5">
 
               <h4 className="mt-5 text-sm font-bold">Top Strengths</h4>
               <div className="mt-2 space-y-2">
@@ -295,6 +301,9 @@ export default async function Home() {
                   </div>
                 ))}
               </div>
+              </div>
+
+              <div className="mt-5 border-b border-border" />
 
               <h4 className="mt-5 text-sm font-bold">90-Day Growth Map</h4>
               <div className="mt-3 space-y-3">
@@ -334,9 +343,9 @@ export default async function Home() {
             {PRICING.map((tier) => (
               <div
                 key={tier.name}
-                className={`flex flex-col rounded-[calc(var(--radius)+2px)] border p-5 ${
+                className={`flex flex-col rounded-[calc(var(--radius)+2px)] border p-5 transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 ${
                   tier.highlighted
-                    ? "border-[color:var(--accent)] bg-[color:var(--accent-muted)] shadow-[var(--shadow-md)]"
+                    ? "border-[color:var(--accent)] bg-[color:var(--accent-muted)] shadow-[var(--shadow-md)] hover:border-[color:var(--accent)]/70"
                     : "border-border bg-card"
                 }`}
               >

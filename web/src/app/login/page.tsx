@@ -20,11 +20,11 @@ export default async function LoginPage({
   if (user) redirect(safeNext);
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-16">
+    <main className="flex flex-1 items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <Link
           href="/"
-          className="mb-8 flex items-center justify-center gap-2 text-sm font-semibold tracking-tight"
+          className="mb-5 flex items-center justify-center gap-2 text-sm font-semibold tracking-tight"
         >
           <span className="grid size-7 place-items-center rounded-md bg-[#1c1917] text-xs font-bold text-white">ALM</span>
           AuditLayerMedia
@@ -49,7 +49,7 @@ export default async function LoginPage({
           <LoginForm next={safeNext} />
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
           By continuing you agree to our terms and privacy policy.
         </p>
       </div>

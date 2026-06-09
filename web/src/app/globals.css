@@ -138,3 +138,11 @@
     @apply font-sans;
   }
 }
+
+@layer base {
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply outline-none ring-2 ring-accent-base ring-offset-1 transition-shadow duration-150;
+  }
+}

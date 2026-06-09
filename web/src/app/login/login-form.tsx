@@ -24,21 +24,23 @@ export function LoginForm({ next }: { next: string }) {
     <div className="space-y-6">
       <form action={signInWithGoogle}>
         <input type="hidden" name="next" value={next} />
-        <Button
-          type="submit"
-          variant="outline"
-          size="lg"
-          className="w-full font-medium"
-        >
-          <GoogleGlyph />
-          Continue with Google
-        </Button>
+        <div className="rounded-[var(--radius)] border border-border p-4 shadow-[var(--shadow-sm)]">
+          <Button
+            type="submit"
+            variant="outline"
+            size="lg"
+            className="w-full font-medium"
+          >
+            <GoogleGlyph />
+            Continue with Google
+          </Button>
+        </div>
       </form>
 
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        or with email
-        <span className="h-px flex-1 bg-border" />
+      <div className="flex items-center gap-3">
+        <span className="h-0.5 flex-1 bg-border" />
+        <span className="shrink-0 text-sm text-muted-foreground font-medium">or with email</span>
+        <span className="h-0.5 flex-1 bg-border" />
       </div>
 
       {state.status === "sent" ? (
@@ -64,6 +66,7 @@ export function LoginForm({ next }: { next: string }) {
               placeholder="you@example.com"
               required
               aria-invalid={state.status === "error"}
+              className="border-[color:var(--line)] focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] focus-visible:ring-offset-1"
             />
           </div>
           {state.status === "error" && state.message && (
@@ -81,7 +84,7 @@ export function LoginForm({ next }: { next: string }) {
         </form>
       )}
 
-      <p className="text-center text-xs text-muted-foreground">
+      <p className="text-center text-sm text-muted-foreground">
         Run free Pulse audits — no credit card required.
       </p>
     </div>
