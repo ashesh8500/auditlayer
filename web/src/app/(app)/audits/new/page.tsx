@@ -30,9 +30,6 @@ export default async function NewAuditPage() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--accent)]">
           New audit
         </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight">
-          Three questions. One research-grade report.
-        </h1>
       </div>
       <IntakeWizard />
     </main>

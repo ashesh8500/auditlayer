@@ -5,7 +5,6 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
 import WhimsicalShapes from "@/components/whimsical-shapes";
-import { InteractiveReportViewer } from "@/components/interactive-landing";
 
 const REPORT_ANSWERS = [
   {
@@ -189,11 +188,6 @@ export default async function Home() {
           <p className="mt-1 text-xs text-muted-foreground">
             All you need is an email · 2 free runs · No credit card
           </p>
-          <p className="mx-auto mt-4 max-w-lg text-xs leading-relaxed text-muted-foreground">
-            A lightweight brand pulse scans your handle against platform benchmarks
-            and returns a score, strengths, gaps, and three tactical moves — generated
-            by our worker pipeline, not a canned animation.
-          </p>
           <div className="mt-5">
             <Link href={primaryHref}>
               <Button size="lg" className="font-semibold">
@@ -211,7 +205,119 @@ export default async function Home() {
             Full 15-Section Report At a Glance
           </h2>
 
-          <InteractiveReportViewer />
+          <div className="relative mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-md)]">
+            <div className="flex items-center justify-between border-b border-border bg-[#f5f5f4] px-5 py-2.5">
+              <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                Instagram Audit · Sample Report
+              </span>
+              <span className="rounded-full bg-[color:var(--green-muted)] px-2 py-0.5 font-mono text-[0.6rem] font-semibold uppercase text-[color:var(--green)]">
+                Sample
+              </span>
+            </div>
+            <div className="max-h-[520px] overflow-y-auto px-4 py-4 sm:px-8 sm:py-8">
+              <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[color:var(--accent)]">
+                Instagram Account Audit
+              </p>
+              <h3 className="mt-0.5 text-xl font-bold tracking-[-0.02em]">
+                @glowstate
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Premium adaptogenic supplements — functional mushrooms, nootropics, and plant-based wellness.
+              </p>
+
+              <div className="mt-5 rounded-[var(--radius)] border border-border bg-[#fcfcfb] p-4 sm:p-5">
+                <div className="mb-3 flex items-baseline justify-between border-b border-border pb-3">
+                  <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-muted-foreground">Score Breakdown</span>
+                  <span className="font-mono text-xl font-semibold">48<span className="text-xs font-normal text-muted-foreground">/100</span></span>
+                </div>
+                {[
+                  { label: "Content Strategy", pct: 32, color: "bg-[color:var(--red)]" },
+                  { label: "Growth Momentum", pct: 18, color: "bg-[color:var(--red)]" },
+                  { label: "Engagement Depth", pct: 55, color: "bg-[color:var(--amber)]" },
+                  { label: "Platform Optimization", pct: 40, color: "bg-[color:var(--amber)]" },
+                  { label: "Brand Cohesion", pct: 68, color: "bg-[color:var(--green)]" },
+                  { label: "Conversion Architecture", pct: 22, color: "bg-[color:var(--red)]" },
+                ].map((dim) => (
+                  <div key={dim.label} className="mb-2 flex items-center gap-3 text-xs last:mb-0">
+                    <span className="w-36 flex-shrink-0 text-right font-medium text-muted-foreground">{dim.label}</span>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#f0efed]">
+                      <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.pct}%` }} />
+                    </div>
+                    <span className="w-6 flex-shrink-0 text-right font-mono font-semibold">{dim.pct}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5">
+                <h4 className="text-sm font-bold">Key Metrics</h4>
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  {[
+                    { value: "24.8K", label: "Followers" },
+                    { value: "1.42%", label: "Engagement", tone: "text-[color:var(--red)]" },
+                    { value: "312", label: "Avg Likes" },
+                    { value: "+0.3%", label: "30-Day Growth", tone: "text-[color:var(--amber)]" },
+                  ].map((m) => (
+                    <div key={m.label} className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
+                      <div className={`font-mono text-lg font-semibold leading-none ${m.tone || ""}`}>{m.value}</div>
+                      <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">{m.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <h4 className="mt-5 text-sm font-bold">Executive Summary</h4>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                @glowstate operates in one of Instagram&rsquo;s fastest-growing niches — functional wellness. The brand holds <strong className="text-foreground">24.8K followers</strong> with a clean visual identity, but engagement sits at <strong className="text-foreground">1.42%</strong> — half the 3.5% benchmark. Reels account for only 22% of output despite being the highest-reach format. The root cause is <strong className="text-foreground">format strategy and community activation</strong>: the account treats Instagram as a catalog rather than a publication. Shifting to 60% Reels, reducing reply latency, and building story highlight architecture can realistically reach 40K followers within 90 days.
+              </p>
+
+              <h4 className="mt-5 text-sm font-bold">Top Strengths</h4>
+              <div className="mt-2 space-y-2">
+                {[
+                  { title: "Product Differentiation", body: "Dual-extract formulations and third-party lab testing are rare structural moats in the adaptogen space." },
+                  { title: "Visual Identity", body: "Forest green + amber palette is consistent and intentional, building trust at a glance." },
+                  { title: "Posting Consistency", body: "4–5 posts per week maintained over 8+ months. The habit infrastructure is already in place." },
+                ].map((s) => (
+                  <div key={s.title} className="rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-3">
+                    <p className="text-xs"><strong className="text-foreground">{s.title}.</strong> <span className="text-muted-foreground">{s.body}</span></p>
+                  </div>
+                ))}
+              </div>
+
+              <h4 className="mt-5 text-sm font-bold">Top Gaps</h4>
+              <div className="mt-2 space-y-2">
+                {[
+                  { title: "Reel Under-Adoption", body: "Only 22% of posts are Reels. Instagram weights native video 3–5× over static images." },
+                  { title: "Silent Community", body: "18-hour average reply latency signals low engagement depth to the algorithm." },
+                  { title: "No Highlight Architecture", body: "Missing story highlights leave new visitors without a guided conversion path." },
+                ].map((w) => (
+                  <div key={w.title} className="rounded-[var(--radius-sm)] border-l-2 border-[color:var(--red)]/30 bg-[color:var(--red-muted)]/30 p-3">
+                    <p className="text-xs"><strong className="text-foreground">{w.title}.</strong> <span className="text-muted-foreground">{w.body}</span></p>
+                  </div>
+                ))}
+              </div>
+
+              <h4 className="mt-5 text-sm font-bold">90-Day Growth Map</h4>
+              <div className="mt-3 space-y-3">
+                {[
+                  { phase: "Phase 1 — Foundation", days: "Days 1–30", target: "24.8K → 29K", detail: "Shift to 60% Reels, build highlight architecture, reply to every comment." },
+                  { phase: "Phase 2 — Acceleration", days: "Days 31–60", target: "29K → 34K", detail: "Collaborate with 2 wellness creators, launch weekly AMAs, A/B test hook styles." },
+                  { phase: "Phase 3 — Compound", days: "Days 61–90", target: "34K → 40K", detail: "Cross-platform pipeline, UGC program, affiliate launch. Sustain 3%+ engagement." },
+                ].map((p) => (
+                  <div key={p.phase} className="rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-3">
+                    <p className="text-xs"><strong className="text-foreground">{p.phase}</strong> <span className="text-muted-foreground">({p.days})</span></p>
+                    <p className="mt-1 text-xs"><strong className="text-[color:var(--green)]">Target: {p.target}</strong></p>
+                    <p className="mt-1 text-xs text-muted-foreground">{p.detail}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 rounded-[var(--radius)] border border-[color:var(--accent)]/20 bg-gradient-to-r from-[color:var(--accent-muted)] to-transparent p-4">
+                <p className="text-xs font-semibold text-[color:var(--accent)]">This is a sample of the full 15-section report</p>
+                <p className="mt-1 text-xs text-muted-foreground">Every audit is custom-generated for your account — not a template. Reports adapt to your follower tier, niche, and competitive landscape.</p>
+              </div>
+            </div>
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white via-white/90 to-transparent" />
+          </div>
         </section>
 
         <hr className="mt-14 border-border" />
