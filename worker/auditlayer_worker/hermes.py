@@ -30,6 +30,7 @@ class ChatResult:
     content: str
     usage: Usage
     model: str
+    session_id: str = ""  # returned by Hermes for session resume
 
 
 @dataclass(frozen=True)
@@ -90,9 +91,15 @@ class HermesClient:
         temperature: float = 0.2,
         stream: bool = True,
         on_delta: Callable[[str, str], None] | None = None,
+        session_id: str = "",
     ) -> ChatResult:
         """Run a chat completion. When ``stream`` is True, ``on_delta`` is
-        called with (delta_text, accumulated_text) for each token chunk."""
+        called with (delta_text, accumulated_text) for each token chunk.
+
+        If ``session_id`` is provided, it is sent as the ``X-Hermes-Session-Id``
+        header so Hermes injects the full conversation history from that session.
+        The response header ``X-Hermes-Session-Id`` is captured and returned in
+        ``ChatResult.session_id`` for subsequent calls (session resume)."""
 
         prompt_chars = sum(len(m.get("content", "")) for m in messages)
         if stream:
@@ -104,6 +111,7 @@ class HermesClient:
                 temperature=temperature,
                 on_delta=on_delta,
                 prompt_chars=prompt_chars,
+                session_id=session_id,
             )
         return self._chat_blocking(
             messages,
@@ -112,6 +120,7 @@ class HermesClient:
             max_tokens=max_tokens,
             temperature=temperature,
             prompt_chars=prompt_chars,
+            session_id=session_id,
         )
 
     def _payload(self, messages, model, toolsets, max_tokens, temperature) -> dict:
@@ -126,19 +135,23 @@ class HermesClient:
         return payload
 
     def _chat_blocking(
-        self, messages, model, *, toolsets, max_tokens, temperature, prompt_chars
+        self, messages, model, *, toolsets, max_tokens, temperature, prompt_chars, session_id="",
     ) -> ChatResult:
         url = f"{self.api_base}/chat/completions"
         payload = self._payload(messages, model, toolsets, max_tokens, temperature)
-        response = httpx.post(url, headers=self._headers(), json=payload, timeout=self.timeout_seconds)
+        headers = self._headers()
+        if session_id:
+            headers["X-Hermes-Session-Id"] = session_id
+        response = httpx.post(url, headers=headers, json=payload, timeout=self.timeout_seconds)
         response.raise_for_status()
         data = response.json()
         content = data["choices"][0]["message"]["content"]
         usage = self._usage_from_block(data.get("usage"), prompt_chars, content)
-        return ChatResult(content=content, usage=usage, model=data.get("model", model))
+        effective_session = response.headers.get("X-Hermes-Session-Id", session_id)
+        return ChatResult(content=content, usage=usage, model=data.get("model", model), session_id=effective_session)
 
     def _chat_stream(
-        self, messages, model, *, toolsets, max_tokens, temperature, on_delta, prompt_chars
+        self, messages, model, *, toolsets, max_tokens, temperature, on_delta, prompt_chars, session_id="",
     ) -> ChatResult:
         url = f"{self.api_base}/chat/completions"
         payload = self._payload(messages, model, toolsets, max_tokens, temperature)
@@ -147,10 +160,17 @@ class HermesClient:
 
         accumulated: list[str] = []
         usage_block: dict | None = None
+        effective_session = session_id
+        headers = self._headers()
+        if session_id:
+            headers["X-Hermes-Session-Id"] = session_id
         with httpx.stream(
-            "POST", url, headers=self._headers(), json=payload, timeout=self.timeout_seconds
+            "POST", url, headers=headers, json=payload, timeout=self.timeout_seconds
         ) as response:
             response.raise_for_status()
+            resp_session = response.headers.get("X-Hermes-Session-Id", "")
+            if resp_session:
+                effective_session = resp_session
             for raw_line in response.iter_lines():
                 if not raw_line:
                     continue
@@ -179,7 +199,7 @@ class HermesClient:
 
         content = "".join(accumulated)
         usage = self._usage_from_block(usage_block, prompt_chars, content)
-        return ChatResult(content=content, usage=usage, model=model)
+        return ChatResult(content=content, usage=usage, model=model, session_id=effective_session)
 
     @staticmethod
     def _usage_from_block(block: dict | None, prompt_chars: int, content: str) -> Usage:

@@ -121,6 +121,7 @@ class AuditRecord:
     milestone_label: str = ""
     user_id: str | None = None
     model: str | None = None
+    research_cache: str = ""
 
     @classmethod
     def from_row(cls, row: dict) -> "AuditRecord":
@@ -145,6 +146,7 @@ class AuditRecord:
             milestone_label=row.get("milestone_label") or "",
             user_id=row.get("user_id"),
             model=row.get("model"),
+            research_cache=row.get("research_cache") or "",
         )
 
 

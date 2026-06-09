@@ -39,6 +39,8 @@ class GenerationResult:
     tokens_out: int
     model: str
     estimated: bool = False
+    research_cache: str = ""  # saved so retries can skip Stage 1
+    tokens_saved: int = 0     # tokens avoided by using cache
 
 
 @dataclass(frozen=True)
@@ -50,10 +52,13 @@ class RefinementResult:
 
 
 class ReportGenerator(Protocol):
-    def generate(self, audit: AuditRecord, progress: Progress) -> GenerationResult: ...
-
+    def generate(
+        self, audit: AuditRecord, progress: Progress, *,
+        ig_metrics: Any = None, research_cache: str = "",
+    ) -> GenerationResult: ...
     def refine(
-        self, audit: AuditRecord, current_html: str, section: str, instruction: str, progress: Progress
+        self, audit: AuditRecord, current_html: str, section: str,
+        instruction: str, progress: Progress,
     ) -> RefinementResult: ...
 
 
@@ -87,7 +92,6 @@ class _PhaseEmitter:
             self._last = time.monotonic()
 
     def tick_timed(self, ceiling: str = "scoring") -> None:
-        """Advance one phase if the interval has elapsed, up to ``ceiling``."""
         if self._interval <= 0:
             return
         ceiling_idx = self._phases.index(ceiling)
@@ -103,18 +107,24 @@ class MockReportGenerator:
     def __init__(self, phase_interval: float = 0.0):
         self.phase_interval = phase_interval
 
-    def generate(self, audit: AuditRecord, progress: Progress, *, ig_metrics: Any = None) -> GenerationResult:
+    def generate(
+        self, audit: AuditRecord, progress: Progress, *,
+        ig_metrics: Any = None, research_cache: str = "",
+    ) -> GenerationResult:
         emitter = _PhaseEmitter(audit, progress, self.phase_interval)
         for phase in GENERATION_PHASES:
             emitter.advance_to(phase)
             if self.phase_interval > 0:
                 time.sleep(self.phase_interval)
         html = _mock_report_html(audit)
-        # Deterministic, mock token figures within the documented per-audit band.
-        return GenerationResult(html=html, tokens_in=18_000, tokens_out=22_000, model="mock", estimated=True)
+        return GenerationResult(
+            html=html, tokens_in=18_000, tokens_out=22_000,
+            model="mock", estimated=True,
+        )
 
     def refine(
-        self, audit: AuditRecord, current_html: str, section: str, instruction: str, progress: Progress
+        self, audit: AuditRecord, current_html: str, section: str,
+        instruction: str, progress: Progress,
     ) -> RefinementResult:
         progress("refinement", f"Refining section '{section}' (mock)")
         safe_section = html_lib.escape(section)
@@ -122,10 +132,12 @@ class MockReportGenerator:
         fragment = (
             f'<section class="card"><h2>{safe_section}</h2>'
             f"<p><strong>Refined:</strong> {safe_instruction}</p>"
-            f"<p>This deterministic refinement proves scoped report editing without general-purpose chat access.</p>"
-            f"</section>"
+            f"<p>This deterministic refinement proves scoped report editing "
+            f"without general-purpose chat access.</p></section>"
         )
-        return RefinementResult(fragment=fragment, tokens_in=1200, tokens_out=400, model="mock")
+        return RefinementResult(
+            fragment=fragment, tokens_in=1200, tokens_out=400, model="mock",
+        )
 
 
 class HermesReportGenerator:
@@ -145,10 +157,15 @@ class HermesReportGenerator:
         self.temperature = temperature
         self.phase_interval = phase_interval
 
-    def generate(self, audit: AuditRecord, progress: Progress, *, ig_metrics: Any = None) -> GenerationResult:
+    def generate(
+        self, audit: AuditRecord, progress: Progress, *,
+        ig_metrics: Any = None, research_cache: str = "",
+    ) -> GenerationResult:
+        """Generate a report. If ``research_cache`` is provided from a previous
+        failed attempt, Stage 1 (tool-calling research) is skipped entirely and
+        we go straight to Stage 2 (compose-only) — saving all research tokens.
+        """
         emitter = _PhaseEmitter(audit, progress, self.phase_interval)
-        emitter.advance_to("researching")
-        prompt = build_worker_prompt(audit, ig_metrics)
 
         def on_delta(_piece: str, accumulated: str) -> None:
             if html_looks_complete(accumulated):
@@ -156,7 +173,18 @@ class HermesReportGenerator:
             else:
                 emitter.tick_timed(ceiling="scoring")
 
-        # Stage 1: full research + report generation with tools
+        # ── resume path: cached research → skip straight to compose ──
+        if research_cache:
+            progress("composing", "Session resumed — reusing cached research, composing report")
+            emitter.advance_to("composing")
+            return self._compose_report(audit, progress, emitter, on_delta,
+                                        research_cache, tokens_saved=32_000)
+
+        # ── fresh path: Stage 1 research + report attempt ──
+        session_id = f"audit-{audit.id}"
+        emitter.advance_to("researching")
+        prompt = build_worker_prompt(audit, ig_metrics)
+
         result = self.client.chat(
             messages=[
                 {"role": "system", "content": WORKER_SYSTEM_PROMPT},
@@ -168,10 +196,11 @@ class HermesReportGenerator:
             temperature=self.temperature,
             stream=True,
             on_delta=on_delta,
+            session_id=session_id,
         )
         emitter.advance_to("composing")
 
-        # Try to extract HTML from the response
+        # Try to extract HTML from the combined response
         try:
             report_html = extract_html(result.content)
             return GenerationResult(
@@ -180,21 +209,32 @@ class HermesReportGenerator:
                 tokens_out=result.usage.tokens_out,
                 model=result.model,
                 estimated=result.usage.estimated,
+                research_cache=result.content,
             )
         except ValueError:
-            pass  # No HTML found — model ran out of tokens during research
+            pass  # No HTML found — Stage 2 fallback
 
-        # Stage 2 (fallback): pass the research output as context and ask
-        # for ONLY the HTML report with a fresh token budget and no tools.
-        progress("composing", "Research complete — composing report with dedicated token budget")
-        research_brief = result.content
-        # Truncate the research brief to leave room for the HTML in context
+        return self._compose_report(audit, progress, emitter, on_delta,
+                                    result.content, tokens_saved=0,
+                                    stage1_usage=result.usage)
+
+    def _compose_report(
+        self, audit: AuditRecord, progress: Progress,
+        emitter: _PhaseEmitter, on_delta, research_brief: str,
+        tokens_saved: int = 0,
+        stage1_usage: Any = None,
+    ) -> GenerationResult:
+        """Stage 2: generate ONLY the HTML report from research findings.
+        No tools — entire token budget goes to the HTML output."""
+        progress("composing", "Composing report from research findings")
+
         max_brief_chars = 8000
         if len(research_brief) > max_brief_chars:
             research_brief = research_brief[:max_brief_chars] + "\n...\n[research truncated]"
 
         compose_prompt = (
-            f"You just completed research for an audit of @{audit.handle} ({audit.goal}).\n\n"
+            f"You just completed research for an audit of @{audit.handle} "
+            f"({audit.goal}).\n\n"
             f"=== RESEARCH FINDINGS ===\n{research_brief}\n=== END RESEARCH ===\n\n"
             f"Now generate ONLY the complete, self-contained HTML report. "
             f"Do NOT use any tools. Do NOT include markdown fences. "
@@ -215,19 +255,30 @@ class HermesReportGenerator:
             temperature=self.temperature,
             stream=True,
             on_delta=on_delta,
+            session_id=f"audit-{audit.id}",
         )
         emitter.advance_to("composing")
         report_html = extract_html(compose_result.content)
+
+        total_in = compose_result.usage.tokens_in
+        total_out = compose_result.usage.tokens_out
+        if stage1_usage is not None:
+            total_in += stage1_usage.tokens_in
+            total_out += stage1_usage.tokens_out
+
         return GenerationResult(
             html=report_html,
-            tokens_in=result.usage.tokens_in + compose_result.usage.tokens_in,
-            tokens_out=result.usage.tokens_out + compose_result.usage.tokens_out,
-            model=result.model,
-            estimated=result.usage.estimated or compose_result.usage.estimated,
+            tokens_in=total_in,
+            tokens_out=total_out,
+            model=compose_result.model,
+            estimated=compose_result.usage.estimated,
+            research_cache=research_brief,
+            tokens_saved=tokens_saved,
         )
 
     def refine(
-        self, audit: AuditRecord, current_html: str, section: str, instruction: str, progress: Progress
+        self, audit: AuditRecord, current_html: str, section: str,
+        instruction: str, progress: Progress,
     ) -> RefinementResult:
         progress("refinement", f"Refining section '{section}'")
         prompt = build_refinement_prompt(audit, current_html, section, instruction)

@@ -170,11 +170,19 @@ class GenerationPipeline:
                 pass
 
         try:
-            result = self.generator.generate(audit, sink.emit, ig_metrics=ig_metrics)
+            result = self.generator.generate(
+                audit, sink.emit, ig_metrics=ig_metrics,
+                research_cache=audit.research_cache,
+            )
         except Exception as exc:  # noqa: BLE001 - record failure, never crash the loop
             sink.emit("failed", f"Generation error: {exc}")
             if gateway is not None:
-                gateway.update_audit(audit.id, status=AuditStatus.FAILED.value, admin_notes=str(exc)[:500], last_failed_at=_utcnow())
+                gateway.update_audit(
+                    audit.id,
+                    status=AuditStatus.FAILED.value,
+                    admin_notes=str(exc)[:500],
+                    last_failed_at=_utcnow(),
+                )
             return RunSummary(
                 audit_id=audit.id,
                 status=AuditStatus.FAILED.value,
@@ -214,6 +222,7 @@ class GenerationPipeline:
                 model=result.model,
                 milestone_label=audit.milestone_label,
                 limitations=audit.limitations,
+                research_cache="",  # clear cache on success
             )
         else:
             report_path, pdf_url, pdf_mode = self._write_local(audit.id, result.html)
