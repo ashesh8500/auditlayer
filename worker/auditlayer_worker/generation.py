@@ -156,6 +156,7 @@ class HermesReportGenerator:
             else:
                 emitter.tick_timed(ceiling="scoring")
 
+        # Stage 1: full research + report generation with tools
         result = self.client.chat(
             messages=[
                 {"role": "system", "content": WORKER_SYSTEM_PROMPT},
@@ -169,13 +170,60 @@ class HermesReportGenerator:
             on_delta=on_delta,
         )
         emitter.advance_to("composing")
-        report_html = extract_html(result.content)
+
+        # Try to extract HTML from the response
+        try:
+            report_html = extract_html(result.content)
+            return GenerationResult(
+                html=report_html,
+                tokens_in=result.usage.tokens_in,
+                tokens_out=result.usage.tokens_out,
+                model=result.model,
+                estimated=result.usage.estimated,
+            )
+        except ValueError:
+            pass  # No HTML found — model ran out of tokens during research
+
+        # Stage 2 (fallback): pass the research output as context and ask
+        # for ONLY the HTML report with a fresh token budget and no tools.
+        progress("composing", "Research complete — composing report with dedicated token budget")
+        research_brief = result.content
+        # Truncate the research brief to leave room for the HTML in context
+        max_brief_chars = 8000
+        if len(research_brief) > max_brief_chars:
+            research_brief = research_brief[:max_brief_chars] + "\n...\n[research truncated]"
+
+        compose_prompt = (
+            f"You just completed research for an audit of @{audit.handle} ({audit.goal}).\n\n"
+            f"=== RESEARCH FINDINGS ===\n{research_brief}\n=== END RESEARCH ===\n\n"
+            f"Now generate ONLY the complete, self-contained HTML report. "
+            f"Do NOT use any tools. Do NOT include markdown fences. "
+            f"Output the full <!doctype html> document with all sections, "
+            f"scores, metrics, strengths, gaps, competitive context, content ideas, "
+            f"and 90-day growth map. The report must be complete and production-ready. "
+            f"Use the report design system styles from the system prompt."
+        )
+
+        compose_result = self.client.chat(
+            messages=[
+                {"role": "system", "content": WORKER_SYSTEM_PROMPT},
+                {"role": "user", "content": compose_prompt},
+            ],
+            model=self.model,
+            toolsets=(),  # NO tools — preserve all tokens for the HTML
+            max_tokens=max(self.max_tokens, 64000),
+            temperature=self.temperature,
+            stream=True,
+            on_delta=on_delta,
+        )
+        emitter.advance_to("composing")
+        report_html = extract_html(compose_result.content)
         return GenerationResult(
             html=report_html,
-            tokens_in=result.usage.tokens_in,
-            tokens_out=result.usage.tokens_out,
+            tokens_in=result.usage.tokens_in + compose_result.usage.tokens_in,
+            tokens_out=result.usage.tokens_out + compose_result.usage.tokens_out,
             model=result.model,
-            estimated=result.usage.estimated,
+            estimated=result.usage.estimated or compose_result.usage.estimated,
         )
 
     def refine(
