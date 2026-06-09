@@ -426,7 +426,7 @@ this pattern (adapt the content to the specific handle/account being audited):
 - Score diagram uses HORIZONTAL BARS (sd-row/sd-track/sd-fill), NOT circular rings
 - Overall score /100 in JetBrains Mono at top-right of section 1 header
 - Color thresholds: green (#059669) >=65, amber (#d97706) 35-64, red (#dc2626) <35
-- Every report ends with the AuditLayer footer badge (teal pill + narinfazlalipour.com)
+- Every report ends with the AuditLayer footer badge (teal pill + auditlayermedia.com), followed by a disclaimer in a subtle bordered box: "This is an execution plan — a strategy document built from research and data. You still need a media team to create content, film videos, write captions, and implement the plan. AuditLayer delivers the playbook. Your team runs it."
 - Reports are self-contained HTML with NO external assets (no CDN images, no API calls)
 - Light theme: #fafaf9 background, #ffffff surface cards, teal accent (#0d9488)
 - Container max-width: 760px, centered

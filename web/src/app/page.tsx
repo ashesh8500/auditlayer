@@ -321,8 +321,8 @@ export default async function Home() {
               </div>
 
               <div className="mt-5 rounded-[var(--radius)] border border-[color:var(--accent)]/20 bg-gradient-to-r from-[color:var(--accent-muted)] to-transparent p-4">
-                <p className="text-xs font-semibold text-[color:var(--accent)]">This is a sample of the full 15-section report</p>
-                <p className="mt-1 text-xs text-muted-foreground">Every audit is custom-generated for your account — not a template. Reports adapt to your follower tier, niche, and competitive landscape.</p>
+                <p className="text-xs font-semibold text-[color:var(--accent)]">This is an execution plan</p>
+                <p className="mt-1 text-xs text-muted-foreground">Every AuditLayer report is a strategy document — a roadmap built from research and data. You still need a media team to create the content, film the videos, write the captions, and implement the plan. We give you the playbook. Your team runs it.</p>
               </div>
             </div>
             <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white via-white/90 to-transparent" />
