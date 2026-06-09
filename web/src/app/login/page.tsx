@@ -5,7 +5,8 @@ import { getSession } from "@/lib/auth";
 import { LoginForm } from "./login-form";
 
 export const metadata = {
-  title: "Sign in — AuditLayer",
+  title: "Sign in — AuditLayerMedia",
+  description: "Sign in to your AuditLayerMedia account.",
 };
 
 export default async function LoginPage({
@@ -25,10 +26,8 @@ export default async function LoginPage({
           href="/"
           className="mb-8 flex items-center justify-center gap-2 text-sm font-semibold tracking-tight"
         >
-          <span className="grid size-7 place-items-center rounded-md bg-[color:var(--accent)] font-mono text-xs text-white">
-            AL
-          </span>
-          AuditLayer
+          <span className="grid size-7 place-items-center rounded-md bg-[#1c1917] text-xs font-bold text-white">ALM</span>
+          AuditLayerMedia
         </Link>
 
         <div className="rounded-[calc(var(--radius)+4px)] border border-border bg-card p-7 shadow-[var(--shadow-md)]">

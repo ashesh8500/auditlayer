@@ -82,7 +82,7 @@ export function LoginForm({ next }: { next: string }) {
       )}
 
       <p className="text-center text-xs text-muted-foreground">
-        First audit is free. No credit card required.
+        Run free Pulse audits — no credit card required.
       </p>
     </div>
   );

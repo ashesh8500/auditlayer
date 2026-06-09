@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Any
 import re
 
 
@@ -189,8 +190,16 @@ def detect_platform(handle_or_url: str) -> Platform:
     trimmed = value.strip()
     if trimmed.startswith("@"):
         return Platform.INSTAGRAM
-    if re.fullmatch(r"[a-z0-9_.-]+", trimmed, flags=re.IGNORECASE) and "." not in trimmed:
-        return Platform.INSTAGRAM
+    # Accept bare handles (Instagram) including those with dots in the middle
+    # like 'dr.truptikaji'. Only reject strings that look like domain names
+    # (where the segment after the last dot is 2-4 chars, typical TLD length).
+    if re.fullmatch(r"[a-z0-9_.-]+", trimmed, flags=re.IGNORECASE):
+        if "." not in trimmed:
+            return Platform.INSTAGRAM
+        # Has a dot — check if it looks like a domain (short TLD suffix)
+        last_segment = trimmed.rsplit(".", 1)[-1]
+        if len(last_segment) > 4:
+            return Platform.INSTAGRAM  # e.g., dr.truptikaji, user.name123
     return Platform.UNKNOWN
 
 
@@ -426,18 +435,56 @@ this pattern (adapt the content to the specific handle/account being audited):
 # ---------------------------------------------------------------------------
 
 
-def build_worker_prompt(audit: AuditRecord) -> str:
+def build_worker_prompt(audit: AuditRecord, ig_metrics: Any = None) -> str:
     limitations = "\n".join(f"- {item}" for item in audit.limitations) or "- none declared"
     sections = _load_template_sections()
     section_ref = "\n".join(f"  {i}. {s}" for i, s in enumerate(sections, 1)) if sections else (
         "  (use the 15-section AuditLayer framework from the social-media-audit skill)"
     )
+
+    # Build Instagram live data block if available
+    ig_data_block = ""
+    if ig_metrics is not None:
+        p = ig_metrics.profile
+        recent_posts = "\n".join(
+            f"    [{m.media_type}] {m.like_count} likes, {m.comments_count} comments, ER {m.engagement_rate}% — {m.caption[:80] if m.caption else '(no caption)'}"
+            for m in ig_metrics.recent_media[:10]
+        )
+        ig_data_block = f"""
+=== LIVE INSTAGRAM DATA (via connected Business/Creator account) ===
+Use these REAL metrics from the Instagram Graph API — do NOT estimate or skip:
+- Profile: @{p.username} ({p.name})
+- Followers: {p.followers_count:,}
+- Following: {p.follows_count:,}
+- Media count: {p.media_count:,}
+- Account type: {p.account_type}
+- Bio: {p.biography}
+- Website: {p.website}
+- Avg likes/post: {ig_metrics.avg_likes:.0f}
+- Avg comments/post: {ig_metrics.avg_comments:.0f}
+- Avg engagement rate: {ig_metrics.avg_engagement_rate}%
+- Posting cadence: {ig_metrics.posting_cadence}
+- Top content types: {', '.join(ig_metrics.top_content_types) if ig_metrics.top_content_types else 'mixed'}
+- Recent posts ({len(ig_metrics.recent_media)}):
+{recent_posts}
+"""
+    else:
+        ig_data_block = """
+=== INSTAGRAM DATA AVAILABILITY ===
+This account has NOT connected Instagram via OAuth. Use web indexation, browser
+research, client context, and domain benchmarks as documented in the
+social-media-audit skill. Flag any missing live metrics as a data-quality
+limitation — do NOT fabricate numbers.
+"""
+
     return f"""Generate the AuditLayer paid report for this intake.
 
 Handle: @{audit.handle}
 Platform: {audit.platform}
 Goal: {audit.goal}
 Client context: {audit.context or "none"}
+
+{ig_data_block}
 
 Business constraints:
 - Social media competitive intelligence for creators, brands, media managers, and marketing teams (personal brands, food & beverage, wellness, B2B, etc.). Calibrate peers and scoring to the subject's category and follower tier.

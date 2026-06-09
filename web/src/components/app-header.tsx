@@ -15,10 +15,8 @@ export async function AppHeader() {
           href="/dashboard"
           className="flex items-center gap-2 text-sm font-semibold tracking-tight"
         >
-          <span className="grid size-6 place-items-center rounded-md bg-[color:var(--accent)] font-mono text-[10px] text-white">
-            AL
-          </span>
-          AuditLayer
+          <span className="grid size-6 place-items-center rounded-md bg-[#1c1917] text-[10px] font-bold text-white">ALM</span>
+          AuditLayerMedia
         </Link>
 
         <nav className="flex items-center gap-1 text-sm">

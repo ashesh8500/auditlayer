@@ -1,0 +1,139 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft } from "lucide-react";
+
+/**
+ * ImmersiveReport — full-width reading experience.
+ *
+ * Fetches the report HTML from an API endpoint and renders it inside a shadow
+ * DOM wrapper for complete CSS isolation. The report's <style> and <body>
+ * content inject into the shadow root so it renders exactly as designed,
+ * without any leakage from the app shell's Tailwind styles.
+ */
+export function ImmersiveReport({
+  reportUrl,
+  backHref,
+  backLabel = "Back",
+}: {
+  reportUrl: string;
+  backHref: string;
+  backLabel?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const shadowRootRef = useRef<ShadowRoot | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const res = await fetch(reportUrl);
+        if (!res.ok) {
+          throw new Error(`Failed to load report (${res.status})`);
+        }
+        const html = await res.text();
+        if (cancelled) return;
+
+        // Parse HTML to extract style and body
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+
+        const styleEls = doc.querySelectorAll("style");
+        let styles = "";
+        styleEls.forEach((el) => {
+          styles += el.textContent ?? "";
+        });
+
+        // Get body content
+        const bodyHtml = doc.body.innerHTML;
+
+        // If there's a google fonts link, include it in the shadow
+        const fontLinks = doc.querySelectorAll(
+          'link[rel="stylesheet"], link[href*="fonts.googleapis"]'
+        );
+        let fontHtml = "";
+        fontLinks.forEach((link) => {
+          fontHtml += link.outerHTML;
+        });
+
+        // Create shadow root and inject
+        if (containerRef.current && !shadowRootRef.current) {
+          const shadow = containerRef.current.attachShadow({ mode: "open" });
+          shadowRootRef.current = shadow;
+
+          shadow.innerHTML = `
+            ${fontHtml}
+            <style>
+              /* Reset within shadow */
+              :host { display: block; }
+              /* Report's own styles */
+              ${styles}
+            </style>
+            ${bodyHtml}
+          `;
+        }
+
+        setLoading(false);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load");
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [reportUrl]);
+
+  return (
+    <div className="flex min-h-screen flex-col bg-[#fafaf9]">
+      {/* Minimal top bar */}
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[#e7e5e4] bg-white/80 px-4 py-2 backdrop-blur-sm">
+        <a
+          href={backHref}
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="size-3.5" />
+          {backLabel}
+        </a>
+        <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+          Powered by AuditLayerMedia
+        </span>
+      </header>
+
+      {/* Report content */}
+      <main className="flex-1">
+        {loading && (
+          <div className="flex items-center justify-center py-32">
+            <div className="text-sm text-muted-foreground animate-pulse">
+              Loading report…
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="mx-auto max-w-lg px-6 py-32 text-center">
+            <p className="text-sm text-[color:var(--red)]">{error}</p>
+            <a
+              href={backHref}
+              className="mt-4 inline-block text-xs text-[color:var(--accent)] hover:underline"
+            >
+              ← Go back
+            </a>
+          </div>
+        )}
+
+        <div
+          ref={containerRef}
+          className={loading || error ? "hidden" : ""}
+        />
+      </main>
+    </div>
+  );
+}

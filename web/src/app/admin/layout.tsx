@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
 
-export const metadata = { title: "Admin — AuditLayer" };
+export const metadata = { title: "Admin — AuditLayerMedia" };
 
 export default async function AdminLayout({
   children,

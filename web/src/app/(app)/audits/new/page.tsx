@@ -9,7 +9,7 @@ import {
 } from "@/lib/domain";
 import { IntakeWizard } from "./wizard";
 
-export const metadata = { title: "New audit — AuditLayer" };
+export const metadata = { title: "New audit — AuditLayerMedia" };
 
 export default async function NewAuditPage() {
   const profile = await requireProfile();

@@ -69,7 +69,7 @@ export async function createAudit(
       limitReached: true,
       message:
         profile.plan === "free"
-          ? "You've used your free audit. Upgrade to run more."
+          ? "You've used your free Pulse audits. Upgrade to run more."
           : `Your ${profile.plan} plan allows ${limit} audits. Upgrade for more capacity.`,
     };
   }

@@ -86,9 +86,10 @@ def _plan_from(value: str | None) -> Plan:
 def recalibrate(audit: AuditRecord) -> AuditStatus:
     """Re-apply intake calibration as a worker-side gate.
 
-    Returns the status the worker should honor. Even though the queue only
-    contains ``queued`` rows, this enforces the credential filter / platform
-    detection / founder-gating at the generation boundary too.
+    Returns the status the worker should honor. Only hard-blocks on BLOCKED
+    (empty handle, plan limit reached). Does NOT gate on NEEDS_REVIEW — if the
+    audit was explicitly queued by founder approval, the worker trusts that
+    decision and does not re-block on platform uncertainty.
     """
     decision = evaluate_intake(
         handle=audit.handle,
@@ -124,12 +125,11 @@ class GenerationPipeline:
 
         if enforce_gate:
             gate = recalibrate(audit)
-            if gate in (AuditStatus.BLOCKED, AuditStatus.NEEDS_REVIEW):
-                note = (
-                    "Hard-blocked by intake calibration"
-                    if gate == AuditStatus.BLOCKED
-                    else "Sent to founder review by intake calibration"
-                )
+            # Only hard-block on truly invalid audits (empty handle, plan limit).
+            # NEEDS_REVIEW (unknown platform) is a soft gate — if the audit was
+            # explicitly queued by founder approval, the worker trusts that decision.
+            if gate == AuditStatus.BLOCKED:
+                note = "Hard-blocked by intake calibration"
                 sink.emit("failed", note)
                 if gateway is not None:
                     gateway.update_audit(
@@ -150,8 +150,26 @@ class GenerationPipeline:
                     note=note,
                 )
 
+        # Fetch live Instagram data if the client has connected their account
+        ig_metrics = None
+        if audit.platform == "instagram" and gateway is not None:
+            try:
+                token_info = gateway.get_instagram_token(audit.handle)
+                if token_info is not None:
+                    token, ig_user_id = token_info
+                    from .instagram_api import InstagramAPIClient
+                    client = InstagramAPIClient(token)
+                    try:
+                        ig_metrics = client.get_full_metrics(ig_user_id)
+                        sink.emit("researching", f"Instagram Graph API: {ig_metrics.profile.followers_count:,} followers, ER {ig_metrics.avg_engagement_rate}%")
+                    finally:
+                        client.close()
+            except Exception:
+                # Fall through to free-toolset path — never block on API failure
+                pass
+
         try:
-            result = self.generator.generate(audit, sink.emit)
+            result = self.generator.generate(audit, sink.emit, ig_metrics=ig_metrics)
         except Exception as exc:  # noqa: BLE001 - record failure, never crash the loop
             sink.emit("failed", f"Generation error: {exc}")
             if gateway is not None:

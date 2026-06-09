@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
+import WhimsicalShapes from "@/components/whimsical-shapes";
 
 const REPORT_ANSWERS = [
   {
@@ -49,7 +51,7 @@ const PRICING = [
     name: "Starter",
     price: "$30",
     cadence: "/mo",
-    audits: "5 audits / month",
+    audits: "2 accounts · 5 audits / month",
     features: [
       "Full 15-section report",
       "Same-tier peer benchmarks",
@@ -63,11 +65,12 @@ const PRICING = [
     name: "Pro",
     price: "$50",
     cadence: "/mo",
-    audits: "15 audits / month",
+    audits: "5 accounts · 15 audits / month",
     features: [
-      "Everything in Starter",
+      "Full 20-section report",
       "Priority generation queue",
       "Deeper competitive context",
+      "Branding & account growth insights",
       "Founder review on request",
     ],
     cta: "Go Pro",
@@ -91,16 +94,16 @@ const PRICING = [
 
 export default async function Home() {
   const user = await getSession();
-  const primaryHref = user ? "/dashboard" : "/login";
+  if (user) redirect("/dashboard");
+  const primaryHref = "/login";
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
+    <div className="relative flex min-h-full flex-1 flex-col">
+      <WhimsicalShapes />
       <header className="sticky top-0 z-20 border-b border-border bg-[color:var(--bg)]/85 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
           <span className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-            <span className="grid size-6 place-items-center rounded-md bg-[color:var(--accent)] font-mono text-[10px] text-white">
-              ALM
-            </span>
+            <span className="grid size-6 place-items-center rounded-md bg-[#1c1917] text-[10px] font-bold text-white">ALM</span>
             AuditLayerMedia
           </span>
           <div className="flex items-center gap-2">
@@ -118,28 +121,28 @@ export default async function Home() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-7 py-16 sm:py-24">
-        {/* Hero */}
+      <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-7 py-16 sm:py-24">
+        {/* ── 1. Hero ── */}
         <section className="border-b border-border pb-12 text-center">
           {/* Gradient header banner — full hero card */}
           <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl bg-gradient-to-br from-[color:var(--accent)]/10 via-[color:var(--accent-muted)] to-transparent px-6 py-10 sm:px-12 sm:py-14">
             <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-[color:var(--accent)]/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-8 -left-8 size-32 rounded-full bg-emerald-400/10 blur-2xl" />
             <p className="relative inline-block rounded-full border border-[color:var(--accent)]/20 bg-[color:var(--accent)]/10 px-4 py-1.5 font-mono text-[0.62rem] font-bold uppercase tracking-[0.15em] text-[color:var(--accent)] backdrop-blur">
-              Evidence-based competitive intelligence
+              Media strategy, behavioral science, and AI for repeatable social growth
             </p>
             <h1 className="relative mt-4 text-4xl font-bold leading-tight tracking-[-0.02em] sm:text-5xl">
               Social Media Analysis That Reads Like a Strategic Breakdown
             </h1>
             <p className="relative mx-auto mt-4 max-w-xl text-base text-muted-foreground">
-              Competitive intelligence for media managers, creators, and personal
-              brands. Built from real social media data — designed to turn
-              performance into direction.
+              Stop guessing. Get a strategic read on your social presence — built
+              from real data, calibrated to your niche, and delivered as an
+              executable playbook.
             </p>
             <div className="relative mt-7 flex flex-wrap items-center justify-center gap-3">
               <Link href={primaryHref}>
                 <Button size="lg" className="font-semibold">
-                  Start Your Free Audit
+                  Run a Free Pulse Audit
                 </Button>
               </Link>
               <Link href="#pricing">
@@ -148,18 +151,125 @@ export default async function Home() {
                 </Button>
               </Link>
             </div>
-            <p className="relative mt-4 text-xs text-muted-foreground">
-              First audit is free · No credit card required
+          </div>
+        </section>
+
+        {/* ── 2. Six Questions — the value proposition ── */}
+        <section className="mt-14">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Six questions every report answers
+          </h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {REPORT_ANSWERS.map((item) => (
+              <div
+                key={item.label}
+                className="rounded-[var(--radius)] border border-border bg-card p-5"
+              >
+                <span className="text-lg">
+                  {item.label}
+                </span>
+                <h3 className="mt-1 text-base font-semibold">{item.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {item.body}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Here&rsquo;s how every question gets answered — starting free ↓
+          </p>
+        </section>
+
+        {/* ── 3. Pulse Audit — compact preview ── */}
+        <section className="mt-14">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Free Pulse Audit
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            All you need is an email · 2 free runs · No credit card
+          </p>
+          <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-sm)]">
+            {/* Report header bar */}
+            <div className="flex items-center justify-between border-b border-border bg-[#f5f5f4] px-5 py-2">
+              <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                Brand Pulse · @solawellness
+              </span>
+              <span className="rounded-full bg-[color:var(--green-muted)] px-2 py-0.5 font-mono text-[0.55rem] font-semibold uppercase text-[color:var(--green)]">
+                Sample
+              </span>
+            </div>
+            <div className="px-5 py-4">
+              {/* Score bars — compact */}
+              <div className="mb-3 flex items-baseline justify-between">
+                <span className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted-foreground">Pulse Score</span>
+                <span className="font-mono text-base font-semibold">51<span className="text-xs font-normal text-muted-foreground">/100</span></span>
+              </div>
+              {[
+                { label: "Product", pct: 80, color: "bg-[color:var(--green)]" },
+                { label: "Brand Story", pct: 72, color: "bg-[color:var(--green)]" },
+                { label: "Visual ID", pct: 58, color: "bg-[color:var(--amber)]" },
+                { label: "Retail→Social", pct: 45, color: "bg-[color:var(--amber)]" },
+                { label: "Cadence", pct: 34, color: "bg-[color:var(--red)]" },
+                { label: "Community", pct: 28, color: "bg-[color:var(--red)]" },
+              ].map((dim) => (
+                <div key={dim.label} className="mb-1.5 flex items-center gap-2 text-xs last:mb-0">
+                  <span className="w-20 flex-shrink-0 text-right text-[0.65rem] text-muted-foreground">{dim.label}</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#f0efed]">
+                    <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.pct}%` }} />
+                  </div>
+                  <span className="w-5 flex-shrink-0 text-right font-mono text-[0.65rem] font-semibold">{dim.pct}</span>
+                </div>
+              ))}
+              {/* What's Working / Missing — brief */}
+              <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4">
+                <div>
+                  <p className="text-[0.55rem] font-bold uppercase tracking-[0.06em] text-[color:var(--green)]">🟢 Working</p>
+                  <p className="mt-1 text-[0.65rem] text-muted-foreground leading-relaxed">Product-market fit is a structural moat. Visual identity is premium and locked in.</p>
+                </div>
+                <div>
+                  <p className="text-[0.55rem] font-bold uppercase tracking-[0.06em] text-[color:var(--red)]">🔴 Missing</p>
+                  <p className="mt-1 text-[0.65rem] text-muted-foreground leading-relaxed">Zero Reels in 60 days. Founder story is invisible on the feed.</p>
+                </div>
+              </div>
+              {/* Three Moves */}
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="text-[0.55rem] font-bold uppercase tracking-[0.06em] text-[color:var(--accent)]">⚡ Three Moves</p>
+                <div className="mt-2 space-y-1.5">
+                  {[
+                    { n: "1", text: "Film the founder story — one session, four Reels, release over two weeks." },
+                    { n: "2", text: "Launch 'Sunscreen Sundays' — weekly educational carousel, becomes an audience ritual." },
+                    { n: "3", text: "Reply within 4 hours — no bots. Every reply signals the algorithm to push to non-followers." },
+                  ].map((m) => (
+                    <div key={m.n} className="flex gap-2">
+                      <span className="grid size-4 shrink-0 place-items-center rounded-full bg-[color:var(--accent)] font-mono text-[0.55rem] font-bold text-white">{m.n}</span>
+                      <p className="text-[0.65rem] text-muted-foreground leading-relaxed">{m.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* CTA */}
+          <div className="mt-4 text-center">
+            <Link href={primaryHref}>
+              <Button size="lg" className="font-semibold">
+                Run Your Free Pulse Audit
+              </Button>
+            </Link>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Get a score, strengths, gaps, and three moves — all from just a handle and email.
             </p>
           </div>
         </section>
 
-        {/* What you get — live report preview */}
+        <hr className="mt-14 border-border" />
+
+        {/* ── 4. Full Mock Report — the evidence ── */}
         <section className="mt-14">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            What You Get At a Glance
+            Full 15-Section Report At a Glance
           </h2>
-          <div className="mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-md)]">
+          <div className="relative mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-md)]">
             {/* Report header bar */}
             <div className="flex items-center justify-between border-b border-border bg-[#f5f5f4] px-5 py-2.5">
               <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
@@ -170,7 +280,7 @@ export default async function Home() {
               </span>
             </div>
             {/* Report body — scrollable */}
-            <div className="max-h-[520px] overflow-y-auto px-6 py-6 sm:px-8 sm:py-8">
+            <div className="max-h-[520px] overflow-y-auto px-4 py-4 sm:px-8 sm:py-8">
               {/* Label + handle */}
               <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[color:var(--accent)]">
                 Instagram Account Audit
@@ -202,7 +312,7 @@ export default async function Home() {
                   { label: "Conversion Architecture", pct: 22, color: "bg-[color:var(--red)]" },
                 ].map((dim) => (
                   <div key={dim.label} className="mb-2 flex items-center gap-3 text-xs last:mb-0">
-                    <span className="w-36 flex-shrink-0 text-right font-medium text-muted-foreground">{dim.label}</span>
+                    <span className="w-20 flex-shrink-0 text-right text-xs font-medium text-muted-foreground sm:w-36">{dim.label}</span>
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#f0efed]">
                       <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.pct}%` }} />
                     </div>
@@ -213,7 +323,7 @@ export default async function Home() {
 
               {/* ── Key Metrics ── */}
               <h4 className="mt-5 text-sm font-bold">Key Metrics</h4>
-              <div className="mt-3 grid grid-cols-4 gap-2">
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {[
                   { value: "24.8K", label: "Followers", tone: "" },
                   { value: "1.42%", label: "Engagement", tone: "text-[color:var(--red)]" },
@@ -226,6 +336,7 @@ export default async function Home() {
                   </div>
                 ))}
               </div>
+              <div className="overflow-x-auto">
               <table className="mt-3 w-full border-collapse text-[0.72rem]">
                 <thead>
                   <tr className="border-b-2 border-border text-left text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
@@ -253,6 +364,7 @@ export default async function Home() {
                   </tr>
                 </tbody>
               </table>
+              </div>
 
               {/* ── Executive Summary ── */}
               <h4 className="mt-5 text-sm font-bold">Executive Summary</h4>
@@ -296,6 +408,7 @@ export default async function Home() {
 
               {/* ── Competitive Comparison snippet ── */}
               <h4 className="mt-5 text-sm font-bold">Competitive Context</h4>
+              <div className="overflow-x-auto">
               <table className="mt-2 w-full border-collapse text-[0.72rem]">
                 <thead>
                   <tr className="border-b-2 border-border text-left text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
@@ -315,52 +428,128 @@ export default async function Home() {
                     <td className="py-1.5 pr-2 font-medium">Reel Share</td>
                     <td className="py-1.5 pr-2 font-mono text-[color:var(--red)]">22%</td><td className="py-1.5 pr-2 font-mono">65%</td><td className="py-1.5 font-mono">48%</td>
                   </tr>
+                  <tr className="border-b border-border">
+                    <td className="py-1.5 pr-2 font-medium">Posting Cadence</td>
+                    <td className="py-1.5 pr-2 font-mono">4–5/wk</td><td className="py-1.5 pr-2 font-mono">6–7/wk</td><td className="py-1.5 font-mono">5/wk</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 pr-2 font-medium">Promo Ratio</td>
+                    <td className="py-1.5 pr-2 font-mono text-[color:var(--amber)]">40%</td><td className="py-1.5 pr-2 font-mono text-[color:var(--green)]">15%</td><td className="py-1.5 font-mono text-[color:var(--green)]">20%</td>
+                  </tr>
                 </tbody>
               </table>
+              </div>
+
+              {/* ── Content Format Analysis ── */}
+              <h4 className="mt-5 text-sm font-bold">Content Format Analysis</h4>
+              <p className="mt-1 text-xs text-muted-foreground">Current mix is product-heavy with minimal educational or community-building formats. The account treats Instagram as a catalog — not a publication.</p>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full border-collapse text-[0.72rem]">
+                  <thead>
+                    <tr className="border-b-2 border-border text-left text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                      <th className="pb-1.5 pr-2">Format</th><th className="pb-1.5 pr-2 text-right">Current</th><th className="pb-1.5 pr-2 text-right">Target</th><th className="pb-1.5">Impact</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-border"><td className="py-1.5 pr-2 font-medium">Reels</td><td className="py-1.5 pr-2 text-right font-mono text-[color:var(--red)]">22%</td><td className="py-1.5 pr-2 text-right font-mono text-[color:var(--green)]">60%</td><td className="py-1.5 text-xs text-muted-foreground">Algorithm reach multiplier</td></tr>
+                    <tr className="border-b border-border"><td className="py-1.5 pr-2 font-medium">Carousels</td><td className="py-1.5 pr-2 text-right font-mono">18%</td><td className="py-1.5 pr-2 text-right font-mono text-[color:var(--green)]">25%</td><td className="py-1.5 text-xs text-muted-foreground">Save-driven reach + education</td></tr>
+                    <tr className="border-b border-border"><td className="py-1.5 pr-2 font-medium">Static Images</td><td className="py-1.5 pr-2 text-right font-mono text-[color:var(--red)]">52%</td><td className="py-1.5 pr-2 text-right font-mono text-[color:var(--green)]">10%</td><td className="py-1.5 text-xs text-muted-foreground">Lowest organic reach</td></tr>
+                    <tr><td className="py-1.5 pr-2 font-medium">Stories</td><td className="py-1.5 pr-2 text-right font-mono text-[color:var(--amber)]">8%</td><td className="py-1.5 pr-2 text-right font-mono text-[color:var(--green)]">15%</td><td className="py-1.5 text-xs text-muted-foreground">Community + link-in-bio funnel</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ── Three Immediate Actions ── */}
+              <h4 className="mt-5 text-sm font-bold">Three Immediate Actions</h4>
+              <p className="mt-1 text-xs text-muted-foreground">Executable this week with zero new tools or skills.</p>
+              <div className="mt-2 space-y-2">
+                {[
+                  { n: "1", body: "Film and post one Reel within 48 hours — product demo or founder clip. Instagram's algorithm is format-weighted: the first Reel signals you're a video-native account." },
+                  { n: "2", body: "Reply to every comment in the first 4 hours after posting. Current reply latency averages 18 hours — well outside the critical algorithmic window." },
+                  { n: "3", body: "Create three Story highlight covers: Education, Founder Story, Testimonials. Organize existing Stories into these buckets. New visitors need a guided path." },
+                ].map((a) => (
+                  <div key={a.n} className="flex gap-3 rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-3">
+                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[color:var(--accent)] font-mono text-[0.6rem] font-bold text-white">{a.n}</span>
+                    <p className="text-xs text-muted-foreground">{a.body}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── 90-Day Growth Map ── */}
+              <h4 className="mt-5 text-sm font-bold">90-Day Growth Map</h4>
+              <p className="mt-1 text-xs text-muted-foreground">Three-phase timeline targeting 24.8K → 40K followers (+15.2K). Achievable when format mix and engagement windows are fixed.</p>
+              <div className="mt-3 space-y-3">
+                {[
+                  { phase: "Phase 1 — Foundation", days: "Days 1–30", target: "24.8K → 29K", items: "Shift to 60% Reels · Launch Sunscreen Sundays · Reply to every comment · Build highlight architecture", signal: "Success signal: 3+ Reels reach 10K+ views each" },
+                  { phase: "Phase 2 — Acceleration", days: "Days 31–60", target: "29K → 34K", items: "Collaborate with 2 wellness creators · Introduce behind-the-scenes Stories · A/B test hook styles · Weekly live Q&A", signal: "Success signal: Engagement crosses 2.5%" },
+                  { phase: "Phase 3 — Compound", days: "Days 61–90", target: "34K → 40K", items: "Cross-platform content pipeline · User-generated content program · Monthly founder deep-dive Reel · Affiliate/ambassador launch", signal: "Success signal: 40K reached, 3%+ engagement sustained" },
+                ].map((p) => (
+                  <div key={p.phase} className="rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-3">
+                    <div className="flex items-baseline gap-2">
+                      <span className="grid size-4 shrink-0 place-items-center rounded-full bg-[color:var(--accent)] font-mono text-[0.55rem] font-bold text-white">●</span>
+                      <p className="text-xs"><strong className="text-foreground">{p.phase}</strong> <span className="text-muted-foreground">({p.days})</span></p>
+                    </div>
+                    <p className="mt-1 text-xs"><strong className="text-[color:var(--green)]">Target: {p.target}</strong></p>
+                    <p className="mt-1 text-xs text-muted-foreground">{p.items}</p>
+                    <p className="mt-1 text-[0.65rem] italic text-[color:var(--accent)]">{p.signal}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Content Ideas ── */}
+              <h4 className="mt-5 text-sm font-bold">Content Ideas</h4>
+              <p className="mt-1 text-xs text-muted-foreground">Three high-leverage content pieces calibrated to the biohacking/wellness niche.</p>
+              <div className="mt-2 space-y-2">
+                {[
+                  { n: "1", title: "\"What Your Adaptogens Actually Do\" Carousel", body: "10-slide educational carousel breaking down each product's mechanism. Slide 1: bold claim. Slides 2-8: science, one compound per slide. Slide 9: before/after user data. Slide 10: CTA to shop." },
+                  { n: "2", title: "\"I Formulated This for My Mom\" Founder Reel", body: "60-second Reel: the founder's story. Opens with a photo of their mom, cuts to the lab, ends with the finished product on shelf. Emotional, not promotional. Caption: \"Started in a lab. Tested on the person I trust most.\"" },
+                  { n: "3", title: "\"You're Taking Lion's Mane Wrong\" Hook Reel", body: "Contrarian hook stops the scroll. First 3 seconds: text overlay with the claim. Body: explains extraction methods, bioavailability, what to look for. Ends with a soft CTA: \"We do it right — dual-extract, third-party tested.\"" },
+                ].map((c) => (
+                  <div key={c.n} className="rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-3">
+                    <p className="text-xs"><strong className="text-[color:var(--accent)]">{c.n}. {c.title}</strong></p>
+                    <p className="mt-1 text-xs text-muted-foreground">{c.body}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Audit Cadence ── */}
+              <h4 className="mt-5 text-sm font-bold">Audit Cadence</h4>
+              <p className="mt-1 text-xs text-muted-foreground">How often to re-audit based on follower tier and growth velocity.</p>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full border-collapse text-[0.72rem]">
+                  <thead>
+                    <tr className="border-b-2 border-border text-left text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                      <th className="pb-1.5 pr-2">Cadence</th><th className="pb-1.5 pr-2">Purpose</th><th className="pb-1.5 pr-2">Time</th><th className="pb-1.5">What to Check</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-border"><td className="py-1.5 pr-2 font-medium">Weekly</td><td className="py-1.5 pr-2 text-xs text-muted-foreground">Pulse check</td><td className="py-1.5 pr-2 font-mono text-xs">10 min</td><td className="py-1.5 text-xs text-muted-foreground">Engagement rate, top post, reply rate</td></tr>
+                    <tr className="border-b border-border"><td className="py-1.5 pr-2 font-medium">Monthly</td><td className="py-1.5 pr-2 text-xs text-muted-foreground">Trend read</td><td className="py-1.5 pr-2 font-mono text-xs">30 min</td><td className="py-1.5 text-xs text-muted-foreground">Format mix, growth rate, content gaps</td></tr>
+                    <tr><td className="py-1.5 pr-2 font-medium">Quarterly</td><td className="py-1.5 pr-2 text-xs text-muted-foreground">Full audit</td><td className="py-1.5 pr-2 font-mono text-xs">2–3 hrs</td><td className="py-1.5 text-xs text-muted-foreground">Full 15-section competitive intelligence report</td></tr>
+                  </tbody>
+                </table>
+              </div>
 
               {/* Teaser */}
               <div className="mt-5 rounded-[var(--radius)] border border-[color:var(--accent)]/20 bg-gradient-to-r from-[color:var(--accent-muted)] to-transparent p-4">
-                <p className="text-xs font-semibold text-[color:var(--accent)]">
-                  🔒 + 10 more sections in the full report
-                </p>
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                  Content gaps · Audience psychology patterns · Viral opportunities · Content ideas · 90-day growth map · Content mix &amp; weekly calendar · The four-hour engagement window · Visual branding blueprint · Right hashtags · How often to re-audit
-                </p>
+                <p className="text-xs font-semibold text-[color:var(--accent)]">🔒 This is a sample of the full 15-section report</p>
+                <p className="mt-1 text-xs text-muted-foreground">Every audit is custom-generated for your account — not a template. The report adapts to your follower tier, niche, and competitive landscape.</p>
               </div>
             </div>
+            {/* Scroll fade indicator */}
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white via-white/90 to-transparent" />
           </div>
         </section>
 
-        {/* Six questions */}
-        <section className="mt-14">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Six questions every report answers
-          </h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {REPORT_ANSWERS.map((item) => (
-              <div
-                key={item.label}
-                className="rounded-[var(--radius)] border border-border bg-card p-5"
-              >
-                <span className="text-lg">
-                  {item.label}
-                </span>
-                <h3 className="mt-1 text-base font-semibold">{item.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {item.body}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
+        <hr className="mt-14 border-border" />
 
-        {/* Pricing */}
+        {/* ── 5. Pricing ── */}
         <section id="pricing" className="mt-16 scroll-mt-20">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Pricing
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Start free with one audit. Upgrade when the reports earn their keep.
+            Start with free Pulse audits. Upgrade when the reports earn their keep.
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             {PRICING.map((tier) => (
@@ -415,42 +604,77 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Blueprint Audit */}
-        <section className="mt-10">
-          <div className="mx-auto max-w-md rounded-[calc(var(--radius)+2px)] border border-[color:var(--accent)]/30 bg-gradient-to-r from-[color:var(--accent-muted)]/60 to-transparent p-6 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <h3 className="text-base font-semibold">Blueprint Audit</h3>
-              <span className="rounded-full bg-[color:var(--accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--accent)]">One-time</span>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">For those building an account from the ground up</p>
-            <div className="mt-3 flex items-baseline justify-center gap-1">
-              <span className="font-mono text-2xl font-semibold">$79</span>
-              <span className="text-xs text-muted-foreground">one-time</span>
-            </div>
-            <ul className="mx-auto mt-4 max-w-xs space-y-2 text-left">
+        {/* ── 6. Blueprint Audit ── */}
+        <section className="mt-16">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Blueprint Audit
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            For accounts getting started. A complete pre-launch strategy — not a
+            report on what exists, but a plan for what comes next.
+          </p>
+          <div className="mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-[color:var(--accent)]/20 bg-white shadow-[var(--shadow-md)]">
+            {/* 3 columns — Research / Build / Launch */}
+            <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               {[
-                "Full 15-section pre-launch assessment",
-                "Niche positioning & handle evaluation",
-                "Competitive landscape mapping",
-                "90-day launch playbook with weekly milestones",
-                "Content pillar architecture & first 10 content ideas",
-                "Platform-by-platform setup guide",
-              ].map((f) => (
-                <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <Check className="mt-0.5 size-3.5 shrink-0 text-[color:var(--green)]" />
-                  {f}
-                </li>
+                {
+                  phase: "Research",
+                  icon: "🔭",
+                  items: [
+                    { title: "Niche Analysis", body: "Market size, demographics, content trends" },
+                    { title: "Competitive Landscape", body: "Who's winning at 0–10K, whitespace to occupy" },
+                    { title: "Brand Architecture", body: "Handles, bio, visual direction, brand voice" },
+                  ],
+                },
+                {
+                  phase: "Build",
+                  icon: "🏗",
+                  items: [
+                    { title: "Content Pillars", body: "3–5 pillars with rationale & example hooks" },
+                    { title: "First 30 Posts", body: "Calendar with hooks, formats, captions, timing" },
+                    { title: "Platform Setup", body: "Profile optimization, highlights, link-in-bio" },
+                  ],
+                },
+                {
+                  phase: "Launch",
+                  icon: "🚀",
+                  items: [
+                    { title: "90-Day Playbook", body: "Week-by-week milestones, tactics, checkpoints" },
+                    { title: "Growth Benchmarks", body: "Realistic targets — what &ldquo;on track&rdquo; looks like" },
+                    { title: "Monetization Path", body: "When & how to introduce revenue for your niche" },
+                  ],
+                },
+              ].map((col) => (
+                <div key={col.phase} className="px-5 py-5">
+                  <p className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+                    {col.icon} {col.phase}
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    {col.items.map((item) => (
+                      <div key={item.title}>
+                        <p className="text-xs font-semibold text-foreground">{item.title}</p>
+                        <p className="mt-0.5 text-[0.65rem] text-muted-foreground leading-relaxed">{item.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ))}
-            </ul>
-            <Link href={primaryHref} className="mt-5 inline-block">
-              <Button variant="outline" className="font-medium">
-                Get the Blueprint
-              </Button>
-            </Link>
+            </div>
+            {/* Footer bar */}
+            <div className="flex flex-col items-center gap-3 border-t border-border bg-[#fafaf9] px-5 py-4 sm:flex-row sm:justify-between">
+              <div className="text-center sm:text-left">
+                <span className="font-mono text-xl font-semibold">$79</span>
+                <span className="ml-1 text-xs text-muted-foreground">one-time</span>
+                <span className="ml-3 text-[0.65rem] text-muted-foreground">Covers up to 2 accounts · Suggested 0–1K followers</span>
+              </div>
+              <Link href={primaryHref}>
+                <Button className="font-semibold">Get the Blueprint</Button>
+              </Link>
+            </div>
           </div>
         </section>
 
-        {/* FAQ */}
+        {/* ── 7. FAQ ── */}
         <section className="mt-16">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             FAQ
@@ -475,7 +699,7 @@ export default async function Home() {
               },
               {
                 q: "Who is this for?",
-                a: "AuditLayerMedia is built for creators, personal brands, media managers, and small-to-mid-size agencies who need deep competitive intelligence without the overhead of a full-time analyst. It's most valuable for accounts in the 1K–500K follower range — where the difference between good and great strategy has measurable business impact. If you manage a brand account, run a creator business, or pitch clients on social strategy, this is for you.",
+                a: "AuditLayerMedia is built for creators, personal brands, media managers, and small-to-mid-size agencies who need deep competitive intelligence without the overhead of a full-time analyst. Our reports work for accounts of any size — the methodology adapts to your current distribution state. For accounts in the 500–2K follower range just getting started, we recommend the Blueprint Audit: a one-time pre-launch assessment that maps your niche, content pillars, and 90-day launch plan before you scale.",
               },
               {
                 q: "What happens after I get the report?",
@@ -499,6 +723,10 @@ export default async function Home() {
 
         <footer className="mt-16 border-t border-border pt-6 text-xs text-muted-foreground">
           <p className="font-semibold text-foreground">AuditLayerMedia</p>
+          <p className="mt-1 flex items-center gap-1.5 text-[color:var(--accent)]">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5"/></svg>
+            @auditlayermedia
+          </p>
           <p className="mt-1 max-w-2xl leading-relaxed">
             AuditLayerMedia provides social media competitive intelligence reports based on publicly available data, platform benchmarks, and industry-standard analytics. We are not affiliated with, endorsed by, or partnered with Instagram, TikTok, YouTube, X (Twitter), or any other platform we audit. All trademarks and handles referenced in our reports belong to their respective owners. Our reports are strategic assessments — not financial, legal, or investment advice. Metrics are estimates drawn from indexed public content and third-party data sources; exact platform analytics may differ. Always verify independently before making business decisions.
           </p>

@@ -121,9 +121,13 @@ export function detectPlatform(handleOrUrl: string): Platform {
   if (value.includes("instagram.com")) return "instagram";
   const trimmed = value.trim();
   if (trimmed.startsWith("@")) return "instagram";
-  // Bare username (e.g. "iamsrk") — default Instagram; most intake is IG-first.
-  if (/^[a-z0-9_.-]+$/i.test(trimmed) && !trimmed.includes(".")) {
-    return "instagram";
+  // Bare username — default to Instagram. Accepts dotted handles like
+  // 'dr.truptikaji'. Only reject strings that look like domains
+  // (short TLD-like suffix: 2–4 chars after the last dot).
+  if (/^[a-z0-9_.-]+$/i.test(trimmed)) {
+    if (!trimmed.includes(".")) return "instagram";
+    const lastSegment = trimmed.split(".").pop()!;
+    if (lastSegment.length > 4) return "instagram";
   }
   return "unknown";
 }

@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import html as html_lib
 import time
-from typing import Callable, Protocol
+from typing import Any, Callable, Protocol
 
 from .core import (
     GENERATION_PHASES,
@@ -103,7 +103,7 @@ class MockReportGenerator:
     def __init__(self, phase_interval: float = 0.0):
         self.phase_interval = phase_interval
 
-    def generate(self, audit: AuditRecord, progress: Progress) -> GenerationResult:
+    def generate(self, audit: AuditRecord, progress: Progress, *, ig_metrics: Any = None) -> GenerationResult:
         emitter = _PhaseEmitter(audit, progress, self.phase_interval)
         for phase in GENERATION_PHASES:
             emitter.advance_to(phase)
@@ -145,10 +145,10 @@ class HermesReportGenerator:
         self.temperature = temperature
         self.phase_interval = phase_interval
 
-    def generate(self, audit: AuditRecord, progress: Progress) -> GenerationResult:
+    def generate(self, audit: AuditRecord, progress: Progress, *, ig_metrics: Any = None) -> GenerationResult:
         emitter = _PhaseEmitter(audit, progress, self.phase_interval)
         emitter.advance_to("researching")
-        prompt = build_worker_prompt(audit)
+        prompt = build_worker_prompt(audit, ig_metrics)
 
         def on_delta(_piece: str, accumulated: str) -> None:
             if html_looks_complete(accumulated):
