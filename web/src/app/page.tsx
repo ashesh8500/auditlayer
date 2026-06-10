@@ -453,10 +453,10 @@ export default async function Home() {
                   { format: "Carousels", pct: 15, assessment: "Underused — strong save-rate driver", tone: "text-[color:var(--amber)]" },
                   { format: "Stories", pct: 5, assessment: "Missing — no highlight architecture", tone: "text-[color:var(--red)]" },
                 ].map((f) => (
-                  <div key={f.format} className="flex items-center justify-between rounded-[var(--radius-sm)] bg-[#fcfcfb] px-3 py-2">
-                    <span className="text-xs font-medium">{f.format}</span>
-                    <span className="font-mono text-xs font-semibold">{f.pct}%</span>
-                    <span className={`text-[0.65rem] ${f.tone}`}>{f.assessment}</span>
+                  <div key={f.format} className="flex items-center rounded-[var(--radius-sm)] bg-[#fcfcfb] px-3 py-2">
+                    <span className="w-24 flex-shrink-0 text-xs font-medium">{f.format}</span>
+                    <span className="w-8 flex-shrink-0 text-right font-mono text-xs font-semibold">{f.pct}%</span>
+                    <span className={`ml-3 text-[0.65rem] ${f.tone}`}>{f.assessment}</span>
                   </div>
                 ))}
               </div>
@@ -554,11 +554,26 @@ export default async function Home() {
 
               {/* 13. Audit Cadence */}
               <h4 className="mt-5 text-sm font-bold">Audit Cadence</h4>
-              <p className="mt-1 text-xs text-muted-foreground">Re-audit every 30 days during the 90-day growth sprint, then quarterly after hitting 40K. Schedule next audit for <strong className="text-foreground">July 2026</strong>.</p>
+              <div className="mt-2 space-y-2">
+                {[
+                  { label: "Weekly", desc: "10-min pulse: check engagement on last 7 posts, follower delta, reply rate.", time: "10 min" },
+                  { label: "Monthly", desc: "Lightweight audit: engagement trend, top/bottom 3 posts, save rate, format mix.", time: "30 min" },
+                  { label: "Quarterly", desc: "Full re-audit with updated peer benchmarks and progress against roadmap.", time: "2–3 hrs" },
+                  { label: "After a Good Post", desc: "When a post hits 2× your average — audit immediately. Replicate within 48 hours.", time: "20 min" },
+                ].map((c) => (
+                  <div key={c.label} className="flex items-start justify-between rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-2.5">
+                    <div>
+                      <span className="text-xs font-semibold text-foreground">{c.label}</span>
+                      <p className="mt-0.5 text-[0.65rem] text-muted-foreground">{c.desc}</p>
+                    </div>
+                    <span className="ml-2 flex-shrink-0 font-mono text-[0.6rem] font-semibold text-muted-foreground">{c.time}</span>
+                  </div>
+                ))}
+              </div>
 
               {/* 14. Footer + 15. Powered by AuditLayerMedia */}
               <div className="mt-5 border-t border-border pt-4 text-center">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--accent)] px-3 py-1">
+                <div className="inline-flex items-center gap-1.5 rounded-md bg-[#1c1917] px-3 py-1">
                   <span className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-white">ALM</span>
                 </div>
                 <p className="mt-1.5 text-[0.6rem] text-muted-foreground">auditlayermedia.com</p>
@@ -567,7 +582,7 @@ export default async function Home() {
               {/* Disclaimer */}
               <div className="mt-5 rounded-[var(--radius)] border border-[color:var(--accent)]/20 bg-gradient-to-r from-[color:var(--accent-muted)] to-transparent p-4">
                 <p className="text-xs font-semibold text-[color:var(--accent)]">This is an execution plan</p>
-                <p className="mt-1 text-xs text-muted-foreground">Every AuditLayer report is a strategy document — a roadmap built from research and data. You still need a media team to create the content, film the videos, write the captions, and implement the plan. We give you the playbook. Your team runs it.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Every AuditLayerMedia report is a strategy document — a roadmap built from research and data. You still need a media team to create the content, film the videos, write the captions, and implement the plan. We give you the playbook. Your team runs it.</p>
               </div>
             </div>
             <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white via-white/90 to-transparent" />

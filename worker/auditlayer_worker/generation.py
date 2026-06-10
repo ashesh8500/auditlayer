@@ -241,7 +241,7 @@ class HermesReportGenerator:
             f"Output the full <!doctype html> document with all sections, "
             f"scores, metrics, strengths, gaps, competitive context, content ideas, "
             f"and 90-day growth map. The report must be complete and production-ready. "
-            f"Use the report design system styles from the system prompt."
+            f"Use the report design system styles from the social-media-audit skill."
         )
 
         compose_result = self.client.chat(
