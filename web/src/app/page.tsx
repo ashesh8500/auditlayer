@@ -383,7 +383,159 @@ export default async function Home() {
 
               <div className="mt-5 border-b border-border" />
 
-              <h4 className="mt-5 text-sm font-bold">90-Day Growth Map</h4>
+              {/* 5. Root Cause Analysis */}
+              <h4 className="mt-5 text-sm font-bold">Root Cause Analysis</h4>
+              <p className="mt-1 text-xs text-muted-foreground">Why these gaps exist — not just what they are.</p>
+              <div className="mt-2 space-y-2">
+                {[
+                  { cause: "No dedicated creator", effect: "Without a content owner, the feed defaults to product photography — Instagram's lowest-reach format." },
+                  { cause: "UGC pipeline unmanaged", effect: "User-generated content drifts in without curation, diluting the brand voice and visual identity." },
+                  { cause: "Algorithm unfamiliarity", effect: "Instagram's current algorithm weights native video 3–5× above static images, but only 22% of posts are Reels." },
+                ].map((r) => (
+                  <div key={r.cause} className="rounded-[var(--radius-sm)] border border-[color:var(--amber)]/30 bg-[color:var(--amber-muted)]/20 p-3">
+                    <p className="text-xs"><strong className="text-foreground">{r.cause}</strong></p>
+                    <p className="mt-0.5 text-[0.68rem] text-muted-foreground">{r.effect}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 border-b border-border" />
+
+              {/* 6. Peer Comparison */}
+              <h4 className="mt-5 text-sm font-bold">Peer Comparison</h4>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full text-[0.68rem]">
+                  <thead>
+                    <tr className="border-b border-border text-left text-muted-foreground">
+                      <th className="pb-2 pr-2 font-medium">Account</th>
+                      <th className="pb-2 pr-2 font-medium">Followers</th>
+                      <th className="pb-2 pr-2 font-medium">Engagement</th>
+                      <th className="pb-2 font-medium">Format Mix</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-border">
+                      <td className="py-1.5 pr-2 font-semibold text-foreground">@glowstate</td>
+                      <td className="py-1.5 pr-2">24.8K</td>
+                      <td className="py-1.5 pr-2 text-[color:var(--red)]">1.42%</td>
+                      <td className="py-1.5">22% Reels</td>
+                    </tr>
+                    <tr className="border-b border-border">
+                      <td className="py-1.5 pr-2">@mudwtr</td>
+                      <td className="py-1.5 pr-2">18.2K</td>
+                      <td className="py-1.5 pr-2 text-[color:var(--green)]">3.8%</td>
+                      <td className="py-1.5">65% Reels</td>
+                    </tr>
+                    <tr className="border-b border-border">
+                      <td className="py-1.5 pr-2">@ryzesuperfoods</td>
+                      <td className="py-1.5 pr-2">31.5K</td>
+                      <td className="py-1.5 pr-2 text-[color:var(--amber)]">2.9%</td>
+                      <td className="py-1.5">50% Reels</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 pr-2">@curehydration</td>
+                      <td className="py-1.5 pr-2">22.1K</td>
+                      <td className="py-1.5 pr-2 text-[color:var(--green)]">4.1%</td>
+                      <td className="py-1.5">70% Reels</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-5 border-b border-border" />
+
+              {/* 7. Content Format Analysis */}
+              <h4 className="mt-5 text-sm font-bold">Content Format Analysis</h4>
+              <div className="mt-2 space-y-1.5">
+                {[
+                  { format: "Static images", pct: 58, assessment: "Overweight — lowest reach format", tone: "text-[color:var(--red)]" },
+                  { format: "Reels", pct: 22, assessment: "Underweight — highest reach potential", tone: "text-[color:var(--red)]" },
+                  { format: "Carousels", pct: 15, assessment: "Underused — strong save-rate driver", tone: "text-[color:var(--amber)]" },
+                  { format: "Stories", pct: 5, assessment: "Missing — no highlight architecture", tone: "text-[color:var(--red)]" },
+                ].map((f) => (
+                  <div key={f.format} className="flex items-center justify-between rounded-[var(--radius-sm)] bg-[#fcfcfb] px-3 py-2">
+                    <span className="text-xs font-medium">{f.format}</span>
+                    <span className="font-mono text-xs font-semibold">{f.pct}%</span>
+                    <span className={`text-[0.65rem] ${f.tone}`}>{f.assessment}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 border-b border-border" />
+
+              {/* 8. Engagement Growth Strategy */}
+              <h4 className="mt-5 text-sm font-bold">Engagement Growth Strategy</h4>
+              <div className="mt-2 space-y-2">
+                {[
+                  { lever: "Format rebalance", action: "Shift from 22% to 60% Reels over 30 days. Post 1 Reel daily, 2 static images weekly, 1 carousel weekly." },
+                  { lever: "Reply velocity", action: "Close the 18-hour reply gap. Target: every comment acknowledged within 4 hours. This alone signals 'active community' to the algorithm." },
+                  { lever: "Story architecture", action: "Build 5 story highlights: Product Science, Reviews, Founder, Behind the Scenes, FAQ. Update weekly." },
+                ].map((s) => (
+                  <div key={s.lever} className="rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-3">
+                    <p className="text-xs"><strong className="text-foreground">{s.lever}:</strong> <span className="text-muted-foreground">{s.action}</span></p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 border-b border-border" />
+
+              {/* 9. Quick Wins — This Week */}
+              <h4 className="mt-5 text-sm font-bold">Quick Wins — This Week</h4>
+              <div className="mt-2 space-y-1.5">
+                {[
+                  "Post one Reel today — product demo or founder speaking directly to camera.",
+                  "Reply to every pending comment and DM from the last 7 days.",
+                  "Create the first story highlight: Product Science.",
+                  "Draft a carousel breaking down one ingredient's mechanism of action.",
+                  "Pin your best-performing Reel to the top of your grid.",
+                ].map((win, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <span className="mt-0.5 flex size-4 flex-shrink-0 items-center justify-center rounded-full bg-[color:var(--accent)] text-[0.55rem] font-bold text-white">{i + 1}</span>
+                    <span className="text-muted-foreground">{win}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 border-b border-border" />
+
+              {/* 10. Success Benchmarks */}
+              <h4 className="mt-5 text-sm font-bold">Success Benchmarks</h4>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {[
+                  { label: "Engagement Rate", target: "3.5%+", timeframe: "90 days" },
+                  { label: "Reels / Week", target: "5+", timeframe: "30 days" },
+                  { label: "Reply Time", target: "<4 hrs", timeframe: "Immediate" },
+                  { label: "Follower Growth", target: "+15%", timeframe: "90 days" },
+                  { label: "Reach / Post", target: "5K+", timeframe: "60 days" },
+                  { label: "Save Rate", target: "8%+", timeframe: "60 days" },
+                ].map((b) => (
+                  <div key={b.label} className="rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-3 text-center">
+                    <div className="font-mono text-lg font-semibold text-[color:var(--accent)]">{b.target}</div>
+                    <div className="mt-0.5 text-[0.58rem] font-medium uppercase tracking-[0.04em] text-muted-foreground">{b.label}</div>
+                    <div className="mt-0.5 text-[0.55rem] text-muted-foreground">{b.timeframe}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 border-b border-border" />
+
+              {/* 11. Audience Profile */}
+              <h4 className="mt-5 text-sm font-bold">Audience Profile</h4>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                <div className="rounded-[var(--radius-sm)] bg-[#fcfcfb] p-3">
+                  <p className="text-[0.62rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">Primary Audience</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Health-conscious millennials (28–40) seeking functional alternatives to caffeine and pharmaceuticals. Biohacking-curious, already spending on supplements.</p>
+                </div>
+                <div className="rounded-[var(--radius-sm)] bg-[#fcfcfb] p-3">
+                  <p className="text-[0.62rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">What They Want</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Evidence-backed product education, not lifestyle content. Ingredient mechanisms, third-party testing, and dosing rationale outperform aspirational imagery.</p>
+                </div>
+              </div>
+
+              <div className="mt-5 border-b border-border" />
+
+              {/* 12. Road to 40K (90-Day Growth Map) */}
+              <h4 className="mt-5 text-sm font-bold">Road to 40K — 90-Day Growth Map</h4>
               <div className="mt-3 space-y-3">
                 {[
                   { phase: "Phase 1 — Foundation", days: "Days 1–30", target: "24.8K → 29K", detail: "Shift to 60% Reels, build highlight architecture, reply to every comment." },
@@ -398,6 +550,21 @@ export default async function Home() {
                 ))}
               </div>
 
+              <div className="mt-5 border-b border-border" />
+
+              {/* 13. Audit Cadence */}
+              <h4 className="mt-5 text-sm font-bold">Audit Cadence</h4>
+              <p className="mt-1 text-xs text-muted-foreground">Re-audit every 30 days during the 90-day growth sprint, then quarterly after hitting 40K. Schedule next audit for <strong className="text-foreground">July 2026</strong>.</p>
+
+              {/* 14. Footer + 15. Powered by AuditLayerMedia */}
+              <div className="mt-5 border-t border-border pt-4 text-center">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--accent)] px-3 py-1">
+                  <span className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-white">ALM</span>
+                </div>
+                <p className="mt-1.5 text-[0.6rem] text-muted-foreground">auditlayermedia.com</p>
+              </div>
+
+              {/* Disclaimer */}
               <div className="mt-5 rounded-[var(--radius)] border border-[color:var(--accent)]/20 bg-gradient-to-r from-[color:var(--accent-muted)] to-transparent p-4">
                 <p className="text-xs font-semibold text-[color:var(--accent)]">This is an execution plan</p>
                 <p className="mt-1 text-xs text-muted-foreground">Every AuditLayer report is a strategy document — a roadmap built from research and data. You still need a media team to create the content, film the videos, write the captions, and implement the plan. We give you the playbook. Your team runs it.</p>
