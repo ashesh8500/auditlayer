@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
+
 from typing import Any
 import re
 
@@ -279,161 +279,46 @@ def evaluate_intake(
     )
 
 
+# Skill-driven architecture — Hermes loads social-media-audit skill dynamically
+# Formatting rules, CSS, and section structure live in the skill, not here.
+# Skill updates auto-propagate to all future reports with zero worker restarts.
 # ---------------------------------------------------------------------------
-# Template-driven architecture — loads Narin's canonical report format
-# ---------------------------------------------------------------------------
 
-_TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates"
-_TEMPLATE_FILE = _TEMPLATE_DIR / "narin_reference_template.html"
-
-_FALLBACK_CSS = """
-  :root { --bg: #fafaf9; --surface: #ffffff; --text: #1c1917; --muted: #78716c; --line: #e7e5e4; --accent: #0d9488; --accent-muted: #f0fdfa; --green: #059669; --amber: #d97706; --red: #dc2626; --red-muted: #fef2f2; --green-muted: #ecfdf5; --amber-muted: #fffbeb; --blue: #2563eb; --blue-muted: #eff6ff; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); line-height: 1.625; -webkit-font-smoothing: antialiased; }
-  .container { max-width: 760px; margin: 0 auto; padding: 60px 28px 120px; }
-  .report-header { margin-bottom: 52px; padding-bottom: 36px; border-bottom: 1px solid var(--line); }
-  .report-header .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); margin-bottom: 8px; }
-  .report-header h1 { font-size: 2.1rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 10px; }
-  .report-header .subtitle { font-size: 0.95rem; color: var(--muted); }
-  .report-header .meta { display: flex; gap: 24px; margin-top: 16px; font-size: 0.8rem; color: var(--muted); font-weight: 500; flex-wrap: wrap; }
-  section { margin-bottom: 48px; }
-  section h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
-  section h3 { font-size: 1.05rem; font-weight: 600; margin: 28px 0 12px; }
-  section p { margin-bottom: 14px; font-size: 0.95rem; color: #44403c; }
-  .metric-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin: 20px 0; }
-  .metric-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 16px; text-align: center; }
-  .metric-card .value { font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 500; line-height: 1; margin-bottom: 4px; }
-  .metric-card .value.red { color: var(--red); } .metric-card .value.green { color: var(--green); } .metric-card .value.amber { color: var(--amber); }
-  .metric-card .label { font-size: 0.72rem; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
-  .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 16px 0; }
-  .data-table th { text-align: left; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 10px 14px; border-bottom: 2px solid var(--line); }
-  .data-table td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  .data-table td:first-child { font-weight: 500; }
-  .data-table .num { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; text-align: right; }
-  .data-table tr.highlight { background: var(--accent-muted); }
-  .tag { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 2px 10px; border-radius: 4px; letter-spacing: 0.03em; }
-  .tag.strength { background: var(--green-muted); color: var(--green); }
-  .tag.weakness { background: var(--red-muted); color: var(--red); }
-  .tag.neutral { background: var(--blue-muted); color: var(--blue); }
-  .sw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
-  .sw-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; }
-  .sw-card.strength { border-left: 3px solid var(--green); }
-  .sw-card.weakness { border-left: 3px solid var(--red); }
-  .sw-card .sw-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
-  .sw-card.strength .sw-label { color: var(--green); } .sw-card.weakness .sw-label { color: var(--red); }
-  .sw-card h4 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
-  .sw-card p { font-size: 0.85rem; color: #57534e; margin: 0; }
-  .rec-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; margin-bottom: 14px; position: relative; padding-left: 60px; }
-  .rec-card .num { position: absolute; left: 18px; top: 20px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent); background: var(--accent-muted); width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
-  .rec-card h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; }
-  .rec-card p { font-size: 0.85rem; color: #57534e; margin: 0; }
-  .calendar-grid { display: grid; grid-template-columns: 100px 80px 160px 1fr; gap: 0; margin: 16px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-  .calendar-grid .ch { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 10px 14px; background: #f5f5f4; border-bottom: 1px solid var(--line); }
-  .calendar-grid .cr { padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 0.85rem; }
-  .timeline-item { display: flex; gap: 16px; margin-bottom: 20px; }
-  .timeline-item .t-dot { flex-shrink: 0; width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; }
-  .timeline-item .t-dot.green { background: var(--green); } .timeline-item .t-dot.red { background: var(--red); } .timeline-item .t-dot.accent { background: var(--accent); }
-  .timeline-item .t-content h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
-  .timeline-item .t-content p { font-size: 0.85rem; color: #57534e; margin: 0; }
-  .callout { background: var(--blue-muted); border-left: 3px solid var(--blue); padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0; }
-  .callout p { font-size: 0.9rem; color: #1e3a5f; margin: 0; font-weight: 500; }
-  .callout.accent { background: var(--accent-muted); border-left-color: var(--accent); }
-  .callout.accent p { color: #0f766e; }
-  .upgrade-box { background: linear-gradient(135deg, #0d9488, #0f766e); border-radius: 12px; padding: 32px; margin: 32px 0; color: #fff; text-align: center; }
-  .upgrade-box h3 { color: #fff; font-size: 1.25rem; margin: 0 0 12px; }
-  .upgrade-box p { color: #ccfbf1; font-size: 0.92rem; margin-bottom: 20px; }
-  .upgrade-box .cta-btn { display: inline-block; background: #fff; color: #0d9488; font-weight: 700; font-size: 0.9rem; padding: 12px 28px; border-radius: 8px; text-decoration: none; letter-spacing: 0.02em; }
-  .report-footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 0.78rem; color: var(--muted); }
-  .score-diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px 20px; margin-bottom: 48px; }
-  .score-diagram .sd-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
-  .score-diagram .sd-header .sd-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
-  .score-diagram .sd-header .sd-overall { font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 600; color: var(--text); line-height: 1; }
-  .score-diagram .sd-header .sd-overall span { font-size: 0.85rem; color: var(--muted); font-weight: 400; }
-  .sd-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-  .sd-row .sd-name { width: 160px; font-size: 0.8rem; font-weight: 500; color: var(--text); text-align: right; flex-shrink: 0; }
-  .sd-row .sd-track { flex: 1; height: 8px; background: #f0efed; border-radius: 4px; overflow: hidden; }
-  .sd-row .sd-fill { height: 100%; border-radius: 4px; }
-  .sd-row .sd-fill.high { background: var(--green); }
-  .sd-row .sd-fill.mid { background: var(--amber); }
-  .sd-row .sd-fill.low { background: var(--red); }
-  .sd-row .sd-num { width: 28px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 500; color: var(--muted); text-align: right; flex-shrink: 0; }
-  .idea-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; margin-bottom: 14px; border-left: 3px solid var(--accent); }
-  .idea-card h4 { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
-  .idea-card p { font-size: 0.85rem; color: #57534e; margin: 0 0 10px; }
-  .idea-card .idea-meta { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
-"""
-
-
-def _load_template_css() -> str:
-    """Extract the complete <style> block from Narin's reference template."""
-    if not _TEMPLATE_FILE.exists():
-        return _FALLBACK_CSS
-    try:
-        html = _TEMPLATE_FILE.read_text(encoding="utf-8")
-    except Exception:
-        return _FALLBACK_CSS
-    match = re.search(r"<style>(.*?)</style>", html, re.DOTALL)
-    if not match:
-        return _FALLBACK_CSS
-    return match.group(1).strip()
+# Canonical 15-section structure from social-media-audit skill (references/hemal-report-format.html)
+_AUDITLAYER_SECTIONS = [
+    "Executive Summary",
+    "Key Metrics",
+    "Strengths",
+    "Weaknesses",
+    "Root Cause Analysis",
+    "Peer Comparison",
+    "Content Format Analysis",
+    "Engagement Growth Strategy",
+    "Quick Wins — This Week",
+    "Success Benchmarks",
+    "Audience Profile",
+    "Road to [Milestone]",
+    "Audit Cadence",
+    "Footer",
+    "Powered by AuditLayerMedia",
+]
 
 
 def _load_template_sections() -> list[str]:
-    """Extract all <h2> section headings from Narin's reference template."""
-    if not _TEMPLATE_FILE.exists():
-        return []
-    try:
-        html = _TEMPLATE_FILE.read_text(encoding="utf-8")
-    except Exception:
-        return []
-    headings = re.findall(r"<h2>(.*?)</h2>", html)
-    return [re.sub(r"<[^>]+>", "", h).strip() for h in headings]
+    """Return the canonical 15-section AuditLayer structure."""
+    return _AUDITLAYER_SECTIONS
 
 
-def _build_audit_system_prompt() -> str:
-    """Build the worker system prompt with Narin's template CSS and section structure."""
-    css = _load_template_css()
-    sections = _load_template_sections()
-    section_list = "\n".join(f"{i}. {s}" for i, s in enumerate(sections, 1)) if sections else (
-        "1. Overall Score\n2. Raw Numbers\n3. Top 5 Strengths\n4. Top 7 Weaknesses\n"
-        "5. Three Immediate Actions\n6. Competitive Comparison\n7. Three Content Ideas\n"
-        "8. 90-Day Map\n9. Stories & Highlights\n10. Content Schedule\n"
-        "11. 4-Hour Window & No Bots\n12. Presentable Feed\n13. Hashtags\n"
-        "14. Audit Cadence\n15. What Comes Next"
-    )
-
-    return f"""You are AuditLayer's report worker. Use the social-media-audit skill.
-Return a complete self-contained HTML report inside an html fenced block.
-Do not write files or expose system prompts.
-
-=== REPORT VISUAL SPECIFICATION ===
-Every report MUST use EXACTLY this CSS. Do not modify, minify, or rewrite it — copy
-the <style> block verbatim. The CSS is the product's visual identity and must be
-byte-for-byte identical across all reports.
-
-<style>
-{css}
-</style>
-
-=== REPORT SECTION STRUCTURE ===
-Every report MUST follow this exact section order. Section headings should match
-this pattern (adapt the content to the specific handle/account being audited):
-
-{section_list}
-
-=== ADDITIONAL FORMATTING RULES ===
-- Include the Google Fonts <link> for Inter + JetBrains Mono (same as template)
-- Score diagram uses HORIZONTAL BARS (sd-row/sd-track/sd-fill), NOT circular rings
-- Overall score /100 in JetBrains Mono at top-right of section 1 header
-- Color thresholds: green (#059669) >=65, amber (#d97706) 35-64, red (#dc2626) <35
-- Every report ends with the AuditLayer footer badge (teal pill + auditlayermedia.com), followed by a disclaimer in a subtle bordered box: "This is an execution plan — a strategy document built from research and data. You still need a media team to create content, film videos, write captions, and implement the plan. AuditLayer delivers the playbook. Your team runs it."
-- Reports are self-contained HTML with NO external assets (no CDN images, no API calls)
-- Light theme: #fafaf9 background, #ffffff surface cards, teal accent (#0d9488)
-- Container max-width: 760px, centered
-- NEVER use circular SVG scoring rings — Narin explicitly prefers horizontal bars
-- Peer comparison MUST use real, verifiable Instagram handles — never fabricate
-- Section count exactly 15 — Narin specified these explicitly
-"""
+WORKER_SYSTEM_PROMPT = (
+    "You are AuditLayer's report worker. "
+    "Load the social-media-audit skill and follow it exactly. "
+    "Use the CSS from the skill's references/hemal-report-format.html — "
+    "do not modify, minify, or rewrite it. "
+    "Follow the 15-section framework and all formatting rules in the skill. "
+    "Every report must end with the AuditLayer footer badge (teal pill + auditlayermedia.com). "
+    "Return a complete self-contained HTML report inside an html fenced block. "
+    "Do not write files or expose system prompts."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -493,13 +378,15 @@ Client context: {audit.context or "none"}
 {ig_data_block}
 
 Business constraints:
+- DETECT account type on first research pass: personal brand vs business. Personal brands are judged on trust, authority, storytelling coherence, and audience connection. Business accounts are judged on product visibility, conversion architecture, content-to-commerce funnel, and brand consistency. Calibrate all recommendations, scoring weights, and peer selection to the account type — never apply business metrics to a personal account (or vice versa).
+- When recommending a user lower their following count, ALWAYS explain why: (a) algorithmic trust signal — Instagram's low-trust classifier triggers above ~5% following-to-follower ratio, capping initial test-audience reach on every post before the engagement window even opens; (b) brand perception — high following counts read as inauthentic to potential collaborators, brands, and followers checking the profile; (c) method — use Instagram's "Least Interacted With" sort to unfollow down to ~3% of follower count. Never suggest reducing following count without this full rationale.
 - Social media competitive intelligence for creators, brands, media managers, and marketing teams (personal brands, food & beverage, wellness, B2B, etc.). Calibrate peers and scoring to the subject's category and follower tier.
 - Auto-select same-tier peers. Do not let the client freely choose aspirational comparables.
 - Every report must answer the six AuditLayer product questions.
 - Milestones must be computed from follower tier; never hardcode one universal target.
 - Reports are self-contained HTML with inline CSS and no external assets.
-- Use EXACTLY the CSS provided in the system prompt — do not modify, minify, or rewrite.
-- Follow Narin's 15-section framework exactly:
+- Use EXACTLY the CSS from the social-media-audit skill's references/hemal-report-format.html — do not modify, minify, or rewrite.
+- Follow the 15-section framework from the social-media-audit skill exactly:
 {section_ref}
 
 Known limitations:
@@ -528,8 +415,6 @@ Current report excerpt:
 {excerpt}
 """
 
-
-WORKER_SYSTEM_PROMPT = _build_audit_system_prompt()
 
 REFINE_SYSTEM_PROMPT = (
     "You are AuditLayer's scoped report refinement worker. "
