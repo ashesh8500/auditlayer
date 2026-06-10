@@ -215,8 +215,8 @@ export default async function Home() {
                 { label: "Brand Cohesion", pct: 68, color: "bg-[color:var(--green)]" },
                 { label: "Conversion Architecture", pct: 22, color: "bg-[color:var(--red)]" },
               ].map((dim) => (
-                <div key={dim.label} className="mt-2 flex items-center gap-2 text-[0.68rem]">
-                  <span className="w-32 flex-shrink-0 text-right font-medium text-muted-foreground">{dim.label}</span>
+                <div key={dim.label} className="mt-2 flex items-center gap-1.5 sm:gap-2 text-[0.62rem] sm:text-[0.68rem]">
+                  <span className="w-20 flex-shrink-0 text-right font-medium text-muted-foreground sm:w-32">{dim.label}</span>
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#f0efed]">
                     <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.pct}%` }} />
                   </div>
@@ -317,7 +317,7 @@ export default async function Home() {
                   { label: "Conversion Architecture", pct: 22, color: "bg-gradient-to-r from-[color:var(--red)] to-[color:var(--red)]/70" },
                 ].map((dim) => (
                   <div key={dim.label} className="mb-2 flex items-center gap-3 text-xs last:mb-0">
-                    <span className="w-36 flex-shrink-0 text-right font-medium text-muted-foreground">{dim.label}</span>
+                    <span className="w-24 flex-shrink-0 text-right text-[0.6rem] font-medium text-muted-foreground sm:w-36 sm:text-xs">{dim.label}</span>
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#f0efed]">
                       <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.pct}%` }} />
                     </div>
@@ -327,7 +327,7 @@ export default async function Home() {
 
                 <div className="mt-5">
                   <h4 className="text-sm font-bold">Key Metrics</h4>
-                  <div className="mt-3 grid grid-cols-4 gap-2">
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {[
                       { value: "24.8K", label: "Followers" },
                       { value: "1.42%", label: "Engagement", tone: "text-[color:var(--red)]" },
@@ -454,9 +454,9 @@ export default async function Home() {
                   { format: "Stories", pct: 5, assessment: "Missing — no highlight architecture", tone: "text-[color:var(--red)]" },
                 ].map((f) => (
                   <div key={f.format} className="flex items-center rounded-[var(--radius-sm)] bg-[#fcfcfb] px-3 py-2">
-                    <span className="w-24 flex-shrink-0 text-xs font-medium">{f.format}</span>
-                    <span className="w-8 flex-shrink-0 text-right font-mono text-xs font-semibold">{f.pct}%</span>
-                    <span className={`ml-3 text-[0.65rem] ${f.tone}`}>{f.assessment}</span>
+                    <span className="w-16 flex-shrink-0 text-[0.62rem] font-medium sm:w-24 sm:text-xs">{f.format}</span>
+                    <span className="w-7 flex-shrink-0 text-right font-mono text-[0.6rem] font-semibold sm:w-8 sm:text-xs">{f.pct}%</span>
+                    <span className={`ml-1.5 text-[0.58rem] sm:ml-3 sm:text-[0.65rem] ${f.tone}`}>{f.assessment}</span>
                   </div>
                 ))}
               </div>
@@ -500,7 +500,7 @@ export default async function Home() {
 
               {/* 10. Success Benchmarks */}
               <h4 className="mt-5 text-sm font-bold">Success Benchmarks</h4>
-              <div className="mt-2 grid grid-cols-3 gap-2">
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {[
                   { label: "Engagement Rate", target: "3.5%+", timeframe: "90 days" },
                   { label: "Reels / Week", target: "5+", timeframe: "30 days" },
@@ -663,7 +663,7 @@ export default async function Home() {
             <p className="mt-0.5 text-center text-[0.65rem] font-medium text-[color:var(--accent)]">Suggested for accounts 0–1K followers</p>
 
             {/* 3-column phase layout */}
-            <div className="mt-5 grid grid-cols-3 gap-2">
+            <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
               {[
                 { icon: "🔭", phase: "Research", items: ["Niche analysis", "Handle evaluation", "Competitive map"] },
                 { icon: "🏗", phase: "Build", items: ["Content pillars", "First 10 content ideas", "Platform setup"] },
