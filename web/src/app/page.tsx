@@ -180,20 +180,98 @@ export default async function Home() {
           </p>
         </section>
 
-        {/* ── 3. Pulse Audit — CTA ── */}
-        <section className="mt-14 text-center">
+        {/* ── 3. Pulse Audit — compact visual preview ── */}
+        <section className="mt-14">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Free Pulse Audit
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
             All you need is an email · 2 free runs · No credit card
           </p>
-          <div className="mt-5">
-            <Link href={primaryHref}>
-              <Button size="lg" className="font-semibold">
-                Run a Free Pulse Audit
-              </Button>
-            </Link>
+
+          <div className="relative mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-md)]">
+            {/* Header bar */}
+            <div className="flex items-center justify-between border-b border-border bg-[#f5f5f4] px-5 py-2.5">
+              <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                Brand Pulse · @glowstate
+              </span>
+              <span className="rounded-full bg-[color:var(--green-muted)] px-2 py-0.5 font-mono text-[0.6rem] font-semibold uppercase text-[color:var(--green)]">
+                Sample
+              </span>
+            </div>
+
+            <div className="px-4 py-4 sm:px-6 sm:py-5">
+
+              {/* ── Score Bars ── */}
+              <div className="flex items-baseline justify-between border-b border-border pb-3">
+                <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-muted-foreground">Score Breakdown</span>
+                <span className="font-mono text-lg font-semibold">48<span className="text-xs font-normal text-muted-foreground">/100</span></span>
+              </div>
+              {[
+                { label: "Content Strategy", pct: 32, color: "bg-[color:var(--red)]" },
+                { label: "Growth Momentum", pct: 18, color: "bg-[color:var(--red)]" },
+                { label: "Engagement Depth", pct: 55, color: "bg-[color:var(--amber)]" },
+                { label: "Platform Optimization", pct: 40, color: "bg-[color:var(--amber)]" },
+                { label: "Brand Cohesion", pct: 68, color: "bg-[color:var(--green)]" },
+                { label: "Conversion Architecture", pct: 22, color: "bg-[color:var(--red)]" },
+              ].map((dim) => (
+                <div key={dim.label} className="mt-2 flex items-center gap-2 text-[0.68rem]">
+                  <span className="w-32 flex-shrink-0 text-right font-medium text-muted-foreground">{dim.label}</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#f0efed]">
+                    <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.pct}%` }} />
+                  </div>
+                  <span className="w-5 flex-shrink-0 text-right font-mono font-semibold">{dim.pct}</span>
+                </div>
+              ))}
+              <p className="mt-2 text-[0.58rem] italic text-muted-foreground">What this proves: Diagnosis — where you stand</p>
+
+              {/* ── Working / Missing ── */}
+              <div className="mt-5 grid grid-cols-2 gap-4 border-t border-border pt-4">
+                <div>
+                  <h5 className="text-[0.7rem] font-bold text-[color:var(--green)]">🟢 Working</h5>
+                  <ul className="mt-1.5 space-y-1.5">
+                    <li className="text-[0.68rem] text-muted-foreground leading-snug">Product differentiation — dual-extract, lab-tested formulations</li>
+                    <li className="text-[0.68rem] text-muted-foreground leading-snug">Visual identity — consistent forest green + amber palette</li>
+                  </ul>
+                </div>
+                <div>
+                  <h5 className="text-[0.7rem] font-bold text-[color:var(--red)]">🔴 Missing</h5>
+                  <ul className="mt-1.5 space-y-1.5">
+                    <li className="text-[0.68rem] text-muted-foreground leading-snug">Only 22% of posts are Reels — Instagram weights video 3–5× higher</li>
+                    <li className="text-[0.68rem] text-muted-foreground leading-snug">18-hour reply latency — silent community signals low priority to the algorithm</li>
+                  </ul>
+                </div>
+              </div>
+              <p className="mt-1 text-[0.58rem] italic text-muted-foreground">What this proves: What&rsquo;s good, what&rsquo;s broken</p>
+
+              {/* ── Three Moves ── */}
+              <div className="mt-5 border-t border-border pt-4">
+                <h5 className="text-[0.7rem] font-bold">⚡ Three Moves</h5>
+                <div className="mt-2 space-y-2">
+                  {[
+                    "Shift to 60% Reels — prioritise native video to unlock 3–5× reach",
+                    "Reply to every comment within 4 hours — restart the engagement signal",
+                    "Build story highlight architecture — give new visitors a guided path",
+                  ].map((move, i) => (
+                    <div key={i} className="flex items-start gap-2.5 rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-2.5">
+                      <span className="mt-0.5 flex size-4 flex-shrink-0 items-center justify-center rounded-full bg-[color:var(--accent)] text-[0.55rem] font-bold text-white">{i + 1}</span>
+                      <span className="text-[0.68rem] text-muted-foreground leading-snug">{move}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-1 text-[0.58rem] italic text-muted-foreground">What this proves: Concrete prescription — 3 numbered actions</p>
+              </div>
+
+              {/* ── CTA ── */}
+              <div className="mt-5 border-t border-border pt-5 text-center">
+                <Link href={primaryHref}>
+                  <Button size="lg" className="font-semibold">
+                    Run a Free Pulse Audit
+                  </Button>
+                </Link>
+                <p className="mt-2 text-[0.65rem] text-muted-foreground">Get a score, strengths, gaps, and three moves — all from just a handle and email.</p>
+              </div>
+            </div>
           </div>
         </section>
 
