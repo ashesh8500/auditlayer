@@ -654,38 +654,56 @@ export default async function Home() {
 
         {/* ── 6. Blueprint Audit ── */}
         <section className="mt-10">
-          <div className="mx-auto max-w-md rounded-[calc(var(--radius)+2px)] border border-[color:var(--accent)]/30 bg-gradient-to-r from-[color:var(--accent-muted)]/60 to-transparent p-6 text-center">
+          <div className="mx-auto max-w-xl rounded-[calc(var(--radius)+2px)] border border-[color:var(--accent)]/30 bg-gradient-to-br from-[color:var(--accent-muted)]/60 to-transparent p-6 sm:p-8">
             <div className="flex items-center justify-center gap-2">
               <h3 className="text-base font-semibold">Blueprint Audit</h3>
               <span className="rounded-full bg-[color:var(--accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--accent)]">One-time</span>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">Set up to two accounts with a complete pre-launch strategy</p>
-            <p className="mt-1 text-[0.65rem] font-medium text-[color:var(--accent)]">Suggested for accounts 0–1K followers</p>
-            <div className="mt-3 flex items-baseline justify-center gap-1">
+            <p className="mt-1 text-center text-xs text-muted-foreground">Set up to two accounts with a complete pre-launch strategy</p>
+            <p className="mt-0.5 text-center text-[0.65rem] font-medium text-[color:var(--accent)]">Suggested for accounts 0–1K followers</p>
+
+            {/* 3-column phase layout */}
+            <div className="mt-5 grid grid-cols-3 gap-2">
+              {[
+                { icon: "🔭", phase: "Research", items: ["Niche analysis", "Handle evaluation", "Competitive map"] },
+                { icon: "🏗", phase: "Build", items: ["Content pillars", "First 10 content ideas", "Platform setup"] },
+                { icon: "🚀", phase: "Launch", items: ["90-day playbook", "Weekly milestones", "Format strategy"] },
+              ].map((col) => (
+                <div key={col.phase} className="rounded-[var(--radius-sm)] bg-white/50 p-3 text-center">
+                  <span className="text-lg">{col.icon}</span>
+                  <p className="mt-1 text-[0.65rem] font-bold uppercase tracking-[0.06em] text-muted-foreground">{col.phase}</p>
+                  <ul className="mt-1.5 space-y-0.5">
+                    {col.items.map((item) => (
+                      <li key={item} className="text-[0.6rem] text-muted-foreground">{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-baseline justify-center gap-1">
               <span className="font-mono text-2xl font-semibold">$79</span>
               <span className="text-xs text-muted-foreground">one-time</span>
             </div>
-            <ul className="mx-auto mt-4 max-w-xs space-y-2 text-left">
+            <ul className="mx-auto mt-4 max-w-xs space-y-1.5 text-left">
               {[
-                "Covers up to 2 accounts",
                 "Full 15-section pre-launch assessment",
-                "Niche positioning & handle evaluation",
-                "Competitive landscape mapping",
                 "90-day launch playbook with weekly milestones",
-                "Content pillar architecture & first 10 content ideas",
                 "Platform-by-platform setup guide",
               ].map((f) => (
-                <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <Check className="mt-0.5 size-3.5 shrink-0 text-[color:var(--green)]" />
+                <li key={f} className="flex items-start gap-2 text-[0.7rem] text-muted-foreground">
+                  <Check className="mt-0.5 size-3 shrink-0 text-[color:var(--green)]" />
                   {f}
                 </li>
               ))}
             </ul>
-            <Link href={primaryHref} className="mt-5 inline-block">
-              <Button variant="outline" className="font-medium">
-                Get the Blueprint
-              </Button>
-            </Link>
+            <div className="mt-4 text-center">
+              <Link href={primaryHref}>
+                <Button variant="outline" className="font-medium">
+                  Get the Blueprint
+                </Button>
+              </Link>
+            </div>
           </div>
         </section>
 
