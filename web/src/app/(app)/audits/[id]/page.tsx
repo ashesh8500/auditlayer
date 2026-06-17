@@ -140,10 +140,7 @@ async function ReadyReport({
   return (
     <div className="space-y-6">
       {/* Read full report button */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          Report
-        </h2>
+      <div className="flex items-center justify-end">
         <Link
           href={`/audits/${auditId}/read`}
           className="inline-flex items-center gap-1.5 rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[color:var(--accent)]/90 transition-colors"
