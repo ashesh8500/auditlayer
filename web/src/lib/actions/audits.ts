@@ -121,7 +121,7 @@ export async function createAudit(
   // Backward-compatible fallback for production schema drift: older DBs may
   // not have the report_type column yet. Retry without it so audit creation
   // still works; the worker defaults the missing value to a standard report.
-  if (error?.code === "42703" && error.message?.includes("report_type")) {
+  if (error?.message?.includes("report_type")) {
     const legacyAuditInsert = { ...auditInsert };
     delete legacyAuditInsert.report_type;
     console.error("createAudit insert retrying without report_type", {
