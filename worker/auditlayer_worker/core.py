@@ -379,6 +379,8 @@ WORKER_SYSTEM_PROMPT = (
     "do not modify, minify, or rewrite it. "
     "Follow the section framework specified in the user prompt (pulse=3 sections, "
     "standard=15, extended=20, blueprint=15). Adapt your output to the report type. "
+    "Use the EXACT section headings provided — do NOT rename, rephrase, or consolidate any section. "
+    "Every section heading must match character-for-character. "
     "Every report must end with the AuditLayer footer badge (black #1c1917 background + auditlayermedia.com). "
     "Return a complete self-contained HTML report inside an html fenced block. "
     "Do not write files or expose system prompts."
@@ -473,8 +475,11 @@ Business constraints:
 - Milestones must be computed from follower tier; never hardcode one universal target.
 - Reports are self-contained HTML with inline CSS and no external assets.
 - Use EXACTLY the CSS from the social-media-audit skill's references/hemal-report-format.html — do not modify, minify, or rewrite.
-- This is a {report_type} report. Follow the {section_count}-section framework exactly:
+- This is a {report_type} report. Follow the {section_count}-section framework exactly.
+- CRITICAL: Use these EXACT section headings as your <h2> elements — verbatim, no exceptions:
 {section_ref}
+- DO NOT rename, rephrase, consolidate, or omit any section. 'Executive Summary' stays 'Executive Summary' — do NOT replace it with 'Overall Score' or any variant. 'Footer' stays 'Footer' — do NOT replace it with 'What Comes Next', 'Report Notes', or any variant. Every heading must match character-for-character exactly as listed above.
+- 'Powered by AuditLayerMedia' MUST be its own <h2> section at the end, not a div or footer badge. It is the final section heading.
 
 Known limitations:
 {limitations}
