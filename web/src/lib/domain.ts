@@ -92,23 +92,23 @@ export function effectivePlanForProfile(profile: {
 export const GOALS: { value: Goal; label: string; blurb: string }[] = [
   {
     value: "growth",
-    label: "Grow my audience",
-    blurb: "Followers, reach, and engagement — the road to the next milestone.",
+    label: "GROWTH",
+    blurb: "Scale your audience, increase reach, and hit the next follower milestone.",
   },
   {
     value: "monetization",
-    label: "Monetize what I have",
-    blurb: "Turn the audience I already have into revenue.",
+    label: "MONETIZATION",
+    blurb: "Turn your existing audience into revenue — affiliates, products, services.",
   },
   {
     value: "rebrand",
-    label: "Refine my positioning",
-    blurb: "Sharpen the brand, niche, and message before scaling.",
+    label: "REBRAND",
+    blurb: "Reposition your brand, sharpen your niche, refresh your message.",
   },
   {
     value: "launch_readiness",
-    label: "Prepare for a launch",
-    blurb: "Get audit-ready for a product, course, or campaign.",
+    label: "LAUNCH READINESS",
+    blurb: "Audit-ready for a product, course, or campaign launch.",
   },
 ];
 
