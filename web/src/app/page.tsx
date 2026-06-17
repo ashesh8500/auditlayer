@@ -277,24 +277,8 @@ export default async function Home() {
 
         <hr className="mt-14 border-border" />
 
-        {/* ── 4. Instagram Connect CTA ── */}
-        <section className="relative z-10 mx-auto mt-14 max-w-2xl text-center">
-          <div className="rounded-xl border border-border bg-card px-6 py-8 shadow-[var(--shadow-sm)]">
-            <h2 className="text-lg font-semibold">Connect your Instagram for live metrics</h2>
-            <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-              Get real follower counts, engagement rates, and content data — instead of public estimates.
-              Available for Business and Creator accounts.
-            </p>
-            <div className="mt-4">
-              <Link href="/login">
-                <Button className="font-semibold">Connect Instagram</Button>
-              </Link>
-            </div>
-          </div>
-        </section>
-
         {/* ── 5. Side-by-Side: Standard vs Extended ── */}
-        <section className="mt-14">
+        <section className="mt-14 w-full">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground text-center">
             Choose Your Depth
           </h2>
@@ -302,42 +286,129 @@ export default async function Home() {
             Standard covers the essentials. Extended adds five premium sections for creators ready to dominate.
           </p>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="mt-6 grid gap-6 lg:grid-cols-2 w-full">
             {/* Standard — 15 sections */}
             <div className="relative overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-md)]">
-              <div className="flex items-center justify-between border-b border-border bg-[#f5f5f4] px-4 py-2.5">
-                <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              <div className="flex items-center justify-between border-b border-border bg-[#f5f5f4] px-4 py-2">
+                <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                   Standard · 15 sections · $30/mo
                 </span>
-                <span className="rounded-full bg-[color:var(--accent-muted)] px-2 py-0.5 font-mono text-[0.6rem] font-semibold uppercase text-[color:var(--accent)]">
+                <span className="rounded-full bg-[color:var(--accent-muted)] px-2 py-0.5 font-mono text-[0.55rem] font-semibold uppercase text-[color:var(--accent)]">
                   Starter+
                 </span>
               </div>
-              <div className="max-h-[400px] overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
-                <ol className="space-y-1.5 text-xs">
+              <div className="max-h-[520px] overflow-y-auto px-3 py-3 sm:px-4 sm:py-4">
+                <p className="text-[0.55rem] font-bold uppercase tracking-[0.1em] text-[color:var(--accent)]">Instagram Account Audit</p>
+                <h3 className="mt-0.5 text-base font-bold tracking-[-0.02em]">@glowstate</h3>
+                <p className="mt-0.5 text-[0.55rem] text-muted-foreground leading-relaxed">Premium adaptogenic supplements — functional mushrooms, nootropics, and plant-based wellness.</p>
+
+                <div className="mt-3 rounded-[var(--radius)] bg-[#fcfcfb] p-3">
+                  <div className="mb-2 flex items-baseline justify-between border-b border-border pb-2">
+                    <span className="text-[0.55rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">Score Breakdown</span>
+                    <span className="font-mono text-base font-semibold">48<span className="text-[0.55rem] font-normal text-muted-foreground">/100</span></span>
+                  </div>
                   {[
-                    "Executive Summary",
-                    "Key Metrics",
-                    "Strengths",
-                    "Weaknesses",
-                    "Root Cause Analysis",
-                    "Peer Comparison",
-                    "Content Format Analysis",
-                    "Engagement Growth Strategy",
-                    "Quick Wins — This Week",
-                    "Success Benchmarks",
-                    "Audience Profile",
-                    "Road to [Milestone]",
-                    "Audit Cadence",
-                    "Footer",
-                    "Powered by AuditLayerMedia",
-                  ].map((s, i) => (
-                    <li key={s} className="flex items-start gap-2 text-muted-foreground">
-                      <span className="mt-0.5 font-mono text-[0.6rem] font-semibold text-[color:var(--accent)] shrink-0 w-4 text-right">{i + 1}.</span>
-                      {s}
-                    </li>
+                    { label: "Content Strategy", pct: 32, color: "bg-[color:var(--red)]" },
+                    { label: "Growth Momentum", pct: 18, color: "bg-[color:var(--red)]" },
+                    { label: "Engagement Depth", pct: 55, color: "bg-[color:var(--amber)]" },
+                    { label: "Platform Optimization", pct: 40, color: "bg-[color:var(--amber)]" },
+                    { label: "Brand Cohesion", pct: 68, color: "bg-[color:var(--green)]" },
+                    { label: "Conversion Architecture", pct: 22, color: "bg-[color:var(--red)]" },
+                  ].map((dim) => (
+                    <div key={dim.label} className="mb-1.5 flex items-center gap-2 text-[0.55rem] last:mb-0">
+                      <span className="w-24 flex-shrink-0 text-right text-[0.5rem] text-muted-foreground">{dim.label}</span>
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#f0efed]">
+                        <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.pct}%` }} />
+                      </div>
+                      <span className="w-5 flex-shrink-0 text-right font-mono font-semibold">{dim.pct}</span>
+                    </div>
                   ))}
-                </ol>
+                </div>
+
+                <h4 className="mt-3 text-[0.6rem] font-bold">Executive Summary</h4>
+                <p className="mt-0.5 text-[0.55rem] leading-relaxed text-muted-foreground">
+                  @glowstate holds <strong className="text-foreground">24.8K followers</strong> with a clean visual identity, but engagement sits at <strong className="text-foreground">1.42%</strong> — half the 3.5% benchmark. Reels account for only 22% of output despite being the highest-reach format. The root cause is format strategy and community activation: the account treats Instagram as a catalog rather than a publication. Shifting to 60% Reels, reducing reply latency, and building story highlight architecture can realistically reach 40K followers within 90 days.
+                </p>
+
+                <div className="mt-3 grid grid-cols-2 gap-1.5">
+                  {[
+                    { value: "24.8K", label: "Followers" },
+                    { value: "1.42%", label: "Engagement", tone: "text-[color:var(--red)]" },
+                    { value: "312", label: "Avg Likes" },
+                    { value: "+0.3%", label: "30-Day Growth", tone: "text-[color:var(--amber)]" },
+                  ].map((m) => (
+                    <div key={m.label} className="rounded-[var(--radius-sm)] border border-border p-2 text-center">
+                      <div className={`font-mono text-sm font-semibold leading-none ${m.tone || ""}`}>{m.value}</div>
+                      <div className="mt-0.5 text-[0.5rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">{m.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 border-b border-border" />
+
+                <h4 className="mt-3 text-[0.6rem] font-bold">Strengths</h4>
+                <div className="mt-1.5 space-y-1.5">
+                  {[
+                    "Product differentiation — dual-extract formulations and third-party lab testing are rare structural moats in the adaptogen space.",
+                    "Visual identity — forest green + amber palette is consistent and intentional, building trust at a glance.",
+                    "Posting consistency — 4–5 posts per week maintained over 8+ months. The habit infrastructure is in place.",
+                  ].map((s) => (
+                    <div key={s} className="rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-2">
+                      <p className="text-[0.55rem] text-muted-foreground leading-relaxed">{s}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <h4 className="mt-3 text-[0.6rem] font-bold">Weaknesses</h4>
+                <div className="mt-1.5 space-y-1.5">
+                  {[
+                    "Engagement rate at 1.42% vs 3.5% niche benchmark — likes are shallow, saves and shares are near zero.",
+                    "No story highlight architecture — zero highlights despite active posting. Missed trust-building real estate.",
+                  ].map((s) => (
+                    <div key={s} className="rounded-[var(--radius-sm)] border-l-2 border-l-[color:var(--red)] bg-[#fcfcfb] p-2">
+                      <p className="text-[0.55rem] text-muted-foreground leading-relaxed">{s}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <h4 className="mt-3 text-[0.6rem] font-bold">Peer Comparison</h4>
+                <div className="mt-1.5 overflow-x-auto">
+                  <table className="w-full text-[0.5rem]">
+                    <thead>
+                      <tr className="border-b border-border text-left text-muted-foreground">
+                        <th className="pb-1 pr-2 font-medium">Account</th><th className="pb-1 pr-2 font-medium">Followers</th><th className="pb-1 pr-2 font-medium">ER</th><th className="pb-1 font-medium">Format</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[["@glowstate","24.8K","1.42%","Photo-heavy"],["@fourigmatic","31K","3.1%","Reel-first"],["@mudwtr","112K","2.8%","Lifestyle mix"]].map((row,i)=>(
+                        <tr key={i} className={i===0?"font-semibold bg-[color:var(--accent-muted)]/30":""}>
+                          {row.map((cell,j)=><td key={j} className="py-1 pr-2">{cell}</td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4 className="mt-3 text-[0.6rem] font-bold">Content Format Analysis</h4>
+                <p className="mt-0.5 text-[0.55rem] leading-relaxed text-muted-foreground">Reels account for only 22% of output despite being the highest-reach format. Carousels perform 3x better than single images on saves. Stories are absent — zero story highlights means zero persistent trust architecture. The account is leaving its most effective formats unused.</p>
+
+                <h4 className="mt-3 text-[0.6rem] font-bold">Growth Strategy</h4>
+                <p className="mt-0.5 text-[0.55rem] leading-relaxed text-muted-foreground">Shift to 60% Reels with hook-first editing. Build 5 story highlights. Reduce reply latency to under 2 hours. Implement save-bait carousels weekly. The content-to-commerce pipeline needs a dedicated conversion track — currently every post is brand-building with no purchase path.</p>
+
+                <h4 className="mt-3 text-[0.6rem] font-bold">Quick Wins — This Week</h4>
+                <div className="mt-1.5 space-y-1">
+                  {["Post one Reel using trending adaptogen-niche audio","Create Product Science story highlight (8 slides)","Reply to every comment from the last 5 posts within 2 hours"].map((w,i)=>(
+                    <div key={i} className="flex gap-2 text-[0.55rem] text-muted-foreground"><span className="flex-shrink-0 grid size-4 place-items-center rounded-full bg-[color:var(--accent)] text-[0.5rem] font-bold text-white">{i+1}</span>{w}</div>
+                  ))}
+                </div>
+
+                <div className="mt-4 border-t border-border pt-3 text-[0.5rem] text-muted-foreground italic">
+                  Success Benchmarks · Audience Profile · Road to 40K · Audit Cadence · Footer
+                </div>
+                <div className="mt-2 rounded bg-[#1c1917] px-3 py-2 text-center">
+                  <span className="text-[0.55rem] font-bold text-white">ALM</span>
+                  <span className="ml-1.5 text-[0.5rem] text-white/70">Powered by AuditLayerMedia</span>
+                </div>
               </div>
               <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white via-white/90 to-transparent" />
             </div>
@@ -345,66 +416,90 @@ export default async function Home() {
             {/* Extended — 20 sections */}
             <div className="relative overflow-hidden rounded-[var(--radius-lg)] border-2 border-[color:var(--accent)] bg-white shadow-[var(--shadow-lg)]">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                <span className="rounded-full bg-[color:var(--accent)] px-3 py-0.5 text-[0.6rem] font-bold uppercase text-white tracking-wider">
-                  Recommended
-                </span>
+                <span className="rounded-full bg-[color:var(--accent)] px-3 py-0.5 text-[0.55rem] font-bold uppercase text-white tracking-wider">Recommended</span>
               </div>
-              <div className="flex items-center justify-between border-b border-border bg-[color:var(--accent-muted)] px-4 py-2.5">
-                <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--accent)]">
-                  Extended · 20 sections · $50/mo
-                </span>
-                <span className="rounded-full bg-[color:var(--accent)] px-2 py-0.5 font-mono text-[0.6rem] font-semibold uppercase text-white">
-                  Pro
-                </span>
+              <div className="flex items-center justify-between border-b border-border bg-[color:var(--accent-muted)] px-4 py-2">
+                <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--accent)]">Extended · 20 sections · $50/mo</span>
+                <span className="rounded-full bg-[color:var(--accent)] px-2 py-0.5 font-mono text-[0.55rem] font-semibold uppercase text-white">Pro</span>
               </div>
-              <div className="max-h-[400px] overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
-                <ol className="space-y-1.5 text-xs">
+              <div className="max-h-[520px] overflow-y-auto px-3 py-3 sm:px-4 sm:py-4">
+                <p className="text-[0.55rem] font-bold uppercase tracking-[0.1em] text-[color:var(--accent)]">Instagram Account Audit</p>
+                <h3 className="mt-0.5 text-base font-bold tracking-[-0.02em]">@glowstate</h3>
+                <p className="mt-0.5 text-[0.55rem] text-muted-foreground leading-relaxed">Premium adaptogenic supplements — functional mushrooms, nootropics, and plant-based wellness.</p>
+
+                <div className="mt-3 rounded-[var(--radius)] bg-[#fcfcfb] p-3">
+                  <div className="mb-2 flex items-baseline justify-between border-b border-border pb-2">
+                    <span className="text-[0.55rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">Score Breakdown</span>
+                    <span className="font-mono text-base font-semibold">48<span className="text-[0.55rem] font-normal text-muted-foreground">/100</span></span>
+                  </div>
                   {[
-                    "Executive Summary",
-                    "Key Metrics",
-                    "Strengths",
-                    "Weaknesses",
-                    "Root Cause Analysis",
-                    "Peer Comparison",
-                    "Content Format Analysis",
-                    "Engagement Growth Strategy",
-                    "Quick Wins — This Week",
-                    "Success Benchmarks",
-                    "Audience Profile",
-                    "Road to [Milestone]",
-                    "Audit Cadence",
-                    "Content Pillars & Ideas",
-                    "Footer",
-                  ].map((s, i) => (
-                    <li key={s} className="flex items-start gap-2 text-muted-foreground">
-                      <span className="mt-0.5 font-mono text-[0.6rem] font-semibold text-[color:var(--accent)] shrink-0 w-4 text-right">{i + 1}.</span>
-                      {s}
-                    </li>
+                    { label: "Content Strategy", pct: 32, color: "bg-[color:var(--red)]" },
+                    { label: "Growth Momentum", pct: 18, color: "bg-[color:var(--red)]" },
+                    { label: "Engagement Depth", pct: 55, color: "bg-[color:var(--amber)]" },
+                    { label: "Brand Cohesion", pct: 68, color: "bg-[color:var(--green)]" },
+                  ].map((dim) => (
+                    <div key={dim.label} className="mb-1.5 flex items-center gap-2 text-[0.55rem] last:mb-0">
+                      <span className="w-20 flex-shrink-0 text-right text-[0.5rem] text-muted-foreground">{dim.label}</span>
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#f0efed]">
+                        <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.pct}%` }} />
+                      </div>
+                      <span className="w-5 flex-shrink-0 text-right font-mono font-semibold">{dim.pct}</span>
+                    </div>
                   ))}
-                  <li className="border-t border-[color:var(--accent)]/20 mt-3 pt-3 mb-1">
-                    <span className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-[color:var(--accent)]">Premium Sections</span>
-                  </li>
+                </div>
+
+                <h4 className="mt-3 text-[0.6rem] font-bold">Executive Summary</h4>
+                <p className="mt-0.5 text-[0.55rem] leading-relaxed text-muted-foreground">@glowstate holds 24.8K followers with a clean visual identity, but engagement sits at 1.42% — half the 3.5% benchmark. Shifting to 60% Reels and building story highlight architecture can reach 40K within 90 days.</p>
+
+                <div className="mt-3 grid grid-cols-2 gap-1.5">
                   {[
-                    "Power of Posting Stories",
-                    "Your Thumbnails Are the Lens",
-                    "Leave Genuine Comments",
-                    "Your First 3 Seconds",
-                    "Powered by AuditLayerMedia",
-                  ].map((s, i) => (
-                    <li key={s} className="flex items-start gap-2 text-foreground font-medium">
-                      <span className="mt-0.5 font-mono text-[0.6rem] font-bold text-[color:var(--accent)] shrink-0 w-4 text-right">{i + 16}.</span>
-                      <span className="flex items-center gap-1.5">
-                        ✦ {s}
-                      </span>
-                    </li>
+                    { value: "24.8K", label: "Followers" },{ value: "1.42%", label: "Engagement", tone: "text-[color:var(--red)]" },{ value: "312", label: "Avg Likes" },{ value: "+0.3%", label: "30-Day Growth", tone: "text-[color:var(--amber)]" },
+                  ].map((m) => (
+                    <div key={m.label} className="rounded-[var(--radius-sm)] border border-border p-2 text-center">
+                      <div className={`font-mono text-sm font-semibold leading-none ${m.tone || ""}`}>{m.value}</div>
+                      <div className="mt-0.5 text-[0.5rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">{m.label}</div>
+                    </div>
                   ))}
-                </ol>
+                </div>
+
+                <div className="mt-4 rounded-[var(--radius)] border border-[color:var(--accent)]/20 bg-[color:var(--accent-muted)] p-3">
+                  <p className="text-[0.55rem] font-bold uppercase tracking-[0.08em] text-[color:var(--accent)]">✦ Premium Sections (16-20)</p>
+                  <div className="mt-2 space-y-2.5">
+                    <div>
+                      <h4 className="text-[0.58rem] font-bold">16. Power of Posting Stories</h4>
+                      <p className="mt-0.5 text-[0.52rem] text-muted-foreground leading-relaxed">A story isn&apos;t a repost of your feed content — it&apos;s a different medium with different psychology. Stories create intimacy through impermanence: behind-the-scenes, polls, Q&A, raw unfiltered moments. Accounts that post 5+ stories/day see 2.3x higher profile visits. Build 5 themed highlights that act as a permanent trust portfolio for first-time profile visitors.</p>
+                    </div>
+                    <div>
+                      <h4 className="text-[0.58rem] font-bold">17. Your Thumbnails Are the Lens</h4>
+                      <p className="mt-0.5 text-[0.52rem] text-muted-foreground leading-relaxed">Your thumbnail IS your first impression — the lens through which every potential follower decides to stop or scroll. Use face-in-context, promise-driven text overlays, and consistent color grading across your grid. Test: if it doesn&apos;t stop YOU at 2x scroll speed, it won&apos;t stop anyone. Your current thumbnails lack text overlays entirely — you&apos;re invisible in the explore feed.</p>
+                    </div>
+                    <div>
+                      <h4 className="text-[0.58rem] font-bold">18. Leave Genuine Comments</h4>
+                      <p className="mt-0.5 text-[0.52rem] text-muted-foreground leading-relaxed">Start leaving real, specific comments under posts from creators you resonate with — not &ldquo;great post!&rdquo; but thoughtful replies that add value. This is the most underrated growth lever: genuine comments signal to the algorithm that you&apos;re an active community member. Aim for 5 meaningful comments/day on accounts in the adaptogen/wellness niche. Your comment history is currently zero — you&apos;re invisible to the community graph.</p>
+                    </div>
+                    <div>
+                      <h4 className="text-[0.58rem] font-bold">19. Your First 3 Seconds</h4>
+                      <p className="mt-0.5 text-[0.52rem] text-muted-foreground leading-relaxed">The first 3 seconds determine whether someone stays or scrolls. Open with a pattern interrupt — a question, a bold claim, or visual surprise. Never open with &ldquo;Hey guys&rdquo; or a logo. The hook must create enough curiosity to survive the thumb-release reflex. Study the first 3 seconds of your 10 favorite creators and pattern-match. Your current Reels average a 62% drop-off in the first 3 seconds.</p>
+                    </div>
+                    <div>
+                      <h4 className="text-[0.58rem] font-bold">20. 5 Mindset Shifts for More Leads</h4>
+                      <p className="mt-0.5 text-[0.52rem] text-muted-foreground leading-relaxed">① Your content is a portfolio, not a diary — every post should answer a question your ideal client is asking. ② Consistency beats virality: one post/day for 90 days outperforms one viral post/month. ③ Engagement is currency — reply to every comment within 2 hours. ④ Your audience doesn&apos;t need to like you, they need to trust you — trust is built through demonstrated expertise, not personality. ⑤ Stop treating Instagram as a catalog. You&apos;re not a product page — you&apos;re a publication.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 border-t border-border pt-3">
+                  <div className="rounded bg-[#1c1917] px-3 py-2 text-center">
+                    <span className="text-[0.55rem] font-bold text-white">ALM</span>
+                    <span className="ml-1.5 text-[0.5rem] text-white/70">Powered by AuditLayerMedia</span>
+                  </div>
+                </div>
               </div>
               <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white via-white/90 to-transparent" />
             </div>
           </div>
 
-          <div className="mt-4 text-center">
+          <div className="mt-6 text-center">
             <Link href="/login">
               <Button className="font-semibold">Start Your Audit</Button>
             </Link>
