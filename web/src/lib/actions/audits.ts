@@ -100,23 +100,52 @@ export async function createAudit(
     usage,
   );
 
-  const { data: audit, error } = await admin
+  const auditInsert = {
+    user_id: profile.id,
+    handle: decision.normalizedHandle,
+    platform: decision.platform,
+    goal: parsed.data.goal,
+    report_type: reportType,
+    context: parsed.data.context,
+    status: decision.status,
+    limitations: decision.limitations,
+    milestone_label: decision.milestoneLabel,
+  } as any;
+
+  let { data: audit, error } = await admin
     .from("audits")
-    .insert({
-      user_id: profile.id,
-      handle: decision.normalizedHandle,
-      platform: decision.platform,
-      goal: parsed.data.goal,
-      report_type: reportType,
-      context: parsed.data.context,
-      status: decision.status,
-      limitations: decision.limitations,
-      milestone_label: decision.milestoneLabel,
-    } as any)
+    .insert(auditInsert)
     .select("id")
     .single();
 
+  // Backward-compatible fallback for production schema drift: older DBs may
+  // not have the report_type column yet. Retry without it so audit creation
+  // still works; the worker defaults the missing value to a standard report.
+  if (error?.code === "42703" && error.message?.includes("report_type")) {
+    const legacyAuditInsert = { ...auditInsert };
+    delete legacyAuditInsert.report_type;
+    console.error("createAudit insert retrying without report_type", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    const retry = await admin
+      .from("audits")
+      .insert(legacyAuditInsert)
+      .select("id")
+      .single();
+    audit = retry.data;
+    error = retry.error;
+  }
+
   if (error || !audit) {
+    console.error("createAudit insert failed", {
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+    });
     return {
       status: "error",
       message: "We couldn't create that audit. Please try again.",

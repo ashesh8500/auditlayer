@@ -205,7 +205,24 @@ class SupabaseGateway:
 
     def update_audit(self, audit_id: str, **fields: Any) -> None:
         fields["updated_at"] = _utcnow()
-        self.client.table("audits").update(fields).eq("id", audit_id).execute()
+        try:
+            self.client.table("audits").update(fields).eq("id", audit_id).execute()
+        except Exception as exc:
+            # Backward-compatible fallback for production schema drift. These
+            # columns are additive migrations; if live Supabase is behind, do
+            # the core status/path update without optional retry/cache fields.
+            legacy_optional = {"research_cache", "last_failed_at", "retry_count", "report_type"}
+            msg = str(exc)
+            retry_fields = dict(fields)
+            removed = [col for col in legacy_optional if col in retry_fields and col in msg]
+            if not removed and ("42703" in msg or "schema cache" in msg):
+                removed = [col for col in legacy_optional if col in retry_fields]
+            for col in removed:
+                retry_fields.pop(col, None)
+            if removed and retry_fields != fields:
+                self.client.table("audits").update(retry_fields).eq("id", audit_id).execute()
+                return
+            raise
 
     def update_refinement(self, refinement_id: str, **fields: Any) -> None:
         fields["updated_at"] = _utcnow()
