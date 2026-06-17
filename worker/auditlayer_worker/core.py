@@ -57,6 +57,14 @@ class Platform(str, Enum):
     UNKNOWN = "unknown"
 
 
+class ReportType(str, Enum):
+    PULSE = "pulse"
+    STANDARD = "standard"
+    EXTENDED = "extended"
+    ENTERPRISE = "enterprise"
+    BLUEPRINT = "blueprint"
+
+
 # Granular event phases for the live agentic timeline (shared contract).
 PHASES = (
     "intake",
@@ -122,12 +130,13 @@ class AuditRecord:
     user_id: str | None = None
     model: str | None = None
     research_cache: str = ""
+    report_type: str = ReportType.STANDARD.value
+    plan: str = Plan.FREE.value
 
     @classmethod
     def from_row(cls, row: dict) -> "AuditRecord":
         limitations = row.get("limitations") or []
         if isinstance(limitations, str):
-            # jsonb may come back as a JSON string from some clients
             import json
 
             try:
@@ -147,6 +156,8 @@ class AuditRecord:
             user_id=row.get("user_id"),
             model=row.get("model"),
             research_cache=row.get("research_cache") or "",
+            report_type=row.get("report_type") or ReportType.STANDARD.value,
+            plan=row.get("plan") or Plan.FREE.value,
         )
 
 
@@ -279,13 +290,17 @@ def evaluate_intake(
     )
 
 
-# Skill-driven architecture — Hermes loads social-media-audit skill dynamically
-# Formatting rules, CSS, and section structure live in the skill, not here.
-# Skill updates auto-propagate to all future reports with zero worker restarts.
+# ---------------------------------------------------------------------------
+# Report section definitions — per report type
 # ---------------------------------------------------------------------------
 
-# Canonical 15-section structure from social-media-audit skill (references/hemal-report-format.html)
-_AUDITLAYER_SECTIONS = [
+PULSE_SECTIONS = [
+    "Score Breakdown",
+    "Key Gaps",
+    "Three Immediate Moves",
+]
+
+STANDARD_SECTIONS = [
     "Executive Summary",
     "Key Metrics",
     "Strengths",
@@ -303,10 +318,58 @@ _AUDITLAYER_SECTIONS = [
     "Powered by AuditLayerMedia",
 ]
 
+EXTENDED_SECTIONS = [
+    "Executive Summary",
+    "Key Metrics",
+    "Strengths",
+    "Weaknesses",
+    "Root Cause Analysis",
+    "Peer Comparison",
+    "Content Format Analysis",
+    "Engagement Growth Strategy",
+    "Quick Wins — This Week",
+    "Success Benchmarks",
+    "Audience Profile",
+    "Road to [Milestone]",
+    "Audit Cadence",
+    "Content Pillars & Ideas",
+    "Footer",
+    "Power of Posting Stories",
+    "Your Thumbnails Are the Lens",
+    "Leave Genuine Comments",
+    "Your First 3 Seconds",
+    "Powered by AuditLayerMedia",
+]
 
-def _load_template_sections() -> list[str]:
-    """Return the canonical 15-section AuditLayer structure."""
-    return _AUDITLAYER_SECTIONS
+BLUEPRINT_SECTIONS = [
+    "Niche & Positioning Audit",
+    "Competitive Landscape",
+    "Content Pillar Architecture",
+    "Profile Optimization Checklist",
+    "Visual Identity Framework",
+    "Content Calendar — Month 1",
+    "Story Strategy",
+    "Engagement Playbook",
+    "Growth Levers — First 90 Days",
+    "Content Format Mix",
+    "Brand Voice Guide",
+    "Launch Readiness Score",
+    "Risk & Blind Spots",
+    "Footer",
+    "Powered by AuditLayerMedia",
+]
+
+REPORT_SECTIONS: dict[str, list[str]] = {
+    "pulse": PULSE_SECTIONS,
+    "standard": STANDARD_SECTIONS,
+    "extended": EXTENDED_SECTIONS,
+    "blueprint": BLUEPRINT_SECTIONS,
+}
+
+
+def _load_template_sections(report_type: str = "standard") -> list[str]:
+    """Return the section list for the given report type."""
+    return REPORT_SECTIONS.get(report_type, STANDARD_SECTIONS)
 
 
 WORKER_SYSTEM_PROMPT = (
@@ -314,7 +377,8 @@ WORKER_SYSTEM_PROMPT = (
     "Load the social-media-audit skill and follow it exactly. "
     "Use the CSS from the skill's references/hemal-report-format.html — "
     "do not modify, minify, or rewrite it. "
-    "Follow the 15-section framework and all formatting rules in the skill. "
+    "Follow the section framework specified in the user prompt (pulse=3 sections, "
+    "standard=15, extended=20, blueprint=15). Adapt your output to the report type. "
     "Every report must end with the AuditLayer footer badge (black #1c1917 background + auditlayermedia.com). "
     "Return a complete self-contained HTML report inside an html fenced block. "
     "Do not write files or expose system prompts."
@@ -328,10 +392,33 @@ WORKER_SYSTEM_PROMPT = (
 
 def build_worker_prompt(audit: AuditRecord, ig_metrics: Any = None) -> str:
     limitations = "\n".join(f"- {item}" for item in audit.limitations) or "- none declared"
-    sections = _load_template_sections()
-    section_ref = "\n".join(f"  {i}. {s}" for i, s in enumerate(sections, 1)) if sections else (
-        "  (use the 15-section AuditLayer framework from the social-media-audit skill)"
-    )
+    report_type = audit.report_type or "standard"
+    sections = _load_template_sections(report_type)
+    section_count = len(sections)
+    section_ref = "\n".join(f"  {i}. {s}" for i, s in enumerate(sections, 1))
+
+    # Per-type preamble
+    if report_type == "pulse":
+        preamble = (
+            f"Generate a PULSE snapshot — a tight {section_count}-section scorecard. "
+            "Score the account, flag the top 3 gaps, and deliver 3 numbered, actionable moves. "
+            "No fluff, no deep analysis. The user gets this free as a preview."
+        )
+    elif report_type == "blueprint":
+        preamble = (
+            f"Generate a BLUEPRINT pre-launch foundation audit. The creator has 0-1K followers "
+            "and needs a solid base before scaling. Focus on niche positioning, profile architecture, "
+            "content strategy, and launch readiness. Every recommendation must be actionable "
+            "for someone starting from scratch — no assumptions about existing audience or momentum."
+        )
+    elif report_type == "extended":
+        preamble = (
+            f"Generate an EXTENDED {section_count}-section deep-dive report. "
+            "This is the premium tier — go deeper on every section, add richer competitive analysis, "
+            "and include the 5 bonus sections on stories, thumbnails, comments, hooks, and mindset."
+        )
+    else:
+        preamble = f"Generate the standard AuditLayer {section_count}-section report."
 
     # Build Instagram live data block if available
     ig_data_block = ""
@@ -368,7 +455,7 @@ social-media-audit skill. Flag any missing live metrics as a data-quality
 limitation — do NOT fabricate numbers.
 """
 
-    return f"""Generate the AuditLayer paid report for this intake.
+    return f"""{preamble}
 
 Handle: @{audit.handle}
 Platform: {audit.platform}
@@ -386,7 +473,7 @@ Business constraints:
 - Milestones must be computed from follower tier; never hardcode one universal target.
 - Reports are self-contained HTML with inline CSS and no external assets.
 - Use EXACTLY the CSS from the social-media-audit skill's references/hemal-report-format.html — do not modify, minify, or rewrite.
-- Follow the 15-section framework from the social-media-audit skill exactly:
+- This is a {report_type} report. Follow the {section_count}-section framework exactly:
 {section_ref}
 
 Known limitations:

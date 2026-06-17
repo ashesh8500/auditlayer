@@ -23,6 +23,34 @@ export type Plan = "free" | "starter" | "pro" | "enterprise";
 
 export type Goal = "growth" | "monetization" | "rebrand" | "launch_readiness";
 
+export type ReportType = "pulse" | "standard" | "extended" | "enterprise" | "blueprint";
+
+export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
+  pulse: "Pulse — Free snapshot",
+  standard: "Standard — Full report",
+  extended: "Extended — Deep dive",
+  enterprise: "Enterprise — Custom",
+  blueprint: "Blueprint — Pre-launch foundation",
+};
+
+export const REPORT_TYPE_SECTIONS: Record<ReportType, number> = {
+  pulse: 3,
+  standard: 15,
+  extended: 20,
+  enterprise: 0,
+  blueprint: 15,
+};
+
+/** Which report types each plan can access. */
+export function allowedReportTypes(plan: Plan): ReportType[] {
+  switch (plan) {
+    case "free": return ["pulse"];
+    case "starter": return ["pulse", "standard"];
+    case "pro": return ["pulse", "standard", "extended"];
+    case "enterprise": return ["pulse", "standard", "extended", "enterprise"];
+  }
+}
+
 export type Platform =
   | "instagram"
   | "tiktok"

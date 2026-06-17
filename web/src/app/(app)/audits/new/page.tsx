@@ -6,6 +6,7 @@ import {
   auditLimitForProfile,
   USAGE_STATUSES,
   type AuditStatus,
+  type Plan,
 } from "@/lib/domain";
 import { IntakeWizard } from "./wizard";
 
@@ -31,7 +32,7 @@ export default async function NewAuditPage() {
           New audit
         </p>
       </div>
-      <IntakeWizard />
+      <IntakeWizard plan={(profile.plan as Plan) || "free"} />
     </main>
   );
 }

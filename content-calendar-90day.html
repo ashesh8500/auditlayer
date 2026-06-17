@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AuditLayer Media — 90-Day Content Calendar</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --accent: #0D9488;
+    --accent-dark: #0F766E;
+    --bg: #0F172A;
+    --surface: #1E293B;
+    --surface-light: #334155;
+    --text: #F1F5F9;
+    --text-muted: #94A3B8;
+    --line: #334155;
+    --green: #22C55E;
+    --amber: #F59E0B;
+    --red: #EF4444;
+    --purple: #A855F7;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.7;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 24px 120px;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.6rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.7rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 48px 0 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 32px 0 12px;
+  }
+
+  h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 24px 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .sub {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+    max-width: 600px;
+  }
+
+  /* Stats strip */
+  .stats-strip {
+    display: flex;
+    gap: 0;
+    margin: 32px 0 40px;
+    background: var(--surface);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .stat-item {
+    flex: 1;
+    text-align: center;
+    padding: 20px 12px;
+    border-right: 1px solid var(--line);
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.6rem;
+    font-weight: 500;
+    color: var(--accent);
+    display: block;
+  }
+  .stat-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 4px;
+    display: block;
+  }
+
+  /* Phase cards */
+  .phase-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 28px;
+    margin: 24px 0;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+  }
+  .phase-card.phase-2 { border-left-color: var(--purple); }
+  .phase-card.phase-3 { border-left-color: var(--amber); }
+
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .phase-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .phase-1 .phase-num { background: rgba(13,148,136,0.15); color: var(--accent); }
+  .phase-2 .phase-num { background: rgba(168,85,247,0.15); color: var(--purple); }
+  .phase-3 .phase-num { background: rgba(245,158,11,0.15); color: var(--amber); }
+
+  .phase-focus {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  /* Week cards */
+  .week-block {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 24px;
+    margin: 20px 0;
+    border: 1px solid var(--line);
+  }
+  .week-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+  }
+  .week-label span {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* Day rows */
+  .day-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(51,65,85,0.4);
+  }
+  .day-row:last-child { border-bottom: none; }
+
+  .day-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 3px 8px;
+    border-radius: 3px;
+    min-width: 56px;
+    text-align: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .tag-mon { background: rgba(13,148,136,0.15); color: var(--accent); }
+  .tag-wed { background: rgba(168,85,247,0.15); color: var(--purple); }
+  .tag-fri { background: rgba(34,197,94,0.12); color: var(--green); }
+  .tag-stories { background: rgba(245,158,11,0.12); color: var(--amber); }
+
+  .format-badge {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin-left: 8px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .badge-carousel { background: rgba(148,163,184,0.15); color: #CBD5E1; }
+  .badge-reel { background: rgba(239,68,68,0.12); color: #F87171; }
+
+  .day-content {
+    flex: 1;
+  }
+  .day-hook {
+    font-weight: 500;
+    color: #fff;
+    font-size: 0.92rem;
+  }
+  .day-detail {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* Rules box */
+  .rules-box {
+    background: rgba(13,148,136,0.06);
+    border: 1px solid rgba(13,148,136,0.2);
+    border-radius: 10px;
+    padding: 24px;
+    margin: 32px 0;
+  }
+  .rules-box h4 { margin-top: 0; }
+  .rules-box ul {
+    list-style: none;
+    padding: 0;
+  }
+  .rules-box li {
+    padding: 6px 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .rules-box li::before {
+    content: "▸";
+    color: var(--accent);
+    font-size: 0.7rem;
+    margin-top: 4px;
+  }
+
+  /* Story section */
+  .story-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .story-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .story-card .story-type {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--amber);
+    margin-bottom: 4px;
+  }
+  .story-card .story-idea {
+    font-size: 0.82rem;
+    color: var(--text);
+  }
+
+  /* Pillars grid */
+  .pillar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .pillar-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    border-top: 3px solid var(--accent);
+  }
+  .pillar-card .pillar-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #fff;
+  }
+  .pillar-card .pillar-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+
+  /* Callout */
+  .callout {
+    background: rgba(13,148,136,0.08);
+    border-left: 3px solid var(--accent);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 24px 0;
+  }
+  .callout p {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+  .callout strong {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  @media (max-width: 600px) {
+    body { padding: 24px 16px 80px; }
+    h1 { font-size: 2rem; }
+    .day-row { flex-direction: column; gap: 6px; }
+    .stats-strip { flex-wrap: wrap; }
+    .stat-item { flex: 1 1 50%; border-bottom: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+
+<div class="eyebrow">AuditLayer Media</div>
+<h1>90-Day Content Calendar</h1>
+<p class="sub">Launch-phase educational content — zero face, all authority. Three phases, twelve weeks, one forensic lens.</p>
+
+<div class="stats-strip">
+  <div class="stat-item">
+    <span class="stat-number">90</span>
+    <span class="stat-label">Days</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-number">12</span>
+    <span class="stat-label">Weeks</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-number">3</span>
+    <span class="stat-label">Phases</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-number">36+</span>
+    <span class="stat-label">Posts</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-number">60+</span>
+    <span class="stat-label">Stories</span>
+  </div>
+</div>
+
+<!-- RULES -->
+<div class="rules-box">
+  <h4>Calendar Rules</h4>
+  <ul>
+    <li>No face-to-camera for 90 days — screen-record + voiceover only on Reels</li>
+    <li>All content is educational — no selling AuditLayer services until Phase 3 (soft CTA only)</li>
+    <li>2 carousels + 1 reel per week minimum. Stories 3–5/week.</li>
+    <li>Every post answers one question: <em>"What does AuditLayer see that others don't?"</em></li>
+    <li>Reply to every comment within 4 hours of posting</li>
+    <li>Study @tahlia.kennedy for tone: clean, confident, never preachy</li>
+  </ul>
+</div>
+
+<!-- PILLARS -->
+<h2>Content Pillars</h2>
+<div class="pillar-grid">
+  <div class="pillar-card">
+    <div class="pillar-name">🔍 Brand Autopsy</div>
+    <div class="pillar-desc">Break down one brand's feed — what's working, what's missing, why. Pick known brands so the audience has context.</div>
+  </div>
+  <div class="pillar-card">
+    <div class="pillar-name">🧠 The Audit Lens</div>
+    <div class="pillar-desc">Teach one audit dimension per post. How to read engagement, content mix, visual identity, story strategy — one lens at a time.</div>
+  </div>
+  <div class="pillar-card">
+    <div class="pillar-name">📐 Pattern Spotting</div>
+    <div class="pillar-desc">Compare 2–3 brands. Find the pattern. "I looked at 5 DTC brands. They all miss this one format."</div>
+  </div>
+  <div class="pillar-card">
+    <div class="pillar-name">💬 Hot Takes</div>
+    <div class="pillar-desc">Screen-record Reels. 30–45 seconds. One sharp opinion about social media. Voiceover only.</div>
+  </div>
+  <div class="pillar-card">
+    <div class="pillar-name">📊 Numbers Don't Lie</div>
+    <div class="pillar-desc">Data-backed carousels. Engagement benchmarks, format performance stats, posting frequency data.</div>
+  </div>
+</div>
+
+<!-- ==================== PHASE 1 ==================== -->
+<h2>Phase 1 — Foundation</h2>
+<div class="phase-card phase-1">
+  <div class="phase-header">
+    <span class="phase-num">Weeks 1–4 · Days 1–30</span>
+  </div>
+  <p class="phase-focus">Goal: Establish the AuditLayer lens. Teach the audience to SEE feeds differently. Build the "forensic brand audit" identity.</p>
+</div>
+
+<!-- WEEK 1 -->
+<div class="week-block">
+  <div class="week-label">Week <span>1</span> — The Hook</div>
+
+  <div class="day-row">
+    <span class="day-tag tag-mon">Mon</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"I analyzed 50 brand feeds. Here's what 90% of them get wrong."</div>
+      <div class="day-detail">Opening statement carousel. 5 slides — each a common mistake with a screenshot example. No brand names named, just the patterns. Ends with: "This is what AuditLayer sees."</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-wed">Wed</span>
+    <span class="format-badge badge-reel">Reel</span>
+    <div class="day-content">
+      <div class="day-hook">"Most founders think they need better photos. They need better stories."</div>
+      <div class="day-detail">30-sec screen-record. Scroll through a feed that looks gorgeous but says nothing. Voiceover: why aesthetic without narrative is invisible. No brand named.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-fri">Fri</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"The 6 dimensions AuditLayer scores. Here's dimension #1: Brand Story."</div>
+      <div class="day-detail">Introduce the audit framework one dimension at a time. Slide 1: what Brand Story means. Slides 2-4: examples of strong vs weak. Slide 5: "Does your feed pass?"</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-stories">Stories</span>
+    <span class="format-badge badge-carousel" style="background:rgba(245,158,11,0.12);color:#FBBF24;">3-5</span>
+    <div class="day-content">
+      <div class="day-detail">Behind-the-scenes building AuditLayer. Poll: "What's the #1 thing you want to improve about your feed?" Q&A box: "Ask me anything about social media strategy."</div>
+    </div>
+  </div>
+</div>
+
+<!-- WEEK 2 -->
+<div class="week-block">
+  <div class="week-label">Week <span>2</span> — Brand Autopsy Debut</div>
+
+  <div class="day-row">
+    <span class="day-tag tag-mon">Mon</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Brand Autopsy: Gymshark — why their feed works when most fitness brands don't"</div>
+      <div class="day-detail">First full brand breakdown. 5–6 slides. What they do right (community, UGC, identity), what's missing, one move they could make. Educational, not critical — the tone is "here's what we can learn."</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-wed">Wed</span>
+    <span class="format-badge badge-reel">Reel</span>
+    <div class="day-content">
+      <div class="day-hook">"If your bio doesn't tell me what you do in 3 seconds, I'm gone."</div>
+      <div class="day-detail">Screen-record scrolling through bios. Show 3 bad bios, 2 good ones. Voiceover: what makes a bio convert. 35 seconds.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-fri">Fri</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Dimension #2: Visual Identity — why your feed should feel like one person designed it"</div>
+      <div class="day-detail">Teach visual consistency. Color palette, typography, grid rhythm. Before/after examples. No brand names needed — use anonymous feeds.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-stories">Stories</span>
+    <span class="format-badge badge-carousel" style="background:rgba(245,158,11,0.12);color:#FBBF24;">3-5</span>
+    <div class="day-content">
+      <div class="day-detail">Poll: "Does your feed have a consistent color palette?" Share a screenshot of a brand you're analyzing. "This or That" — two feed styles, which is stronger?</div>
+    </div>
+  </div>
+</div>
+
+<!-- WEEK 3 -->
+<div class="week-block">
+  <div class="week-label">Week <span>3</span> — Pattern Spotting</div>
+
+  <div class="day-row">
+    <span class="day-tag tag-mon">Mon</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"I looked at 5 wellness brands. Here's the one format none of them use."</div>
+      <div class="day-detail">Pattern Spotting debut. Compare 5 wellness brands. Show the data: Reels vs Carousels ratio, story usage, highlight organization. The missing format = long-form educational carousels.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-wed">Wed</span>
+    <span class="format-badge badge-reel">Reel</span>
+    <div class="day-content">
+      <div class="day-hook">"The best brand feeds don't look like brand feeds."</div>
+      <div class="day-detail">Screen-record comparing a corporate-looking feed vs a feed that feels like a person runs it. Voiceover on why personality outperforms polish. </div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-fri">Fri</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Dimension #3: Content Cadence — how often you post matters less than what you post"</div>
+      <div class="day-detail">Debunk the "post every day" myth. Data on quality vs quantity. Examples of accounts growing on 3 posts/week. Framework for cadence decisions.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-stories">Stories</span>
+    <span class="format-badge badge-carousel" style="background:rgba(245,158,11,0.12);color:#FBBF24;">3-5</span>
+    <div class="day-content">
+      <div class="day-detail">Share one stat from the week's research. "Did you know: accounts that use 3+ story formats see 2x engagement." Question sticker: "What's the biggest lie you've heard about Instagram growth?"</div>
+    </div>
+  </div>
+</div>
+
+<!-- WEEK 4 -->
+<div class="week-block">
+  <div class="week-label">Week <span>4</span> — First Month Close</div>
+
+  <div class="day-row">
+    <span class="day-tag tag-mon">Mon</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Brand Autopsy: Liquid Death — how a water brand built a cult on Instagram"</div>
+      <div class="day-detail">Deep dive on community-building through identity. What Liquid Death does that 99% of CPG brands are scared to do. 6 slides.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-wed">Wed</span>
+    <span class="format-badge badge-reel">Reel</span>
+    <div class="day-content">
+      <div class="day-hook">"Stop treating your feed like a product catalog."</div>
+      <div class="day-detail">Screen-record: one brand feed that's all product shots vs one that's lifestyle + education + product. The numbers don't lie — show engagement difference.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-fri">Fri</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Month 1: What 30 days of forensic content taught me about Instagram"</div>
+      <div class="day-detail">Meta-post. Share what performed, what didn't, what surprised you. Builds transparency and authority. Invite DMs for feedback.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-stories">Stories</span>
+    <span class="format-badge badge-carousel" style="background:rgba(245,158,11,0.12);color:#FBBF24;">3-5</span>
+    <div class="day-content">
+      <div class="day-detail">Month 1 recap highlight. Poll: "What topic do you want more of?" (Brand Autopsy / Pattern Spotting / Audit Framework / Hot Takes). AMA box.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PHASE 2 ==================== -->
+<h2>Phase 2 — Acceleration</h2>
+<div class="phase-card phase-2">
+  <div class="phase-header">
+    <span class="phase-num">Weeks 5–8 · Days 31–60</span>
+  </div>
+  <p class="phase-focus">Goal: Deepen the analysis. Go multi-brand. Introduce competitive comparison. Start positioning AuditLayer as the forensic standard.</p>
+</div>
+
+<!-- WEEK 5 -->
+<div class="week-block">
+  <div class="week-label">Week <span>5</span> — Competitive Lens</div>
+
+  <div class="day-row">
+    <span class="day-tag tag-mon">Mon</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Head-to-Head: Rhode vs Glossier — two beauty brands, two completely different feed strategies"</div>
+      <div class="day-detail">Side-by-side competitive analysis. Same niche, different approaches. Score both on 3 dimensions. Who wins where? 6 slides.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-wed">Wed</span>
+    <span class="format-badge badge-reel">Reel</span>
+    <div class="day-content">
+      <div class="day-hook">"Your engagement rate isn't low because the algorithm hates you."</div>
+      <div class="day-detail">Hot take on engagement. Screen-record showing common engagement-killing patterns. Voiceover: what actually moves the needle.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-fri">Fri</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Dimension #4: Community — the difference between followers and an audience"</div>
+      <div class="day-detail">Teach community metrics. Reply rate, DM volume, comment sentiment. Examples of accounts with high follower counts but dead communities.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-stories">Stories</span>
+    <span class="format-badge badge-carousel" style="background:rgba(245,158,11,0.12);color:#FBBF24;">3-5</span>
+    <div class="day-content">
+      <div class="day-detail">"Which two brands should I autopsy next?" poll. Behind-the-scenes: the audit process — screenshots of research notes, scorecard drafts.</div>
+    </div>
+  </div>
+</div>
+
+<!-- WEEK 6 -->
+<div class="week-block">
+  <div class="week-label">Week <span>6</span> — Data Deep Dive</div>
+
+  <div class="day-row">
+    <span class="day-tag tag-mon">Mon</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Numbers Don't Lie: the actual engagement benchmarks by follower tier (and why most brands are below them)"</div>
+      <div class="day-detail">Data-heavy carousel. Benchmarks for 1K, 10K, 50K, 100K tiers. What "good" actually looks like. Sources cited.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-wed">Wed</span>
+    <span class="format-badge badge-reel">Reel</span>
+    <div class="day-content">
+      <div class="day-hook">"Carousels outperform Reels for saves. Here's why nobody talks about it."</div>
+      <div class="day-detail">Data-driven hot take. Screen-record sliding through the numbers. Voiceover: why the save is the most undervalued metric on Instagram.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-fri">Fri</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Brand Autopsy: Prime — how Logan Paul and KSI built a billion-dollar brand on Instagram"</div>
+      <div class="day-detail">Audit of influencer-driven brand. What they leverage (audience, scarcity, controversy), what they miss (retention, community depth).</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-stories">Stories</span>
+    <span class="format-badge badge-carousel" style="background:rgba(245,158,11,0.12);color:#FBBF24;">3-5</span>
+    <div class="day-content">
+      <div class="day-detail">"Drop a 🔍 if you want your brand audited (no promises, but I see everything)." Poll: Carousels or Reels — what do you actually save more of?</div>
+    </div>
+  </div>
+</div>
+
+<!-- WEEK 7 -->
+<div class="week-block">
+  <div class="week-label">Week <span>7</span> — Story Strategy Week</div>
+
+  <div class="day-row">
+    <span class="day-tag tag-mon">Mon</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Your Stories are leaking attention. Here's the 5-part story framework that stops the tap-out."</div>
+      <div class="day-detail">Educational framework carousel. Hook → Context → Value → Interaction → Close. Examples of each. What most accounts do wrong.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-wed">Wed</span>
+    <span class="format-badge badge-reel">Reel</span>
+    <div class="day-content">
+      <div class="day-hook">"If your highlight covers look like an afterthought, your brand looks like an afterthought."</div>
+      <div class="day-detail">Screen-record comparing organized vs messy highlights. Voiceover on why highlights are the second thing people check after your bio.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-fri">Fri</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Dimension #5: Retail-to-Social Bridge — why your Instagram should feel like your store's best room"</div>
+      <div class="day-detail">For CPG/DTC brands. How to translate physical retail presence into social content without making it feel like an ad.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-stories">Stories</span>
+    <span class="format-badge badge-carousel" style="background:rgba(245,158,11,0.12);color:#FBBF24;">3-5</span>
+    <div class="day-content">
+      <div class="day-detail">Story takeover: test the 5-part framework live. Poll at the end: "Did this story sequence hold your attention?"</div>
+    </div>
+  </div>
+</div>
+
+<!-- WEEK 8 -->
+<div class="week-block">
+  <div class="week-label">Week <span>8</span> — Second Month Close</div>
+
+  <div class="day-row">
+    <span class="day-tag tag-mon">Mon</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Pattern Spotting: I audited every brand that went viral in Q2. They share 3 traits."</div>
+      <div class="day-detail">Cross-brand pattern analysis. What viral brands had in common: format diversity, community response time, distinct visual identity. 6 slides.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-wed">Wed</span>
+    <span class="format-badge badge-reel">Reel</span>
+    <div class="day-content">
+      <div class="day-hook">"The 4-hour window: why the first 4 hours after posting determine everything."</div>
+      <div class="day-detail">Hot take on the engagement window. Screen-record showing real post data. Voiceover: what to do in those 4 hours.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-fri">Fri</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Month 2: What changed. What stuck. What I'm killing."</div>
+      <div class="day-detail">Transparency carousel. Share growth data, top performers, content pivots. Builds trust. End with a question: "What do you want to see in Month 3?"</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-stories">Stories</span>
+    <span class="format-badge badge-carousel" style="background:rgba(245,158,11,0.12);color:#FBBF24;">3-5</span>
+    <div class="day-content">
+      <div class="day-detail">Month 2 recap highlight. Countdown sticker: "3 things I learned this month." Question: "If AuditLayer could audit one thing about YOUR strategy, what would it be?"</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PHASE 3 ==================== -->
+<h2>Phase 3 — Compound</h2>
+<div class="phase-card phase-3">
+  <div class="phase-header">
+    <span class="phase-num">Weeks 9–12 · Days 61–90</span>
+  </div>
+  <p class="phase-focus">Goal: Broaden the lens. Industry takes. Soft launch positioning. By Day 90, the audience knows exactly what AuditLayer does — and trusts it.</p>
+</div>
+
+<!-- WEEK 9 -->
+<div class="week-block">
+  <div class="week-label">Week <span>9</span> — Industry Takes</div>
+
+  <div class="day-row">
+    <span class="day-tag tag-mon">Mon</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"The state of CPG Instagram in 2026: what's working, what's dying, and what nobody's doing yet"</div>
+      <div class="day-detail">Industry analysis carousel. Trends, format shifts, platform changes. Position AuditLayer as the observer who sees the whole landscape.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-wed">Wed</span>
+    <span class="format-badge badge-reel">Reel</span>
+    <div class="day-content">
+      <div class="day-hook">"Influencer marketing is broken. Here's what should replace it."</div>
+      <div class="day-detail">Contrarian take. Screen-record data on influencer ROI decline. Voiceover: community-driven growth > paid influencers. 40 seconds.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-fri">Fri</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Dimension #6: Content Mix — the ratio most brands get wrong"</div>
+      <div class="day-detail">Final audit dimension. Educational → Entertaining → Promotional ratio. Show optimal splits by industry. Examples of balanced vs lopsided feeds.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-stories">Stories</span>
+    <span class="format-badge badge-carousel" style="background:rgba(245,158,11,0.12);color:#FBBF24;">3-5</span>
+    <div class="day-content">
+      <div class="day-detail">BTS: building a full audit. Timelapse of the research process. Poll: "What industry should I analyze next?" (CPG / Beauty / Fashion / Tech).</div>
+    </div>
+  </div>
+</div>
+
+<!-- WEEK 10 -->
+<div class="week-block">
+  <div class="week-label">Week <span>10</span> — The Full Audit Preview</div>
+
+  <div class="day-row">
+    <span class="day-tag tag-mon">Mon</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"What a full AuditLayer audit actually looks like — 6 dimensions, 15 sections, one score."</div>
+      <div class="day-detail">Pull back the curtain. Walk through the audit structure. Show a sample score diagram (anonymized brand). This is the first soft positioning of what AuditLayer IS.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-wed">Wed</span>
+    <span class="format-badge badge-reel">Reel</span>
+    <div class="day-content">
+      <div class="day-hook">"I scored 12 brands this month. Only 2 scored above 60/100."</div>
+      <div class="day-detail">Screen-record flipping through scorecards (anonymized). Voiceover: what separates the 60+ from everyone else. 35 seconds.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-fri">Fri</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Brand Autopsy: Oatly — how a Swedish oat milk company became the most opinionated brand on Instagram"</div>
+      <div class="day-detail">Deep dive on brand voice. What Oatly does that's unhinged, consistent, and effective. Lessons for any brand afraid to have a personality.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-stories">Stories</span>
+    <span class="format-badge badge-carousel" style="background:rgba(245,158,11,0.12);color:#FBBF24;">3-5</span>
+    <div class="day-content">
+      <div class="day-detail">"DM me a brand and I'll tell you the first thing I notice about their feed." Countdown: "5 things I look at before I even read a caption."</div>
+    </div>
+  </div>
+</div>
+
+<!-- WEEK 11 -->
+<div class="week-block">
+  <div class="week-label">Week <span>11</span> — Community Momentum</div>
+
+  <div class="day-row">
+    <span class="day-tag tag-mon">Mon</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"You asked, I audited. Here are 3 brands the community submitted — and what I found."</div>
+      <div class="day-detail">Community-driven content. 3 mini brand autopsies from DM submissions. Names the brands with permission. 6 slides.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-wed">Wed</span>
+    <span class="format-badge badge-reel">Reel</span>
+    <div class="day-content">
+      <div class="day-hook">"The difference between a brand that grows and a brand that stalls is 90 days of consistency."</div>
+      <div class="day-detail">Motivational-meets-educational. 30 seconds. Show before/after of a brand that committed to 90 days of consistent content (anonymized).</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-fri">Fri</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"Pattern Spotting: The 4 types of founders on Instagram — which one are you?"</div>
+      <div class="day-detail">Founder archetype analysis. The Ghost, The Oversharer, The Product Poster, The Storyteller. Strengths and blind spots for each.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-stories">Stories</span>
+    <span class="format-badge badge-carousel" style="background:rgba(245,158,11,0.12);color:#FBBF24;">3-5</span>
+    <div class="day-content">
+      <div class="day-detail">Quiz: "Which founder type are you?" linked through stories. AMA box: "What's holding your feed back right now?"</div>
+    </div>
+  </div>
+</div>
+
+<!-- WEEK 12 -->
+<div class="week-block">
+  <div class="week-label">Week <span>12</span> — The 90-Day Mark</div>
+
+  <div class="day-row">
+    <span class="day-tag tag-mon">Mon</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"90 days of forensic content. Here's everything I learned about Instagram, brand strategy, and building an audience from zero."</div>
+      <div class="day-detail">Major milestone carousel. 8–10 slides. Growth data, top 5 posts, biggest surprises, what's next. Vulnerable, authoritative, inspiring.</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-wed">Wed</span>
+    <span class="format-badge badge-reel">Reel</span>
+    <div class="day-content">
+      <div class="day-hook">"AuditLayer is officially open. Here's what that means."</div>
+      <div class="day-detail">Soft launch Reel. Screen-record of the audit process — the scorecard being built, the dimensions lighting up. Voiceover: what AuditLayer does, who it's for, how to get one. First face-to-camera? (optional — Narin's call).</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-fri">Fri</span>
+    <span class="format-badge badge-carousel">Carousel</span>
+    <div class="day-content">
+      <div class="day-hook">"The AuditLayer standard: 6 dimensions. 15 sections. One score. This is what your brand deserves."</div>
+      <div class="day-detail">Full positioning carousel. The product explained. What's in a full audit. Who it's for (founders, marketers, agencies). CTA: "DM 'AUDIT' to get yours."</div>
+    </div>
+  </div>
+
+  <div class="day-row">
+    <span class="day-tag tag-stories">Stories</span>
+    <span class="format-badge badge-carousel" style="background:rgba(245,158,11,0.12);color:#FBBF24;">3-5</span>
+    <div class="day-content">
+      <div class="day-detail">Launch week stories: countdown to going live. Client preview (if any ready). "First 5 DMs get a free pulse audit." Celebration energy.</div>
+    </div>
+  </div>
+</div>
+
+<!-- STORY STRATEGY -->
+<h2>Story Strategy — Daily Cadence</h2>
+<p class="sub" style="margin-bottom:20px;">3-5 stories per day, structured across the week. Stories are the heartbeat — they keep the account alive between posts.</p>
+
+<div class="story-grid">
+  <div class="story-card">
+    <div class="story-type">Mon · Post Teaser</div>
+    <div class="story-idea">Screenshot sneak peek of today's carousel. "Dropping at 10am." Countdown sticker.</div>
+  </div>
+  <div class="story-card">
+    <div class="story-type">Tue · Research BTS</div>
+    <div class="story-idea">Show the audit process. Screenshots of notes, feed scrolls, data spreadsheets. Makes the work tangible.</div>
+  </div>
+  <div class="story-card">
+    <div class="story-type">Wed · Reel Teaser</div>
+    <div class="story-idea">"New hot take incoming." Audio preview. Poll: "Agree or disagree?" before the Reel drops.</div>
+  </div>
+  <div class="story-card">
+    <div class="story-type">Thu · Community</div>
+    <div class="story-idea">Reply to DMs publicly (with permission). Share a follower's win. Q&A box: "What brand should I autopsy next?"</div>
+  </div>
+  <div class="story-card">
+    <div class="story-type">Fri · Deep Dive</div>
+    <div class="story-idea">Expand on the Friday carousel. 2-3 extra slides that didn't make the post. "The slide I cut."</div>
+  </div>
+  <div class="story-card">
+    <div class="story-type">Sat · Personal / BTS</div>
+    <div class="story-idea">Narin's workspace, coffee, playlist, book stack. No face needed — hands, desk, window light. Humanize the account.</div>
+  </div>
+  <div class="story-card">
+    <div class="story-type">Sun · Weekly Wrap</div>
+    <div class="story-idea">"This week's posts in 15 seconds." Screenshot carousel of the week's 3 posts. Poll: "Best post this week?"</div>
+  </div>
+</div>
+
+<h2>Story Formats to Rotate</h2>
+<div class="story-grid">
+  <div class="story-card">
+    <div class="story-type">Poll</div>
+    <div class="story-idea">"Which format do you actually save more — carousels or Reels?"</div>
+  </div>
+  <div class="story-card">
+    <div class="story-type">Question Box</div>
+    <div class="story-idea">"What's one thing you wish you knew about Instagram 6 months ago?"</div>
+  </div>
+  <div class="story-card">
+    <div class="story-type">Countdown</div>
+    <div class="story-idea">"24 hours until the next brand autopsy drops."</div>
+  </div>
+  <div class="story-card">
+    <div class="story-type">This or That</div>
+    <div class="story-idea">Two feed aesthetics side by side. "Which one stops your scroll?"</div>
+  </div>
+  <div class="story-card">
+    <div class="story-type">Slider</div>
+    <div class="story-idea">"How confident are you in your Instagram strategy?" 😰 → 😤</div>
+  </div>
+  <div class="story-card">
+    <div class="story-type">Quiz</div>
+    <div class="story-idea">"What's a good engagement rate for a 10K account?" Multiple choice.</div>
+  </div>
+</div>
+
+<!-- CLOSE -->
+<div class="callout">
+  <p><strong>After Day 90:</strong> The account has 36+ posts, a clear identity, and an audience that trusts the AuditLayer lens. Narin's face can start appearing — merge it into Reels naturally, keep the same forensic tone. The calendar becomes: 2 carousels + 1-2 Reels (face now OK) + 3-5 stories. Add client result posts as they come in.</p>
+</div>
+
+<div class="callout" style="margin-top:32px;background:rgba(13,148,136,0.12);">
+  <p><strong>Tahlia Kennedy takeaways built into this calendar:</strong></p>
+  <p style="margin-top:8px;">→ Clean, confident visual identity — no clutter<br>
+  → Educational authority without being preachy<br>
+  → Posts that feel like a smart friend explaining something, not a lecture<br>
+  → Personal brand energy even without face — voice, opinion, perspective<br>
+  → Consistent format rhythm so the audience knows what to expect</p>
+</div>
+
+</body>
+</html>

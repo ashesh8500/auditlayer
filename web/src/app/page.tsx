@@ -277,10 +277,146 @@ export default async function Home() {
 
         <hr className="mt-14 border-border" />
 
-        {/* ── 4. Full Mock Report — the evidence ── */}
+        {/* ── 4. Instagram Connect CTA ── */}
+        <section className="relative z-10 mx-auto mt-14 max-w-2xl text-center">
+          <div className="rounded-xl border border-border bg-card px-6 py-8 shadow-[var(--shadow-sm)]">
+            <h2 className="text-lg font-semibold">Connect your Instagram for live metrics</h2>
+            <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
+              Get real follower counts, engagement rates, and content data — instead of public estimates.
+              Available for Business and Creator accounts.
+            </p>
+            <div className="mt-4">
+              <Link href="/login">
+                <Button className="font-semibold">Connect Instagram</Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 5. Side-by-Side: Standard vs Extended ── */}
+        <section className="mt-14">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground text-center">
+            Choose Your Depth
+          </h2>
+          <p className="mt-2 text-center text-xs text-muted-foreground max-w-lg mx-auto">
+            Standard covers the essentials. Extended adds five premium sections for creators ready to dominate.
+          </p>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            {/* Standard — 15 sections */}
+            <div className="relative overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-md)]">
+              <div className="flex items-center justify-between border-b border-border bg-[#f5f5f4] px-4 py-2.5">
+                <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                  Standard · 15 sections · $30/mo
+                </span>
+                <span className="rounded-full bg-[color:var(--accent-muted)] px-2 py-0.5 font-mono text-[0.6rem] font-semibold uppercase text-[color:var(--accent)]">
+                  Starter+
+                </span>
+              </div>
+              <div className="max-h-[400px] overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+                <ol className="space-y-1.5 text-xs">
+                  {[
+                    "Executive Summary",
+                    "Key Metrics",
+                    "Strengths",
+                    "Weaknesses",
+                    "Root Cause Analysis",
+                    "Peer Comparison",
+                    "Content Format Analysis",
+                    "Engagement Growth Strategy",
+                    "Quick Wins — This Week",
+                    "Success Benchmarks",
+                    "Audience Profile",
+                    "Road to [Milestone]",
+                    "Audit Cadence",
+                    "Footer",
+                    "Powered by AuditLayerMedia",
+                  ].map((s, i) => (
+                    <li key={s} className="flex items-start gap-2 text-muted-foreground">
+                      <span className="mt-0.5 font-mono text-[0.6rem] font-semibold text-[color:var(--accent)] shrink-0 w-4 text-right">{i + 1}.</span>
+                      {s}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white via-white/90 to-transparent" />
+            </div>
+
+            {/* Extended — 20 sections */}
+            <div className="relative overflow-hidden rounded-[var(--radius-lg)] border-2 border-[color:var(--accent)] bg-white shadow-[var(--shadow-lg)]">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                <span className="rounded-full bg-[color:var(--accent)] px-3 py-0.5 text-[0.6rem] font-bold uppercase text-white tracking-wider">
+                  Recommended
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-b border-border bg-[color:var(--accent-muted)] px-4 py-2.5">
+                <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--accent)]">
+                  Extended · 20 sections · $50/mo
+                </span>
+                <span className="rounded-full bg-[color:var(--accent)] px-2 py-0.5 font-mono text-[0.6rem] font-semibold uppercase text-white">
+                  Pro
+                </span>
+              </div>
+              <div className="max-h-[400px] overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+                <ol className="space-y-1.5 text-xs">
+                  {[
+                    "Executive Summary",
+                    "Key Metrics",
+                    "Strengths",
+                    "Weaknesses",
+                    "Root Cause Analysis",
+                    "Peer Comparison",
+                    "Content Format Analysis",
+                    "Engagement Growth Strategy",
+                    "Quick Wins — This Week",
+                    "Success Benchmarks",
+                    "Audience Profile",
+                    "Road to [Milestone]",
+                    "Audit Cadence",
+                    "Content Pillars & Ideas",
+                    "Footer",
+                  ].map((s, i) => (
+                    <li key={s} className="flex items-start gap-2 text-muted-foreground">
+                      <span className="mt-0.5 font-mono text-[0.6rem] font-semibold text-[color:var(--accent)] shrink-0 w-4 text-right">{i + 1}.</span>
+                      {s}
+                    </li>
+                  ))}
+                  <li className="border-t border-[color:var(--accent)]/20 mt-3 pt-3 mb-1">
+                    <span className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-[color:var(--accent)]">Premium Sections</span>
+                  </li>
+                  {[
+                    "Power of Posting Stories",
+                    "Your Thumbnails Are the Lens",
+                    "Leave Genuine Comments",
+                    "Your First 3 Seconds",
+                    "Powered by AuditLayerMedia",
+                  ].map((s, i) => (
+                    <li key={s} className="flex items-start gap-2 text-foreground font-medium">
+                      <span className="mt-0.5 font-mono text-[0.6rem] font-bold text-[color:var(--accent)] shrink-0 w-4 text-right">{i + 16}.</span>
+                      <span className="flex items-center gap-1.5">
+                        ✦ {s}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white via-white/90 to-transparent" />
+            </div>
+          </div>
+
+          <div className="mt-4 text-center">
+            <Link href="/login">
+              <Button className="font-semibold">Start Your Audit</Button>
+            </Link>
+          </div>
+        </section>
+
+        <hr className="mt-14 border-border" />
+
+        {/* ── 6. Full Mock Report — the detailed evidence ── */}
         <section className="mt-14">
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Full 15-Section Report At a Glance
+            Standard Report Preview — @glowstate
           </h2>
 
           <div className="relative mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-md)]">

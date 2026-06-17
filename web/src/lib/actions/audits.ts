@@ -11,7 +11,10 @@ import {
   effectivePlanForProfile,
   evaluateIntake,
   USAGE_STATUSES,
+  allowedReportTypes,
   type Goal,
+  type Plan,
+  type ReportType,
 } from "@/lib/domain";
 
 export interface CreateAuditState {
@@ -27,6 +30,7 @@ const intakeSchema = z.object({
     .min(2, { error: "Enter a public handle or profile URL." })
     .max(300),
   goal: z.enum(["growth", "monetization", "rebrand", "launch_readiness"]),
+  report_type: z.enum(["pulse", "standard", "extended", "enterprise", "blueprint"]).default("standard"),
   context: z.string().trim().max(2000).optional().default(""),
 });
 
@@ -46,10 +50,22 @@ export async function createAudit(
   const parsed = intakeSchema.safeParse({
     handle: formData.get("handle"),
     goal: formData.get("goal"),
+    report_type: formData.get("report_type") ?? "standard",
     context: formData.get("context") ?? "",
   });
   if (!parsed.success) {
     return { status: "error", message: parsed.error.issues[0]?.message };
+  }
+
+  // Validate report_type against plan
+  const plan = effectivePlanForProfile(profile);
+  const allowed = allowedReportTypes(plan as Plan);
+  const reportType = (parsed.data.report_type || "standard") as ReportType;
+  if (!allowed.includes(reportType)) {
+    return {
+      status: "error",
+      message: `Your ${plan} plan doesn't include ${reportType} reports. Upgrade to access this report type.`,
+    };
   }
 
   const admin = createAdminClient();
@@ -91,11 +107,12 @@ export async function createAudit(
       handle: decision.normalizedHandle,
       platform: decision.platform,
       goal: parsed.data.goal,
+      report_type: reportType,
       context: parsed.data.context,
       status: decision.status,
       limitations: decision.limitations,
       milestone_label: decision.milestoneLabel,
-    })
+    } as any)
     .select("id")
     .single();
 

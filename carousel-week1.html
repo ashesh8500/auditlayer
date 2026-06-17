@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AuditLayer — Carousel Slides</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 0;
+    gap: 40px;
+  }
+
+  .slide {
+    width: 1080px;
+    height: 1080px;
+    background: #0F172A;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    flex-shrink: 0;
+  }
+
+  /* === SLIDE 1: COVER === */
+  .slide-1 .cover-text {
+    position: absolute;
+    top: 180px;
+    left: 100px;
+    right: 100px;
+  }
+  .slide-1 .line-1 {
+    font-size: 52px;
+    font-weight: 300;
+    color: #94A3B8;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  .slide-1 .line-2 {
+    font-size: 82px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-top: 8px;
+  }
+  .slide-1 .line-3 {
+    font-size: 82px;
+    font-weight: 700;
+    color: #0D9488;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .slide-1 .grid-bg {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+  .slide-1 .wordmark {
+    position: absolute;
+    bottom: 60px;
+    right: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 0.2em;
+    color: rgba(13,148,136,0.6);
+    text-transform: uppercase;
+  }
+
+  /* === SLIDE 2: MISTAKE #1 === */
+  .slide-num {
+    position: absolute;
+    top: 60px;
+    left: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 0.2em;
+    color: #0D9488;
+    text-transform: uppercase;
+  }
+  .slide-headline {
+    position: absolute;
+    top: 110px;
+    left: 100px;
+    right: 450px;
+    font-size: 44px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+  }
+  .slide-body {
+    position: absolute;
+    top: 270px;
+    left: 100px;
+    right: 480px;
+    font-size: 20px;
+    font-weight: 400;
+    color: #CBD5E1;
+    line-height: 1.6;
+    letter-spacing: -0.005em;
+  }
+  .data-box {
+    position: absolute;
+    left: 100px;
+    right: 480px;
+    bottom: 220px;
+    background: rgba(13,148,136,0.08);
+    border-left: 3px solid #0D9488;
+    padding: 20px 24px;
+    border-radius: 0 8px 8px 0;
+  }
+  .data-box .data-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 21px;
+    font-weight: 500;
+    color: #5EEAD4;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+  }
+
+  /* Feed mockup — right side */
+  .feed-mockup {
+    position: absolute;
+    right: 80px;
+    top: 110px;
+    width: 340px;
+  }
+  .feed-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .feed-label.bad { color: #F87171; }
+  .feed-label.good { color: #34D399; }
+
+  .mock-post {
+    background: #1E293B;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .mock-thumb {
+    width: 44px; height: 44px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .mock-caption {
+    font-size: 9px;
+    color: #94A3B8;
+    line-height: 1.3;
+  }
+  .mock-caption strong { color: #CBD5E1; font-weight: 600; }
+
+  /* Tint overlays for comparison */
+  .tint-red { border: 2px solid rgba(239,68,68,0.3); }
+  .tint-green { border: 2px solid rgba(34,197,94,0.3); }
+
+  /* Side by side mockups for slide 2 & 3 */
+  .side-by-side {
+    position: absolute;
+    right: 60px;
+    top: 110px;
+    width: 420px;
+    display: flex;
+    gap: 20px;
+  }
+  .side-col {
+    flex: 1;
+  }
+  .side-col .feed-label {
+    font-size: 10px;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  .mini-post {
+    background: #1E293B;
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 6px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .mini-thumb {
+    width: 36px; height: 36px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .mini-cap {
+    font-size: 7.5px;
+    color: #64748B;
+    line-height: 1.3;
+  }
+  .mini-cap strong { color: #94A3B8; }
+
+  /* Slide 3: Grid mockup */
+  .grid-mockup {
+    position: absolute;
+    right: 80px;
+    top: 100px;
+    display: grid;
+    grid-template-columns: repeat(3, 95px);
+    grid-template-rows: repeat(3, 95px);
+    gap: 6px;
+  }
+  .grid-cell {
+    border-radius: 4px;
+  }
+  .grid-mockup.bad-grid .grid-cell:nth-child(1) { background: linear-gradient(135deg, #EF4444, #DC2626); }
+  .grid-mockup.bad-grid .grid-cell:nth-child(2) { background: linear-gradient(135deg, #8B5CF6, #7C3AED); }
+  .grid-mockup.bad-grid .grid-cell:nth-child(3) { background: linear-gradient(135deg, #F59E0B, #D97706); }
+  .grid-mockup.bad-grid .grid-cell:nth-child(4) { background: #FFFFFF; display:flex;align-items:center;justify-content:center;font-size:10px;color:#000;font-weight:700; }
+  .grid-mockup.bad-grid .grid-cell:nth-child(5) { background: linear-gradient(135deg, #3B82F6, #2563EB); }
+  .grid-mockup.bad-grid .grid-cell:nth-child(6) { background: linear-gradient(135deg, #EC4899, #DB2777); }
+  .grid-mockup.bad-grid .grid-cell:nth-child(7) { background: linear-gradient(135deg, #14B8A6, #0D9488); }
+  .grid-mockup.bad-grid .grid-cell:nth-child(8) { background: #000000; display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700; }
+  .grid-mockup.bad-grid .grid-cell:nth-child(9) { background: linear-gradient(135deg, #F97316, #EA580C); }
+
+  .grid-mockup.good-grid .grid-cell {
+    background: linear-gradient(135deg, #0F766E, #0D9488);
+  }
+  .grid-mockup.good-grid .grid-cell:nth-child(2) { background: linear-gradient(135deg, #115E59, #0F766E); }
+  .grid-mockup.good-grid .grid-cell:nth-child(4) { background: linear-gradient(135deg, #134E4A, #115E59); }
+  .grid-mockup.good-grid .grid-cell:nth-child(5) { background: #FFFFFF; display:flex;align-items:center;justify-content:center;font-size:10px;color:#0F172A;font-weight:700; }
+  .grid-mockup.good-grid .grid-cell:nth-child(7) { background: linear-gradient(135deg, #0D9488, #0F766E); }
+  .grid-mockup.good-grid .grid-cell:nth-child(8) { background: linear-gradient(135deg, #0F766E, #115E59); }
+
+  .grid-label {
+    position: absolute;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: center;
+    width: 300px;
+  }
+
+  /* Slide 4: Carousel swipe mockup */
+  .carousel-mock {
+    position: absolute;
+    right: 70px;
+    top: 100px;
+    width: 400px;
+  }
+  .carousel-slide {
+    width: 380px;
+    height: 380px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .carousel-slide.slide-bad {
+    background: #FFFFFF;
+    color: #64748B;
+    font-size: 28px;
+    font-weight: 600;
+    text-align: center;
+    border: 2px solid #334155;
+  }
+  .carousel-slide.slide-hidden {
+    background: #1E293B;
+    border: 1px solid #334155;
+    opacity: 0.5;
+  }
+  .carousel-dots {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #475569; }
+  .dot.active { background: #0D9488; width: 24px; border-radius: 4px; }
+  .strikethrough {
+    position: absolute;
+    top: 50%; left: 20px; right: 20px;
+    height: 3px;
+    background: #EF4444;
+    transform: rotate(-5deg);
+  }
+  .missed-badge {
+    position: absolute;
+    top: -8px; right: -8px;
+    background: #EF4444;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Slide 5: Save comparison */
+  .save-mock {
+    position: absolute;
+    right: 70px;
+    top: 120px;
+    width: 400px;
+  }
+  .save-post {
+    background: #1E293B;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .save-post .post-img {
+    width: 90px; height: 90px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  .save-post .post-info {
+    flex: 1;
+  }
+  .save-post .post-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #F1F5F9;
+    margin-bottom: 4px;
+  }
+  .save-post .post-meta {
+    font-size: 10px;
+    color: #64748B;
+  }
+  .save-icon-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 6px;
+    font-size: 10px;
+    color: #64748B;
+  }
+  .save-icon-row .highlight {
+    color: #34D399;
+    font-weight: 600;
+  }
+  .save-badge {
+    display: inline-block;
+    background: rgba(13,148,136,0.2);
+    color: #5EEAD4;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.06em;
+    margin-left: 6px;
+  }
+
+  /* Slide 6: Comments ghosting */
+  .comment-mock {
+    position: absolute;
+    right: 70px;
+    top: 100px;
+    width: 400px;
+    background: #1E293B;
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .comment {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    align-items: flex-start;
+  }
+  .comment-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #334155;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #94A3B8;
+  }
+  .comment-body {
+    flex: 1;
+  }
+  .comment-user {
+    font-size: 11px;
+    font-weight: 600;
+    color: #CBD5E1;
+  }
+  .comment-text {
+    font-size: 11px;
+    color: #94A3B8;
+    margin-top: 2px;
+  }
+  .comment-time {
+    font-size: 9px;
+    color: #64748B;
+    margin-top: 3px;
+  }
+  .brand-reply {
+    margin-left: 36px;
+    margin-bottom: 14px;
+    padding-left: 10px;
+    border-left: 2px solid #334155;
+  }
+  .brand-reply .reply-text {
+    font-size: 11px;
+    color: #F87171;
+    font-weight: 600;
+  }
+  .clock-overlay {
+    position: absolute;
+    bottom: -40px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #5EEAD4;
+    letter-spacing: 0.05em;
+  }
+
+  /* Slide 7: Closer */
+  .slide-7 .closer-text {
+    position: absolute;
+    top: 50%;
+    left: 100px;
+    right: 100px;
+    transform: translateY(-50%);
+    text-align: center;
+  }
+  .slide-7 .closer-line {
+    font-size: 62px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .slide-7 .closer-accent {
+    width: 80px;
+    height: 4px;
+    background: #0D9488;
+    margin: 32px auto;
+    border-radius: 2px;
+  }
+  .slide-7 .closer-cta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    color: #5EEAD4;
+    letter-spacing: 0.08em;
+    margin-top: 32px;
+  }
+  .slide-7 .closer-wordmark {
+    position: absolute;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.25em;
+    color: rgba(13,148,136,0.5);
+    text-transform: uppercase;
+  }
+
+  /* Divider line */
+  .divider {
+    width: 800px;
+    height: 1px;
+    background: #334155;
+    margin: 8px 0;
+  }
+
+  .slide-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #64748B;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== SLIDE 1: COVER ==================== -->
+<div class="slide slide-1" id="slide-1">
+  <div class="grid-bg"></div>
+  <div class="cover-text">
+    <div class="line-1">I analyzed 50 brand feeds.</div>
+    <div class="line-2">Here's what 90%</div>
+    <div class="line-3">of them get wrong.</div>
+  </div>
+  <div class="wordmark">AuditLayer</div>
+</div>
+
+<div class="slide-label">SLIDE 1 — Cover / Hook</div>
+<div class="divider"></div>
+
+<!-- ==================== SLIDE 2: MISTAKE #1 ==================== -->
+<div class="slide" id="slide-2">
+  <div class="slide-num">Mistake 01</div>
+  <div class="slide-headline">They treat their feed like a product catalog.</div>
+  <div class="slide-body">
+    45 of 50 brands I audited post promotional content more than 60% of the time. Product shots. Launch announcements. "Shop now."<br><br>
+    The algorithm doesn't push catalogs — it pushes content people save, share, and sit with.
+  </div>
+  <div class="data-box">
+    <div class="data-text">Promo-heavy feeds: 1.2% engagement<br>Education-heavy feeds: 3.8%</div>
+  </div>
+
+  <!-- Side by side comparison -->
+  <div class="side-by-side">
+    <div class="side-col">
+      <div class="feed-label bad">Catalog Feed</div>
+      <div class="mini-post tint-red">
+        <div class="mini-thumb" style="background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;">📦</div>
+        <div class="mini-cap"><strong>New drop</strong><br>Shop the collection</div>
+      </div>
+      <div class="mini-post tint-red">
+        <div class="mini-thumb" style="background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;">📦</div>
+        <div class="mini-cap"><strong>Now available</strong><br>Limited stock</div>
+      </div>
+      <div class="mini-post tint-red">
+        <div class="mini-thumb" style="background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;">📦</div>
+        <div class="mini-cap"><strong>Coming soon</strong><br>Tap to shop</div>
+      </div>
+      <div class="mini-post tint-red">
+        <div class="mini-thumb" style="background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;">📦</div>
+        <div class="mini-cap"><strong>Restocked</strong><br>Link in bio</div>
+      </div>
+    </div>
+    <div class="side-col">
+      <div class="feed-label good">Education + Brand Feed</div>
+      <div class="mini-post tint-green">
+        <div class="mini-thumb" style="background:linear-gradient(135deg,#0D9488,#0F766E);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;">🧠</div>
+        <div class="mini-cap"><strong>How to read a label</strong><br>5 things most miss</div>
+      </div>
+      <div class="mini-post tint-green">
+        <div class="mini-thumb" style="background:linear-gradient(135deg,#0D9488,#0F766E);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;">🎬</div>
+        <div class="mini-cap"><strong>Behind the lab</strong><br>A day in R&D</div>
+      </div>
+      <div class="mini-post tint-green">
+        <div class="mini-thumb" style="background:linear-gradient(135deg,#0D9488,#0F766E);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;">📦</div>
+        <div class="mini-cap"><strong>New formula</strong><br>Here's what changed</div>
+      </div>
+      <div class="mini-post tint-green">
+        <div class="mini-thumb" style="background:linear-gradient(135deg,#0D9488,#0F766E);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;">💬</div>
+        <div class="mini-cap"><strong>You asked, we fixed</strong><br>Community update</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide-label">SLIDE 2 — Mistake #1: Product Catalog Syndrome</div>
+<div class="divider"></div>
+
+<!-- ==================== SLIDE 3: MISTAKE #2 ==================== -->
+<div class="slide" id="slide-3">
+  <div class="slide-num">Mistake 02</div>
+  <div class="slide-headline">Every post looks like a different brand designed it.</div>
+  <div class="slide-body">
+    No consistent color palette. Different fonts on every slide. Thumbnail treatments that change weekly.<br><br>
+    When someone visits your profile, they decide in 1.3 seconds whether to follow. If the grid doesn't feel cohesive, they bounce.
+  </div>
+  <div class="data-box">
+    <div class="data-text">Consistent visual identity →<br>23% more profile→follow<br>conversion.</div>
+  </div>
+
+  <!-- Grid mockups side by side -->
+  <div class="grid-mockup bad-grid" style="right:420px;top:100px;">
+  </div>
+  <div class="grid-label bad" style="right:380px;top:410px;color:#F87171;">Inconsistent Grid</div>
+
+  <div class="grid-mockup good-grid" style="right:80px;top:100px;">
+  </div>
+  <div class="grid-label" style="right:40px;top:410px;color:#34D399;">Cohesive Grid</div>
+
+  <!-- Arrow between them -->
+  <div style="position:absolute;right:390px;top:230px;color:#64748B;font-size:32px;">→</div>
+</div>
+
+<div class="slide-label">SLIDE 3 — Mistake #2: Visual Inconsistency</div>
+<div class="divider"></div>
+
+<!-- ==================== SLIDE 4: MISTAKE #3 ==================== -->
+<div class="slide" id="slide-4">
+  <div class="slide-num">Mistake 03</div>
+  <div class="slide-headline">Slide 1 is the weakest slide in the carousel.</div>
+  <div class="slide-body">
+    Logos. Title cards. "Swipe →."<br><br>
+    Slide 1 is the only slide most people will ever see. If the value starts on slide 3, you've already lost more than half your audience.
+  </div>
+  <div class="data-box">
+    <div class="data-text">Only 41% of viewers<br>ever swipe to slide 2.<br><br>59% are gone before<br>they reach your point.</div>
+  </div>
+
+  <!-- Carousel swipe mockup -->
+  <div class="carousel-mock">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748B;text-align:center;margin-bottom:12px;letter-spacing:0.1em;">WHAT THEY POST</div>
+    <div class="carousel-slide slide-bad">
+      <div>LOGO<br><span style="font-size:16px;font-weight:400;">NEW COLLECTION →</span></div>
+    </div>
+    <div class="carousel-dots">
+      <div class="dot active"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+    <div style="text-align:center;margin:16px 0;font-size:14px;color:#94A3B8;">59% never see these ↓</div>
+    <div class="carousel-slide slide-hidden" style="position:relative;">
+      <div class="strikethrough"></div>
+      <div style="font-size:16px;color:#94A3B8;font-weight:500;">The actual value</div>
+    </div>
+    <div class="carousel-slide slide-hidden" style="position:relative;">
+      <div class="strikethrough"></div>
+      <div style="font-size:16px;color:#94A3B8;font-weight:500;">The framework</div>
+    </div>
+    <div class="carousel-slide slide-hidden" style="position:relative;height:120px;">
+      <div class="strikethrough"></div>
+      <div style="font-size:16px;color:#94A3B8;font-weight:500;">The takeaway</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide-label">SLIDE 4 — Mistake #3: Buried Hook</div>
+<div class="divider"></div>
+
+<!-- ==================== SLIDE 5: MISTAKE #4 ==================== -->
+<div class="slide" id="slide-5">
+  <div class="slide-num">Mistake 04</div>
+  <div class="slide-headline">Nothing in their feed is worth saving.</div>
+  <div class="slide-body">
+    Saves are Instagram's strongest signal that your content has lasting value.<br><br>
+    38 of 50 brands I audited had zero saveable content — no frameworks, no checklists, no reference posts. All consumable. Nothing keepable.
+  </div>
+  <div class="data-box">
+    <div class="data-text">High save rates →<br>2.4× more Explore page<br>distribution.</div>
+  </div>
+
+  <!-- Save comparison -->
+  <div class="save-mock">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748B;margin-bottom:14px;letter-spacing:0.1em;">TWO POSTS. ONE GETS SAVED.</div>
+    <div class="save-post">
+      <div class="post-img" style="background:linear-gradient(135deg,#F59E0B,#D97706);display:flex;align-items:center;justify-content:center;font-size:28px;">☀️</div>
+      <div class="post-info">
+        <div class="post-title">Summer Collection</div>
+        <div class="post-meta">Bright days ahead. Shop the drop. ✨</div>
+        <div class="save-icon-row">
+          <span>❤️ 142</span>
+          <span>💬 8</span>
+          <span>🔖 3</span>
+          <span style="color:#F87171;">← low saves</span>
+        </div>
+      </div>
+    </div>
+    <div class="save-post" style="border:1px solid rgba(13,148,136,0.3);">
+      <div class="post-img" style="background:linear-gradient(135deg,#0D9488,#0F766E);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;font-weight:700;">5-PART FRAMEWORK</div>
+      <div class="post-info">
+        <div class="post-title">The Audit Framework</div>
+        <div class="post-meta">How we score every brand in 6 dimensions.</div>
+        <div class="save-icon-row">
+          <span>❤️ 98</span>
+          <span>💬 24</span>
+          <span class="highlight">🔖 187</span>
+          <span class="save-badge">HIGH SAVES</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide-label">SLIDE 5 — Mistake #4: No Save Strategy</div>
+<div class="divider"></div>
+
+<!-- ==================== SLIDE 6: MISTAKE #5 ==================== -->
+<div class="slide" id="slide-6">
+  <div class="slide-num">Mistake 05</div>
+  <div class="slide-headline">They post. They ghost.</div>
+  <div class="slide-body">
+    The first 4 hours after posting are the critical window. Comments in that window signal thread depth to the algorithm.<br><br>
+    Most brands reply 2–3 days later — or never. Bots don't count. The algorithm knows.
+  </div>
+  <div class="data-box" style="bottom:200px;">
+    <div class="data-text">Replies in first 4 hours →<br>1.7× more reach than<br>replies after 24 hours.</div>
+  </div>
+
+  <!-- Comments mockup -->
+  <div class="comment-mock">
+    <div class="comment">
+      <div class="comment-avatar">S</div>
+      <div class="comment-body">
+        <div class="comment-user">sarah_m</div>
+        <div class="comment-text">This is exactly what I needed! Do you have a version for service businesses?</div>
+        <div class="comment-time">2d</div>
+      </div>
+    </div>
+    <div class="comment">
+      <div class="comment-avatar">M</div>
+      <div class="comment-body">
+        <div class="comment-user">mike.creates</div>
+        <div class="comment-text">Slide 4 is the one. Been saying this for months 🔥</div>
+        <div class="comment-time">2d</div>
+      </div>
+    </div>
+    <div class="comment">
+      <div class="comment-avatar">J</div>
+      <div class="comment-body">
+        <div class="comment-user">jordan.writes</div>
+        <div class="comment-text">What tool do you use to audit the feeds?</div>
+        <div class="comment-time">1d</div>
+      </div>
+    </div>
+    <div class="comment">
+      <div class="comment-avatar">R</div>
+      <div class="comment-body">
+        <div class="comment-user">rachel.growth</div>
+        <div class="comment-text">Saved. Sharing with my team tomorrow.</div>
+        <div class="comment-time">1d</div>
+      </div>
+    </div>
+    <div class="brand-reply">
+      <div class="reply-text">🔥🔥</div>
+      <div class="comment-time">3d later · the brand finally replies</div>
+    </div>
+  </div>
+  <div class="clock-overlay" style="bottom:-50px;">⏱ 0–4 hrs = algorithm window</div>
+</div>
+
+<div class="slide-label">SLIDE 6 — Mistake #5: Dead Community</div>
+<div class="divider"></div>
+
+<!-- ==================== SLIDE 7: CLOSER ==================== -->
+<div class="slide slide-7" id="slide-7">
+  <div class="grid-bg"></div>
+  <div class="closer-text">
+    <div class="closer-line">This is what</div>
+    <div class="closer-line">AuditLayer sees.</div>
+    <div class="closer-accent"></div>
+    <div style="font-size:22px;color:#94A3B8;font-weight:400;margin-top:24px;line-height:1.5;">
+      The feed is a forensic document.<br>
+      Every post leaves evidence.<br>
+      Most brands never read the report.
+    </div>
+    <div class="closer-cta">🔍 DM "AUDIT"</div>
+  </div>
+  <div class="closer-wordmark">AuditLayer</div>
+</div>
+
+<div class="slide-label">SLIDE 7 — Closer / CTA</div>
+
+</body>
+</html>

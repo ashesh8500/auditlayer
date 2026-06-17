@@ -4,7 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import Link from "next/link";
 import { 
   ArrowLeft, ArrowRight, Info, Loader2, Sparkles, Check, 
-  Search, CheckCircle2 
+  Search, CheckCircle2, Zap, FileText, BookOpen, Building2, Compass 
 } from "lucide-react";
 
 const InstagramIcon = (props: { className?: string }) => (
@@ -47,9 +47,21 @@ import {
   GOALS,
   PLATFORM_LABELS,
   intakeHints,
+  allowedReportTypes,
+  REPORT_TYPE_LABELS,
   type Goal,
+  type Plan,
+  type ReportType,
 } from "@/lib/domain";
 import { createAudit, type CreateAuditState } from "@/lib/actions/audits";
+
+const REPORT_TYPE_ICONS: Record<ReportType, any> = {
+  pulse: Zap,
+  standard: FileText,
+  extended: BookOpen,
+  enterprise: Building2,
+  blueprint: Compass,
+};
 
 const PLATFORM_ICONS: Record<string, any> = {
   instagram: InstagramIcon,
@@ -66,15 +78,21 @@ const PLATFORM_ICONS: Record<string, any> = {
 
 const initialState: CreateAuditState = { status: "idle" };
 
-export function IntakeWizard() {
+export function IntakeWizard({ plan }: { plan: Plan }) {
   const [step, setStep] = useState(0);
   const [handle, setHandle] = useState("");
   const [goal, setGoal] = useState<Goal | "">("");
+  const [reportType, setReportType] = useState<ReportType>(
+    plan === "free" ? "pulse" : "standard"
+  );
   const [context, setContext] = useState("");
   const [state, action, pending] = useActionState(createAudit, initialState);
 
   const hints = useMemo(() => intakeHints(handle, context), [handle, context]);
   const canContinueHandle = hints.normalizedHandle.length >= 2;
+  const canSubmit = goal !== "";
+
+  const availableTypes = useMemo(() => allowedReportTypes(plan), [plan]);
 
   const IconComponent = PLATFORM_ICONS[hints.platform] || Search;
 
@@ -82,6 +100,7 @@ export function IntakeWizard() {
     <form action={action} className="space-y-8 max-w-xl mx-auto">
       <input type="hidden" name="handle" value={handle} />
       <input type="hidden" name="goal" value={goal} />
+      <input type="hidden" name="report_type" value={reportType} />
       <input type="hidden" name="context" value={context} />
 
       <Stepper step={step} />
@@ -173,10 +192,7 @@ export function IntakeWizard() {
                 <button
                   key={g.value}
                   type="button"
-                  onClick={() => {
-                    setGoal(g.value);
-                    setStep(2);
-                  }}
+                  onClick={() => setGoal(g.value)}
                   className={`relative rounded-xl border p-5 text-left transition-all hover:border-[color:var(--accent)]/50 ${
                     isSelected
                       ? "border-[color:var(--accent)] bg-[color:var(--accent-muted)] shadow-sm"
@@ -193,10 +209,46 @@ export function IntakeWizard() {
             })}
           </div>
 
+          {goal && (
+            <div className="space-y-3 rounded-xl border border-border bg-card p-5 animate-in fade-in duration-200">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Report type
+              </p>
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                {availableTypes.map((rt) => {
+                  const Icon = REPORT_TYPE_ICONS[rt];
+                  const isSelected = reportType === rt;
+                  return (
+                    <button
+                      key={rt}
+                      type="button"
+                      onClick={() => setReportType(rt)}
+                      className={`flex items-center gap-3 rounded-lg border p-3 text-left text-sm transition-all ${
+                        isSelected
+                          ? "border-[color:var(--accent)] bg-[color:var(--accent-muted)] shadow-sm"
+                          : "border-border hover:border-[color:var(--accent)]/30 bg-white"
+                      }`}
+                    >
+                      <Icon className="size-4 shrink-0 text-[color:var(--accent)]" />
+                      <div>
+                        <div className="font-semibold">{REPORT_TYPE_LABELS[rt]}</div>
+                      </div>
+                      {isSelected && <CheckCircle2 className="size-3.5 ml-auto text-[color:var(--accent)]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-between pt-2">
-            <Button type="button" variant="ghost" onClick={() => setStep(0)} className="font-semibold h-11">
+            <Button type="button" variant="ghost" onClick={() => { setStep(0); setGoal(""); }} className="font-semibold h-11">
               <ArrowLeft className="size-4" />
               Back
+            </Button>
+            <Button type="button" onClick={() => setStep(2)} disabled={!canSubmit} className="h-11 px-5 font-semibold">
+              Continue
+              <ArrowRight className="size-4" />
             </Button>
           </div>
         </section>
