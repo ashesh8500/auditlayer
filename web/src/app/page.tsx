@@ -139,7 +139,7 @@ export default async function Home() {
               from real data, calibrated to your niche, and delivered as an
               executable playbook.
             </p>
-            <div className="relative mt-7 flex flex-wrap items-center justify-center gap-3">
+            <div className="relative mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link href={primaryHref}>
                 <Button size="lg" className="font-semibold">
                   Run a Free Pulse Audit
@@ -192,10 +192,10 @@ export default async function Home() {
           <div className="relative mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-md)]">
             {/* Header bar */}
             <div className="flex items-center justify-between border-b border-border bg-[#f5f5f4] px-5 py-2.5">
-              <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              <span className="font-mono text-[0.7rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 Brand Pulse · @glowstate
               </span>
-              <span className="rounded-full bg-[color:var(--green-muted)] px-2 py-0.5 font-mono text-[0.6rem] font-semibold uppercase text-[color:var(--green)]">
+              <span className="rounded-full bg-[color:var(--green-muted)] px-2 py-0.5 font-mono text-[0.65rem] font-semibold uppercase text-[color:var(--green)]">
                 Sample
               </span>
             </div>
@@ -204,7 +204,7 @@ export default async function Home() {
 
               {/* ── Score Bars ── */}
               <div className="flex items-baseline justify-between border-b border-border pb-3">
-                <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-muted-foreground">Score Breakdown</span>
+                <span className="text-[0.7rem] font-bold uppercase tracking-[0.1em] text-muted-foreground">Score Breakdown</span>
                 <span className="font-mono text-lg font-semibold">48<span className="text-xs font-normal text-muted-foreground">/100</span></span>
               </div>
               {[
@@ -215,7 +215,7 @@ export default async function Home() {
                 { label: "Brand Cohesion", pct: 68, color: "bg-[color:var(--green)]" },
                 { label: "Conversion Architecture", pct: 22, color: "bg-[color:var(--red)]" },
               ].map((dim) => (
-                <div key={dim.label} className="mt-2 flex items-center gap-1.5 sm:gap-2 text-[0.62rem] sm:text-[0.68rem]">
+                <div key={dim.label} className="mt-2 flex items-center gap-1.5 sm:gap-2 text-[0.65rem] sm:text-[0.7rem]">
                   <span className="w-20 flex-shrink-0 text-right font-medium text-muted-foreground sm:w-32">{dim.label}</span>
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#f0efed]">
                     <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.pct}%` }} />
@@ -223,26 +223,26 @@ export default async function Home() {
                   <span className="w-5 flex-shrink-0 text-right font-mono font-semibold">{dim.pct}</span>
                 </div>
               ))}
-              <p className="mt-2 text-[0.58rem] italic text-muted-foreground">What this proves: Diagnosis — where you stand</p>
+              <p className="mt-2 text-[0.62rem] italic text-muted-foreground">What this proves: Diagnosis — where you stand</p>
 
               {/* ── Working / Missing ── */}
               <div className="mt-5 grid grid-cols-2 gap-4 border-t border-border pt-4">
                 <div>
                   <h5 className="text-[0.7rem] font-bold text-[color:var(--green)]">🟢 Working</h5>
                   <ul className="mt-1.5 space-y-1.5">
-                    <li className="text-[0.68rem] text-muted-foreground leading-snug">Product differentiation — dual-extract, lab-tested formulations</li>
-                    <li className="text-[0.68rem] text-muted-foreground leading-snug">Visual identity — consistent forest green + amber palette</li>
+                    <li className="text-[0.7rem] text-muted-foreground leading-snug">Product differentiation — dual-extract, lab-tested formulations</li>
+                    <li className="text-[0.7rem] text-muted-foreground leading-snug">Visual identity — consistent forest green + amber palette</li>
                   </ul>
                 </div>
                 <div>
                   <h5 className="text-[0.7rem] font-bold text-[color:var(--red)]">🔴 Missing</h5>
                   <ul className="mt-1.5 space-y-1.5">
-                    <li className="text-[0.68rem] text-muted-foreground leading-snug">Only 22% of posts are Reels — Instagram weights video 3–5× higher</li>
-                    <li className="text-[0.68rem] text-muted-foreground leading-snug">18-hour reply latency — silent community signals low priority to the algorithm</li>
+                    <li className="text-[0.7rem] text-muted-foreground leading-snug">Only 22% of posts are Reels — Instagram weights video 3–5× higher</li>
+                    <li className="text-[0.7rem] text-muted-foreground leading-snug">18-hour reply latency — silent community signals low priority to the algorithm</li>
                   </ul>
                 </div>
               </div>
-              <p className="mt-1 text-[0.58rem] italic text-muted-foreground">What this proves: What&rsquo;s good, what&rsquo;s broken</p>
+              <p className="mt-1 text-[0.62rem] italic text-muted-foreground">What this proves: What&rsquo;s good, what&rsquo;s broken</p>
 
               {/* ── Three Moves ── */}
               <div className="mt-5 border-t border-border pt-4">
@@ -254,12 +254,12 @@ export default async function Home() {
                     "Build story highlight architecture — give new visitors a guided path",
                   ].map((move, i) => (
                     <div key={i} className="flex items-start gap-2.5 rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-2.5">
-                      <span className="mt-0.5 flex size-4 flex-shrink-0 items-center justify-center rounded-full bg-[color:var(--accent)] text-[0.55rem] font-bold text-white">{i + 1}</span>
-                      <span className="text-[0.68rem] text-muted-foreground leading-snug">{move}</span>
+                      <span className="mt-0.5 flex size-4 flex-shrink-0 items-center justify-center rounded-full bg-[color:var(--accent)] text-[0.6rem] font-bold text-white">{i + 1}</span>
+                      <span className="text-[0.7rem] text-muted-foreground leading-snug">{move}</span>
                     </div>
                   ))}
                 </div>
-                <p className="mt-1 text-[0.58rem] italic text-muted-foreground">What this proves: Concrete prescription — 3 numbered actions</p>
+                <p className="mt-1 text-[0.62rem] italic text-muted-foreground">What this proves: Concrete prescription — 3 numbered actions</p>
               </div>
 
               {/* ── CTA ── */}
@@ -287,15 +287,15 @@ export default async function Home() {
 
           <div className="relative mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-md)]">
             <div className="flex items-center justify-between border-b border-border bg-[#f5f5f4] px-5 py-2.5">
-              <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              <span className="font-mono text-[0.7rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 Instagram Audit · Sample Report
               </span>
-              <span className="rounded-full bg-[color:var(--green-muted)] px-2 py-0.5 font-mono text-[0.6rem] font-semibold uppercase text-[color:var(--green)]">
+              <span className="rounded-full bg-[color:var(--green-muted)] px-2 py-0.5 font-mono text-[0.65rem] font-semibold uppercase text-[color:var(--green)]">
                 Sample
               </span>
             </div>
             <div className="max-h-[520px] overflow-y-auto px-4 py-4 sm:px-8 sm:py-8">
-              <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[color:var(--accent)]">
+              <p className="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-[color:var(--accent)]">
                 Instagram Account Audit
               </p>
               <h3 className="mt-0.5 text-xl font-bold tracking-[-0.02em]">
@@ -307,7 +307,7 @@ export default async function Home() {
 
               <div className="mt-5 rounded-[var(--radius)] bg-[#fcfcfb] p-4 sm:p-5">
                 <div className="mb-3 flex items-baseline justify-between border-b border-border pb-3">
-                  <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-muted-foreground">Score Breakdown</span>
+                  <span className="text-[0.7rem] font-bold uppercase tracking-[0.1em] text-muted-foreground">Score Breakdown</span>
                   <span className="font-mono text-xl font-semibold">48<span className="text-xs font-normal text-muted-foreground">/100</span></span>
                 </div>
                 {[
@@ -319,7 +319,7 @@ export default async function Home() {
                   { label: "Conversion Architecture", pct: 22, color: "bg-gradient-to-r from-[color:var(--red)] to-[color:var(--red)]/70" },
                 ].map((dim) => (
                   <div key={dim.label} className="mb-2 flex items-center gap-3 text-xs last:mb-0">
-                    <span className="w-24 flex-shrink-0 text-right text-[0.6rem] font-medium text-muted-foreground sm:w-36 sm:text-xs">{dim.label}</span>
+                    <span className="w-24 flex-shrink-0 text-right text-[0.65rem] font-medium text-muted-foreground sm:w-36 sm:text-xs">{dim.label}</span>
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#f0efed]">
                       <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.pct}%` }} />
                     </div>
@@ -338,7 +338,7 @@ export default async function Home() {
                     ].map((m) => (
                       <div key={m.label} className="rounded-[var(--radius-sm)] border border-border p-3 text-center">
                         <div className={`font-mono text-lg font-semibold leading-none ${m.tone || ""}`}>{m.value}</div>
-                        <div className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">{m.label}</div>
+                        <div className="mt-1 text-[0.62rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">{m.label}</div>
                       </div>
                     ))}
                   </div>
@@ -396,7 +396,7 @@ export default async function Home() {
                 ].map((r) => (
                   <div key={r.cause} className="rounded-[var(--radius-sm)] border border-[color:var(--amber)]/30 bg-[color:var(--amber-muted)]/20 p-3">
                     <p className="text-xs"><strong className="text-foreground">{r.cause}</strong></p>
-                    <p className="mt-0.5 text-[0.68rem] text-muted-foreground">{r.effect}</p>
+                    <p className="mt-0.5 text-[0.7rem] text-muted-foreground">{r.effect}</p>
                   </div>
                 ))}
               </div>
@@ -406,7 +406,7 @@ export default async function Home() {
               {/* 6. Peer Comparison */}
               <h4 className="mt-5 text-sm font-bold">Peer Comparison</h4>
               <div className="mt-2 overflow-x-auto">
-                <table className="w-full text-[0.68rem]">
+                <table className="w-full text-[0.7rem]">
                   <thead>
                     <tr className="border-b border-border text-left text-muted-foreground">
                       <th className="pb-2 pr-2 font-medium">Account</th>
@@ -458,7 +458,7 @@ export default async function Home() {
                   <div key={f.format} className="flex items-center rounded-[var(--radius-sm)] bg-[#fcfcfb] px-3 py-2">
                     <span className="w-16 flex-shrink-0 text-[0.62rem] font-medium sm:w-24 sm:text-xs">{f.format}</span>
                     <span className="w-7 flex-shrink-0 text-right font-mono text-[0.6rem] font-semibold sm:w-8 sm:text-xs">{f.pct}%</span>
-                    <span className={`ml-1.5 text-[0.58rem] sm:ml-3 sm:text-[0.65rem] ${f.tone}`}>{f.assessment}</span>
+                    <span className={`ml-1.5 text-[0.62rem] sm:ml-3 sm:text-[0.65rem] ${f.tone}`}>{f.assessment}</span>
                   </div>
                 ))}
               </div>
@@ -492,7 +492,7 @@ export default async function Home() {
                   "Pin your best-performing Reel to the top of your grid.",
                 ].map((win, i) => (
                   <div key={i} className="flex items-start gap-2 text-xs">
-                    <span className="mt-0.5 flex size-4 flex-shrink-0 items-center justify-center rounded-full bg-[color:var(--accent)] text-[0.55rem] font-bold text-white">{i + 1}</span>
+                    <span className="mt-0.5 flex size-4 flex-shrink-0 items-center justify-center rounded-full bg-[color:var(--accent)] text-[0.6rem] font-bold text-white">{i + 1}</span>
                     <span className="text-muted-foreground">{win}</span>
                   </div>
                 ))}
@@ -513,8 +513,8 @@ export default async function Home() {
                 ].map((b) => (
                   <div key={b.label} className="rounded-[var(--radius-sm)] border border-border bg-[#fcfcfb] p-3 text-center">
                     <div className="font-mono text-lg font-semibold text-[color:var(--accent)]">{b.target}</div>
-                    <div className="mt-0.5 text-[0.58rem] font-medium uppercase tracking-[0.04em] text-muted-foreground">{b.label}</div>
-                    <div className="mt-0.5 text-[0.55rem] text-muted-foreground">{b.timeframe}</div>
+                    <div className="mt-0.5 text-[0.62rem] font-medium uppercase tracking-[0.04em] text-muted-foreground">{b.label}</div>
+                    <div className="mt-0.5 text-[0.6rem] text-muted-foreground">{b.timeframe}</div>
                   </div>
                 ))}
               </div>
@@ -655,14 +655,14 @@ export default async function Home() {
         </section>
 
         {/* ── 6. Blueprint Audit ── */}
-        <section className="mt-10">
+        <section className="mt-16 border-t border-border pt-12">
           <div className="mx-auto max-w-xl rounded-[calc(var(--radius)+2px)] border border-[color:var(--accent)]/30 bg-gradient-to-br from-[color:var(--accent-muted)]/60 to-transparent p-6 sm:p-8">
             <div className="flex items-center justify-center gap-2">
               <h3 className="text-base font-semibold">Blueprint Audit</h3>
               <span className="rounded-full bg-[color:var(--accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--accent)]">One-time</span>
             </div>
             <p className="mt-1 text-center text-xs text-muted-foreground">Set up to two accounts with a complete pre-launch strategy</p>
-            <p className="mt-0.5 text-center text-[0.65rem] font-medium text-[color:var(--accent)]">Suggested for accounts 0–1K followers</p>
+            <p className="mt-0.5 text-center text-[0.7rem] font-medium text-[color:var(--accent)]">Suggested for accounts 0–1K followers</p>
 
             {/* 3-column phase layout */}
             <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -673,10 +673,10 @@ export default async function Home() {
               ].map((col) => (
                 <div key={col.phase} className="rounded-[var(--radius-sm)] bg-white/50 p-3 text-center">
                   <span className="text-lg">{col.icon}</span>
-                  <p className="mt-1 text-[0.65rem] font-bold uppercase tracking-[0.06em] text-muted-foreground">{col.phase}</p>
+                  <p className="mt-1 text-[0.7rem] font-bold uppercase tracking-[0.06em] text-muted-foreground">{col.phase}</p>
                   <ul className="mt-1.5 space-y-0.5">
                     {col.items.map((item) => (
-                      <li key={item} className="text-[0.6rem] text-muted-foreground">{item}</li>
+                      <li key={item} className="text-[0.65rem] text-muted-foreground">{item}</li>
                     ))}
                   </ul>
                 </div>
@@ -714,7 +714,7 @@ export default async function Home() {
           <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             FAQ
           </h2>
-          <div className="mt-6 space-y-3">
+          <div className="mt-6 space-y-4">
             {[
               {
                 q: "What exactly do I get?",
