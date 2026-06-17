@@ -210,20 +210,28 @@ class GenerationPipeline:
             pdf_mode = pdf_result.mode
             _, pdf_url = gateway.upload_pdf(audit.id, pdf_result.data)
             sink.emit("uploaded", f"HTML + {pdf_result.mode} PDF stored")
-            gateway.update_audit(
-                audit.id,
-                status=AuditStatus.READY.value,
-                report_path=report_path,
-                report_url=report_url,
-                pdf_url=pdf_url,
-                tokens_in=result.tokens_in,
-                tokens_out=result.tokens_out,
-                cost_usd=cost.total_usd,
-                model=result.model,
-                milestone_label=audit.milestone_label,
-                limitations=audit.limitations,
-                research_cache="",  # clear cache on success
-            )
+            try:
+                gateway.update_audit(
+                    audit.id,
+                    status=AuditStatus.READY.value,
+                    report_path=report_path,
+                    report_url=report_url,
+                    pdf_url=pdf_url,
+                    tokens_in=result.tokens_in,
+                    tokens_out=result.tokens_out,
+                    cost_usd=cost.total_usd,
+                    model=result.model,
+                    milestone_label=audit.milestone_label,
+                    limitations=audit.limitations,
+                    research_cache="",  # clear cache on success
+                )
+            except Exception as exc:
+                sink.emit(
+                    "failed",
+                    f"update_audit failed after upload — report is in storage, manual finalize needed: {exc}",
+                )
+                # Don't crash the worker — report is safely in storage.
+                # The audit can be manually finalized via Supabase.
         else:
             report_path, pdf_url, pdf_mode = self._write_local(audit.id, result.html)
             sink.emit("uploaded", f"HTML + {pdf_mode} PDF written to {Path(report_path).parent}")
