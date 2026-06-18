@@ -758,10 +758,14 @@ export default async function Home() {
 
         <footer className="mt-16 border-t border-border pt-6 text-xs text-muted-foreground">
           <p className="font-semibold text-foreground">AuditLayerMedia</p>
-          <a href="https://instagram.com/auditlayermedia" target="_blank" rel="noopener noreferrer" className="mt-1 flex items-center gap-1.5 text-[color:var(--accent)] hover:underline">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5"/></svg>
-            @auditlayermedia
-          </a>
+          <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1">
+            <a href="https://instagram.com/auditlayermedia" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[color:var(--accent)] hover:underline">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5"/></svg>
+              @auditlayermedia
+            </a>
+            <Link href="/support" className="text-[color:var(--accent)] hover:underline">Support</Link>
+            <Link href="/privacy" className="text-[color:var(--accent)] hover:underline">Privacy</Link>
+          </div>
           <p className="mt-1 max-w-2xl leading-relaxed">
             AuditLayerMedia provides social media competitive intelligence reports based on publicly available data, platform benchmarks, and industry-standard analytics. We are not affiliated with, endorsed by, or partnered with Instagram, TikTok, YouTube, X (Twitter), or any other platform we audit. All trademarks and handles referenced in our reports belong to their respective owners. Our reports are strategic assessments — not financial, legal, or investment advice. Metrics are estimates drawn from indexed public content and third-party data sources; exact platform analytics may differ. Always verify independently before making business decisions.
           </p>
