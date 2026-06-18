@@ -21,6 +21,14 @@ export type AuditStatus =
 
 export type Plan = "free" | "starter" | "pro" | "enterprise";
 
+export type AccountType = "standard" | "trial" | "comp";
+
+export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  standard: "Standard",
+  trial: "Trial",
+  comp: "Complimentary",
+};
+
 export type Goal = "growth" | "monetization" | "rebrand" | "launch_readiness";
 
 export type ReportType = "pulse" | "standard" | "extended" | "enterprise" | "blueprint";
@@ -71,12 +79,14 @@ export function isAdminUnlimited(role: string | null | undefined): boolean {
   return role === "admin";
 }
 
-/** Effective audit cap for a profile (admins → enterprise allowance). */
+/** Effective audit cap for a profile (admins → enterprise allowance, gifted → unlimited). */
 export function auditLimitForProfile(profile: {
   plan: Plan;
   role: string;
+  gifted_audits?: number;
 }): number {
   if (isAdminUnlimited(profile.role)) return PLAN_LIMITS.enterprise;
+  if (profile.gifted_audits && profile.gifted_audits > 0) return Infinity;
   return PLAN_LIMITS[profile.plan];
 }
 
@@ -196,6 +206,7 @@ export function evaluateIntake(
   input: IntakeInput,
   completedAudits = 0,
   followers: number | null = null,
+  giftedAudits = 0,
 ): IntakeDecision {
   const reasons: string[] = [];
   const limitations: string[] = [];
@@ -209,7 +220,7 @@ export function evaluateIntake(
   if (!handle) {
     reasons.push("A valid public handle or profile URL is required.");
   }
-  if (completedAudits >= PLAN_LIMITS[input.plan]) {
+  if (giftedAudits <= 0 && completedAudits >= PLAN_LIMITS[input.plan]) {
     reasons.push(`The ${input.plan} plan has reached its audit limit.`);
   }
 

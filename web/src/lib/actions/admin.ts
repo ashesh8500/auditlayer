@@ -253,3 +253,295 @@ export async function uploadManualReport(
   revalidatePath(`/audits/${auditId}`);
   return { status: "ok", message: "Report uploaded and marked ready." };
 }
+
+/** Update a user's plan (admin-only). */
+export async function updateUserPlan(
+  _prev: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  const adminProfile = await requireAdmin();
+  if (!isSupabaseAdminConfigured())
+    return { status: "error", message: "Not configured." };
+
+  const profileId = String(formData.get("profileId") ?? "");
+  const plan = String(formData.get("plan") ?? "").trim() as any;
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  if (!profileId || !plan || !reason)
+    return { status: "error", message: "Profile, plan, and reason are required." };
+
+  const validPlans = ["free", "starter", "pro", "enterprise"];
+  if (!validPlans.includes(plan))
+    return { status: "error", message: `Invalid plan: ${plan}.` };
+
+  const admin = createAdminClient();
+
+  // Fetch current plan
+  const { data: profileRow, error: fetchError } = await admin
+    .from("profiles")
+    .select("plan")
+    .eq("id", profileId)
+    .maybeSingle();
+
+  if (fetchError || !profileRow)
+    return { status: "error", message: fetchError?.message || "Profile not found." };
+
+  const fromPlan = profileRow.plan;
+
+  // Update plan
+  const { error: updateError } = await admin
+    .from("profiles")
+    .update({ plan })
+    .eq("id", profileId);
+
+  if (updateError)
+    return { status: "error", message: updateError.message };
+
+  // Log admin action
+  try {
+    await (admin as any).from("admin_actions").insert({
+      actor_id: adminProfile.id,
+      target_user_id: profileId,
+      action: "plan_change",
+      detail: { from: fromPlan, to: plan, reason },
+    });
+  } catch (e: any) {
+    console.error("admin_actions insert failed (plan_change):", e.message);
+  }
+
+  revalidatePath(`/admin/users/${profileId}`);
+  return { status: "ok", message: `Plan changed from ${fromPlan} to ${plan}.` };
+}
+
+/** Adjust a user's gifted audit count (admin-only). */
+export async function adjustGiftedAudits(
+  _prev: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  const adminProfile = await requireAdmin();
+  if (!isSupabaseAdminConfigured())
+    return { status: "error", message: "Not configured." };
+
+  const profileId = String(formData.get("profileId") ?? "");
+  const amountRaw = String(formData.get("amount") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const amount = parseInt(amountRaw, 10);
+
+  if (!profileId || !reason || isNaN(amount) || amount === 0)
+    return { status: "error", message: "Profile, non-zero amount, and reason are required." };
+
+  const admin = createAdminClient();
+
+  // Fetch current gifted_audits
+  const { data: profileRow, error: fetchError } = await admin
+    .from("profiles")
+    .select("gifted_audits")
+    .eq("id", profileId)
+    .maybeSingle();
+
+  if (fetchError || !profileRow)
+    return { status: "error", message: fetchError?.message || "Profile not found." };
+
+  const currentGifted = (profileRow as any).gifted_audits ?? 0;
+  const newGifted = Math.max(0, currentGifted + amount);
+
+  // Update gifted_audits
+  const { error: updateError } = await admin
+    .from("profiles")
+    .update({ gifted_audits: newGifted })
+    .eq("id", profileId);
+
+  if (updateError)
+    return { status: "error", message: updateError.message };
+
+  // Log admin action
+  try {
+    await (admin as any).from("admin_actions").insert({
+      actor_id: adminProfile.id,
+      target_user_id: profileId,
+      action: "gifted_adjust",
+      detail: { from: currentGifted, to: newGifted, adjustment: amount, reason },
+    });
+  } catch (e: any) {
+    console.error("admin_actions insert failed (gifted_adjust):", e.message);
+  }
+
+  revalidatePath(`/admin/users/${profileId}`);
+  return { status: "ok", message: `Gifted audits adjusted from ${currentGifted} to ${newGifted}.` };
+}
+
+/** Set a user's account type (admin-only). */
+export async function setAccountType(
+  _prev: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  const adminProfile = await requireAdmin();
+  if (!isSupabaseAdminConfigured())
+    return { status: "error", message: "Not configured." };
+
+  const profileId = String(formData.get("profileId") ?? "");
+  const accountType = String(formData.get("account_type") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  if (!profileId || !reason)
+    return { status: "error", message: "Profile, account type, and reason are required." };
+
+  const validTypes = ["standard", "trial", "comp"];
+  if (!validTypes.includes(accountType))
+    return { status: "error", message: `Invalid account type: ${accountType}.` };
+
+  const admin = createAdminClient();
+
+  // Fetch current account_type
+  const { data: profileRow, error: fetchError } = await admin
+    .from("profiles")
+    .select("account_type")
+    .eq("id", profileId)
+    .maybeSingle();
+
+  if (fetchError || !profileRow)
+    return { status: "error", message: fetchError?.message || "Profile not found." };
+
+  const fromType = (profileRow as any).account_type ?? "standard";
+
+  // Update account_type
+  const { error: updateError } = await admin
+    .from("profiles")
+    .update({ account_type: accountType })
+    .eq("id", profileId);
+
+  if (updateError)
+    return { status: "error", message: updateError.message };
+
+  // Log admin action
+  try {
+    await (admin as any).from("admin_actions").insert({
+      actor_id: adminProfile.id,
+      target_user_id: profileId,
+      action: "account_type_change",
+      detail: { from: fromType, to: accountType, reason },
+    });
+  } catch (e: any) {
+    console.error("admin_actions insert failed (account_type_change):", e.message);
+  }
+
+  revalidatePath(`/admin/users/${profileId}`);
+  return { status: "ok", message: `Account type changed from ${fromType} to ${accountType}.` };
+}
+
+/** Create a trial link (admin-only). */
+export async function createTrialLink(
+  _prev: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState & { token?: string; url?: string }> {
+  const adminProfile = await requireAdmin();
+  if (!isSupabaseAdminConfigured())
+    return { status: "error", message: "Not configured." };
+
+  const auditsGrantedRaw = String(formData.get("audits_granted") ?? "3");
+  const auditsGranted = parseInt(auditsGrantedRaw, 10) || 3;
+  const label = String(formData.get("label") ?? "").trim() || null;
+  const maxUsesRaw = formData.get("max_uses");
+  const maxUses = maxUsesRaw ? parseInt(String(maxUsesRaw), 10) || null : null;
+  const expiresInDaysRaw = formData.get("expires_in_days");
+  const expiresInDays = expiresInDaysRaw ? parseInt(String(expiresInDaysRaw), 10) || null : null;
+
+  if (auditsGranted < 1 || auditsGranted > 50)
+    return { status: "error", message: "Audits granted must be between 1 and 50." };
+
+  // Generate random 24-char hex token
+  const token = Array.from(
+    { length: 24 },
+    () => Math.floor(Math.random() * 16).toString(16),
+  ).join("");
+
+  const expiresAt = expiresInDays
+    ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
+    : null;
+
+  const admin = createAdminClient();
+
+  try {
+    const { error: insertError } = await (admin as any).from("trial_links").insert({
+      token,
+      audits_granted: auditsGranted,
+      created_by: adminProfile.id,
+      label,
+      max_uses: maxUses,
+      expires_at: expiresAt,
+    });
+
+    if (insertError)
+      return { status: "error", message: insertError.message };
+  } catch (e: any) {
+    return { status: "error", message: e.message };
+  }
+
+  // Log admin action
+  try {
+    await (admin as any).from("admin_actions").insert({
+      actor_id: adminProfile.id,
+      action: "trial_create",
+      detail: {
+        token,
+        audits_granted: auditsGranted,
+        label,
+        max_uses: maxUses,
+        expires_in_days: expiresInDays,
+      },
+    });
+  } catch (e: any) {
+    console.error("admin_actions insert failed (trial_create):", e.message);
+  }
+
+  revalidatePath("/admin/trials");
+  return {
+    status: "ok",
+    message: "Trial link created.",
+    token,
+    url: `/try/${token}`,
+  };
+}
+
+/** Revoke a trial link (admin-only). */
+export async function revokeTrialLink(
+  _prev: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  const adminProfile = await requireAdmin();
+  if (!isSupabaseAdminConfigured())
+    return { status: "error", message: "Not configured." };
+
+  const trialLinkId = String(formData.get("trialLinkId") ?? "");
+
+  if (!trialLinkId)
+    return { status: "error", message: "Trial link ID is required." };
+
+  const admin = createAdminClient();
+
+  try {
+    const { error: updateError } = await (admin as any)
+      .from("trial_links")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("id", trialLinkId);
+
+    if (updateError)
+      return { status: "error", message: updateError.message };
+  } catch (e: any) {
+    return { status: "error", message: e.message };
+  }
+
+  // Log admin action
+  try {
+    await (admin as any).from("admin_actions").insert({
+      actor_id: adminProfile.id,
+      action: "trial_revoke",
+      detail: { trial_link_id: trialLinkId },
+    });
+  } catch (e: any) {
+    console.error("admin_actions insert failed (trial_revoke):", e.message);
+  }
+
+  revalidatePath("/admin/trials");
+  return { status: "ok", message: "Trial link revoked." };
+}

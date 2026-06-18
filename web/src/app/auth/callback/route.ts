@@ -8,9 +8,11 @@ import {
   supabaseAnonKey,
   supabaseUrl,
 } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 
 const AUTH_NEXT_COOKIE = "auth_next";
+const TRIAL_TOKEN_COOKIE = "alm_trial_token";
 
 function safeNext(value: string | null | undefined): string {
   if (value?.startsWith("/") && !value.startsWith("//")) return value;
@@ -76,6 +78,71 @@ export async function GET(request: NextRequest) {
     }
   } else {
     return NextResponse.redirect(`${origin}/login?error=auth`);
+  }
+
+  // Process trial token cookie if present (both OAuth and magic link paths)
+  const trialToken = request.cookies.get(TRIAL_TOKEN_COOKIE)?.value;
+  if (trialToken) {
+    try {
+      const admin = createAdminClient();
+
+      // Validate trial link
+      const { data: trialLink, error: trialError } = await (admin as any)
+        .from("trial_links")
+        .select("id, audits_granted, revoked_at, expires_at, max_uses, used_count")
+        .eq("token", trialToken)
+        .maybeSingle();
+
+      if (
+        !trialError &&
+        trialLink &&
+        !trialLink.revoked_at &&
+        (!trialLink.expires_at || new Date(trialLink.expires_at) > new Date()) &&
+        (trialLink.max_uses === null || trialLink.used_count < trialLink.max_uses)
+      ) {
+        // Get the authenticated user
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (user) {
+          // Update profile: set account_type, gifted_audits, trial_link_id
+          await admin
+            .from("profiles")
+            .update({
+              account_type: "trial",
+              gifted_audits: trialLink.audits_granted,
+              trial_link_id: trialLink.id,
+            })
+            .eq("id", user.id);
+
+          // Increment used_count on trial link
+          await (admin as any)
+            .from("trial_links")
+            .update({ used_count: trialLink.used_count + 1 })
+            .eq("id", trialLink.id);
+
+          // Log admin action
+          try {
+            await (admin as any).from("admin_actions").insert({
+              actor_id: user.id,
+              target_user_id: user.id,
+              action: "trial_redeemed",
+              detail: {
+                trial_link_id: trialLink.id,
+                token: trialToken,
+                audits_granted: trialLink.audits_granted,
+              },
+            });
+          } catch (e: any) {
+            console.error("admin_actions insert failed (trial_redeemed):", e.message);
+          }
+        }
+      }
+    } catch (e: any) {
+      console.error("[auth/callback] trial token processing failed:", e.message);
+    }
+
+    // Always clear the trial token cookie
+    response.cookies.set(TRIAL_TOKEN_COOKIE, "", { maxAge: 0, path: "/" });
   }
 
   response.cookies.set(AUTH_NEXT_COOKIE, "", { maxAge: 0, path: "/" });

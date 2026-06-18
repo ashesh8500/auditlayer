@@ -70,24 +70,48 @@ export async function createAudit(
 
   const admin = createAdminClient();
 
-  // Enforce the plan's audit allowance server-side (PLAN_LIMITS).
-  const { count } = await admin
-    .from("audits")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", profile.id)
-    .in("status", USAGE_STATUSES);
+  // Fetch gifted_audits to check for gifted/trial consumption
+  let giftedAudits = 0;
+  try {
+    const { data: giftedData } = await admin
+      .from("profiles")
+      .select("gifted_audits")
+      .eq("id", profile.id)
+      .maybeSingle();
+    giftedAudits = (giftedData as any)?.gifted_audits ?? 0;
+  } catch {
+    // Column may not exist yet (pre-migration) — treat as 0
+    giftedAudits = 0;
+  }
 
-  const usage = count ?? 0;
-  const limit = auditLimitForProfile(profile);
-  if (usage >= limit) {
-    return {
-      status: "error",
-      limitReached: true,
-      message:
-        profile.plan === "free"
-          ? "You've used your free Pulse audits. Upgrade to run more."
-          : `Your ${profile.plan} plan allows ${limit} audits. Upgrade for more capacity.`,
-    };
+  // Gifted audits are consumed first, bypassing plan limits entirely
+  let usage = 0;
+  if (giftedAudits > 0) {
+    // Decrement gifted_audits by 1
+    await admin
+      .from("profiles")
+      .update({ gifted_audits: giftedAudits - 1 })
+      .eq("id", profile.id);
+  } else {
+    // Enforce the plan's audit allowance server-side (PLAN_LIMITS).
+    const { count } = await admin
+      .from("audits")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", profile.id)
+      .in("status", USAGE_STATUSES);
+
+    usage = count ?? 0;
+    const limit = auditLimitForProfile(profile);
+    if (usage >= limit) {
+      return {
+        status: "error",
+        limitReached: true,
+        message:
+          profile.plan === "free"
+            ? "You've used your free Pulse audits. Upgrade to run more."
+            : `Your ${profile.plan} plan allows ${limit} audits. Upgrade for more capacity.`,
+      };
+    }
   }
 
   const decision = evaluateIntake(
@@ -98,6 +122,8 @@ export async function createAudit(
       plan: effectivePlanForProfile(profile),
     },
     usage,
+    undefined,
+    giftedAudits,
   );
 
   const auditInsert = {
