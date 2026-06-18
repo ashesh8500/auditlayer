@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
@@ -12,12 +13,24 @@ export const metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; trial?: string }>;
 }) {
-  const { next, error } = await searchParams;
+  const { next, error, trial } = await searchParams;
   const user = await getSession();
   const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
   if (user) redirect(safeNext);
+
+  // Persist trial token as a cookie so it survives the auth redirect flow
+  if (trial) {
+    const cookieStore = await cookies();
+    cookieStore.set("alm_trial_token", trial, {
+      path: "/",
+      httpOnly: false,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+  }
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-12">
@@ -46,7 +59,7 @@ export default async function LoginPage({
             </p>
           )}
 
-          <LoginForm next={safeNext} />
+          <LoginForm next={safeNext} trial={trial ?? undefined} />
         </div>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">

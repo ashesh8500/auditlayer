@@ -23,6 +23,18 @@ export default async function AdminLayout({
             Clients & audits
           </Link>
           <Link
+            href="/admin/users"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            Users
+          </Link>
+          <Link
+            href="/admin/trials"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            Trials
+          </Link>
+          <Link
             href="/admin/settings"
             className="text-muted-foreground hover:text-foreground"
           >

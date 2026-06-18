@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured, siteUrl } from "@/lib/env";
 
 const AUTH_NEXT_COOKIE = "auth_next";
+const TRIAL_COOKIE = "alm_trial_token";
 
 export interface AuthFormState {
   status: "idle" | "sent" | "error";
@@ -25,6 +26,20 @@ function safeNext(next: FormDataEntryValue | null): string {
   // Only allow same-site relative paths to prevent open redirects.
   if (value.startsWith("/") && !value.startsWith("//")) return value;
   return "/dashboard";
+}
+
+/** Persist the trial token cookie to survive the auth redirect flow. */
+async function persistTrialCookie(trial: FormDataEntryValue | null): Promise<void> {
+  const token = typeof trial === "string" ? trial.trim() : "";
+  if (!token) return;
+  const cookieStore = await cookies();
+  cookieStore.set(TRIAL_COOKIE, token, {
+    path: "/",
+    httpOnly: false,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+  });
 }
 
 export async function signInWithMagicLink(
@@ -54,6 +69,9 @@ export async function signInWithMagicLink(
     maxAge: 3600,
     path: "/",
   });
+
+  // Persist trial token through the magic-link redirect
+  await persistTrialCookie(formData.get("trial"));
 
   if (isBrandedMagicLinkConfigured()) {
     const sent = await sendBrandedMagicLink(parsed.data);
@@ -88,6 +106,10 @@ export async function signInWithGoogle(formData: FormData): Promise<void> {
   }
 
   const next = safeNext(formData.get("next"));
+
+  // Persist trial token through the Google OAuth redirect
+  await persistTrialCookie(formData.get("trial"));
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",

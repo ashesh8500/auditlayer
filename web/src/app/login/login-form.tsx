@@ -14,7 +14,7 @@ import {
 
 const initialState: AuthFormState = { status: "idle" };
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, trial }: { next: string; trial?: string }) {
   const [state, action, pending] = useActionState(
     signInWithMagicLink,
     initialState,
@@ -24,6 +24,7 @@ export function LoginForm({ next }: { next: string }) {
     <div className="space-y-6">
       <form action={signInWithGoogle}>
         <input type="hidden" name="next" value={next} />
+        {trial && <input type="hidden" name="trial" value={trial} />}
         <div className="rounded-[var(--radius)] border border-border p-4 shadow-[var(--shadow-sm)]">
           <Button
             type="submit"
@@ -56,6 +57,7 @@ export function LoginForm({ next }: { next: string }) {
       ) : (
         <form action={action} className="space-y-3">
           <input type="hidden" name="next" value={next} />
+          {trial && <input type="hidden" name="trial" value={trial} />}
           <div className="space-y-1.5 text-left">
             <Label htmlFor="email">Email address</Label>
             <Input
