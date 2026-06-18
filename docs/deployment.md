@@ -193,7 +193,7 @@ uv run python -m auditlayer_worker regen-pdf --audit-id <uuid>
 | `uv run python -m auditlayer_worker validate-hermes` | Same host | `ok=True`, `skipped=False` |
 | `uv run python -m auditlayer_worker demo --generator mock` | Anywhere | Offline pipeline smoke (no tokens) |
 
-Real `deepseek-v4-pro` generation requires Hermes (`http` or `subprocess` mode with
+Real `deepseek-v4-flash` generation requires Hermes (`http` or `subprocess` mode with
 a valid `HERMES_API_KEY` matching `API_SERVER_KEY`, or `inprocess` with a local
 hermes-agent install). Local laptops without Hermes should use
 `--generator mock` for QA.

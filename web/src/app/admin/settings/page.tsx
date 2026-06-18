@@ -23,7 +23,7 @@ export default async function AdminSettingsPage() {
     : [];
 
   const values: SettingsValues = {
-    hermes_model: data?.hermes_model ?? "deepseek-v4-pro",
+    hermes_model: data?.hermes_model ?? "deepseek-v4-flash",
     enabled_toolsets: toolsets.join(", "),
     token_cap: data?.token_cap ?? 32000,
     cost_cap_usd: data?.cost_cap_usd ?? 3,

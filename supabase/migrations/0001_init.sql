@@ -89,7 +89,7 @@ create index if not exists refinements_status_idx on public.refinements (status)
 -- ---------------------------------------------------------------------------
 create table if not exists public.app_settings (
   id int primary key default 1 check (id = 1),
-  hermes_model text not null default 'deepseek-v4-pro',
+  hermes_model text not null default 'deepseek-v4-flash',
   hermes_api_base text not null default 'http://127.0.0.1:8642/v1',
   enabled_toolsets jsonb not null default '["web","browser","x_search"]'::jsonb,
   token_cap int not null default 32000,

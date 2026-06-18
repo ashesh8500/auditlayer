@@ -118,7 +118,7 @@ For production Hermes generation:
 AUDITLAYER_GENERATOR=hermes
 HERMES_API_BASE=http://127.0.0.1:8642/v1
 HERMES_API_KEY=...  # must match Hermes Gateway API_SERVER_KEY
-HERMES_MODEL=deepseek-v4-pro
+HERMES_MODEL=deepseek-v4-flash
 ```
 
 The Hermes adapter asks the worker to load the `social-media-audit` skill, use web/browser/x_search toolsets, and return a complete self-contained HTML report inline. The portal persists the returned report as `var/reports/<audit_id>.html`.
