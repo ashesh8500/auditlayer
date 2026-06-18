@@ -88,7 +88,7 @@ export function InstagramConnect({
         }
       },
       {
-        scope: "instagram_basic,pages_show_list",
+        scope: "pages_show_list",
         return_scopes: true,
       },
     );
