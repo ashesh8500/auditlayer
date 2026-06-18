@@ -58,6 +58,9 @@ export interface Database {
           stripe_subscription_id: string | null;
           current_period_end: string | null;
           onboarding_status: string;
+          account_type: string;
+          gifted_audits: number;
+          trial_link_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -71,6 +74,9 @@ export interface Database {
           stripe_subscription_id?: string | null;
           current_period_end?: string | null;
           onboarding_status?: string;
+          account_type?: string;
+          gifted_audits?: number;
+          trial_link_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -84,6 +90,9 @@ export interface Database {
           stripe_subscription_id?: string | null;
           current_period_end?: string | null;
           onboarding_status?: string;
+          account_type?: string;
+          gifted_audits?: number;
+          trial_link_id?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -270,6 +279,92 @@ export interface Database {
           updated_at?: string;
         };
         Relationships: [];
+      };
+      trial_links: {
+        Row: {
+          id: string;
+          token: string;
+          audits_granted: number;
+          created_by: string;
+          label: string | null;
+          max_uses: number | null;
+          used_count: number;
+          expires_at: string | null;
+          revoked_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          token: string;
+          audits_granted?: number;
+          created_by: string;
+          label?: string | null;
+          max_uses?: number | null;
+          used_count?: number;
+          expires_at?: string | null;
+          revoked_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          token?: string;
+          audits_granted?: number;
+          created_by?: string;
+          label?: string | null;
+          max_uses?: number | null;
+          used_count?: number;
+          expires_at?: string | null;
+          revoked_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trial_links_created_by_fkey";
+            columns: ["created_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      admin_actions: {
+        Row: {
+          id: string;
+          actor_id: string;
+          target_user_id: string | null;
+          action: string;
+          detail: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          actor_id: string;
+          target_user_id?: string | null;
+          action: string;
+          detail?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          actor_id?: string;
+          target_user_id?: string | null;
+          action?: string;
+          detail?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "admin_actions_actor_id_fkey";
+            columns: ["actor_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "admin_actions_target_user_id_fkey";
+            columns: ["target_user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: Record<never, never>;
