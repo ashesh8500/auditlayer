@@ -13,7 +13,7 @@ const schema = z.object({
   message: z.string().min(10, "Message must be at least 10 characters.").max(3000),
 });
 
-const SUPPORT_TO = process.env.SUPPORT_EMAIL_TO ?? "ashesh@asheshkaji.com";
+const SUPPORT_TO = ["ashesh8500@gmail.com", "narinfazlalipour79@gmail.com"];
 const SUPPORT_FROM =
   process.env.SUPPORT_EMAIL_FROM ?? "AuditLayerMedia <support@auditlayermedia.com>";
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
