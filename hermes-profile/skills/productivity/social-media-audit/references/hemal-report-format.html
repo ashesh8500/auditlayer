@@ -1,0 +1,429 @@
+<!-- Canonical Hemal-format CSS for Narin's portfolio Instagram audits.
+     Copy this <style> block verbatim into any Instagram audit report.
+     Light theme, teal accent, Inter + JetBrains Mono only, no Cormorant Garamond. -->
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --text: #1c1917;
+    --muted: #78716c;
+    --line: #e7e5e4;
+    --accent: #0d9488;
+    --accent-muted: #f0fdfa;
+    --green: #059669;
+    --amber: #d97706;
+    --red: #dc2626;
+    --red-muted: #fef2f2;
+    --green-muted: #ecfdf5;
+    --amber-muted: #fffbeb;
+    --blue: #2563eb;
+    --blue-muted: #eff6ff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.625;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 60px 28px 120px;
+  }
+
+  /* Header */
+  .report-header {
+    margin-bottom: 52px;
+    padding-bottom: 36px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .report-header .label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .report-header h1 {
+    font-size: 2.1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+
+  .report-header .subtitle {
+    font-size: 0.95rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .report-header .meta {
+    display: flex;
+    gap: 24px;
+    margin-top: 16px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-weight: 500;
+    flex-wrap: wrap;
+  }
+
+  /* Sections */
+  section { margin-bottom: 48px; }
+
+  section h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 20px;
+    color: var(--text);
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  section h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 28px 0 12px;
+    color: var(--text);
+  }
+
+  section p {
+    margin-bottom: 14px;
+    font-size: 0.95rem;
+    color: #44403c;
+  }
+
+  /* Metric grid — 4 column */
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 20px 0;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 16px;
+    text-align: center;
+  }
+
+  .metric-card .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.6rem;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .metric-card .value.red { color: var(--red); }
+  .metric-card .value.green { color: var(--green); }
+  .metric-card .value.amber { color: var(--amber); }
+
+  .metric-card .label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Tables */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    margin: 16px 0;
+  }
+
+  .data-table th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    padding: 10px 14px;
+    border-bottom: 2px solid var(--line);
+  }
+
+  .data-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+
+  .data-table td:first-child { font-weight: 500; }
+
+  .data-table .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    text-align: right;
+  }
+
+  .data-table tr.highlight { background: var(--accent-muted); }
+
+  /* Tags */
+  .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.03em;
+  }
+
+  .tag.strength { background: var(--green-muted); color: var(--green); }
+  .tag.weakness { background: var(--red-muted); color: var(--red); }
+  .tag.neutral { background: var(--blue-muted); color: var(--blue); }
+
+  /* Strength/Weakness cards — left-border */
+  .sw-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+  }
+
+  .sw-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 22px;
+  }
+
+  .sw-card.strength { border-left: 3px solid var(--green); }
+  .sw-card.weakness { border-left: 3px solid var(--red); }
+
+  .sw-card .sw-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .sw-card.strength .sw-label { color: var(--green); }
+  .sw-card.weakness .sw-label { color: var(--red); }
+
+  .sw-card h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .sw-card p {
+    font-size: 0.85rem;
+    color: #57534e;
+    margin: 0;
+  }
+
+  /* Recommendations — numbered circle */
+  .rec-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 14px;
+    position: relative;
+    padding-left: 60px;
+  }
+
+  .rec-card .num {
+    position: absolute;
+    left: 18px;
+    top: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-muted);
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .rec-card h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .rec-card p {
+    font-size: 0.85rem;
+    color: #57534e;
+    margin: 0;
+  }
+
+  /* Calendar grid */
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: 100px 80px 160px 1fr;
+    gap: 0;
+    margin: 16px 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .calendar-grid .ch {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    padding: 10px 14px;
+    background: #f5f5f4;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .calendar-grid .cr {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.85rem;
+  }
+
+  /* Timeline */
+  .timeline-item {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .timeline-item .t-dot {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-top: 4px;
+  }
+
+  .timeline-item .t-dot.green { background: var(--green); }
+  .timeline-item .t-dot.red { background: var(--red); }
+  .timeline-item .t-dot.accent { background: var(--accent); }
+
+  .timeline-item .t-content h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .timeline-item .t-content p {
+    font-size: 0.85rem;
+    color: #57534e;
+    margin: 0;
+  }
+
+  /* Callout */
+  .callout {
+    background: var(--blue-muted);
+    border-left: 3px solid var(--blue);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 20px 0;
+  }
+
+  .callout p {
+    font-size: 0.9rem;
+    color: #1e3a5f;
+    margin: 0;
+    font-weight: 500;
+  }
+
+  /* Footer */
+  .report-footer {
+    margin-top: 60px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  /* Powered-by badge */
+  .powered-by {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .powered-by .alm-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: #1c1917;
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1;
+  }
+
+  .powered-by .handle {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.72rem;
+    color: var(--accent);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  /* Responsive */
+  @media (max-width: 680px) {
+    .container { padding: 32px 16px 80px; }
+    .report-header h1 { font-size: 1.6rem; }
+    .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .sw-grid { grid-template-columns: 1fr; }
+    .calendar-grid { grid-template-columns: 80px 60px 120px 1fr; font-size: 0.78rem; }
+  }
+
+  @media print {
+    body { background: white; }
+    .container { max-width: 100%; padding: 20px 0; }
+    .sw-card, .rec-card, .metric-card { break-inside: avoid; }
+    section { break-inside: avoid; }
+  }
+</style>
+
+<!-- ====== CANONICAL SECTION STRUCTURE (Hemal format, in order) ======
+  1. Executive Summary (2 paragraphs + 1 callout)
+  2. Key Metrics (metric-grid 4-col + data-table with benchmark column + sources note)
+  3. Strengths (sw-grid, 4-6 cards)
+  4. Weaknesses (sw-grid, 4-6 cards)
+  5. Root Cause Analysis (data-table, dimension/reality/Instagram/gap + 1 callout)
+  6. Peer Comparison (data-table, 3 same-tier peers + "why same-tier" callout) ← MANDATORY
+  7. Content Format Analysis (algorithm signals table + format breakdown table)
+  8. Engagement Growth Strategy (rec-cards with numbered circles + calendar-grid)
+  9. Quick Wins — This Week (timeline-items with accent dots)
+  10. Success Benchmarks (data-table, current/30-day/90-day)
+  11. Audience Profile (data-table, segment/share/wants/wins + analysis paragraph)
+  12. Road to [Milestone] (timeline-items + summary data-table + callout)
+  13. Audit Cadence (data-table, cadence/what/check/time + callout)
+  14. Footer (report-footer)
+  15. Powered by AuditLayerMedia (powered-by with alm-badge + "Powered by AuditLayerMedia" + handle with IG icon + @auditlayermedia)
+  ====== END SECTION STRUCTURE ====== -->
