@@ -22,6 +22,7 @@ from .core import (
     REFINE_SYSTEM_PROMPT,
     WORKER_SYSTEM_PROMPT,
     build_refinement_prompt,
+    build_report_prompt,
     build_worker_prompt,
     extract_fragment,
     extract_html,
@@ -55,6 +56,7 @@ class ReportGenerator(Protocol):
     def generate(
         self, audit: AuditRecord, progress: Progress, *,
         ig_metrics: Any = None, research_cache: str = "",
+        benchmarks: list[dict] | None = None,
     ) -> GenerationResult: ...
     def refine(
         self, audit: AuditRecord, current_html: str, section: str,
@@ -110,7 +112,9 @@ class MockReportGenerator:
     def generate(
         self, audit: AuditRecord, progress: Progress, *,
         ig_metrics: Any = None, research_cache: str = "",
+        benchmarks: list[dict] | None = None,
     ) -> GenerationResult:
+        """Deterministic generator used when Hermes is unreachable or for CI."""
         emitter = _PhaseEmitter(audit, progress, self.phase_interval)
         for phase in GENERATION_PHASES:
             emitter.advance_to(phase)
@@ -160,6 +164,7 @@ class HermesReportGenerator:
     def generate(
         self, audit: AuditRecord, progress: Progress, *,
         ig_metrics: Any = None, research_cache: str = "",
+        benchmarks: list[dict] | None = None,
     ) -> GenerationResult:
         """Generate a report. If ``research_cache`` is provided from a previous
         failed attempt, Stage 1 (tool-calling research) is skipped entirely and
@@ -183,7 +188,11 @@ class HermesReportGenerator:
         # ── fresh path: Stage 1 research + report attempt ──
         session_id = f"audit-{audit.id}"
         emitter.advance_to("researching")
-        prompt = build_worker_prompt(audit, ig_metrics)
+        prompt = build_report_prompt(
+            audit,
+            ig_metrics=ig_metrics,
+            benchmarks=benchmarks,
+        )
 
         result = self.client.chat(
             messages=[
@@ -251,7 +260,9 @@ class HermesReportGenerator:
             ],
             model=self.model,
             toolsets=(),  # NO tools — preserve all tokens for the HTML
-            max_tokens=max(self.max_tokens, 64000),
+            # Never override the configured completion ceiling during fallback.
+            # Cost/token caps are meaningless if a retry can silently jump to 64k.
+            max_tokens=self.max_tokens,
             temperature=self.temperature,
             stream=True,
             on_delta=on_delta,
@@ -355,6 +366,7 @@ def _mock_report_html(audit: AuditRecord) -> str:
       <tr><td>The money move</td><td>Monetization recommendation generated from audience and format mix.</td></tr>
     </table>
   </section>
+  <!-- PROMPT_VERSION_LINE -->
 </main>
 </body>
 </html>"""

@@ -1,6 +1,6 @@
 .PHONY: test e2e check diagnose-hermes smoke web-check worker-check check-v2 \
 	dev-web worker-run worker-once deploy-prod dns-vercel supabase-push supabase-types vercel-logs \
-	hermes-vm-sync hermes-vm-ssh hermes-vm-status hermes-vm-worker
+	hermes-vm-sync hermes-vm-ssh hermes-vm-status hermes-vm-worker test-intake-parity
 
 PYTHON ?= .venv/bin/python
 SUPABASE ?= npx supabase@latest
@@ -29,6 +29,9 @@ web-check:
 
 worker-check:
 	cd worker && uv run pytest
+
+test-intake-parity:
+	cd worker && uv run pytest tests/test_intake_parity_crosslang.py tests/test_intake_parity.py -v
 
 check-v2: web-check worker-check
 

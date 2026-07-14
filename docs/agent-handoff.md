@@ -15,8 +15,8 @@ context.
 |---|---|---|
 | **Web** (`web/`) | Deployed on Vercel | Target: https://auditlayermedia.com (fallback: https://web-delta-dun-29.vercel.app) |
 | **Supabase** | Live project linked | Ref `eamnfmtkvglbnugzmotw`, region Singapore |
-| **Worker** (`worker/`) | **hermes-vm** (systemd active) | Template-driven prompts from `worker/templates/narin_reference_template.html` |
-| **Stripe** | Partial | Webhook env often unset; billing E2E not gated |
+| **Worker** (`worker/`) | **hermes-vm** | Embedded Hermes (`gpt-5.6-sol`, `openai-codex`); deployment is gated by `release-preflight` |
+| **Stripe** | Configured code path | Starter/Pro via webhook; enterprise is founder-assigned in admin, without automatic Stripe seats/invoices |
 | **Custom domain** | DNS pending | `auditlayermedia.com` on Vercel; Cloudflare A/CNAME not set yet — `make dns-vercel` |
 | **Magic link email** | Needs Resend **or** Supabase template fix | Google OAuth works; see § Auth below |
 | **Legacy v1** (`legacy/`) | Archived | Do not extend |
@@ -83,6 +83,7 @@ make worker-run        # long-lived queue loop (needs worker/.env + Supabase)
 make worker-once       # drain one queued audit and exit
 cd worker && uv run python -m auditlayer_worker diagnose-hermes
 cd worker && uv run python -m auditlayer_worker validate-hermes
+cd worker && uv run python -m auditlayer_worker release-preflight
 cd worker && uv run python -m auditlayer_worker demo --handle iamsrk --generator mock
 cd worker && uv run python -m auditlayer_worker regen-pdf --audit-id <uuid>
 ```
@@ -181,7 +182,8 @@ without the browser's PKCE verifier cookie.
 |---|---|
 | `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` | Claim audits, upload reports |
 | `HERMES_API_KEY` | Must match gateway `API_SERVER_KEY` |
-| `HERMES_MODE` | `http` (laptop/Hetzner gateway) or `subprocess` / `inprocess` |
+| `HERMES_MODE` | production `inprocess` |
+| `HERMES_MODEL` + `HERMES_PROVIDER` | production `gpt-5.6-sol` + `openai-codex` |
 | `AUDITLAYER_PDF_MODE` | `browser` for real PDFs (needs Chrome/Chromium) |
 
 **Precedence:** `worker/.env` overrides repo root `.env` when both exist.
@@ -216,9 +218,17 @@ Full launch checklist: `docs/production-readiness-checklist.md`.
 
 1. **Resend** — magic link emails for non-Google users.
 2. **Stripe webhook** — wire `STRIPE_WEBHOOK_SECRET` on Vercel + Stripe dashboard.
-3. **Hetzner worker** — `make hermes-vm-sync && make hermes-vm-worker` (uses `auditlayer-worker.vm.service`).
+3. **Hetzner worker** — run `worker/infra/deploy.sh`; it fails before restart if tests, schema/RPC probes, or model validation fail.
 4. **Custom domain** — finish Cloudflare DNS: `CLOUDFLARE_API_TOKEN=... make dns-vercel` (A `@` → `76.76.21.21`, CNAME `www` → `cname.vercel-dns.com`, proxy off).
-5. **Enterprise seats** — still manual SQL: `update profiles set plan='enterprise' where email=...`.
+5. **Enterprise billing** — access is assignable in admin; invoicing/seats remain a manual commercial process.
+
+---
+
+## Completed features
+
+| Feature | Date | Notes |
+|---|---|---|
+| **S0.6 Prompt version footer** | 2026-07-12 | `PROMPT_VERSION` is stored in `audits.prompt_version`; the current generation contract is `0.7`. Every report HTML footer shows `Prompt vX · timestamp · $cost · tokens`. Bump the constant + changelog when prompt templates change. Migration `0017_prompt_version.sql`. Tests: `worker/tests/test_prompt_version.py` (8), `worker/_verify_s06.py` (5). Handoff: `worker/AGENTS.md` § Prompt version. |
 
 ---
 

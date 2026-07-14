@@ -122,6 +122,14 @@ The core engine lives in `~/.hermes/skills/productivity/social-media-audit/`. Th
 
 ## Agent-Specific Notes
 
+### Kanban task granularity
+- Prefer one large, outcome-oriented ticket per coherent change. The assigned agent owns investigation, implementation, tests, documentation, deployment preparation, and handoff.
+- Keep the task body concise: desired outcome, non-negotiable constraints, acceptance checks, and rollback boundary. Agents should create and manage their own internal plan.
+- Do not fan a ticket into micro-tasks just because it spans several files, layers, or sequential steps.
+- Split only for genuinely parallel independent work, different credentials/workspaces, or an isolated high-risk production gate.
+- One independent final gate is enough for production changes. Do not create review tickets after every implementation ticket.
+- Keep no more than three project tickets active at once and no dependency graph deeper than two levels.
+
 ### When generating audit reports
 - Load the `social-media-audit` skill — it has the 15-section framework, CSS patterns, delivery conventions
 - Save reports to `~/projects/analyses/<subject-slug>-social-media-audit.md`

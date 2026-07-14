@@ -5,7 +5,9 @@
 -- Single-row admin configuration for the Hermes worker (id is fixed to 1).
 insert into public.app_settings (id)
 values (1)
-on conflict (id) do nothing;
+on conflict (id) do update
+set hermes_model = 'gpt-5.6-sol';
+
 
 -- ---------------------------------------------------------------------------
 -- Promoting a founder to admin (Ashesh + Narin).

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import replace
+import json
 import sys
 import time
 from uuid import uuid4
@@ -29,6 +30,7 @@ from .hermes import diagnose_hermes, validate_hermes
 from .hermes_runtime import HermesRuntime
 from .pdf import render_pdf
 from .pipeline import GenerationPipeline, PrintEventSink
+from .release_preflight import run_preflight
 from .supabase_client import SupabaseGateway
 from .worker import build_generator, run_worker_loop
 
@@ -242,6 +244,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("diagnose-hermes", help="Check Hermes gateway reachability/auth")
     sub.add_parser("validate-hermes", help="Send a tiny health-check completion")
+    sub.add_parser("release-preflight", help="Verify production schema and embedded runtime without mutations")
     return parser
 
 
@@ -259,6 +262,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_diagnose(settings)
     if args.command == "validate-hermes":
         return cmd_validate(settings)
+    if args.command == "release-preflight":
+        result = run_preflight(settings)
+        print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+        return 0 if result.ok else 1
     return 1
 
 

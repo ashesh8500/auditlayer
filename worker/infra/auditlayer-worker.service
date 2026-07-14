@@ -10,6 +10,8 @@
 Description=AuditLayer Hermes worker (claims queued audits, runs generation, uploads reports)
 After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
 
 [Service]
 Type=simple
@@ -19,10 +21,12 @@ WorkingDirectory=/opt/auditlayer/worker
 EnvironmentFile=/opt/auditlayer/worker/.env
 # uv run resolves the locked environment from pyproject.toml.
 ExecStart=/usr/local/bin/uv run python -m auditlayer_worker run
-Restart=always
-RestartSec=5
+Restart=on-failure
+RestartSec=30
 # The report HTML can be large; allow generous memory headroom on the CX22.
 MemoryMax=2G
+TasksMax=256
+LimitNOFILE=4096
 # Hardening
 NoNewPrivileges=true
 PrivateTmp=true

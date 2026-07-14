@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@{handle} — AuditLayer Standard Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafaf8;
+    --surface: #ffffff;
+    --text: #171513;
+    --text-body: #3d3835;
+    --muted: #8b8680;
+    --line: #eae8e4;
+    --accent: #0d9488;
+    --accent-hover: #0f766e;
+    --accent-muted: #f0fdf9;
+    --green: #059669;
+    --amber: #d97706;
+    --red: #dc2626;
+    --red-muted: #fef2f2;
+    --green-muted: #ecfdf5;
+    --amber-muted: #fffdf5;
+    --blue: #2563eb;
+    --blue-muted: #eff6ff;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.04);
+    --radius-sm: 8px;
+    --radius: 12px;
+    --radius-lg: 16px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 720px; margin: 0 auto; padding: 64px 32px 120px; }
+  .report-header { margin-bottom: 56px; padding-bottom: 40px; border-bottom: 1px solid var(--line); }
+  .report-header .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: var(--accent); margin-bottom: 12px; }
+  .report-header h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; margin-bottom: 12px; }
+  .report-header .subtitle { font-size: 1rem; color: var(--text-body); margin-bottom: 16px; }
+  .report-header .meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); }
+  h2 { font-size: 1.35rem; font-weight: 700; margin: 56px 0 24px; padding-bottom: 12px; border-bottom: 2px solid var(--accent); color: var(--text); }
+  h3 { font-size: 1.05rem; font-weight: 600; margin: 32px 0 16px; color: var(--text); }
+  h4 { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+  p { margin-bottom: 16px; color: var(--text-body); }
+  section { margin-bottom: 48px; }
+  /* Metric Grid */
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .metric-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 20px; text-align: center; }
+  .metric-card .value { font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 600; }
+  .metric-card .value.red { color: var(--red); }
+  .metric-card .value.amber { color: var(--amber); }
+  .metric-card .value.green { color: var(--green); }
+  .metric-card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+  /* Data Table */
+  .data-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 0.88rem; }
+  .data-table th { text-align: left; padding: 10px 14px; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border-bottom: 2px solid var(--line); }
+  .data-table td { padding: 12px 14px; border-bottom: 1px solid var(--line); color: var(--text-body); vertical-align: top; }
+  .data-table td:first-child { font-weight: 500; }
+  .data-table .num { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; text-align: right; font-weight: 500; }
+  /* Cards */
+  .sw-card { background: var(--surface); border-radius: var(--radius-sm); padding: 22px 24px; margin-bottom: 16px; border: 1px solid var(--line); }
+  .sw-card.strength { border-left: 3px solid var(--green); }
+  .sw-card.weakness { border-left: 3px solid var(--red); }
+  .sw-card .sw-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px; }
+  .sw-card.strength .sw-label { color: var(--green); }
+  .sw-card.weakness .sw-label { color: var(--red); }
+  .rec-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; position: relative; }
+  .rec-card .num { position: absolute; top: -12px; left: -12px; width: 28px; height: 28px; background: var(--accent); color: #fff; font-size: 0.75rem; font-weight: 700; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .rec-card h4 { margin-top: 0; margin-bottom: 8px; }
+  /* Callouts */
+  .callout { padding: 18px 22px; border-radius: var(--radius-sm); margin-bottom: 24px; }
+  .callout.accent { background: var(--accent-muted); border: 1px solid var(--accent); }
+  .callout.accent p { color: var(--accent-hover); }
+  /* Score Diagram */
+  .score-diagram { margin-bottom: 32px; }
+  .overall-score { text-align: center; margin-bottom: 24px; }
+  .overall-score .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .overall-score .value { font-family: 'JetBrains Mono', monospace; font-size: 2.8rem; font-weight: 700; color: var(--red); }
+  .sd-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .sd-label { width: 160px; font-size: 0.78rem; color: var(--text-body); flex-shrink: 0; }
+  .sd-track { flex: 1; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .sd-fill { height: 100%; border-radius: 4px; }
+  .sd-fill.red { background: var(--red); }
+  .sd-fill.amber { background: var(--amber); }
+  .sd-fill.green { background: var(--green); }
+  .sd-value { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 600; width: 30px; text-align: right; }
+  .sd-value.red { color: var(--red); }
+  .sd-value.amber { color: var(--amber); }
+  .sd-value.green { color: var(--green); }
+  /* Dot indicators */
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot.green { background: var(--green); }
+  .dot.amber { background: var(--amber); }
+  .dot.red { background: var(--red); }
+  /* Footer */
+  .report-footer { text-align: center; padding: 48px 0 24px; border-top: 1px solid var(--line); margin-top: 64px; }
+  .report-footer p { font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+  /* Pricing */
+  .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
+  .pricing-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px; text-align: center; }
+  .pricing-card.featured { border: 2px solid var(--accent); }
+  .pricing-card .plan-name { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; }
+  .pricing-card .price { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 700; color: var(--text); }
+  .pricing-card .price span { font-size: 0.85rem; font-weight: 400; color: var(--muted); }
+  .pricing-card .features { text-align: left; margin: 16px 0; list-style: none; font-size: 0.85rem; color: var(--text-body); }
+  .pricing-card .features li { padding: 4px 0; }
+  .cta-button { display: inline-block; background: var(--accent); color: #fff; padding: 12px 28px; border-radius: var(--radius-sm); font-weight: 600; text-decoration: none; font-size: 0.9rem; margin-top: 12px; }
+  .cta-button:hover { background: var(--accent-hover); }
+  /* Creative Board */
+  .creative-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .creative-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 18px; }
+  .creative-card .pillar { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 8px; }
+  .creative-card h4 { font-size: 0.9rem; margin-bottom: 6px; }
+  .creative-card .format-tag { display: inline-block; font-size: 0.7rem; background: var(--accent-muted); color: var(--accent-hover); padding: 2px 8px; border-radius: 4px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ ALM BRAND RIBBON ═══════════ -->
+<div style="width:100%;background:linear-gradient(135deg,#0d9488,#0f766e);padding:10px 0;text-align:center;border-bottom:1px solid rgba(255,255,255,0.12);">
+  <div style="max-width:720px;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:center;gap:10px;">
+    <span style="font-family:'Inter',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.16em;color:#fff;text-transform:uppercase;">AuditLayerMedia</span>
+    <span style="display:inline-block;width:5px;height:5px;background:rgba(255,255,255,0.45);border-radius:50%;margin:0 4px;"></span>
+    <span style="font-family:'Inter',sans-serif;font-size:12px;font-weight:400;color:rgba(255,255,255,0.82);letter-spacing:0.03em;">@{handle} · {platform} Audit · {date}</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ========== HEADER ========== -->
+  <div class="report-header">
+    <div class="label">AuditLayer Standard Report</div>
+    <h1>@{handle}</h1>
+    <div class="subtitle">{full_name} — {title} · {location}</div>
+    <div class="meta">
+      <span>Platform: {platform}</span>
+      <span>Goal: {goal}</span>
+      <span>Account Type: {account_type}</span>
+      <span>{date}</span>
+    </div>
+  </div>
+
+  <!-- ========== DATA NOTICE ========== -->
+  <p style="font-size:0.78rem;color:var(--muted);font-style:italic;margin-bottom:48px;">
+    This audit is based on publicly available profile data and content analysis as of {date}. Metrics reflect the snapshot taken at time of analysis.
+  </p>
+
+  <!--
+    ═══════════ SECTION SLOTS ═══════════
+    Fill each section below. Delete this comment block in generated reports.
+
+    1. Executive Summary
+    2. Key Metrics
+    3. Strengths
+    4. Weaknesses
+    5. Root Cause Analysis
+    6. Peer Comparison
+    7. Content Format Analysis
+    8. Engagement Growth Strategy
+    9. Content Calendar & Creative Board
+    10. Quick Wins — This Week
+    11. Success Benchmarks
+    12. Audience Profile
+    13. Road to {milestone}
+    14. Audit Cadence
+    15. Get the Execution Plan
+  -->
+
+  <!-- 1. EXECUTIVE SUMMARY -->
+  <!-- 2. KEY METRICS -->
+  <!-- 3. STRENGTHS -->
+  <!-- 4. WEAKNESSES -->
+  <!-- 5. ROOT CAUSE ANALYSIS -->
+  <!-- 6. PEER COMPARISON -->
+  <!-- 7. CONTENT FORMAT ANALYSIS -->
+  <!-- 8. ENGAGEMENT GROWTH STRATEGY -->
+  <!-- 9. CONTENT CALENDAR & CREATIVE BOARD -->
+  <!-- 10. QUICK WINS -->
+  <!-- 11. SUCCESS BENCHMARKS -->
+  <!-- 12. AUDIENCE PROFILE -->
+  <!-- 13. ROAD TO MILESTONE -->
+  <!-- 14. AUDIT CADENCE -->
+  <!-- 15. GET THE EXECUTION PLAN -->
+
+  <!-- ========== FOOTER ========== -->
+  <div class="report-footer">
+    <p style="font-weight:700;color:var(--accent);font-size:0.9rem;">AuditLayerMedia</p>
+    <p>@auditlayermedia on Instagram</p>
+    <p style="font-size:0.72rem;">Follow us for social media optimization tips</p>
+    <!-- PROMPT_VERSION_LINE -->
+  </div>
+
+</div>
+</body>
+</html>

@@ -7,4 +7,18 @@ var/data/*.db-*
 var/reports/*.html
 var/*.log
 .env
+# Vercel
 .vercel
+web/.next.*/
+
+# Agent/runtime scratch artifacts
+.hermes/desktop-attachments/
+REVIEW-*.md
+
+# One-off media prototypes (not production portal assets)
+carousel-*.html
+reel-*.html
+supabase/deferred/
+
+# Local logo/media explorations (production web assets live under web/public/)
+assets/

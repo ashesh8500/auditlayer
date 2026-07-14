@@ -60,12 +60,6 @@ class SupabaseGateway:
     # -- instagram token ---------------------------------------------------
 
     def get_instagram_token(self, ig_username: str) -> tuple[str, int] | None:
-        """Look up a live long-lived access token + IG user ID for an Instagram username.
-
-        Returns ``(access_token, ig_user_id)`` if an active, non-expired token
-        exists, or ``None`` if no token is available (expired, inactive, or
-        simply not connected).
-        """
         res = (
             self.client.table("instagram_connections")
             .select(
@@ -92,54 +86,48 @@ class SupabaseGateway:
             return None
         return (str(token), int(ig_user_id))
 
+    # -- RPC claim helpers -------------------------------------------------
+
+    def _claim_via_rpc(self, rpc_name: str) -> dict | None:
+        """Try to claim a queued row via the atomic RPC function.
+
+        Calls the named Supabase RPC (``claim_next_queued`` or
+        ``claim_next_refinement``) with the worker_id. The RPC uses
+        ``SELECT ... FOR UPDATE SKIP LOCKED`` inside a transaction, so
+        concurrent workers never contend for the same row.
+
+        Missing or failed RPCs are fatal. Falling back to SELECT-then-UPDATE
+        weakens the queue's atomicity exactly when deployment state is uncertain.
+        """
+        res = self.client.rpc(rpc_name, {"worker_id": self.settings.worker_id}).execute()
+
+        # supabase-py may return the value directly or wrapped in .data
+        data = res.data
+        if isinstance(data, list) and len(data) == 1:
+            data = data[0]
+        if isinstance(data, dict) and data:
+            return data
+        return None
+
     # -- queue claim -------------------------------------------------------
 
     def claim_next_queued(self) -> dict | None:
         """Atomically claim the oldest queued audit (status -> running).
 
-        The conditional update (``.eq('status','queued')``) is row-atomic in
-        Postgres, so concurrent workers cannot claim the same audit.
+        Requires the RPC path (``SELECT ... FOR UPDATE SKIP LOCKED``) so claim
+        semantics remain atomic under every deployment state.
         """
-        res = (
-            self.client.table("audits")
-            .select("*")
-            .eq("status", "queued")
-            .order("created_at")
-            .limit(1)
-            .execute()
-        )
-        rows = res.data or []
-        if not rows:
-            return None
-        candidate = rows[0]
-        upd = (
-            self.client.table("audits")
-            .update({"status": "running", "updated_at": _utcnow()})
-            .eq("id", candidate["id"])
-            .eq("status", "queued")
-            .execute()
-        )
-        if not upd.data:
-            return None  # lost the race; try again next poll
-        return upd.data[0]
+        return self._claim_via_rpc("claim_next_queued")
 
     # -- retry sweep --------------------------------------------------------
 
     def sweep_retryable(self) -> int:
-        """Re-queue failed audits that are eligible for retry.
-
-        Returns the number of audits re-queued. Audits are eligible when:
-        - status = 'failed'
-        - retry_count < MAX_RETRIES
-        - enough time has passed since last_failed_at (exponential backoff)
-
-        Gracefully no-ops if the retry columns haven't been migrated yet.
-        """
         from datetime import timedelta
 
         from .core import MAX_RETRIES, RETRY_BACKOFF_BASE_SECONDS
 
-        # Find all failed audits
+        TRANSIENT_RETRY_DELAY_SECONDS = 300  # 5 minutes
+
         try:
             res = (
                 self.client.table("audits")
@@ -148,7 +136,7 @@ class SupabaseGateway:
                 .execute()
             )
         except Exception:
-            return 0  # columns probably don't exist yet
+            return 0
 
         re_queued = 0
         now = datetime.now(timezone.utc)
@@ -158,14 +146,16 @@ class SupabaseGateway:
                 continue
             last_failed = row.get("last_failed_at")
             if last_failed:
-                backoff = min(
-                    (2 ** retry_count) * RETRY_BACKOFF_BASE_SECONDS,
-                    3600,  # cap at 1 hour
-                )
+                if retry_count < 2:
+                    backoff = TRANSIENT_RETRY_DELAY_SECONDS
+                else:
+                    backoff = min(
+                        (2 ** retry_count) * RETRY_BACKOFF_BASE_SECONDS,
+                        3600,
+                    )
                 eligible_at = datetime.fromisoformat(last_failed) + timedelta(seconds=backoff)
                 if now < eligible_at:
                     continue
-            # Re-queue
             try:
                 self.client.table("audits").update({
                     "status": "queued",
@@ -177,52 +167,27 @@ class SupabaseGateway:
                 pass
         return re_queued
 
+    # -- stale running reaper ------------------------------------------------
+
+    def sweep_stale_running(self, cutoff_minutes: int = 30) -> int:
+        res = self.client.rpc(
+            "reap_stale_running",
+            {"cutoff_minutes": cutoff_minutes},
+        ).execute()
+        return int(res.data or 0)
+
     def claim_next_refinement(self) -> dict | None:
-        res = (
-            self.client.table("refinements")
-            .select("*")
-            .eq("status", "queued")
-            .order("created_at")
-            .limit(1)
-            .execute()
-        )
-        rows = res.data or []
-        if not rows:
-            return None
-        candidate = rows[0]
-        upd = (
-            self.client.table("refinements")
-            .update({"status": "running", "updated_at": _utcnow()})
-            .eq("id", candidate["id"])
-            .eq("status", "queued")
-            .execute()
-        )
-        if not upd.data:
-            return None
-        return upd.data[0]
+        """Atomically claim the oldest queued refinement (status -> running).
+
+        Requires the atomic RPC path.
+        """
+        return self._claim_via_rpc("claim_next_refinement")
 
     # -- writes ------------------------------------------------------------
 
     def update_audit(self, audit_id: str, **fields: Any) -> None:
         fields["updated_at"] = _utcnow()
-        try:
-            self.client.table("audits").update(fields).eq("id", audit_id).execute()
-        except Exception as exc:
-            # Backward-compatible fallback for production schema drift. These
-            # columns are additive migrations; if live Supabase is behind, do
-            # the core status/path update without optional retry/cache fields.
-            legacy_optional = {"research_cache", "last_failed_at", "retry_count", "report_type"}
-            msg = str(exc)
-            retry_fields = dict(fields)
-            removed = [col for col in legacy_optional if col in retry_fields and col in msg]
-            if not removed and ("42703" in msg or "schema cache" in msg):
-                removed = [col for col in legacy_optional if col in retry_fields]
-            for col in removed:
-                retry_fields.pop(col, None)
-            if removed and retry_fields != fields:
-                self.client.table("audits").update(retry_fields).eq("id", audit_id).execute()
-                return
-            raise
+        self.client.table("audits").update(fields).eq("id", audit_id).execute()
 
     def update_refinement(self, refinement_id: str, **fields: Any) -> None:
         fields["updated_at"] = _utcnow()
@@ -268,3 +233,35 @@ class SupabaseGateway:
         signed = store.create_signed_url(path, self.settings.signed_url_ttl_seconds)
         url = signed.get("signedURL") or signed.get("signedUrl") or ""
         return path, url
+
+    # -- benchmark cache ----------------------------------------------------
+
+    def get_cached_benchmarks(self, niches: list[str]) -> list[dict]:
+        if not niches:
+            return []
+        bench_res = (
+            self.client.table("wellness_benchmarks")
+            .select("*")
+            .in_("niche", niches)
+            .execute()
+        )
+        benchmarks = bench_res.data or []
+        if not benchmarks:
+            return []
+
+        benchmark_ids = [b["id"] for b in benchmarks]
+        peer_res = (
+            self.client.table("peer_graph")
+            .select("*")
+            .in_("benchmarks_id", benchmark_ids)
+            .execute()
+        )
+        peers = peer_res.data or []
+
+        peers_by_benchmark: dict[str, list] = {b["id"]: [] for b in benchmarks}
+        for p in peers:
+            bid = p.get("benchmarks_id")
+            if bid in peers_by_benchmark:
+                peers_by_benchmark[bid].append(p)
+
+        return [{**b, "peers": peers_by_benchmark.get(b["id"], [])} for b in benchmarks]

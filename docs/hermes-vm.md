@@ -108,6 +108,18 @@ ssh hermes-vm 'export PATH=$HOME/.local/bin:$PATH; cd ~/projects/auditlayer/work
 
 Expected: `ok=True`, `tcp_reachable=True`, `auth_ok=True`, `api_server_state=connected`.
 
+Current production uses embedded Hermes. Before restart, run:
+
+```bash
+cd ~/projects/auditlayer/worker
+uv run python -m auditlayer_worker release-preflight
+uv run python -m auditlayer_worker validate-hermes
+```
+
+The unit limits worker memory to 2 GiB, caps tasks/open files, and rate-limits
+restart attempts (`3` per `5m`). Journald rotation and VM backup/watchdog policy
+remain host-level controls and must be verified separately from this repo.
+
 ---
 
 ## Re-sync after laptop login changes
