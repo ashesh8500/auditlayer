@@ -4,7 +4,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured } from "@/lib/env";
 
 export type TrialTokenResult =
-  | { valid: true; auditsGranted: number }
+  | {
+      valid: true;
+      auditsGranted: number;
+      offerPlan: string;
+      reportTypes: string[];
+      accessDays: number;
+    }
   | { valid: false; reason: "not_found" | "expired" | "revoked" | "exhausted" };
 
 /**
@@ -35,5 +41,11 @@ export async function validateTrialToken(
     return { valid: false, reason: "exhausted" };
   }
 
-  return { valid: true, auditsGranted: data.audits_granted };
+  return {
+    valid: true,
+    auditsGranted: data.audits_granted,
+    offerPlan: data.offer_plan,
+    reportTypes: data.report_types,
+    accessDays: data.access_days,
+  };
 }

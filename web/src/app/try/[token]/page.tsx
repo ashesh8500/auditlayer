@@ -75,7 +75,7 @@ export default async function TryPage({
   const cookieStore = await cookies();
   cookieStore.set("alm_trial_token", token, {
     path: "/",
-    httpOnly: false,
+    httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -84,15 +84,15 @@ export default async function TryPage({
   const auditsGranted = result.auditsGranted;
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-[color:var(--bg)] px-6">
-      <div className="w-full max-w-md">
+    <main className="flex min-h-screen items-center justify-center bg-[#14241f] px-4 py-10 sm:px-6">
+      <div className="w-full max-w-2xl">
         {/* ALM badge */}
-        <div className="mb-6 flex justify-center">
+        <div className="mb-8 flex justify-center text-white">
           <Link
             href="/"
             className="flex items-center gap-2 text-sm font-semibold tracking-tight"
           >
-            <span className="grid size-7 place-items-center rounded-md bg-[#1c1917] text-xs font-bold text-white">
+            <span className="grid size-8 place-items-center bg-[#9fe8dc] font-mono text-[9px] font-bold text-[#14241f]">
               ALM
             </span>
             AuditLayerMedia
@@ -100,40 +100,44 @@ export default async function TryPage({
         </div>
 
         {/* Card */}
-        <div className="rounded-[calc(var(--radius)+4px)] border border-border bg-card p-8 shadow-[var(--shadow-md)]">
-          <div className="text-center">
-            <h1 className="text-xl font-bold leading-tight tracking-[-0.01em]">
-              You&rsquo;ve been invited to try AuditLayerMedia
-            </h1>
-            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-              Sign up and get{" "}
-              <span className="font-semibold text-foreground">
-                {auditsGranted} free audit{auditsGranted !== 1 ? "s" : ""}
-              </span>{" "}
-              to explore your social media presence.
-            </p>
+        <div className="grid border border-white/10 bg-card shadow-[var(--shadow-lg)] sm:grid-cols-[0.9fr_1.1fr]">
+          <div className="border-b border-border bg-[color:var(--accent-muted)] p-7 sm:border-b-0 sm:border-r sm:p-9">
+            <p className="alm-kicker">Private trial</p>
+            <p className="mt-14 font-mono text-6xl font-semibold tracking-[-0.06em]">{auditsGranted}</p>
+            <p className="mt-2 text-sm text-muted-foreground">gifted audit{auditsGranted !== 1 ? "s" : ""}</p>
+            <div className="mt-8 border-t border-[color:var(--accent)]/20 pt-4 text-xs leading-5 text-muted-foreground">
+              {result.offerPlan} access · {result.reportTypes.join(", ")} reports · {result.accessDays} days
+            </div>
           </div>
+          <div className="p-7 sm:p-9">
+            <h1 className="text-3xl font-semibold leading-tight tracking-[-0.04em]">
+              Your AuditLayerMedia trial is ready.
+            </h1>
+            <p className="mt-4 text-sm text-muted-foreground leading-6">
+              Sign in to claim your invite, open a research desk, and run your first account analysis.
+            </p>
 
-          <div className="mt-7 space-y-3">
+          <div className="mt-8 space-y-3">
             <Link href={`/login?trial=${encodeURIComponent(token)}`} className="block w-full">
               <Button size="lg" className="w-full font-semibold">
-                Sign up with email
+                Claim trial access
               </Button>
             </Link>
             <Link href={`/login?trial=${encodeURIComponent(token)}`} className="block w-full">
               <Button size="lg" variant="outline" className="w-full font-medium">
-                Already have an account? Sign in
+                I already have an account
               </Button>
             </Link>
           </div>
 
-          <p className="mt-5 text-center text-xs text-muted-foreground">
-            No credit card required. Your free audits never expire.
+          <p className="mt-5 text-xs text-muted-foreground">
+            No credit card required. Credits and report access expire with the offer window.
           </p>
+          </div>
         </div>
 
-        <p className="mt-6 text-center text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-          Powered by AuditLayerMedia
+        <p className="mt-6 text-center font-mono text-[0.62rem] uppercase tracking-[0.12em] text-white/40">
+          Invite access · AuditLayerMedia
         </p>
       </div>
     </main>

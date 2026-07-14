@@ -20,7 +20,6 @@ export default async function LoginPage({
   const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
   if (user) redirect(safeNext);
 
-  // Persist trial token as a cookie so it survives the auth redirect flow
   if (trial) {
     const cookieStore = await cookies();
     cookieStore.set("alm_trial_token", trial, {
@@ -28,31 +27,37 @@ export default async function LoginPage({
       httpOnly: false,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
     });
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-12">
-      <div className="w-full max-w-sm">
-        <Link
-          href="/"
-          className="mb-5 flex items-center justify-center gap-2 text-sm font-semibold tracking-tight"
-        >
-          <span className="grid size-7 place-items-center rounded-md bg-[#1c1917] text-xs font-bold text-white">ALM</span>
-          AuditLayerMedia
-        </Link>
+    <main className="grid min-h-screen bg-background lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="relative hidden overflow-hidden bg-[#14241f] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <div className="absolute -right-32 -top-32 size-[32rem] rounded-full bg-[color:var(--accent)]/25 blur-3xl" aria-hidden="true" />
+        <Link href="/" className="relative flex items-center gap-2.5 text-sm font-semibold alm-focus"><span className="grid size-8 place-items-center bg-[#9fe8dc] font-mono text-[9px] font-bold text-[#14241f]">ALM</span>AuditLayerMedia</Link>
+        <div className="relative max-w-xl">
+          <p className="font-mono text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#8de0d3]">Your research desk</p>
+          <h2 className="mt-5 text-5xl font-semibold leading-[0.98] tracking-[-0.055em]">From account signal to a clear next move.</h2>
+          <div className="mt-10 grid grid-cols-3 gap-px bg-white/15">
+            {["Evidence", "Peer context", "Action plan"].map((item, index) => <div key={item} className="bg-[#14241f] px-4 py-5"><b className="font-mono text-xs text-[#8de0d3]">0{index + 1}</b><p className="mt-8 text-sm text-white/65">{item}</p></div>)}
+          </div>
+        </div>
+        <p className="relative max-w-md text-xs leading-5 text-white/45">Public-data research with collection limits and confidence context shown in every report.</p>
+      </section>
 
-        <div className="rounded-[calc(var(--radius)+4px)] border border-border bg-card p-7 shadow-[var(--shadow-md)]">
-          <div className="mb-6 text-center">
-            <h1 className="text-xl font-bold tracking-tight">Welcome back</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Sign in to view your audits, or start your first one free.
-            </p>
+      <section className="flex items-center justify-center px-4 py-10 sm:px-8">
+      <div className="w-full max-w-md animate-page-in">
+        <Link href="/" className="mb-8 flex items-center gap-2.5 text-sm font-semibold lg:hidden"><span className="grid size-8 place-items-center bg-[#14241f] font-mono text-[9px] font-bold text-[#9fe8dc]">ALM</span>AuditLayerMedia</Link>
+        <div className="border border-border bg-card p-6 shadow-[var(--shadow-md)] sm:p-8">
+          <div className="mb-7">
+            <p className="alm-kicker">{trial ? "Trial access" : "Secure access"}</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-foreground">{trial ? "Claim your trial" : "Welcome back"}</h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{trial ? "Sign in to redeem the audits included with your invite." : "Sign in to open your research desk or run a free Pulse audit."}</p>
           </div>
 
           {error && (
-            <p className="mb-4 rounded-[var(--radius)] border border-[color:var(--red)]/30 bg-[color:var(--red-muted)] px-3 py-2 text-center text-xs text-[color:var(--red)]">
+            <p className="mb-4 rounded-lg bg-[color:var(--red-muted)] border border-[color:var(--red)]/20 px-3 py-2 text-center text-xs text-[color:var(--red)] font-semibold">
               {error === "unconfigured"
                 ? "Sign-in isn't configured yet."
                 : "Something went wrong signing you in. Please try again."}
@@ -62,10 +67,11 @@ export default async function LoginPage({
           <LoginForm next={safeNext} trial={trial ?? undefined} />
         </div>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          By continuing you agree to our terms and privacy policy.
+        <p className="mt-6 text-xs leading-5 text-muted-foreground">
+          By continuing, you agree to the AuditLayerMedia privacy policy.
         </p>
       </div>
+      </section>
     </main>
   );
 }

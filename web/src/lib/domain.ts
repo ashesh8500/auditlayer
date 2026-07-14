@@ -54,8 +54,8 @@ export function allowedReportTypes(plan: Plan): ReportType[] {
   switch (plan) {
     case "free": return ["pulse"];
     case "starter": return ["pulse", "standard"];
-    case "pro": return ["pulse", "standard", "extended"];
-    case "enterprise": return ["pulse", "standard", "extended", "enterprise"];
+    case "pro": return ["pulse", "standard", "extended", "blueprint"];
+    case "enterprise": return ["pulse", "standard", "extended", "enterprise", "blueprint"];
   }
 }
 
@@ -94,9 +94,37 @@ export function auditLimitForProfile(profile: {
 export function effectivePlanForProfile(profile: {
   plan: Plan;
   role: string;
+  trial_plan?: Plan | null;
+  trial_expires_at?: string | null;
 }): Plan {
   if (isAdminUnlimited(profile.role)) return "enterprise";
+  if (
+    profile.trial_plan &&
+    profile.trial_expires_at &&
+    new Date(profile.trial_expires_at).getTime() > Date.now()
+  ) {
+    return profile.trial_plan;
+  }
   return profile.plan;
+}
+
+/** Effective report entitlements, including a still-active founder trial offer. */
+export function allowedReportTypesForProfile(profile: {
+  plan: Plan;
+  role: string;
+  trial_plan?: Plan | null;
+  trial_report_types?: ReportType[] | null;
+  trial_expires_at?: string | null;
+}): ReportType[] {
+  const base = allowedReportTypes(effectivePlanForProfile(profile));
+  const trialActive = Boolean(
+    profile.trial_expires_at &&
+    new Date(profile.trial_expires_at).getTime() > Date.now(),
+  );
+  return Array.from(new Set([
+    ...base,
+    ...(trialActive ? profile.trial_report_types ?? [] : []),
+  ]));
 }
 
 export const GOALS: { value: Goal; label: string; blurb: string }[] = [
@@ -131,6 +159,7 @@ const PLATFORM_DOMAINS = new Set([
   "instagram.com",
   "tiktok.com",
   "youtube.com",
+  "youtu.be",
   "x.com",
 ]);
 
@@ -315,3 +344,12 @@ export const USAGE_STATUSES: AuditStatus[] = [
   "ready",
   "needs_review",
 ];
+
+/** Maximum number of automatic retries for failed audits (mirrors worker MAX_RETRIES). */
+export const MAX_RETRIES = 3;
+
+/** Human-readable retry status for failed audits. */
+export function retryStatusLabel(retryCount: number): string {
+  if (retryCount >= MAX_RETRIES) return `Max retries (${MAX_RETRIES}/${MAX_RETRIES}) reached`;
+  return `Retry ${retryCount} of ${MAX_RETRIES}`;
+}

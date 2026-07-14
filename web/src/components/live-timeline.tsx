@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/client";
 import { StatusBadge } from "@/components/status-badge";
 import type { AuditEventPhase } from "@/lib/supabase/types";
 import type { AuditStatus } from "@/lib/domain";
+import { MAX_RETRIES, retryStatusLabel } from "@/lib/domain";
 
 export interface TimelineEvent {
   id: string;
@@ -68,11 +69,13 @@ export function LiveTimeline({
   initialEvents,
   status: initialStatus,
   realtimeEnabled,
+  retryCount,
 }: {
   auditId: string;
   initialEvents: TimelineEvent[];
   status: AuditStatus;
   realtimeEnabled: boolean;
+  retryCount?: number;
 }) {
   const router = useRouter();
   const [currentStatus, setCurrentStatus] = useState<AuditStatus>(initialStatus);
@@ -83,6 +86,8 @@ export function LiveTimeline({
   const pollingRef = useRef(false);
 
   useEffect(() => {
+    // The server can refresh this prop after an admin/worker status transition.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentStatus(initialStatus);
   }, [initialStatus]);
 
@@ -176,14 +181,23 @@ export function LiveTimeline({
 
   const status = currentStatus;
   const seenPhases = new Set(events.map((e) => e.phase).filter(Boolean));
-  const failed = status === "failed" || seenPhases.has("failed");
+  const failed = status === "failed";
   const blocked = status === "blocked";
+  const errorEvent = events.find(
+    (e) => e.event_type === "error" || e.event_type === "cost_cap",
+  );
+  const isCostCap = errorEvent?.event_type === "cost_cap";
+  // Never render raw worker exceptions to clients. Historical rows may predate
+  // server-side sanitisation, so the UI keeps generic errors generic too.
+  const errorDetail = isCostCap ? errorEvent?.detail || "" : "";
   const activeIndex = PHASE_STEPS.findIndex((s) => !seenPhases.has(s.phase));
   const isLiveStream =
     realtimeConnected &&
     lastEventAt !== null &&
-    Date.now() - lastEventAt < 30_000;
-  const isUpdating = !TERMINAL.includes(status);
+    (lastPollAt ?? lastEventAt) - lastEventAt < 30_000;
+  const isUpdating = !TERMINAL.includes(status) && !seenPhases.has("failed");
+  const canRetry = (retryCount ?? 0) < MAX_RETRIES;
+  const retryLabel = retryStatusLabel(retryCount ?? 0);
 
   return (
     <div className="space-y-6">
@@ -223,8 +237,21 @@ export function LiveTimeline({
         <Banner
           tone="var(--red)"
           icon={<TriangleAlert className="size-4" />}
-          title="Generation failed"
-          body="Something went wrong during generation. A founder has been notified."
+          title={isCostCap ? "Cost cap exceeded" : "Generation failed"}
+          body={
+            errorDetail
+              ? errorDetail
+              : isCostCap
+                ? "Token usage exceeded the configured cap. A founder has been notified."
+                : "Something went wrong during generation. A founder has been notified."
+          }
+          footer={
+            (retryCount ?? 0) > 0
+              ? canRetry
+                ? `${retryLabel} — will retry automatically`
+                : `${retryLabel} — maximum retries reached`
+              : ""
+          }
         />
       )}
       {status === "needs_review" && (
@@ -239,7 +266,7 @@ export function LiveTimeline({
         <Banner
           tone="var(--accent)"
           icon={<Loader2 className="size-4 animate-spin" />}
-          title="Agent is working"
+          title={(retryCount ?? 0) > 0 ? `Agent is working (retry ${retryCount})` : "Agent is working"}
           body="Real audits take about 5–10 minutes. This page updates automatically — no need to refresh."
         />
       )}
@@ -313,7 +340,9 @@ export function LiveTimeline({
                 <span className="font-medium">{e.event_type}</span>
                 {e.detail && (
                   <span className="truncate text-muted-foreground">
-                    {e.detail}
+                    {e.event_type === "error"
+                      ? "Diagnostic details are available to founders."
+                      : e.detail}
                   </span>
                 )}
               </li>
@@ -330,11 +359,13 @@ function Banner({
   icon,
   title,
   body,
+  footer,
 }: {
   tone: string;
   icon: React.ReactNode;
   title: string;
   body: string;
+  footer?: string;
 }) {
   return (
     <div
@@ -349,7 +380,10 @@ function Banner({
         <h4 className="text-sm font-medium" style={{ color: tone }}>
           {title}
         </h4>
-        <p className="text-xs text-muted-foreground">{body}</p>
+        <p className="max-h-40 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">{body}</p>
+        {footer && (
+          <p className="mt-1 text-[10px] text-muted-foreground">{footer}</p>
+        )}
       </div>
     </div>
   );

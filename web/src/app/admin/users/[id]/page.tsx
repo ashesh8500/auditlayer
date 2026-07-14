@@ -11,7 +11,7 @@ import {
   type AuditStatus,
   type Platform,
 } from "@/lib/domain";
-import { PlanChangeForm, GiftedAdjustForm, AccountTypeForm } from "./user-forms";
+import { AccessAssignmentForm } from "./user-forms";
 
 export default async function AdminUserDetail({
   params,
@@ -103,29 +103,18 @@ export default async function AdminUserDetail({
         </div>
       </section>
 
-      {/* Forms grid */}
-      <section className="mt-6 grid gap-6 sm:grid-cols-3">
-        <div className="rounded-[var(--radius)] border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold">Plan</h3>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Change the user's plan tier.
-          </p>
-          <PlanChangeForm userId={id} />
-        </div>
-        <div className="rounded-[var(--radius)] border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold">Gifted audits</h3>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Add or remove gifted audits.
-          </p>
-          <GiftedAdjustForm userId={id} />
-        </div>
-        <div className="rounded-[var(--radius)] border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold">Account type</h3>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Set standard, trial, or comp.
-          </p>
-          <AccountTypeForm userId={id} />
-        </div>
+      {/* Atomic founder-managed commercial access */}
+      <section className="mt-6 rounded-[var(--radius)] border border-border bg-card p-5">
+        <h3 className="text-sm font-semibold">Commercial access</h3>
+        <p className="mb-4 text-xs text-muted-foreground">
+          Assign trial, comp, paid, or manual enterprise access. This does not create Stripe seats or invoices.
+        </p>
+        <AccessAssignmentForm
+          userId={id}
+          plan={profile.plan}
+          accountType={profile.account_type}
+          giftedAudits={profile.gifted_audits}
+        />
       </section>
 
       {/* Recent audits */}

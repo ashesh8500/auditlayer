@@ -14,30 +14,24 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <AppHeader />
-      <div className="border-b border-border bg-card">
-        <div className="mx-auto flex w-full max-w-5xl items-center gap-4 px-6 py-2 text-xs">
-          <span className="font-semibold uppercase tracking-[0.08em] text-[color:var(--accent)]">
-            Founder console
+      <div className="border-b border-border bg-[color:var(--panel)]">
+        <div className="alm-shell flex items-center gap-5 overflow-x-auto py-3 text-xs">
+          <span className="font-semibold uppercase tracking-widest text-[color:var(--accent)]">
+            Operations
           </span>
-          <Link href="/admin" className="text-muted-foreground hover:text-foreground">
+          <Link href="/admin" className="text-muted-foreground hover:text-foreground transition-colors">
             Clients & audits
           </Link>
-          <Link
-            href="/admin/users"
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <Link href="/admin/users" className="text-muted-foreground hover:text-foreground transition-colors">
             Users
           </Link>
-          <Link
-            href="/admin/trials"
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <Link href="/admin/trials" className="text-muted-foreground hover:text-foreground transition-colors">
             Trials
           </Link>
-          <Link
-            href="/admin/settings"
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <Link href="/admin/benchmarks" className="text-muted-foreground hover:text-foreground transition-colors">
+            Benchmarks
+          </Link>
+          <Link href="/admin/settings" className="text-muted-foreground hover:text-foreground transition-colors">
             Worker config
           </Link>
         </div>

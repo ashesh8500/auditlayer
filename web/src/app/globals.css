@@ -12,17 +12,20 @@
 */
 :root {
   /* AuditLayer color tokens */
-  --bg: #fafaf9;
-  --surface: #ffffff;
-  --text: #1c1917;
-  --muted: #78716c;
-  --line: #e7e5e4;
+  --bg: #f5f1e8;
+  --surface: #fffdf8;
+  --text: #14241f;
+  --muted: #65736e;
+  --line: #dcd7ca;
   --accent: #0d9488;
-  --accent-muted: #f0fdfa;
+  --accent-muted: #e0f2ed;
   --green: #059669;
   --amber: #d97706;
   --red: #dc2626;
   --blue: #2563eb;
+
+  /* Raised panel surface (subtly lighter than bg) */
+  --panel: #ede9df;
 
   /* Semantic muted backgrounds (from the report design system) */
   --green-muted: #ecfdf5;
@@ -30,14 +33,27 @@
   --amber-muted: #fffbeb;
   --blue-muted: #eff6ff;
 
+  /* Glow shadow tokens (for LED indicators, status badges, focus rings) */
+  --shadow-glow-teal: 0 0 12px rgba(13,148,136,0.3);
+  --shadow-glow-green: 0 0 10px rgba(34,197,94,0.4);
+  --shadow-glow-red: 0 0 10px rgba(239,68,68,0.5);
+  --shadow-glow-amber: 0 0 10px rgba(245,158,11,0.5);
+  --shadow-glow-blue: 0 0 10px rgba(59,130,246,0.5);
+
+  /* LED indicator colors (brighter than semantic colors, for status visibility) */
+  --led-green: #22c55e;
+  --led-red: #ef4444;
+  --led-amber: #f59e0b;
+  --led-blue: #3b82f6;
+
   /* A neutral surface used for shadcn "muted" backgrounds */
-  --surface-muted: #f5f5f4;
+  --surface-muted: #ece8de;
 
   /* Shape & elevation */
-  --radius: 10px;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.04);
+  --radius: 8px;
+  --shadow: 0 1px 2px rgba(20, 36, 31, 0.07);
+  --shadow-md: 0 10px 28px rgba(20, 36, 31, 0.09), 0 2px 5px rgba(20, 36, 31, 0.05);
+  --shadow-lg: 0 24px 70px rgba(20, 36, 31, 0.14), 0 4px 12px rgba(20, 36, 31, 0.06);
 
   /* shadcn/ui semantic tokens mapped to AuditLayer tokens */
   --background: var(--bg);
@@ -119,6 +135,15 @@
   --color-danger: var(--red);
   --color-info: var(--blue);
 
+  /* Surface tokens */
+  --color-panel: var(--panel);
+
+  /* LED indicator colors as Tailwind utilities */
+  --color-led-green: var(--led-green);
+  --color-led-red: var(--led-red);
+  --color-led-amber: var(--led-amber);
+  --color-led-blue: var(--led-blue);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -133,6 +158,7 @@
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     line-height: 1.625;
+    background-image: radial-gradient(circle at 8% 0%, rgba(13, 148, 136, 0.055), transparent 28rem);
   }
   html {
     @apply font-sans;
@@ -144,5 +170,83 @@
   textarea:focus-visible,
   select:focus-visible {
     @apply outline-none ring-2 ring-accent-base ring-offset-1 transition-shadow duration-150;
+  }
+}
+
+@layer components {
+  .alm-shell {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .alm-kicker {
+    @apply font-mono text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--accent)];
+  }
+
+  .alm-panel {
+    @apply border border-border bg-card shadow-[var(--shadow)];
+  }
+
+  .alm-table-wrap {
+    @apply overflow-x-auto border border-border bg-card shadow-[var(--shadow)];
+  }
+
+  .alm-table-wrap table {
+    min-width: 680px;
+  }
+
+  .alm-focus {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] focus-visible:ring-offset-2;
+  }
+}
+
+/* ── Scroll-reveal animations ── */
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-reveal {
+  animation: reveal-up 0.6s ease-out both;
+}
+
+@supports (animation-timeline: view()) {
+  .reveal-scroll {
+    animation: reveal-up linear both;
+    animation-timeline: view();
+    animation-range: entry 8% cover 25%;
+  }
+}
+
+/* Fallback for browsers without scroll-driven animations */
+@supports not (animation-timeline: view()) {
+  .reveal-scroll {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* Page transition — subtle fade for route changes */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-page-in {
+  animation: page-in 0.3s ease-out both;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

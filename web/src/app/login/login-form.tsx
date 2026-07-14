@@ -21,27 +21,20 @@ export function LoginForm({ next, trial }: { next: string; trial?: string }) {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <form action={signInWithGoogle}>
         <input type="hidden" name="next" value={next} />
         {trial && <input type="hidden" name="trial" value={trial} />}
-        <div className="rounded-[var(--radius)] border border-border p-4 shadow-[var(--shadow-sm)]">
-          <Button
-            type="submit"
-            variant="outline"
-            size="lg"
-            className="w-full font-medium"
-          >
-            <GoogleGlyph />
-            Continue with Google
-          </Button>
-        </div>
+        <Button type="submit" variant="outline" size="lg" className="w-full bg-card font-medium">
+          <GoogleGlyph />
+          Continue with Google
+        </Button>
       </form>
 
       <div className="flex items-center gap-3">
-        <span className="h-0.5 flex-1 bg-border" />
-        <span className="shrink-0 text-sm text-muted-foreground font-medium">or with email</span>
-        <span className="h-0.5 flex-1 bg-border" />
+        <span className="h-px flex-1 bg-border" />
+        <span className="shrink-0 font-mono text-[0.62rem] uppercase tracking-widest text-muted-foreground">or use email</span>
+        <span className="h-px flex-1 bg-border" />
       </div>
 
       {state.status === "sent" ? (
@@ -86,8 +79,8 @@ export function LoginForm({ next, trial }: { next: string; trial?: string }) {
         </form>
       )}
 
-      <p className="text-center text-sm text-muted-foreground">
-        Run free Pulse audits — no credit card required.
+      <p className="text-center text-xs text-muted-foreground">
+        Free Pulse audit · no credit card required
       </p>
     </div>
   );

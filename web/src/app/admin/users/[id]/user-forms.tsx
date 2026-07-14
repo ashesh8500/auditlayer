@@ -10,6 +10,7 @@ import {
   updateUserPlan,
   adjustGiftedAudits,
   setAccountType,
+  setUserAccess,
   type AdminActionState,
 } from "@/lib/actions/admin";
 
@@ -27,6 +28,57 @@ function Feedback({ state }: { state: AdminActionState }) {
     >
       {state.message}
     </p>
+  );
+}
+
+export function AccessAssignmentForm({
+  userId,
+  plan,
+  accountType,
+  giftedAudits,
+}: {
+  userId: string;
+  plan: string;
+  accountType: string;
+  giftedAudits: number;
+}) {
+  const [state, action, pending] = useActionState(setUserAccess, initial);
+  return (
+    <form action={action} className="grid gap-4 sm:grid-cols-2">
+      <input type="hidden" name="profileId" value={userId} />
+      <div className="space-y-1.5">
+        <Label htmlFor="access-plan">Plan</Label>
+        <select id="access-plan" name="plan" defaultValue={plan} className="h-10 w-full border border-border bg-background px-3 text-sm">
+          <option value="free">Free</option>
+          <option value="starter">Starter</option>
+          <option value="pro">Pro</option>
+          <option value="enterprise">Enterprise (manual)</option>
+        </select>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="access-type">Account type</Label>
+        <select id="access-type" name="account_type" defaultValue={accountType} className="h-10 w-full border border-border bg-background px-3 text-sm">
+          <option value="standard">Standard</option>
+          <option value="trial">Trial</option>
+          <option value="comp">Complimentary</option>
+        </select>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="access-gifted">Gifted audit credits</Label>
+        <Input id="access-gifted" name="gifted_audits" type="number" min={0} defaultValue={giftedAudits} required />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="access-reason">Reason</Label>
+        <Input id="access-reason" name="reason" placeholder="Contract, comp, correction…" minLength={3} required />
+      </div>
+      <div className="space-y-2 sm:col-span-2">
+        <Button type="submit" size="sm" disabled={pending}>
+          {pending && <Loader2 className="size-4 animate-spin" />}
+          Save access assignment
+        </Button>
+        <Feedback state={state} />
+      </div>
+    </form>
   );
 }
 

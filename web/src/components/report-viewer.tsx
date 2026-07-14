@@ -68,7 +68,7 @@ export function ReportViewer({
       </div>
 
       {reportReady ? (
-        <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-white shadow-[var(--shadow-md)]">
+        <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card shadow-[var(--shadow-md)]">
           <iframe
             title="Audit report"
             src={reportSrc}

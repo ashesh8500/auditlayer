@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpen } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -16,6 +17,7 @@ import {
   type RefinementRow,
 } from "@/components/report-viewer";
 import { ShareLinks } from "@/components/share-links";
+import { StatusBadge } from "@/components/status-badge";
 import type { ShareLinkRow } from "@/lib/actions/shares";
 
 export const metadata = { title: "Audit — AuditLayerMedia" };
@@ -50,21 +52,24 @@ export default async function AuditDetailPage({
   const status = audit.status as AuditStatus;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-10">
+    <main className="alm-shell py-8 sm:py-12 animate-page-in">
       <Link
         href="/dashboard"
-        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="size-3.5" />
         Back to dashboard
       </Link>
 
-      <header className="mt-4 border-b border-border pb-6">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold tracking-tight">@{audit.handle}</h1>
-          <span className="text-sm text-muted-foreground">
-            {PLATFORM_LABELS[audit.platform as Platform] ?? audit.platform}
-          </span>
+      <header className="mt-5 grid gap-5 border-b border-border pb-7 sm:grid-cols-[1fr_auto] sm:items-end">
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">@{audit.handle}</h1>
+            <span className="text-sm text-muted-foreground">
+              {PLATFORM_LABELS[audit.platform as Platform] ?? audit.platform}
+            </span>
+          </div>
+          <div className="sm:text-right"><p className="mb-2 font-mono text-[0.6rem] uppercase tracking-widest text-muted-foreground">Audit status</p><StatusBadge status={status} /></div>
         </div>
         {audit.milestone_label && (
           <p className="mt-1 text-sm text-muted-foreground">
@@ -80,7 +85,7 @@ export default async function AuditDetailPage({
           </h2>
           <ul className="mt-2 space-y-1.5">
             {limitations.map((l) => (
-              <li key={l} className="text-xs text-[color:#1e3a8a]">
+              <li key={l} className="text-xs text-[color:var(--blue)]">
                 {l}
               </li>
             ))}
@@ -97,6 +102,7 @@ export default async function AuditDetailPage({
             initialEvents={events}
             status={status}
             realtimeEnabled={isSupabaseConfigured()}
+            retryCount={audit.retry_count ?? 0}
           />
         )}
       </div>
@@ -140,27 +146,35 @@ async function ReadyReport({
   return (
     <div className="space-y-6">
       {/* Read full report button */}
-      <div className="flex items-center justify-end">
-        <Link
-          href={`/audits/${auditId}/read`}
-          className="inline-flex items-center gap-1.5 rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[color:var(--accent)]/90 transition-colors"
-        >
-          <BookOpen className="size-3.5" />
-          Read full report
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-[#14241f] px-5 py-5 text-white sm:px-6">
+        <div><p className="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[#8de0d3]">Report ready</p><h2 className="mt-1 text-lg font-semibold">Read the analysis without the workspace controls.</h2></div>
+        <Link href={`/audits/${auditId}/read`}>
+          <Button size="sm" variant="secondary">
+            <BookOpen className="size-3.5" />
+            Read full report
+          </Button>
         </Link>
       </div>
 
-      <ReportViewer
-        auditId={auditId}
-        reportReady={Boolean(audit.report_path)}
-        refinements={(refinementRows ?? []) as RefinementRow[]}
-      />
+      {/* Side-by-side: report + downloads | refinements + share links */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+        {/* Left column: Report iframe + download buttons (from ReportViewer) */}
+        <div>
+          <ReportViewer
+            auditId={auditId}
+            reportReady={Boolean(audit.report_path)}
+            refinements={(refinementRows ?? []) as RefinementRow[]}
+          />
+        </div>
 
-      {/* Share links */}
-      <ShareLinks
-        auditId={auditId}
-        links={(shareLinks ?? []) as ShareLinkRow[]}
-      />
+        {/* Right column: Share links (and any other actions) — stacks below on mobile */}
+        <div className="space-y-6 lg:pt-[2.625rem]">
+          <ShareLinks
+            auditId={auditId}
+            links={(shareLinks ?? []) as ShareLinkRow[]}
+          />
+        </div>
+      </div>
     </div>
   );
 }

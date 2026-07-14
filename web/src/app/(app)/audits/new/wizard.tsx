@@ -47,10 +47,8 @@ import {
   GOALS,
   PLATFORM_LABELS,
   intakeHints,
-  allowedReportTypes,
   REPORT_TYPE_LABELS,
   type Goal,
-  type Plan,
   type ReportType,
 } from "@/lib/domain";
 import { createAudit, type CreateAuditState } from "@/lib/actions/audits";
@@ -78,12 +76,12 @@ const PLATFORM_ICONS: Record<string, any> = {
 
 const initialState: CreateAuditState = { status: "idle" };
 
-export function IntakeWizard({ plan }: { plan: Plan }) {
+export function IntakeWizard({ reportTypes }: { reportTypes: ReportType[] }) {
   const [step, setStep] = useState(0);
   const [handle, setHandle] = useState("");
   const [goal, setGoal] = useState<Goal | "">("");
   const [reportType, setReportType] = useState<ReportType>(
-    plan === "free" ? "pulse" : "standard"
+    reportTypes.includes("standard") ? "standard" : reportTypes[0] ?? "pulse"
   );
   const [context, setContext] = useState("");
   const [state, action, pending] = useActionState(createAudit, initialState);
@@ -92,12 +90,12 @@ export function IntakeWizard({ plan }: { plan: Plan }) {
   const canContinueHandle = hints.normalizedHandle.length >= 2;
   const canSubmit = goal !== "";
 
-  const availableTypes = useMemo(() => allowedReportTypes(plan), [plan]);
+  const availableTypes = reportTypes;
 
   const IconComponent = PLATFORM_ICONS[hints.platform] || Search;
 
   return (
-    <form action={action} className="space-y-8 max-w-xl mx-auto">
+    <form action={action} className="mx-auto max-w-2xl space-y-8">
       <input type="hidden" name="handle" value={handle} />
       <input type="hidden" name="goal" value={goal} />
       <input type="hidden" name="report_type" value={reportType} />
@@ -112,7 +110,7 @@ export function IntakeWizard({ plan }: { plan: Plan }) {
               Whose account are we auditing?
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Enter any handle or profile URL. Our engine supports Instagram, TikTok, YouTube, X, or LinkedIn.
+              Enter a handle or profile URL. We will identify the platform before submission.
             </p>
           </div>
 
@@ -136,7 +134,7 @@ export function IntakeWizard({ plan }: { plan: Plan }) {
           </div>
 
           {hints.normalizedHandle && (
-            <div className="rounded-xl border border-border bg-[#fcfcfb] p-5 shadow-sm space-y-3">
+            <div className="border border-border bg-[var(--panel)] p-5 shadow-sm space-y-3">
               <div className="flex items-center justify-between border-b border-border pb-2.5">
                 <div className="flex items-center gap-1.5 font-mono text-sm font-semibold">
                   <span className="text-[color:var(--accent)]">@</span>
@@ -193,7 +191,7 @@ export function IntakeWizard({ plan }: { plan: Plan }) {
                   key={g.value}
                   type="button"
                   onClick={() => setGoal(g.value)}
-                  className={`relative rounded-xl border p-5 text-left transition-all hover:border-[color:var(--accent)]/50 ${
+                  className={`relative border p-5 text-left transition-all hover:border-[color:var(--accent)]/50 alm-focus ${
                     isSelected
                       ? "border-[color:var(--accent)] bg-[color:var(--accent-muted)] shadow-sm"
                       : "border-border bg-card"
@@ -210,7 +208,7 @@ export function IntakeWizard({ plan }: { plan: Plan }) {
           </div>
 
           {goal && (
-            <div className="space-y-3 rounded-xl border border-border bg-card p-5 animate-in fade-in duration-200">
+            <div className="space-y-3 border border-border bg-card p-5 animate-in fade-in duration-200">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Report type
               </p>
@@ -223,7 +221,7 @@ export function IntakeWizard({ plan }: { plan: Plan }) {
                       key={rt}
                       type="button"
                       onClick={() => setReportType(rt)}
-                      className={`flex items-center gap-3 rounded-lg border p-3 text-left text-sm transition-all ${
+                      className={`flex items-center gap-3 border p-3 text-left text-sm transition-all alm-focus ${
                         isSelected
                           ? "border-[color:var(--accent)] bg-[color:var(--accent-muted)] shadow-sm"
                           : "border-border hover:border-[color:var(--accent)]/30 bg-white"
@@ -264,7 +262,7 @@ export function IntakeWizard({ plan }: { plan: Plan }) {
               </span>
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Provide context like competitors, products, or credentials to sharpen our data-scraping parameters.
+              Add known competitors, current offers, or a launch date when they matter to the strategy.
             </p>
           </div>
 
@@ -276,7 +274,7 @@ export function IntakeWizard({ plan }: { plan: Plan }) {
               onChange={(e) => setContext(e.target.value)}
               rows={5}
               placeholder="e.g., Clinical longevity practitioner based in Austin. Competing with @hubermanlab. Launching a supplement line next month..."
-              className="rounded-xl border border-border shadow-sm p-4 text-sm resize-none focus-visible:ring-1 focus-visible:ring-[color:var(--accent)]"
+              className="border border-border shadow-sm p-4 text-sm resize-none focus-visible:ring-1 focus-visible:ring-[color:var(--accent)]"
             />
           </div>
 
@@ -336,7 +334,7 @@ export function IntakeWizard({ plan }: { plan: Plan }) {
 function Stepper({ step }: { step: number }) {
   const labels = ["Handle", "Strategy", "Context"];
   return (
-    <ol className="flex items-center gap-4 bg-neutral-50 border border-border rounded-xl p-3.5 max-w-xl mx-auto shadow-sm">
+    <ol aria-label="Audit setup progress" className="mx-auto flex items-center gap-2 border-y border-border bg-card px-2 py-3.5 sm:gap-4 sm:px-4">
       {labels.map((label, i) => {
         const isCompleted = i < step;
         const isActive = i === step;

@@ -92,18 +92,18 @@ export function ImmersiveReport({
   }, [reportUrl]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#fafaf9]">
+    <div className="flex min-h-screen flex-col bg-[var(--bg)]">
       {/* Minimal top bar */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[#e7e5e4] bg-white/80 px-4 py-2 backdrop-blur-sm">
+      <header className="sticky top-0 z-20 flex min-h-14 items-center justify-between gap-4 border-b border-[var(--line)] bg-[#14241f] px-4 py-2 text-white backdrop-blur-sm sm:px-6">
         <a
           href={backHref}
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-white/70 transition-colors hover:text-white alm-focus"
         >
           <ArrowLeft className="size-3.5" />
           {backLabel}
         </a>
-        <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-          Powered by AuditLayerMedia
+        <span className="font-mono text-[0.6rem] font-medium uppercase tracking-[0.1em] text-[#8de0d3]">
+          Focused report reader
         </span>
       </header>
 
@@ -111,9 +111,7 @@ export function ImmersiveReport({
       <main className="flex-1">
         {loading && (
           <div className="flex items-center justify-center py-32">
-            <div className="text-sm text-muted-foreground animate-pulse">
-              Loading report…
-            </div>
+            <div role="status" className="text-sm text-muted-foreground animate-pulse">Preparing the report reader…</div>
           </div>
         )}
 

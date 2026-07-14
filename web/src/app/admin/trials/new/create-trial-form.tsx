@@ -43,6 +43,52 @@ export function CreateTrialForm() {
           <p className="text-xs text-muted-foreground">1–50 free audits.</p>
         </div>
 
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="offer_plan">Plan entitlement</Label>
+            <select
+              id="offer_plan"
+              name="offer_plan"
+              defaultValue="starter"
+              className="h-10 w-full border border-border bg-background px-3 text-sm"
+            >
+              <option value="free">Free</option>
+              <option value="starter">Starter</option>
+              <option value="pro">Pro</option>
+              <option value="enterprise">Enterprise</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="access_days">Access days</Label>
+            <Input
+              id="access_days"
+              name="access_days"
+              type="number"
+              min={1}
+              max={365}
+              defaultValue={14}
+              required
+            />
+          </div>
+        </div>
+
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">Report entitlements</legend>
+          <div className="grid gap-2 text-sm sm:grid-cols-2">
+            {["pulse", "standard", "extended", "blueprint", "enterprise"].map((type) => (
+              <label key={type} className="flex items-center gap-2 capitalize">
+                <input
+                  type="checkbox"
+                  name="report_types"
+                  value={type}
+                  defaultChecked={type === "standard"}
+                />
+                {type}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
         <div className="space-y-1.5">
           <Label htmlFor="label">Label (optional)</Label>
           <Input

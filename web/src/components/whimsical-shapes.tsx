@@ -206,7 +206,7 @@ function Blob({ size, color }: { size: number; color: string }) {
 
 function StackedDiscs({ size, color }: { size: number; color: string }) {
   const discH = Math.round(size * 0.1);
-  const count = 3 + Math.round(Math.random() * 2); // 3-5 discs
+  const count = 3 + (Math.round(size) % 3); // deterministic 3-5 discs
   return (
     <div style={{ width: size, height: size, position: "relative" }}>
       {Array.from({ length: count }, (_, i) => (

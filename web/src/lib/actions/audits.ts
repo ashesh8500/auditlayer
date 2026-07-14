@@ -7,13 +7,11 @@ import { requireProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured } from "@/lib/env";
 import {
-  auditLimitForProfile,
   effectivePlanForProfile,
   evaluateIntake,
   USAGE_STATUSES,
-  allowedReportTypes,
+  allowedReportTypesForProfile,
   type Goal,
-  type Plan,
   type ReportType,
 } from "@/lib/domain";
 
@@ -58,8 +56,8 @@ export async function createAudit(
   }
 
   // Validate report_type against plan
-  const plan = effectivePlanForProfile(profile);
-  const allowed = allowedReportTypes(plan as Plan);
+  const plan = effectivePlanForProfile(profile as never);
+  const allowed = allowedReportTypesForProfile(profile as never);
   const reportType = (parsed.data.report_type || "standard") as ReportType;
   if (!allowed.includes(reportType)) {
     return {
@@ -70,102 +68,48 @@ export async function createAudit(
 
   const admin = createAdminClient();
 
-  // Fetch gifted_audits to check for gifted/trial consumption
-  let giftedAudits = 0;
-  try {
-    const { data: giftedData } = await admin
-      .from("profiles")
-      .select("gifted_audits")
-      .eq("id", profile.id)
-      .maybeSingle();
-    giftedAudits = (giftedData as any)?.gifted_audits ?? 0;
-  } catch {
-    // Column may not exist yet (pre-migration) — treat as 0
-    giftedAudits = 0;
-  }
-
-  // Gifted audits are consumed first, bypassing plan limits entirely
-  let usage = 0;
-  if (giftedAudits > 0) {
-    // Decrement gifted_audits by 1
-    await admin
-      .from("profiles")
-      .update({ gifted_audits: giftedAudits - 1 })
-      .eq("id", profile.id);
-  } else {
-    // Enforce the plan's audit allowance server-side (PLAN_LIMITS).
-    const { count } = await admin
-      .from("audits")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", profile.id)
-      .in("status", USAGE_STATUSES);
-
-    usage = count ?? 0;
-    const limit = auditLimitForProfile(profile);
-    if (usage >= limit) {
-      return {
-        status: "error",
-        limitReached: true,
-        message:
-          profile.plan === "free"
-            ? "You've used your free Pulse audits. Upgrade to run more."
-            : `Your ${profile.plan} plan allows ${limit} audits. Upgrade for more capacity.`,
-      };
-    }
-  }
+  const { count } = await admin
+    .from("audits")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", profile.id)
+    .in("status", USAGE_STATUSES);
+  const usage = count ?? 0;
+  const giftedAudits = Number(
+    (profile as { gifted_audits?: number }).gifted_audits ?? 0,
+  );
 
   const decision = evaluateIntake(
     {
       handle: parsed.data.handle,
       goal: parsed.data.goal as Goal,
       context: parsed.data.context,
-      plan: effectivePlanForProfile(profile),
+      plan: effectivePlanForProfile(profile as never),
     },
     usage,
     undefined,
     giftedAudits,
   );
 
-  const auditInsert = {
-    user_id: profile.id,
-    handle: decision.normalizedHandle,
-    platform: decision.platform,
-    goal: parsed.data.goal,
-    report_type: reportType,
-    context: parsed.data.context,
-    status: decision.status,
-    limitations: decision.limitations,
-    milestone_label: decision.milestoneLabel,
-  } as any;
+  const { data: auditResult, error } = await (admin as any).rpc(
+    "submit_entitled_audit",
+    {
+      p_user_id: profile.id,
+      p_handle: decision.normalizedHandle,
+      p_platform: decision.platform,
+      p_goal: parsed.data.goal,
+      p_report_type: reportType,
+      p_context: parsed.data.context,
+      p_status: decision.status,
+      p_limitations: decision.limitations,
+      p_milestone_label: decision.milestoneLabel,
+    },
+  );
+  const audit = auditResult as {
+    id?: string;
+    gifted_consumed?: boolean;
+  } | null;
 
-  let { data: audit, error } = await admin
-    .from("audits")
-    .insert(auditInsert)
-    .select("id")
-    .single();
-
-  // Backward-compatible fallback for production schema drift: older DBs may
-  // not have the report_type column yet. Retry without it so audit creation
-  // still works; the worker defaults the missing value to a standard report.
-  if (error?.message?.includes("report_type")) {
-    const legacyAuditInsert = { ...auditInsert };
-    delete legacyAuditInsert.report_type;
-    console.error("createAudit insert retrying without report_type", {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-    });
-    const retry = await admin
-      .from("audits")
-      .insert(legacyAuditInsert)
-      .select("id")
-      .single();
-    audit = retry.data;
-    error = retry.error;
-  }
-
-  if (error || !audit) {
+  if (error || !audit?.id) {
     console.error("createAudit insert failed", {
       code: error?.code,
       message: error?.message,
@@ -174,7 +118,10 @@ export async function createAudit(
     });
     return {
       status: "error",
-      message: "We couldn't create that audit. Please try again.",
+      limitReached: error?.message?.includes("audit_limit_reached") ?? false,
+      message: error?.message?.includes("audit_limit_reached")
+        ? "Your current access has reached its audit limit. Upgrade or ask a founder for access."
+        : "We couldn't create that audit. Please try again.",
     };
   }
 
@@ -183,7 +130,7 @@ export async function createAudit(
     actor: "client",
     event_type: "audit_submitted",
     phase: "intake",
-    detail: `status=${decision.status}; platform=${decision.platform}`,
+    detail: `status=${decision.status}; platform=${decision.platform}; gifted_consumed=${Boolean(audit.gifted_consumed)}`,
   });
 
   if (decision.limitations.length > 0) {
