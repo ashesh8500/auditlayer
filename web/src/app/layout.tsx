@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
+// Keep DB-bound server rendering beside the Singapore Supabase project.
+export const preferredRegion = "sin1";
+
 const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Callable, Iterable
 
 from .hermes import ChatResult, Usage, _estimate_tokens
@@ -62,6 +64,43 @@ class InProcessHermesClient:
         else:
             os.environ["HERMES_HOME"] = previous
 
+    def collect_research(self, audit) -> str:
+        """Run a fixed, parallel web sweep without an open-ended model loop."""
+        from model_tools import handle_function_call  # type: ignore[import-not-found]
+
+        handle = str(audit.handle).strip().lstrip("@")
+        platform = str(audit.platform).strip()
+        queries = (
+            f'"{handle}" {platform}',
+            f'"{handle}" social media followers engagement',
+            f'"{handle}" content creator brand',
+        )
+
+        def search(query: str) -> str:
+            return handle_function_call(
+                "web_search",
+                {"query": query, "limit": 5},
+                task_id=f"audit-{audit.id}-research",
+                user_task="bounded public account research",
+                enabled_toolsets=["web"],
+            )
+
+        account_home = os.environ.get("HERMES_HOME")
+        os.environ["HERMES_HOME"] = str(Path.home() / ".hermes")
+        try:
+            with ThreadPoolExecutor(max_workers=len(queries)) as pool:
+                results = list(pool.map(search, queries))
+        finally:
+            if account_home is None:
+                os.environ.pop("HERMES_HOME", None)
+            else:
+                os.environ["HERMES_HOME"] = account_home
+        evidence = "\n\n".join(
+            f"QUERY: {query}\nRESULTS:\n{result}"
+            for query, result in zip(queries, results, strict=True)
+        )
+        return evidence[:12000]
+
 
     def chat(
         self,
@@ -97,10 +136,12 @@ class InProcessHermesClient:
                     on_delta(delta, "".join(accumulated))
 
             iteration_budget = IterationBudget(self._max_iterations)
+            requested_toolsets = list(toolsets)
+            no_tools = not requested_toolsets
             agent = AIAgent(
                 model=model,
                 provider=self.settings.hermes_provider,
-                enabled_toolsets=list(toolsets) or None,
+                enabled_toolsets=requested_toolsets,
                 max_tokens=max_tokens,
                 max_iterations=self._max_iterations,
                 iteration_budget=iteration_budget,
@@ -108,7 +149,8 @@ class InProcessHermesClient:
                 quiet_mode=True,
                 verbose_logging=False,
                 platform="api_server",
-                skip_memory=self._skip_memory,
+                skip_context_files=no_tools,
+                skip_memory=self._skip_memory or no_tools,
             )
 
             result = agent.run_conversation(

@@ -69,9 +69,9 @@ export default async function Home() {
         <div className="alm-shell flex h-16 items-center justify-between">
           <Brand />
           <nav aria-label="Primary navigation" className="flex items-center gap-1 sm:gap-3">
-            <Link href="#method" className="hidden px-3 py-2 text-sm text-muted-foreground hover:text-foreground sm:block">Method</Link>
-            <Link href="#pricing" className="hidden px-3 py-2 text-sm text-muted-foreground hover:text-foreground sm:block">Pricing</Link>
-            <Link href="/login"><Button size="sm">Sign in</Button></Link>
+            <Link prefetch={false} href="#method" className="hidden px-3 py-2 text-sm text-muted-foreground hover:text-foreground sm:block">Method</Link>
+            <Link prefetch={false} href="#pricing" className="hidden px-3 py-2 text-sm text-muted-foreground hover:text-foreground sm:block">Pricing</Link>
+            <Link prefetch={false} href="/login"><Button size="sm">Sign in</Button></Link>
           </nav>
         </div>
       </header>
@@ -87,8 +87,8 @@ export default async function Home() {
               AuditLayerMedia turns public social signals into a clear diagnosis, a same-tier benchmark, and an executable growth plan.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="/login"><Button size="lg" className="w-full sm:w-auto">Run a Free Pulse Audit <ArrowRight className="size-4" /></Button></Link>
-              <Link href="#sample"><Button size="lg" variant="outline" className="w-full sm:w-auto">Explore the sample</Button></Link>
+              <Link prefetch={false} href="/login"><Button size="lg" className="w-full sm:w-auto">Run a Free Pulse Audit <ArrowRight className="size-4" /></Button></Link>
+              <Link prefetch={false} href="#sample"><Button size="lg" variant="outline" className="w-full sm:w-auto">Explore the sample</Button></Link>
             </div>
             <div className="mt-9 grid grid-cols-3 border-y border-border py-4 font-mono text-[0.65rem] uppercase tracking-[0.08em] text-muted-foreground">
               <span><b className="block text-lg text-foreground">6</b>dimensions</span>
@@ -162,7 +162,7 @@ export default async function Home() {
                 <div className="flex items-center justify-between"><h3 className="text-xl font-semibold">{tier.name}</h3>{tier.featured && <span className="font-mono text-[0.58rem] uppercase tracking-widest text-[#76d7ca]">Most popular</span>}</div>
                 <div className="mt-9"><b className="font-mono text-4xl">{tier.price}</b>{"cadence" in tier && <span className={`text-xs ${tier.featured ? "text-white/55" : "text-muted-foreground"}`}>{tier.cadence}</span>}<p className={`mt-2 text-xs ${tier.featured ? "text-white/55" : "text-muted-foreground"}`}>{tier.note}</p></div>
                 <ul className="mt-8 flex-1 space-y-3">{tier.features.map(feature => <li key={feature} className={`flex gap-2 text-sm ${tier.featured ? "text-white/75" : "text-muted-foreground"}`}><Check className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />{feature}</li>)}</ul>
-                <Link href="/login" className="mt-8"><Button variant={tier.featured ? "secondary" : "outline"} className="w-full">{tier.cta}</Button></Link>
+                <Link prefetch={false} href="/login" className="mt-8"><Button variant={tier.featured ? "secondary" : "outline"} className="w-full">{tier.cta}</Button></Link>
               </article>)}
             </div>
           </div>
@@ -180,11 +180,11 @@ export default async function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-border py-8"><div className="alm-shell flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><Brand /><p className="mt-3 max-w-md text-xs leading-5 text-muted-foreground">Competitive intelligence for evidence-led social growth.</p></div><div className="flex gap-5 text-xs text-muted-foreground"><Link href="/support">Support</Link><Link href="/privacy">Privacy</Link><span>© {new Date().getFullYear()}</span></div></div></footer>
+      <footer className="border-t border-border py-8"><div className="alm-shell flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><Brand /><p className="mt-3 max-w-md text-xs leading-5 text-muted-foreground">Competitive intelligence for evidence-led social growth.</p></div><div className="flex gap-5 text-xs text-muted-foreground"><Link prefetch={false} href="/support">Support</Link><Link prefetch={false} href="/privacy">Privacy</Link><span>© {new Date().getFullYear()}</span></div></div></footer>
     </div>
   );
 }
 
 function Brand() {
-  return <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight alm-focus"><span className="grid size-8 place-items-center bg-[#14241f] font-mono text-[0.58rem] font-bold text-[#9fe8dc]">ALM</span><span className="text-sm">AuditLayerMedia</span></Link>;
+  return <Link prefetch={false} href="/" className="flex items-center gap-2.5 font-semibold tracking-tight alm-focus"><span className="grid size-8 place-items-center bg-[#14241f] font-mono text-[0.58rem] font-bold text-[#9fe8dc]">ALM</span><span className="text-sm">AuditLayerMedia</span></Link>;
 }

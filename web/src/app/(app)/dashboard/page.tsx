@@ -61,7 +61,6 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
   const { billing, instagram_connected, instagram_error, status: statusFilter } = params;
-  const profile = await requireProfile();
   const supabase = await createClient();
 
   const query = supabase
@@ -71,7 +70,18 @@ export default async function DashboardPage({
     )
     .order("created_at", { ascending: false });
 
-  const { data: audits } = await query;
+  const instagramQuery = (supabase as any)
+    .from("instagram_connections")
+    .select("*")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  const [profile, { data: audits }, { data: igConnections }] = await Promise.all([
+    requireProfile(),
+    query,
+    instagramQuery,
+  ]);
   let list = audits ?? [];
 
   // Apply status filter client-side (avoids Supabase generics constraints)
@@ -83,23 +93,13 @@ export default async function DashboardPage({
     USAGE_STATUSES.includes(a.status as AuditStatus),
   ).length;
 
-  // Count by status for filter badges
-  const { data: allAudits } = await supabase
-    .from("audits")
-    .select("status");
+  // The first query already has every status. Derive counts locally instead of
+  // paying for a second trans-Pacific database round trip.
   const statusCounts: Record<string, number> = {};
-  for (const a of allAudits ?? []) {
+  for (const a of audits ?? []) {
     statusCounts[a.status] = (statusCounts[a.status] || 0) + 1;
   }
-  const totalAudits = (allAudits ?? []).length;
-
-  // Fetch connected Instagram account (if any)
-  const { data: igConnections } = await (supabase as any)
-    .from("instagram_connections")
-    .select("*")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(1);
+  const totalAudits = (audits ?? []).length;
   const connectedIg = igConnections?.[0] ?? null;
 
   const limit = auditLimitForProfile(profile);

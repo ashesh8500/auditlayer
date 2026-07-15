@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import datetime, timezone
 from enum import Enum
+import html as html_lib
 import json
 from pathlib import Path
 
@@ -131,7 +132,7 @@ INSTAGRAM_LIMITATION = (
 # diagnostics) read this to know which generation rules are active.
 # ---------------------------------------------------------------------------
 
-PROMPT_VERSION = "0.7"
+PROMPT_VERSION = "0.8"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework
@@ -144,6 +145,7 @@ PROMPT_VERSION = "0.7"
 #          enterprise report type preamble, prompt version in worker/compose/refine prompts
 #   v0.7 — Inline the canonical master skeleton in the live generation prompt,
 #          fail closed on completion limits, and require cached-peer verification
+#   v0.8 — Add report type content budgets to reduce latency and repetition
 
 
 def build_prompt_footer_line(
@@ -515,6 +517,95 @@ document based on the skeleton. Do not return a research memo before the HTML.
 """
 
 
+def build_section_prompt(
+    audit: AuditRecord,
+    evidence: str,
+    *,
+    ig_metrics: Any = None,
+    benchmarks: list[dict] | None = None,
+) -> str:
+    """Build a compact prompt for analytical sections only, without fixed CSS."""
+    base = build_worker_prompt(audit, ig_metrics=ig_metrics, benchmarks=benchmarks)
+    return f"""{base}
+
+## Verified Public Evidence
+{evidence}
+
+## Output Contract
+Return only the report <section> elements in the exact required order. Start
+each section with its exact required <h2>. Do not return html, head, body, style,
+script, markdown fences, or commentary. The local renderer supplies the fixed
+AuditLayer HTML and CSS shell. You may use these existing classes: metric-grid,
+metric-card, value, label, data-table, sw-card, strength, weakness, sw-label,
+rec-card, num, callout, accent, score-diagram, overall-score, sd-row, sd-label,
+sd-track, sd-fill, sd-value, red, amber, green, creative-grid, creative-card,
+pillar, format-tag. Use only the evidence above and supplied account data.
+"""
+
+
+def assemble_report_html(audit: AuditRecord, sections_html: str) -> str:
+    """Insert generated analytical sections into the canonical local shell."""
+    fenced = re.search(r"```html\s*(.*?)```", sections_html, flags=re.DOTALL | re.IGNORECASE)
+    fragment = (fenced.group(1) if fenced else sections_html).strip()
+    if "<script" in fragment.lower():
+        raise ValueError("Report sections included disallowed script content")
+    if not re.search(r"<section\b", fragment, flags=re.IGNORECASE):
+        raise ValueError("Report response did not contain section elements")
+
+    headings = [
+        html_lib.unescape(re.sub(r"<[^>]+>", "", value)).strip()
+        for value in re.findall(r"<h2\b[^>]*>(.*?)</h2>", fragment, flags=re.DOTALL | re.IGNORECASE)
+    ]
+    expected = _load_template_sections(audit.report_type or "standard")
+    headings_match = len(headings) == len(expected) and all(
+        actual.startswith("Road to ")
+        if required == "Road to [Milestone]"
+        else actual == required
+        for actual, required in zip(headings, expected, strict=True)
+    )
+    if not headings_match:
+        raise ValueError(
+            f"Report response did not contain the required section headings in order: {expected}"
+        )
+    if "<html" in fragment.lower():
+        return extract_html(fragment)
+
+    report_type = (audit.report_type or "standard").title()
+    now = datetime.now(timezone.utc).strftime("%B %d, %Y")
+    replacements = {
+        "{handle}": html_lib.escape(audit.handle),
+        "{platform}": html_lib.escape(audit.platform.title()),
+        "{goal}": html_lib.escape(audit.goal.replace("_", " ").title()),
+        "{date}": now,
+        "{full_name}": html_lib.escape(f"@{audit.handle}"),
+        "{title}": html_lib.escape(f"{report_type} social media analysis"),
+        "{location}": "Public profile",
+        "{account_type}": "Calibrated in report",
+        "{milestone}": html_lib.escape(audit.milestone_label or "next milestone"),
+    }
+    report = load_master_skeleton().replace(
+        "AuditLayer Standard Report", f"AuditLayer {report_type} Report"
+    )
+    for placeholder, value in replacements.items():
+        report = report.replace(placeholder, value)
+    report = re.sub(
+        r"<!--\s*═+ SECTION SLOTS ═+.*?-->",
+        "",
+        report,
+        flags=re.DOTALL,
+    )
+    report, count = re.subn(
+        r"<!-- 1\. EXECUTIVE SUMMARY -->.*?<!-- 15\. GET THE EXECUTION PLAN -->",
+        fragment,
+        report,
+        count=1,
+        flags=re.DOTALL,
+    )
+    if count != 1:
+        raise ValueError("Canonical report section slots were not found")
+    return report
+
+
 WORKER_SYSTEM_PROMPT = (
     f"You are AuditLayer's report generator (prompt v{PROMPT_VERSION}). "
     "Load the alm-report-generator skill and follow it exactly. "
@@ -598,6 +689,13 @@ def build_worker_prompt(
     report_type = audit.report_type or "standard"
     sections = _load_template_sections(report_type)
     section_count = len(sections)
+    content_word_budget = {
+        "pulse": 700,
+        "standard": 2500,
+        "blueprint": 2500,
+        "extended": 4000,
+        "enterprise": 5500,
+    }.get(report_type, 2500)
     section_ref = "\n".join(f"  {i}. {s}" for i, s in enumerate(sections, 1))
 
     # Per-type preamble
@@ -686,6 +784,7 @@ Business constraints:
 - Every report must answer the six AuditLayer product questions.
 - Milestones must be computed from follower tier; never hardcode one universal target.
 - Reports are self-contained HTML with inline CSS and no external assets.
+- Keep the report concise and information dense. The total visible prose must not exceed {content_word_budget:,} words.
 - Use EXACTLY the CSS from the social-media-audit skill's references/hemal-report-format.html — do not modify, minify, or rewrite.
 - This is a {report_type} report. Follow the {section_count}-section framework exactly.
 - CRITICAL: Use these EXACT section headings as your <h2> elements — verbatim, no exceptions:
