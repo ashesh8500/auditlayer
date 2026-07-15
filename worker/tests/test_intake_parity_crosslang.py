@@ -19,6 +19,7 @@ MOA diversity covers:
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -76,7 +77,16 @@ CASES: list[TestCase] = [
 
 def _ts_command() -> list[str]:
     """Return the tsx command to run the TS runner."""
-    tsx = "/home/asheshkaji/.hermes/hermes-agent/node_modules/.bin/tsx"
+    tsx = shutil.which("tsx")
+    if tsx is None:
+        repo_root = Path(__file__).resolve().parents[2]
+        candidates = (
+            repo_root / "web" / "node_modules" / ".bin" / "tsx",
+            Path.home() / ".hermes" / "hermes-agent" / "node_modules" / ".bin" / "tsx",
+        )
+        tsx = next((str(path) for path in candidates if path.is_file()), None)
+    if tsx is None:
+        raise RuntimeError("tsx is required for cross-language intake parity tests")
     runner = Path(__file__).parent / "intake_runner.ts"
     return [tsx, str(runner)]
 
