@@ -59,9 +59,16 @@ def render_pdf(html: str, *, mode: str = "browser", chromium_path: str | None = 
 
 
 def _chromium_pdf(chromium: str, html: str) -> bytes:
-    with tempfile.TemporaryDirectory() as tmp:
+    # Snap Chromium has a private /tmp mount. If Python creates the source and
+    # destination in the host /tmp, Chromium can report success while writing
+    # into its snap-private path, leaving no PDF visible to the worker. Keep the
+    # exchange directory under the worker's writable working directory instead.
+    temp_parent = Path(os.getenv("AUDITLAYER_PDF_TMPDIR", os.getcwd()))
+    temp_parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="auditlayer-pdf-", dir=temp_parent) as tmp:
         html_path = Path(tmp) / "report.html"
         pdf_path = Path(tmp) / "report.pdf"
+        profile_path = Path(tmp) / "profile"
         html_path.write_text(html, encoding="utf-8")
         cmd = [
             chromium,
@@ -69,6 +76,7 @@ def _chromium_pdf(chromium: str, html: str) -> bytes:
             "--no-sandbox",
             "--disable-gpu",
             "--no-pdf-header-footer",
+            f"--user-data-dir={profile_path}",
             f"--print-to-pdf={pdf_path}",
             html_path.as_uri(),
         ]
