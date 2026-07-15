@@ -262,23 +262,56 @@ class GenerationPipeline:
                     note=note,
                 )
 
-        # Fetch live Instagram data if the client has connected their account
+        # Fetch live Instagram data if the client has connected their account.
+        # Always emit a source event so the frontend can state which path is used.
         ig_metrics = None
         if audit.platform == "instagram" and gateway is not None:
             try:
-                token_info = gateway.get_instagram_token(audit.handle)
-                if token_info is not None:
-                    token, ig_user_id = token_info
-                    from .instagram_api import InstagramAPIClient
-                    client = InstagramAPIClient(token)
-                    try:
-                        ig_metrics = client.get_full_metrics(ig_user_id)
-                        sink.emit("researching", f"Instagram Graph API: {ig_metrics.profile.followers_count:,} followers, ER {ig_metrics.avg_engagement_rate}%")
-                    finally:
-                        client.close()
-            except Exception:
-                # Fall through to free-toolset path — never block on API failure
-                pass
+                token_info = (
+                    gateway.get_instagram_token(audit.handle, audit.user_id)
+                    if audit.user_id
+                    else None
+                )
+            except Exception as exc:
+                print(
+                    f"[worker] Instagram connection lookup failed for @{audit.handle}: "
+                    f"{type(exc).__name__}"
+                )
+                token_info = None
+            if token_info is None:
+                sink.emit(
+                    "researching",
+                    "No usable connected Instagram account was found. Using verified public Instagram signals.",
+                    event_type="instagram_public_fallback",
+                )
+            else:
+                token, ig_user_id = token_info
+                from .instagram_api import InstagramAPIClient
+                client = InstagramAPIClient(token)
+                try:
+                    ig_metrics = client.get_full_metrics(ig_user_id)
+                    sink.emit(
+                        "researching",
+                        (
+                            "Connected Instagram Graph API loaded: "
+                            f"{ig_metrics.profile.followers_count:,} followers, "
+                            f"{len(ig_metrics.recent_media)} recent posts, "
+                            f"{ig_metrics.avg_engagement_rate}% average engagement."
+                        ),
+                        event_type="instagram_api",
+                    )
+                except Exception as exc:
+                    print(
+                        f"[worker] Instagram API unavailable for @{audit.handle}: "
+                        f"{type(exc).__name__}"
+                    )
+                    sink.emit(
+                        "researching",
+                        "Connected Instagram data was unavailable. Using verified public Instagram signals.",
+                        event_type="instagram_api_fallback",
+                    )
+                finally:
+                    client.close()
 
         # ── heartbeat wraps the long-running generate call ──
         result = None

@@ -16,7 +16,9 @@ from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import datetime, timezone
 from enum import Enum
 import html as html_lib
+from html.parser import HTMLParser
 import json
+import math
 from pathlib import Path
 
 from typing import Any
@@ -132,7 +134,7 @@ INSTAGRAM_LIMITATION = (
 # diagnostics) read this to know which generation rules are active.
 # ---------------------------------------------------------------------------
 
-PROMPT_VERSION = "0.8"
+PROMPT_VERSION = "0.9"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework
@@ -146,6 +148,7 @@ PROMPT_VERSION = "0.8"
 #   v0.7 — Inline the canonical master skeleton in the live generation prompt,
 #          fail closed on completion limits, and require cached-peer verification
 #   v0.8 — Add report type content budgets to reduce latency and repetition
+#   v0.9 — Replace model-authored HTML with validated JSON and deterministic local rendering
 
 
 def build_prompt_footer_line(
@@ -524,7 +527,7 @@ def build_section_prompt(
     ig_metrics: Any = None,
     benchmarks: list[dict] | None = None,
 ) -> str:
-    """Build a compact prompt for analytical sections only, without fixed CSS."""
+    """Build a compact prompt for a validated structured report payload."""
     base = build_worker_prompt(audit, ig_metrics=ig_metrics, benchmarks=benchmarks)
     return f"""{base}
 
@@ -532,39 +535,149 @@ def build_section_prompt(
 {evidence}
 
 ## Output Contract
-Return only the report <section> elements in the exact required order. Start
-each section with its exact required <h2>. Do not return html, head, body, style,
-script, markdown fences, or commentary. The local renderer supplies the fixed
-AuditLayer HTML and CSS shell. You may use these existing classes: metric-grid,
-metric-card, value, label, data-table, sw-card, strength, weakness, sw-label,
-rec-card, num, callout, accent, score-diagram, overall-score, sd-row, sd-label,
-sd-track, sd-fill, sd-value, red, amber, green, creative-grid, creative-card,
-pillar, format-tag. Use only the evidence above and supplied account data.
+Return one JSON object only, with no markdown or commentary, in this schema:
+{{"sections":[{{"heading":"exact required heading","lede":"section synthesis",
+"items":[{{"title":"finding title","body":"evidence based explanation","value":"optional metric"}}],
+"table":{{"headers":["column"],"rows":[["cell"]]}},"callout":"optional action"}}]}}
+
+Use every required section exactly once and in the required order. The heading must
+match its required heading exactly, except Road to [Milestone] must use the actual
+milestone. Each section requires heading and lede. Items, table, and callout are
+optional. Keep each lede to 1 to 3 sentences and use no more than 5 items per
+section. Use tables only where comparison rows materially improve clarity, with no
+more than 12 rows. Return analysis as plain text values only. Do not return HTML, CSS, URLs
+as markup, scripts, markdown fences, or extra root fields. Connected Instagram
+metrics are inserted deterministically by local code, so analyze them but do not
+invent replacements for their displayed values. Use only supplied account data and
+evidence as factual source material.
 """
+
+
+class _ReportSectionParser(HTMLParser):
+    """Strictly reconstruct the small HTML subset allowed inside reports."""
+
+    ALLOWED_TAGS = {
+        "section", "h2", "h3", "h4", "p", "div", "span", "strong", "em",
+        "b", "i", "ul", "ol", "li", "table", "thead", "tbody", "tr", "th",
+        "td", "blockquote", "br", "hr", "a",
+    }
+    VOID_TAGS = {"br", "hr"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.output: list[str] = []
+        self.stack: list[str] = []
+        self.headings: list[str] = []
+        self._heading_parts: list[str] | None = None
+        self._section_needs_heading = False
+        self.section_count = 0
+
+    def _attrs(self, tag: str, attrs: list[tuple[str, str | None]]) -> str:
+        clean: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for raw_name, raw_value in attrs:
+            name = raw_name.lower()
+            value = raw_value or ""
+            if name in seen:
+                raise ValueError("duplicate attribute")
+            seen.add(name)
+            if name == "class":
+                if not re.fullmatch(r"[A-Za-z0-9 _-]{1,200}", value):
+                    raise ValueError("unsafe class")
+            elif name == "href" and tag == "a":
+                if not value.lower().startswith(("https://", "http://")):
+                    raise ValueError("unsafe link")
+            elif name in {"colspan", "rowspan"} and tag in {"th", "td"}:
+                if not value.isdigit() or not 1 <= int(value) <= 20:
+                    raise ValueError("unsafe table span")
+            else:
+                raise ValueError("unsupported attribute")
+            clean.append((name, value))
+        return "".join(
+            f' {name}="{html_lib.escape(value, quote=True)}"' for name, value in clean
+        )
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        tag = tag.lower()
+        if tag not in self.ALLOWED_TAGS:
+            raise ValueError("unsupported tag")
+        if not self.stack:
+            if tag != "section":
+                raise ValueError("content outside section")
+            self.section_count += 1
+            self._section_needs_heading = True
+        elif tag == "section":
+            raise ValueError("nested section")
+        elif len(self.stack) == 1 and self.stack[-1] == "section" and self._section_needs_heading:
+            if tag != "h2":
+                raise ValueError("section must begin with h2")
+            self._section_needs_heading = False
+        attributes = self._attrs(tag, attrs)
+        self.output.append(f"<{tag}{attributes}>")
+        if tag not in self.VOID_TAGS:
+            self.stack.append(tag)
+        if tag == "h2":
+            if self._heading_parts is not None:
+                raise ValueError("nested h2")
+            self._heading_parts = []
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        tag = tag.lower()
+        if tag not in self.VOID_TAGS:
+            raise ValueError("unsupported self closing tag")
+        self.handle_starttag(tag, attrs)
+
+    def handle_endtag(self, tag: str) -> None:
+        tag = tag.lower()
+        if not self.stack or self.stack[-1] != tag:
+            raise ValueError("mismatched closing tag")
+        self.stack.pop()
+        self.output.append(f"</{tag}>")
+        if tag == "h2":
+            if self._heading_parts is None:
+                raise ValueError("invalid h2")
+            self.headings.append("".join(self._heading_parts).strip())
+            self._heading_parts = None
+
+    def handle_data(self, data: str) -> None:
+        if not self.stack:
+            if data.strip():
+                raise ValueError("text outside section")
+            return
+        if self._section_needs_heading and data.strip():
+            raise ValueError("section must begin with h2")
+        if self._heading_parts is not None:
+            self._heading_parts.append(data)
+        self.output.append(html_lib.escape(data, quote=False))
+
+    def handle_comment(self, data: str) -> None:
+        del data
+        raise ValueError("comments are not allowed")
+
+    def handle_decl(self, decl: str) -> None:
+        del decl
+        raise ValueError("declarations are not allowed")
+
+    def handle_pi(self, data: str) -> None:
+        del data
+        raise ValueError("processing instructions are not allowed")
+
+    def sanitized(self, fragment: str) -> tuple[str, list[str]]:
+        try:
+            self.feed(fragment)
+            self.close()
+            if self.stack or self._heading_parts is not None or not self.section_count:
+                raise ValueError("incomplete fragment")
+        except Exception as exc:
+            raise ValueError("Report response did not contain safe report section HTML") from exc
+        return "".join(self.output), self.headings
 
 
 def assemble_report_html(audit: AuditRecord, sections_html: str) -> str:
     """Insert generated analytical sections into the canonical local shell."""
     fenced = re.search(r"```html\s*(.*?)```", sections_html, flags=re.DOTALL | re.IGNORECASE)
-    fragment = (fenced.group(1) if fenced else sections_html).strip()
-    lowered = fragment.lower()
-    if "<html" in lowered or "<!doctype" in lowered or "<body" in lowered or "<head" in lowered:
-        raise ValueError("Report response attempted to bypass the canonical shell")
-    active_html = re.search(
-        r"<(script|iframe|object|embed|svg|img|link|meta|form|input|video|audio)\b"
-        r"|\son[a-z]+\s*=|javascript:|data:text/html|url\s*\(",
-        fragment,
-        flags=re.IGNORECASE,
-    )
-    if active_html:
-        raise ValueError("Report sections included active or external HTML")
-    if not re.search(r"<section\b", fragment, flags=re.IGNORECASE):
-        raise ValueError("Report response did not contain section elements")
-
-    headings = [
-        html_lib.unescape(re.sub(r"<[^>]+>", "", value)).strip()
-        for value in re.findall(r"<h2\b[^>]*>(.*?)</h2>", fragment, flags=re.DOTALL | re.IGNORECASE)
-    ]
+    raw_fragment = (fenced.group(1) if fenced else sections_html).strip()
+    fragment, headings = _ReportSectionParser().sanitized(raw_fragment)
     expected = _load_template_sections(audit.report_type or "standard")
     headings_match = len(headings) == len(expected) and all(
         actual.startswith("Road to ")
@@ -610,6 +723,178 @@ def assemble_report_html(audit: AuditRecord, sections_html: str) -> str:
     if count != 1:
         raise ValueError("Canonical report section slots were not found")
     return report
+
+
+def _structured_text(value: Any, field: str, max_length: int) -> str:
+    if isinstance(value, bool):
+        text = "true" if value else "false"
+    elif isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError(f"Invalid structured report field: {field}")
+        text = str(value)
+    elif isinstance(value, (str, int)):
+        text = str(value)
+    else:
+        raise ValueError(f"Invalid structured report field: {field}")
+    if not text.strip() or len(text) > max_length:
+        raise ValueError(f"Invalid structured report field: {field}")
+    return text.strip()
+
+
+def _extract_structured_payload(content: str) -> dict[str, Any]:
+    fenced = re.search(r"```json\s*(.*?)```", content, flags=re.DOTALL | re.IGNORECASE)
+    candidate = fenced.group(1).strip() if fenced else content.strip()
+
+    def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"Duplicate structured report key: {key}")
+            result[key] = value
+        return result
+
+    def reject_constant(value: str) -> None:
+        raise ValueError(f"Invalid JSON number: {value}")
+
+    try:
+        payload = json.loads(
+            candidate,
+            object_pairs_hook=unique_object,
+            parse_constant=reject_constant,
+        )
+    except json.JSONDecodeError as exc:
+        raise ValueError("DeepSeek response did not contain valid report JSON") from exc
+    if not isinstance(payload, dict) or set(payload) != {"sections"}:
+        raise ValueError("Structured report root must contain only sections")
+    return payload
+
+
+def _instagram_metric_block(ig_metrics: Any) -> str:
+    if ig_metrics is None:
+        return ""
+    profile = getattr(ig_metrics, "profile", None)
+    if profile is None:
+        return ""
+    followers = int(getattr(profile, "followers_count", 0) or 0)
+    engagement = float(getattr(ig_metrics, "avg_engagement_rate", 0) or 0)
+    likes = float(getattr(ig_metrics, "avg_likes", 0) or 0)
+    comments = float(getattr(ig_metrics, "avg_comments", 0) or 0)
+    if not all(math.isfinite(value) for value in (engagement, likes, comments)):
+        raise ValueError("Connected Instagram metrics contained nonfinite values")
+    cadence = str(getattr(ig_metrics, "posting_cadence", "") or "Unknown")
+    formats = [str(value).replace("_", " ").title() for value in getattr(ig_metrics, "top_content_types", [])]
+    metrics = (
+        ("Followers", f"{followers:,}"),
+        ("Average engagement", f"{engagement:.2f}%"),
+        ("Average likes", f"{likes:,.0f}"),
+        ("Average comments", f"{comments:,.0f}"),
+    )
+    cards = "".join(
+        f'<div class="metric-card"><div class="value">{html_lib.escape(value)}</div>'
+        f'<div class="label">{html_lib.escape(label)}</div></div>'
+        for label, value in metrics
+    )
+    details = html_lib.escape(
+        f"Cadence: {cadence}. Format mix: {', '.join(formats) if formats else 'Unavailable'}."
+    )
+    return (
+        '<div class="callout accent"><strong>Connected Instagram Graph API</strong>'
+        f"<p>{details}</p></div><div class=\"metric-grid\">{cards}</div>"
+    )
+
+
+def assemble_structured_report_html(
+    audit: AuditRecord,
+    model_content: str,
+    *,
+    ig_metrics: Any = None,
+) -> str:
+    """Validate DeepSeek JSON and deterministically render the report sections."""
+    payload = _extract_structured_payload(model_content)
+    sections = payload.get("sections")
+    expected = _load_template_sections(audit.report_type or "standard")
+    if not isinstance(sections, list) or len(sections) != len(expected):
+        raise ValueError("Structured report has the wrong section count")
+
+    rendered: list[str] = []
+    for index, (section, required_heading) in enumerate(zip(sections, expected, strict=True)):
+        if not isinstance(section, dict):
+            raise ValueError("Structured report section must be an object")
+        allowed_keys = {"heading", "lede", "items", "table", "callout"}
+        if not set(section).issubset(allowed_keys):
+            raise ValueError("Structured report section has unsupported fields")
+        heading = _structured_text(section.get("heading"), "heading", 120)
+        heading_matches = (
+            heading.startswith("Road to ")
+            if required_heading == "Road to [Milestone]"
+            else heading == required_heading
+        )
+        if not heading_matches:
+            raise ValueError(f"Structured report heading {index + 1} is invalid")
+        lede = _structured_text(section.get("lede"), "lede", 5000)
+        parts = [f"<section><h2>{html_lib.escape(heading)}</h2>"]
+
+        connected_key_metrics = heading == "Key Metrics" and ig_metrics is not None
+        if connected_key_metrics:
+            parts.append("<p>These values come directly from the connected Instagram Graph API.</p>")
+            parts.append(_instagram_metric_block(ig_metrics))
+        else:
+            parts.append(f"<p>{html_lib.escape(lede)}</p>")
+
+        items = section.get("items", [])
+        if not isinstance(items, list) or len(items) > 5:
+            raise ValueError("Structured report items are invalid")
+        for item in items:
+            if not isinstance(item, dict) or not set(item).issubset({"title", "body", "value"}):
+                raise ValueError("Structured report item is invalid")
+            title = _structured_text(item.get("title"), "item title", 300)
+            body = _structured_text(item.get("body"), "item body", 3000)
+            raw_value = item.get("value", "")
+            value = "" if raw_value in (None, "") else _structured_text(raw_value, "item value", 300)
+            if not connected_key_metrics:
+                parts.append('<div class="rec-card">')
+                if value:
+                    parts.append(f'<div class="value">{html_lib.escape(value)}</div>')
+                parts.append(f"<h3>{html_lib.escape(title)}</h3><p>{html_lib.escape(body)}</p></div>")
+
+        table = section.get("table")
+        if table is not None:
+            if not isinstance(table, dict) or set(table) != {"headers", "rows"}:
+                raise ValueError("Structured report table is invalid")
+            headers = table.get("headers")
+            rows = table.get("rows")
+            if not isinstance(headers, list) or not 1 <= len(headers) <= 8:
+                raise ValueError("Structured report table headers are invalid")
+            if not isinstance(rows, list) or len(rows) > 12:
+                raise ValueError("Structured report table rows are invalid")
+            clean_headers = [_structured_text(value, "table header", 200) for value in headers]
+            if not connected_key_metrics:
+                parts.append('<table class="data-table"><thead><tr>')
+                parts.extend(f"<th>{html_lib.escape(value)}</th>" for value in clean_headers)
+                parts.append("</tr></thead><tbody>")
+            for row in rows:
+                if not isinstance(row, list) or len(row) != len(clean_headers):
+                    raise ValueError("Structured report table row is invalid")
+                clean_row = [
+                    _structured_text(value, "table cell", 1000)
+                    for value in row
+                ]
+                if not connected_key_metrics:
+                    parts.append("<tr>")
+                    parts.extend(f"<td>{html_lib.escape(value)}</td>" for value in clean_row)
+                    parts.append("</tr>")
+            if not connected_key_metrics:
+                parts.append("</tbody></table>")
+
+        callout = section.get("callout")
+        if callout is not None:
+            clean_callout = _structured_text(callout, "callout", 2000)
+            if not connected_key_metrics:
+                parts.append(f'<div class="callout">{html_lib.escape(clean_callout)}</div>')
+        parts.append("</section>")
+        rendered.append("".join(parts))
+
+    return assemble_report_html(audit, "".join(rendered))
 
 
 WORKER_SYSTEM_PROMPT = (
@@ -697,11 +982,11 @@ def build_worker_prompt(
     section_count = len(sections)
     content_word_budget = {
         "pulse": 700,
-        "standard": 2500,
-        "blueprint": 2500,
-        "extended": 4000,
-        "enterprise": 5500,
-    }.get(report_type, 2500)
+        "standard": 1800,
+        "blueprint": 2200,
+        "extended": 3200,
+        "enterprise": 4200,
+    }.get(report_type, 1800)
     section_ref = "\n".join(f"  {i}. {s}" for i, s in enumerate(sections, 1))
 
     # Per-type preamble
@@ -857,16 +1142,16 @@ def extract_html(content: str) -> str:
     raise ValueError("Hermes response did not contain an HTML report (no <html>, <body>, or fenced block found)")
 
 
-def extract_fragment(content: str) -> str:
+def extract_fragment(content: str, *, expected_heading: str | None = None) -> str:
     fenced = re.search(r"```html\s*(.*?)```", content, flags=re.DOTALL | re.IGNORECASE)
-    if fenced:
-        content = fenced.group(1)
-    content = content.strip()
-    if "<script" in content.lower():
-        raise ValueError("Refinement response included disallowed script content")
-    if not re.search(r"<(section|div|h2|p|table|ol|ul)\b", content, flags=re.IGNORECASE):
-        raise ValueError("Refinement response did not include an HTML fragment")
-    return content
+    raw = (fenced.group(1) if fenced else content).strip()
+    parser = _ReportSectionParser()
+    fragment, headings = parser.sanitized(raw)
+    if parser.section_count != 1 or len(headings) != 1:
+        raise ValueError("Refinement response must contain exactly one safe section")
+    if expected_heading is not None and headings[0].strip() != expected_heading.strip():
+        raise ValueError("Refinement response changed the requested section heading")
+    return fragment
 
 
 def replace_section(report_html: str, section: str, replacement_html: str) -> str:

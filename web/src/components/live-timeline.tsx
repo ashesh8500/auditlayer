@@ -39,7 +39,7 @@ const PHASE_STEPS: { phase: AuditEventPhase; label: string; blurb: string }[] = 
   {
     phase: "metrics",
     label: "Pulling metrics",
-    blurb: "Estimating followers, engagement, cadence.",
+    blurb: "Calculating followers, engagement, cadence, and format mix.",
   },
   {
     phase: "peers",
@@ -53,8 +53,8 @@ const PHASE_STEPS: { phase: AuditEventPhase; label: string; blurb: string }[] = 
   },
   {
     phase: "composing",
-    label: "Composing report",
-    blurb: "Synthesizing the self-contained HTML.",
+    label: "Building report",
+    blurb: "Validating structured analysis and filling the report template.",
   },
   { phase: "uploaded", label: "Uploaded", blurb: "Report written to storage." },
   { phase: "succeeded", label: "Ready", blurb: "Your report is ready." },
@@ -187,6 +187,14 @@ export function LiveTimeline({
     (e) => e.event_type === "error" || e.event_type === "cost_cap",
   );
   const isCostCap = errorEvent?.event_type === "cost_cap";
+  const instagramSourceEvent = [...events]
+    .reverse()
+    .find((event) =>
+      ["instagram_api", "instagram_api_fallback", "instagram_public_fallback"].includes(
+        event.event_type,
+      ),
+    );
+  const hasConnectedInstagramData = instagramSourceEvent?.event_type === "instagram_api";
   // Never render raw worker exceptions to clients. Historical rows may predate
   // server-side sanitisation, so the UI keeps generic errors generic too.
   const errorDetail = isCostCap ? errorEvent?.detail || "" : "";
@@ -267,7 +275,19 @@ export function LiveTimeline({
           tone="var(--accent)"
           icon={<Loader2 className="size-4 animate-spin" />}
           title={(retryCount ?? 0) > 0 ? `Agent is working (retry ${retryCount})` : "Agent is working"}
-          body="Real audits take about 5–10 minutes. This page updates automatically — no need to refresh."
+          body="Most audits take about 1 to 3 minutes. This page updates automatically."
+        />
+      )}
+      {instagramSourceEvent && (
+        <Banner
+          tone={hasConnectedInstagramData ? "var(--green)" : "var(--amber)"}
+          icon={hasConnectedInstagramData ? <Check className="size-4" /> : <CircleDashed className="size-4" />}
+          title={
+            hasConnectedInstagramData
+              ? "Connected Instagram data loaded"
+              : "Using public Instagram signals"
+          }
+          body={instagramSourceEvent.detail}
         />
       )}
 

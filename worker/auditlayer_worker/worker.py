@@ -23,6 +23,10 @@ def build_generator(
         return MockReportGenerator(phase_interval=settings.phase_interval_seconds)
 
     model = app_settings.hermes_model if app_settings else settings.hermes_model
+    if settings.hermes_provider != "deepseek" or model != "deepseek-v4-flash":
+        raise RuntimeError("AuditLayer generation requires DeepSeek V4 Flash")
+    if settings.hermes_mode != "inprocess":
+        raise RuntimeError("AuditLayer generation requires in-process bounded research")
     toolsets = app_settings.enabled_toolsets if app_settings else settings.enabled_toolsets
     hermes_runtime = runtime or HermesRuntime(settings)
     client = hermes_runtime.build_client()
@@ -115,16 +119,17 @@ def _process_refinement(
         gateway.update_refinement(refinement_id, status="done", error="")
         gateway.update_audit(audit_id, prompt_version=PROMPT_VERSION)
         sink.emit("refinement", f"Section '{section}' refined and re-uploaded")
-    except Exception as exc:  # noqa: BLE001
-        tb_tail = traceback.format_exc()[-500:]
+    except Exception:  # noqa: BLE001
+        print(f"[worker] refinement {refinement_id} failed\n{traceback.format_exc()}")
+        public_error = "Refinement failed safely. The team has the diagnostic details."
         gateway.emit_event(
             audit_id,
             "failed",
-            detail=tb_tail,
+            detail=public_error,
             event_type="error",
             actor="worker",
         )
-        gateway.update_refinement(refinement_id, status="failed", error=str(exc)[:500])
+        gateway.update_refinement(refinement_id, status="failed", error=public_error)
 
 
 def _download_report(gateway: SupabaseGateway, settings: WorkerSettings, report_path: str | None) -> str:

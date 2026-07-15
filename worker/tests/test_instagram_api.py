@@ -3,14 +3,85 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 import pytest
 
 from auditlayer_worker.instagram_api import (
+    FACEBOOK_GRAPH_API_BASE,
+    INSTAGRAM_GRAPH_API_BASE,
+    InstagramAPIClient,
     InstagramMedia,
     MediaSummary,
     summarize_media,
 )
+from auditlayer_worker.supabase_client import SupabaseGateway
+
+
+def test_instagram_token_lookup_uses_supported_desc_order():
+    class Query:
+        def __init__(self):
+            self.order_kwargs = None
+            self.filters = []
+
+        def select(self, *_args): return self
+        def eq(self, *args):
+            self.filters.append(args)
+            return self
+        def limit(self, *_args): return self
+
+        def order(self, *_args, **kwargs):
+            self.order_kwargs = kwargs
+            return self
+
+        def execute(self):
+            return SimpleNamespace(
+                data=[{
+                    "ig_user_id": 123,
+                    "long_lived_token": "token",
+                    "long_lived_expires_at": "2099-01-01T00:00:00+00:00",
+                    "is_active": True,
+                }]
+            )
+
+    query = Query()
+    gateway = object.__new__(SupabaseGateway)
+    gateway.client = SimpleNamespace(table=lambda _name: query)
+
+    assert gateway.get_instagram_token("auditlayermedia", "customer-1") == ("token", 123)
+    assert query.order_kwargs == {"desc": True}
+    assert ("user_id", "customer-1") in query.filters
+
+
+@pytest.mark.parametrize(
+    ("token", "expected_base", "expected_profile", "expected_media"),
+    [
+        ("IGA_test", INSTAGRAM_GRAPH_API_BASE, "/me", "/me/media"),
+        ("EA_test", FACEBOOK_GRAPH_API_BASE, "/999", "/999/media"),
+    ],
+)
+def test_instagram_client_selects_endpoint_for_token_type(
+    token, expected_base, expected_profile, expected_media
+):
+    client = InstagramAPIClient(token)
+    seen = []
+
+    def fake_get(path, params=None):
+        seen.append(path)
+        if path.endswith("/media"):
+            return {"data": []}
+        return {"id": "999", "username": "auditlayermedia"}
+
+    client._get = fake_get
+    try:
+        client.get_profile(999)
+        client.get_recent_media(999)
+    finally:
+        client.close()
+
+    assert client._base_url == expected_base
+    assert seen == [expected_profile, expected_media]
+
 
 
 def _make_media(
