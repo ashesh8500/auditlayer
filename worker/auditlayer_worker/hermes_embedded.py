@@ -23,6 +23,8 @@ import sys
 import time
 from typing import Any, Callable, Iterator
 
+from .hermes_home_scope import HERMES_HOME_LOCK
+
 from .config import WorkerSettings
 from .core import (
     AuditRecord,
@@ -83,15 +85,16 @@ def _scoped_hermes_home(hermes_home: str | None) -> Iterator[None]:
     if hermes_home is None:
         yield
         return
-    prev = os.environ.get("HERMES_HOME")
-    os.environ["HERMES_HOME"] = hermes_home
-    try:
-        yield
-    finally:
-        if prev is None:
-            os.environ.pop("HERMES_HOME", None)
-        else:
-            os.environ["HERMES_HOME"] = prev
+    with HERMES_HOME_LOCK:
+        prev = os.environ.get("HERMES_HOME")
+        os.environ["HERMES_HOME"] = hermes_home
+        try:
+            yield
+        finally:
+            if prev is None:
+                os.environ.pop("HERMES_HOME", None)
+            else:
+                os.environ["HERMES_HOME"] = prev
 
 
 # ---------------------------------------------------------------------------

@@ -547,8 +547,17 @@ def assemble_report_html(audit: AuditRecord, sections_html: str) -> str:
     """Insert generated analytical sections into the canonical local shell."""
     fenced = re.search(r"```html\s*(.*?)```", sections_html, flags=re.DOTALL | re.IGNORECASE)
     fragment = (fenced.group(1) if fenced else sections_html).strip()
-    if "<script" in fragment.lower():
-        raise ValueError("Report sections included disallowed script content")
+    lowered = fragment.lower()
+    if "<html" in lowered or "<!doctype" in lowered or "<body" in lowered or "<head" in lowered:
+        raise ValueError("Report response attempted to bypass the canonical shell")
+    active_html = re.search(
+        r"<(script|iframe|object|embed|svg|img|link|meta|form|input|video|audio)\b"
+        r"|\son[a-z]+\s*=|javascript:|data:text/html|url\s*\(",
+        fragment,
+        flags=re.IGNORECASE,
+    )
+    if active_html:
+        raise ValueError("Report sections included active or external HTML")
     if not re.search(r"<section\b", fragment, flags=re.IGNORECASE):
         raise ValueError("Report response did not contain section elements")
 
@@ -567,9 +576,6 @@ def assemble_report_html(audit: AuditRecord, sections_html: str) -> str:
         raise ValueError(
             f"Report response did not contain the required section headings in order: {expected}"
         )
-    if "<html" in fragment.lower():
-        return extract_html(fragment)
-
     report_type = (audit.report_type or "standard").title()
     now = datetime.now(timezone.utc).strftime("%B %d, %Y")
     replacements = {

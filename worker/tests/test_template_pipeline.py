@@ -214,6 +214,25 @@ def test_local_assembly_rejects_missing_required_sections(sample_audit):
         )
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "<iframe src='https://evil.example'></iframe>",
+        "<img src=x onerror='alert(1)'>",
+        "<script>alert(1)</script>",
+    ],
+)
+def test_local_assembly_rejects_active_html(sample_audit, payload):
+    with pytest.raises(ValueError, match="active or external HTML"):
+        assemble_report_html(sample_audit, _complete_standard_sections(payload))
+
+
+def test_local_assembly_rejects_full_document_bypass(sample_audit):
+    full = f"<html><body>{_complete_standard_sections()}</body></html>"
+    with pytest.raises(ValueError, match="canonical shell"):
+        assemble_report_html(sample_audit, full)
+
+
 # ---------------------------------------------------------------------------
 # generation.py integration
 # ---------------------------------------------------------------------------
@@ -320,6 +339,43 @@ def test_bounded_generator_retries_one_format_miss(sample_audit):
     assert result.tokens_in == 200
     assert result.tokens_out == 100
     assert "recovered" in result.html
+
+
+def test_cached_evidence_uses_local_section_assembly(sample_audit):
+    class CachedClient:
+        def __init__(self):
+            self.calls: list[dict] = []
+
+        def collect_research(self, audit):
+            raise AssertionError("cached evidence should skip web collection")
+
+        def chat(self, **kwargs):
+            self.calls.append(kwargs)
+            return ChatResult(
+                content=_complete_standard_sections("cached"),
+                usage=Usage(tokens_in=100, tokens_out=100),
+                model="deepseek-v4-flash",
+            )
+
+    client = CachedClient()
+    generator = HermesReportGenerator(
+        client=cast(Any, client),
+        model="deepseek-v4-flash",
+        toolsets=("web",),
+        max_tokens=32000,
+        temperature=0.2,
+        phase_interval=0,
+    )
+    result = generator.generate(
+        sample_audit,
+        lambda _phase, _detail: None,
+        research_cache="Previously verified evidence",
+    )
+
+    assert len(client.calls) == 1
+    assert client.calls[0]["toolsets"] == ()
+    assert "Previously verified evidence" in client.calls[0]["messages"][1]["content"]
+    assert result.html.startswith("<!DOCTYPE html>")
 
 
 # ---------------------------------------------------------------------------

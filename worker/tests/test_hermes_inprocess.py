@@ -125,7 +125,7 @@ class TestIterationBudget:
 
         def fake_handle_function_call(*_args, **_kwargs):
             seen_homes.append(os.environ.get("HERMES_HOME"))
-            return '{"success": true, "data": {"web": []}}'
+            return '{"success": true, "data": {"web": [{"url": "https://example.com", "title": "Example", "description": "Evidence"}]}}'
 
         monkeypatch.setitem(
             sys.modules,
@@ -141,6 +141,31 @@ class TestIterationBudget:
 
         assert seen_homes == [str(Path.home() / ".hermes")] * 3
         assert os.environ["HERMES_HOME"] == "/opt/alm/hermes/accounts/customer"
+
+    def test_bounded_research_rejects_failed_searches(self, settings, monkeypatch):
+        monkeypatch.setitem(
+            sys.modules,
+            "model_tools",
+            SimpleNamespace(
+                handle_function_call=lambda *_args, **_kwargs: (
+                    '{"success": false, "error": "unavailable"}'
+                )
+            ),
+        )
+        client = InProcessHermesClient(settings)
+        with pytest.raises(RuntimeError, match="no verified web evidence"):
+            client.collect_research(
+                SimpleNamespace(id="audit-1", handle="creator", platform="instagram")
+            )
+
+    def test_chat_rejects_non_deepseek_model(self, settings):
+        client = InProcessHermesClient(settings)
+        with pytest.raises(RuntimeError, match="DeepSeek V4 Flash"):
+            client.chat(
+                messages=[{"role": "user", "content": "test"}],
+                model="gpt-5.6-sol",
+                stream=False,
+            )
 
     def test_codex_gpt5_omits_unsupported_temperature(self, settings):
         client = InProcessHermesClient(settings)
@@ -187,7 +212,7 @@ class TestIterationBudget:
                 {"role": "system", "content": "system"},
                 {"role": "user", "content": "user"},
             ],
-            model="test-model",
+            model="deepseek-v4-flash",
             temperature=0.0,
         )
 
@@ -233,5 +258,5 @@ class TestIterationBudget:
         with pytest.raises(RuntimeError, match="iteration budget exhausted"):
             client.chat(
                 messages=[{"role": "user", "content": "user"}],
-                model="test-model",
+                model="deepseek-v4-flash",
             )

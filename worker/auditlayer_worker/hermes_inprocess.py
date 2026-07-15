@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import json
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Callable, Iterable
@@ -11,6 +12,7 @@ from typing import Callable, Iterable
 from .hermes import ChatResult, Usage, _estimate_tokens
 from .hermes_runtime import resolve_agent_root
 from .config import WorkerSettings
+from .hermes_home_scope import HERMES_HOME_LOCK
 
 
 class InProcessHermesClient:
@@ -85,21 +87,41 @@ class InProcessHermesClient:
                 enabled_toolsets=["web"],
             )
 
-        account_home = os.environ.get("HERMES_HOME")
-        os.environ["HERMES_HOME"] = str(Path.home() / ".hermes")
-        try:
-            with ThreadPoolExecutor(max_workers=len(queries)) as pool:
-                results = list(pool.map(search, queries))
-        finally:
-            if account_home is None:
-                os.environ.pop("HERMES_HOME", None)
-            else:
-                os.environ["HERMES_HOME"] = account_home
-        evidence = "\n\n".join(
-            f"QUERY: {query}\nRESULTS:\n{result}"
-            for query, result in zip(queries, results, strict=True)
-        )
-        return evidence[:12000]
+        with HERMES_HOME_LOCK:
+            account_home = os.environ.get("HERMES_HOME")
+            os.environ["HERMES_HOME"] = str(Path.home() / ".hermes")
+            try:
+                with ThreadPoolExecutor(max_workers=len(queries)) as pool:
+                    results = list(pool.map(search, queries))
+            finally:
+                if account_home is None:
+                    os.environ.pop("HERMES_HOME", None)
+                else:
+                    os.environ["HERMES_HOME"] = account_home
+
+        verified: list[dict] = []
+        seen_urls: set[str] = set()
+        for raw in results:
+            try:
+                payload = json.loads(raw)
+            except (TypeError, json.JSONDecodeError):
+                continue
+            web = (payload.get("data") or {}).get("web") if payload.get("success") else None
+            for item in web or []:
+                url = str(item.get("url") or "")
+                if not url or url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                verified.append(
+                    {
+                        "url": url,
+                        "title": str(item.get("title") or ""),
+                        "description": str(item.get("description") or ""),
+                    }
+                )
+        if not verified:
+            raise RuntimeError("no verified web evidence was returned")
+        return json.dumps({"web": verified}, ensure_ascii=False)[:12000]
 
 
     def chat(
@@ -116,6 +138,10 @@ class InProcessHermesClient:
     ) -> ChatResult:
         del session_id  # In-process sessions are isolated through HERMES_HOME.
 
+        if self.settings.hermes_provider != "deepseek" or model != "deepseek-v4-flash":
+            raise RuntimeError("AuditLayer embedded generation requires DeepSeek V4 Flash")
+
+        HERMES_HOME_LOCK.acquire()
         previous_home = self._scope_hermes_home()
         try:
             from run_agent import AIAgent, IterationBudget  # type: ignore[import-not-found]
@@ -179,3 +205,4 @@ class InProcessHermesClient:
             return ChatResult(content=content, usage=usage, model=model)
         finally:
             self._restore_hermes_home(previous_home)
+            HERMES_HOME_LOCK.release()
