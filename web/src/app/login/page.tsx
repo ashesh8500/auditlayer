@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
@@ -19,17 +18,6 @@ export default async function LoginPage({
   const user = await getSession();
   const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
   if (user) redirect(safeNext);
-
-  if (trial) {
-    const cookieStore = await cookies();
-    cookieStore.set("alm_trial_token", trial, {
-      path: "/",
-      httpOnly: false,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-  }
 
   return (
     <main className="grid min-h-screen bg-background lg:grid-cols-[1.05fr_0.95fr]">

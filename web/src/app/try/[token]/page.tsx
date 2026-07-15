@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { AlertCircle, Clock, Ban, Users, ArrowRight } from "lucide-react";
@@ -70,16 +69,6 @@ export default async function TryPage({
       </main>
     );
   }
-
-  // ── Valid token — set cookie and render landing ──
-  const cookieStore = await cookies();
-  cookieStore.set("alm_trial_token", token, {
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  });
 
   const auditsGranted = result.auditsGranted;
 
