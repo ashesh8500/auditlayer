@@ -23,19 +23,26 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 
 # --- Chromium for PDF (browser mode) ---
-if ! command -v chromium-browser >/dev/null 2>&1 && ! command -v chromium >/dev/null 2>&1; then
-  echo "Installing chromium-browser (sudo)..."
-  sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq chromium-browser
+if ! command -v google-chrome >/dev/null 2>&1 && ! command -v google-chrome-stable >/dev/null 2>&1; then
+  echo "Installing Google Chrome (sudo; non-snap build required by hardened worker)..."
+  CHROME_DEB="$(mktemp --suffix=.deb)"
+  curl -fsSL https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -o "${CHROME_DEB}"
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${CHROME_DEB}"
+  rm -f "${CHROME_DEB}"
 fi
 
 CHROMIUM=""
-for candidate in /snap/bin/chromium /usr/bin/chromium-browser /usr/bin/chromium; do
+for candidate in /usr/bin/google-chrome /usr/bin/google-chrome-stable; do
   if [[ -x "${candidate}" ]]; then
     CHROMIUM="${candidate}"
     break
   fi
 done
+
+if [[ -z "${CHROMIUM}" ]]; then
+  echo "Google Chrome is required: snap Chromium cannot start under NoNewPrivileges=true" >&2
+  exit 1
+fi
 
 # --- worker env (Linux overrides) ---
 if [[ -f "${WORKER}/.env" ]]; then

@@ -1,0 +1,18 @@
+# Auto-detect text vs binary; fix line endings on checkout
+* text=auto
+
+# Shell scripts — keep LF
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Markdown / text
+*.md text
+*.txt text
+*.yml text
+*.yaml text
+*.json text
+*.toml text
+
+# .env files — never commit via `git add` (already gitignored, but this hardens git archive too)
+.env export-ignore
+.env.local export-ignore

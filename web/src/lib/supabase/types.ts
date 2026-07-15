@@ -116,6 +116,8 @@ export interface Database {
           cost_usd: number;
           tokens_in: number;
           tokens_out: number;
+          retry_count: number;
+          last_failed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -137,6 +139,8 @@ export interface Database {
           cost_usd?: number;
           tokens_in?: number;
           tokens_out?: number;
+          retry_count?: number;
+          last_failed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -158,6 +162,8 @@ export interface Database {
           cost_usd?: number;
           tokens_in?: number;
           tokens_out?: number;
+          retry_count?: number;
+          last_failed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -362,6 +368,88 @@ export interface Database {
             foreignKeyName: "admin_actions_target_user_id_fkey";
             columns: ["target_user_id"];
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      wellness_benchmarks: {
+        Row: {
+          id: string;
+          niche: string;
+          followers_bracket: string;
+          avg_engagement: number;
+          top_formats: Json;
+          post_freq: string;
+          cta: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          niche: string;
+          followers_bracket: string;
+          avg_engagement?: number;
+          top_formats?: Json;
+          post_freq?: string;
+          cta?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          niche?: string;
+          followers_bracket?: string;
+          avg_engagement?: number;
+          top_formats?: Json;
+          post_freq?: string;
+          cta?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      peer_graph: {
+        Row: {
+          id: string;
+          handle: string;
+          niche: string;
+          followers: number;
+          platform: string;
+          avg_likes: number;
+          avg_comments: number;
+          top_format: string;
+          last_scraped: string | null;
+          benchmarks_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          handle: string;
+          niche: string;
+          followers?: number;
+          platform?: string;
+          avg_likes?: number;
+          avg_comments?: number;
+          top_format?: string;
+          last_scraped?: string | null;
+          benchmarks_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          handle?: string;
+          niche?: string;
+          followers?: number;
+          platform?: string;
+          avg_likes?: number;
+          avg_comments?: number;
+          top_format?: string;
+          last_scraped?: string | null;
+          benchmarks_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "peer_graph_benchmarks_id_fkey";
+            columns: ["benchmarks_id"];
+            referencedRelation: "wellness_benchmarks";
             referencedColumns: ["id"];
           },
         ];

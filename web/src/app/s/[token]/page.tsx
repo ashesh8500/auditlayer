@@ -61,7 +61,7 @@ function ShareError({ error }: { error: string }) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#fafaf9] px-6">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-6">
       <div className="text-center">
         <h1 className="text-xl font-bold tracking-tight">{msg.title}</h1>
         <p className="mt-3 text-sm text-muted-foreground">{msg.body}</p>

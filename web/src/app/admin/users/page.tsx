@@ -45,8 +45,8 @@ export default async function AdminUsersPage({
   const users = profiles ?? [];
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-10">
-      <h1 className="text-2xl font-bold tracking-tight">Users</h1>
+    <main className="alm-shell py-8 sm:py-12">
+      <div className="border-b border-border pb-7"><p className="alm-kicker">Account operations</p><h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Users</h1><p className="mt-2 text-sm text-muted-foreground">Search access, plans, gifted audits, and onboarding state.</p></div>
 
       {/* Search & filter bar */}
       <form className="mt-4 flex flex-wrap gap-3">
@@ -80,7 +80,7 @@ export default async function AdminUsersPage({
       </div>
 
       {/* Table */}
-      <div className="mt-3 overflow-hidden rounded-[var(--radius)] border border-border">
+      <div className="alm-table-wrap mt-3">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-[0.72rem] uppercase tracking-[0.05em] text-muted-foreground">
             <tr>

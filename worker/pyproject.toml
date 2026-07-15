@@ -3,14 +3,28 @@ name = "auditlayer-worker"
 version = "0.1.0"
 description = "AuditLayer Hermes worker: claims queued audits from Supabase, runs guardrailed Hermes generation, streams a granular event timeline, and uploads HTML/PDF reports."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 authors = [{ name = "AuditLayer" }]
 dependencies = [
     "httpx>=0.27",
+    "python-dotenv>=1.2.2",
+    "pyyaml>=6.0.3",
     "supabase>=2.7",
 ]
 
 [project.optional-dependencies]
+embedded = [
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+    "openai>=1.0",
+    "croniter>=1.0",
+    "jinja2>=3.0",
+    "requests>=2.31",
+    "rich>=13.0",
+    "fire>=0.7",
+    "tenacity>=8.0",
+    "certifi>=2024.0",
+]
 dev = [
     "pytest>=8.0",
 ]
@@ -27,3 +41,11 @@ packages = ["auditlayer_worker"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
+embedded = [
+    "requests>=2.31",
+]

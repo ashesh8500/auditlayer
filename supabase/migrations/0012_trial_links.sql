@@ -16,6 +16,16 @@ create index if not exists trial_links_token_idx on public.trial_links (token);
 create index if not exists trial_links_created_at_idx on public.trial_links (created_at desc);
 
 -- FK for profiles.trial_link_id
-alter table public.profiles
-  add constraint profiles_trial_link_id_fkey
-    foreign key (trial_link_id) references public.trial_links(id) on delete set null;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.profiles'::regclass
+      and conname = 'profiles_trial_link_id_fkey'
+  ) then
+    alter table public.profiles
+      add constraint profiles_trial_link_id_fkey
+      foreign key (trial_link_id) references public.trial_links(id) on delete set null;
+  end if;
+end
+$$;

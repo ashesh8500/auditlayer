@@ -8,14 +8,15 @@ the token is expired, callers should fall back to the free-toolset path
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-import time
+import re
 from typing import Any
 
 import httpx
 
-GRAPH_API_BASE = "https://graph.facebook.com/v21.0"
+GRAPH_API_BASE = "https://graph.instagram.com/v21.0"
 
 
 # ── Data models ──────────────────────────────────────────────
@@ -66,6 +67,19 @@ class InstagramMetrics:
     posting_cadence: str = ""
     top_content_types: list[str] = field(default_factory=list)
     _raw: dict[str, Any] | None = None
+
+
+@dataclass
+class MediaSummary:
+    """Deterministic summary of recent media for prompt construction and QA."""
+
+    post_count: int
+    avg_likes: float
+    avg_comments: float
+    top_posts: list[dict[str, Any]]
+    format_mix: dict[str, int]
+    cadence_days: float
+    common_themes: list[str]
 
 
 # ── API client ────────────────────────────────────────────────
@@ -242,3 +256,66 @@ def _compute_cadence(media: list[InstagramMedia]) -> str:
     elif posts_per_week >= 1:
         return "1-2x/week"
     return "<1x/week"
+
+
+_THEME_STOPWORDS = {
+    "about", "after", "again", "also", "been", "from", "have", "into",
+    "more", "post", "that", "test", "this", "with", "your",
+}
+
+
+def summarize_media(
+    media: list[InstagramMedia], *, top_n_posts: int = 5
+) -> MediaSummary:
+    """Summarize media without network calls or follower-count assumptions."""
+    if not media:
+        return MediaSummary(0, 0.0, 0.0, [], {}, 0.0, [])
+
+    ranked = sorted(
+        media,
+        key=lambda item: item.like_count + item.comments_count,
+        reverse=True,
+    )[:top_n_posts]
+    top_posts = [
+        {
+            "id": item.id,
+            "media_type": item.media_type,
+            "likes": item.like_count,
+            "comments": item.comments_count,
+            "permalink": item.permalink,
+        }
+        for item in ranked
+    ]
+    format_mix = dict(Counter(item.media_type for item in media))
+
+    parsed_times = []
+    for item in media:
+        if not item.timestamp:
+            continue
+        try:
+            parsed_times.append(datetime.fromisoformat(item.timestamp.replace("Z", "+00:00")))
+        except ValueError:
+            continue
+    cadence_days = 0.0
+    if len(parsed_times) >= 2:
+        span_days = (max(parsed_times) - min(parsed_times)).total_seconds() / 86400
+        cadence_days = round(span_days / (len(parsed_times) - 1), 1)
+
+    words: Counter[str] = Counter()
+    for item in media:
+        for word in re.findall(r"[a-z][a-z-]{3,}", item.caption.lower()):
+            if word not in _THEME_STOPWORDS:
+                words[word] += 1
+    common_themes = [
+        word for word, count in words.most_common(8) if count >= 2 or len(media) == 1
+    ][:5]
+
+    return MediaSummary(
+        post_count=len(media),
+        avg_likes=round(sum(item.like_count for item in media) / len(media), 1),
+        avg_comments=round(sum(item.comments_count for item in media) / len(media), 1),
+        top_posts=top_posts,
+        format_mix=format_mix,
+        cadence_days=cadence_days,
+        common_themes=common_themes,
+    )

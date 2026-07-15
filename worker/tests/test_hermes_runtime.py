@@ -41,9 +41,8 @@ def test_parse_host_port_from_api_base():
     assert parse_host_port("https://hermes.example.com/v1") == ("hermes.example.com", 443)
 
 
-def test_settings_load_hermes_mode_from_env(monkeypatch):
-    monkeypatch.setenv("HERMES_MODE", "subprocess")
-    settings = WorkerSettings.from_env()
+def test_settings_load_hermes_mode_from_env():
+    settings = _settings(hermes_mode="subprocess")
     assert settings.hermes_mode == "subprocess"
     runtime = HermesRuntime(settings)
     assert runtime.mode == "subprocess"

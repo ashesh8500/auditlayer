@@ -10,7 +10,7 @@ const badgeVariants = cva(
       tone: {
         neutral: "border-border bg-muted text-muted-foreground",
         accent:
-          "border-transparent bg-[color:var(--accent-muted)] text-[color:#0f766e]",
+          "border-transparent bg-[color:var(--accent-muted)] text-[color:var(--accent)]",
         success:
           "border-transparent bg-[color:var(--green-muted)] text-[color:var(--green)]",
         warning:

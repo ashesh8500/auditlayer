@@ -1,0 +1,167 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+# Cancel in-progress runs for the same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  lint:
+    name: Pre-commit checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run pre-commit checks (merge markers, debug stmts, large files)
+        run: |
+          set -euo pipefail
+          # Simulate pre-commit hook on all tracked files (not just staged — CI view)
+          # Merge conflict markers
+          ! grep -rln '^<<<<<<< \|^=======\|^>>>>>>> ' --include='*.py' --include='*.ts' --include='*.tsx' \
+            --include='*.js' --include='*.jsx' --include='*.json' --include='*.yaml' --include='*.yml' \
+            --include='*.md' --include='*.html' --include='*.css' --include='*.sh' . | grep -v node_modules | grep -v '.venv'
+
+          # .env files should never be tracked
+          ENV_TRACKED=$(git ls-files | grep -E '(^|/)\.env$' | grep -v '\.env\.example' || true)
+          if [ -n "$ENV_TRACKED" ]; then
+            echo "FAIL: .env files tracked in git: $ENV_TRACKED"
+            exit 1
+          fi
+
+          # Large files (>1MB) should not be tracked
+          git ls-files -z | xargs -0 -I{} sh -c '
+            if [ -f "{}" ]; then
+              SIZE=$(stat --printf="%s" "{}" 2>/dev/null || echo 0)
+              if [ "$SIZE" -gt 1048576 ]; then
+                echo "FAIL: Large file (over 1MB): {}"
+                exit 1
+              fi
+            fi
+          '
+
+      - name: Shell syntax check (bash -n)
+        run: |
+          set -euo pipefail
+          find . -name '*.sh' -not -path '*/node_modules/*' -not -path '*/.venv/*' \
+            -not -path '*/.hermes/*' -exec bash -n {} \; -print | sed 's/$/ ✓/'
+
+  web:
+    name: Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install web dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build web app
+        run: pnpm build
+
+      - name: Typecheck web app
+        run: pnpm typecheck
+
+      - name: Lint web app
+        run: pnpm lint
+
+      - name: Run web smoke tests
+        run: pnpm e2e
+
+      - name: Validate web release configuration contract
+        run: ../scripts/validate-env.sh web
+        env:
+          NEXT_PUBLIC_SITE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+
+  worker:
+    name: Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Node.js for cross-language parity tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned tsx runtime
+        run: npm install --global tsx@4.22.4
+
+      - name: Restore uv cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('worker/uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+
+      - name: Sync worker dependencies
+        run: uv sync --extra dev --extra embedded
+
+      - name: Run worker tests
+        run: uv run pytest tests/ -x -q
+
+      - name: Verify prompt version contract
+        run: uv run python _verify_s06.py
+
+      - name: Run deterministic mock end-to-end
+        run: uv run python -m auditlayer_worker demo --handle ci-release --platform youtube --generator mock
+
+      - name: Validate migration contract
+        run: uv run python ../scripts/check-migrations.py
+
+      - name: Validate worker release configuration contract
+        run: ../scripts/validate-env.sh worker
+        env:
+          SUPABASE_URL: https://example.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
+          HERMES_MODEL: deepseek-v4-flash
+          HERMES_PROVIDER: deepseek
+          DEEPSEEK_API_KEY: ci-placeholder
+          HERMES_MODE: inprocess
+          AUDITLAYER_GENERATOR: hermes
+
+      - name: Syntax check worker source
+        run: |
+          uv run python -m compileall -q auditlayer_worker/ -f

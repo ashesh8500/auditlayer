@@ -72,7 +72,9 @@ cd ~/projects/auditlayer && npx supabase@latest db push
 `infra/hermes-vm/bootstrap.sh` installs/checks:
 
 - `uv` + `worker` Python deps
-- Chromium (`/snap/bin/chromium`) + `CHROMIUM_PATH` in `worker/.env`
+- Google Chrome (`/usr/bin/google-chrome`) + `CHROMIUM_PATH` in `worker/.env`.
+  Do not use snap Chromium: `NoNewPrivileges=true` correctly prevents
+  `snap-confine` from acquiring the capabilities it requires.
 - Supabase CLI via `npx` (when token synced)
 - Vercel CLI via `npm install -g`
 - Shell aliases in `~/.bashrc`
@@ -107,6 +109,18 @@ ssh hermes-vm 'export PATH=$HOME/.local/bin:$PATH; cd ~/projects/auditlayer/work
 ```
 
 Expected: `ok=True`, `tcp_reachable=True`, `auth_ok=True`, `api_server_state=connected`.
+
+Current production uses embedded Hermes. Before restart, run:
+
+```bash
+cd ~/projects/auditlayer/worker
+uv run python -m auditlayer_worker release-preflight
+uv run python -m auditlayer_worker validate-hermes
+```
+
+The unit limits worker memory to 2 GiB, caps tasks/open files, and rate-limits
+restart attempts (`3` per `5m`). Journald rotation and VM backup/watchdog policy
+remain host-level controls and must be verified separately from this repo.
 
 ---
 

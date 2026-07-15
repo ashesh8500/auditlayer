@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import time
+import traceback
 
 from .config import WorkerSettings
-from .core import AuditRecord
+from .core import PROMPT_VERSION, AuditRecord
 from .generation import HermesReportGenerator, MockReportGenerator, ReportGenerator
 from .hermes_runtime import HermesRuntime
 from .pipeline import GenerationPipeline, SupabaseEventSink
@@ -48,6 +49,9 @@ def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
             retried = gateway.sweep_retryable()
             if retried:
                 print(f"[worker] re-queued {retried} failed audit(s) for retry")
+            reaped = gateway.sweep_stale_running()
+            if reaped:
+                print(f"[worker] reaped {reaped} stale running audit(s)")
             runtime.tick_idle(worked)
             if once:
                 return
@@ -69,7 +73,8 @@ def _drain_once(
         audit = AuditRecord.from_row(audit_row)
         sink = SupabaseEventSink(gateway, audit.id)
         print(f"[worker] claimed audit {audit.id} @{audit.handle}")
-        summary = pipeline.run(audit, sink, gateway=gateway)
+        summary = pipeline.run(audit, sink, gateway=gateway, token_cap=app_settings.token_cap,
+                              cost_cap_usd=app_settings.cost_cap_usd)
         print(
             f"[worker] audit {audit.id} -> {summary.status} "
             f"({summary.wall_clock_seconds}s, {summary.tokens_in}+{summary.tokens_out} tok, "
@@ -108,10 +113,18 @@ def _process_refinement(
         new_html, _t_in, _t_out = pipeline.refine(audit, current_html, section, instruction, sink)
         gateway.upload_report(audit_id, new_html)
         gateway.update_refinement(refinement_id, status="done", error="")
+        gateway.update_audit(audit_id, prompt_version=PROMPT_VERSION)
         sink.emit("refinement", f"Section '{section}' refined and re-uploaded")
     except Exception as exc:  # noqa: BLE001
+        tb_tail = traceback.format_exc()[-500:]
+        gateway.emit_event(
+            audit_id,
+            "failed",
+            detail=tb_tail,
+            event_type="error",
+            actor="worker",
+        )
         gateway.update_refinement(refinement_id, status="failed", error=str(exc)[:500])
-        sink.emit("failed", f"Refinement error: {exc}")
 
 
 def _download_report(gateway: SupabaseGateway, settings: WorkerSettings, report_path: str | None) -> str:

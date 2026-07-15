@@ -1,10 +1,11 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseAdminConfigured } from "@/lib/env";
+import { isSupabaseAdminConfigured, siteUrl } from "@/lib/env";
 import type { AuditEventPhase, Json } from "@/lib/supabase/types";
 
 export interface AdminActionState {
@@ -429,6 +430,39 @@ export async function setAccountType(
   return { status: "ok", message: `Account type changed from ${fromType} to ${accountType}.` };
 }
 
+/** Atomically assign founder-managed access, including manual enterprise users. */
+export async function setUserAccess(
+  _prev: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  const actor = await requireAdmin();
+  if (!isSupabaseAdminConfigured())
+    return { status: "error", message: "Not configured." };
+
+  const profileId = String(formData.get("profileId") ?? "");
+  const plan = String(formData.get("plan") ?? "");
+  const accountType = String(formData.get("account_type") ?? "");
+  const giftedAudits = Number(formData.get("gifted_audits"));
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!profileId || !reason || !Number.isInteger(giftedAudits) || giftedAudits < 0) {
+    return { status: "error", message: "User, non-negative credits, and a reason are required." };
+  }
+
+  const { error } = await (createAdminClient() as any).rpc("admin_set_access", {
+    p_actor_id: actor.id,
+    p_target_user_id: profileId,
+    p_plan: plan,
+    p_account_type: accountType,
+    p_gifted_audits: giftedAudits,
+    p_reason: reason,
+  });
+  if (error) return { status: "error", message: error.message };
+
+  revalidatePath(`/admin/users/${profileId}`);
+  revalidatePath("/admin/users");
+  return { status: "ok", message: "Access assignment saved and logged." };
+}
+
 /** Create a trial link (admin-only). */
 export async function createTrialLink(
   _prev: AdminActionState,
@@ -445,15 +479,20 @@ export async function createTrialLink(
   const maxUses = maxUsesRaw ? parseInt(String(maxUsesRaw), 10) || null : null;
   const expiresInDaysRaw = formData.get("expires_in_days");
   const expiresInDays = expiresInDaysRaw ? parseInt(String(expiresInDaysRaw), 10) || null : null;
+  const offerPlan = String(formData.get("offer_plan") ?? "starter");
+  const reportTypes = formData.getAll("report_types").map(String);
+  const accessDays = parseInt(String(formData.get("access_days") ?? "14"), 10);
 
   if (auditsGranted < 1 || auditsGranted > 50)
     return { status: "error", message: "Audits granted must be between 1 and 50." };
+  if (!["free", "starter", "pro", "enterprise"].includes(offerPlan))
+    return { status: "error", message: "Select a valid trial plan." };
+  if (!reportTypes.length)
+    return { status: "error", message: "Select at least one report type." };
+  if (!Number.isInteger(accessDays) || accessDays < 1 || accessDays > 365)
+    return { status: "error", message: "Access days must be between 1 and 365." };
 
-  // Generate random 24-char hex token
-  const token = Array.from(
-    { length: 24 },
-    () => Math.floor(Math.random() * 16).toString(16),
-  ).join("");
+  const token = randomBytes(24).toString("hex");
 
   const expiresAt = expiresInDays
     ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
@@ -469,6 +508,9 @@ export async function createTrialLink(
       label,
       max_uses: maxUses,
       expires_at: expiresAt,
+      offer_plan: offerPlan,
+      report_types: reportTypes,
+      access_days: accessDays,
     });
 
     if (insertError)
@@ -483,11 +525,13 @@ export async function createTrialLink(
       actor_id: adminProfile.id,
       action: "trial_create",
       detail: {
-        token,
         audits_granted: auditsGranted,
         label,
         max_uses: maxUses,
         expires_in_days: expiresInDays,
+        offer_plan: offerPlan,
+        report_types: reportTypes,
+        access_days: accessDays,
       },
     });
   } catch (e: any) {
@@ -499,7 +543,7 @@ export async function createTrialLink(
     status: "ok",
     message: "Trial link created.",
     token,
-    url: `/try/${token}`,
+    url: `${siteUrl()}/try/${token}`,
   };
 }
 

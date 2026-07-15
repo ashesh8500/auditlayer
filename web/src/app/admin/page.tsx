@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Search } from "lucide-react";
 
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured } from "@/lib/env";
 import {
@@ -11,7 +13,13 @@ import {
 } from "@/lib/domain";
 import { OnboardingSelect } from "./onboarding-select";
 
-export default async function AdminHome() {
+export default async function AdminHome({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string }>;
+}) {
+  const { search } = await searchParams;
+  const searchLower = search?.toLowerCase() ?? "";
   if (!isSupabaseAdminConfigured()) {
     return (
       <main className="mx-auto w-full max-w-5xl px-6 py-10">
@@ -40,17 +48,26 @@ export default async function AdminHome() {
   ]);
 
   const clients = profiles ?? [];
+  const filteredClients = searchLower
+    ? clients.filter(
+        (c) =>
+          c.email?.toLowerCase().includes(searchLower) ||
+          c.full_name?.toLowerCase().includes(searchLower),
+      )
+    : clients;
   const auditList = audits ?? [];
   const queued = auditList.filter((a) => a.status === "queued").length;
   const review = auditList.filter((a) => a.status === "needs_review").length;
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-10">
-      <h1 className="text-2xl font-bold tracking-tight">Founder console</h1>
-      <div className="mt-4 flex flex-wrap gap-2 text-xs">
-        <Badge tone="neutral">{clients.length} clients</Badge>
-        <Badge tone="info">{queued} queued</Badge>
-        <Badge tone="warning">{review} need review</Badge>
+    <main className="alm-shell py-8 sm:py-12 animate-page-in">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-7">
+        <div><p className="alm-kicker">Founder operations</p><h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Client and audit control.</h1><p className="mt-2 text-sm text-muted-foreground">Review queue health, onboarding, and recent client work.</p></div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <Badge tone="neutral">{clients.length} clients</Badge>
+          <Badge tone="info">{queued} queued</Badge>
+          <Badge tone="warning">{review} need review</Badge>
+        </div>
       </div>
 
       {/* Audits */}
@@ -58,7 +75,7 @@ export default async function AdminHome() {
         <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           Recent audits
         </h2>
-        <div className="mt-3 overflow-hidden rounded-[var(--radius)] border border-border">
+        <div className="alm-table-wrap mt-3">
           <table className="w-full text-sm">
             <thead className="bg-muted text-left text-[0.72rem] uppercase tracking-[0.05em] text-muted-foreground">
               <tr>
@@ -105,10 +122,21 @@ export default async function AdminHome() {
 
       {/* Clients */}
       <section className="mt-10">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          Clients
-        </h2>
-        <div className="mt-3 overflow-hidden rounded-[var(--radius)] border border-border">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Clients
+          </h2>
+          <form className="relative w-full max-w-xs" method="GET" action="/admin">
+            <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              name="search"
+              placeholder="Search by name or email..."
+              defaultValue={search ?? ""}
+              className="h-9 pl-9 text-sm"
+            />
+          </form>
+        </div>
+        <div className="alm-table-wrap">
           <table className="w-full text-sm">
             <thead className="bg-muted text-left text-[0.72rem] uppercase tracking-[0.05em] text-muted-foreground">
               <tr>
@@ -119,14 +147,14 @@ export default async function AdminHome() {
               </tr>
             </thead>
             <tbody>
-              {clients.length === 0 ? (
+              {filteredClients.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
-                    No clients yet.
+                    {searchLower ? "No clients match your search." : "No clients yet."}
                   </td>
                 </tr>
               ) : (
-                clients.map((c) => (
+                filteredClients.map((c) => (
                   <tr key={c.id} className="border-t border-border">
                     <td className="px-4 py-2">
                       <div className="font-medium">{c.email ?? "—"}</div>

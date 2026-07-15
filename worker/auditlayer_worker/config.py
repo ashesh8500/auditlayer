@@ -5,14 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import socket
 
 
 def _load_dotenv(path: Path, *, override: bool = False) -> None:
-    """Minimal .env loader (no external dependency).
-
-    By default only sets variables not already in the process environment.
-    Pass ``override=True`` so later files (e.g. worker/.env) win over repo .env.
-    """
     if not path.exists():
         return
     for raw in path.read_text(encoding="utf-8").splitlines():
@@ -27,9 +23,8 @@ def _load_dotenv(path: Path, *, override: bool = False) -> None:
 
 
 def load_env_files() -> None:
-    """Load env from the repo .env and worker/.env if present."""
     here = Path(__file__).resolve()
-    repo_root = here.parents[2]  # worker/auditlayer_worker/config.py -> repo root
+    repo_root = here.parents[2]
     _load_dotenv(repo_root / ".env")
     _load_dotenv(here.parents[1] / ".env", override=True)
 
@@ -41,49 +36,51 @@ def _bool(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _default_worker_id() -> str:
+    explicit = os.getenv("AUDITLAYER_WORKER_ID")
+    if explicit:
+        return explicit
+    hostname = os.getenv("HOSTNAME")
+    if hostname:
+        return hostname
+    try:
+        return socket.gethostname()
+    except Exception:
+        return "unknown"
+
+
 @dataclass(frozen=True)
 class WorkerSettings:
-    # Supabase (service role bypasses RLS)
     supabase_url: str | None
     supabase_service_role_key: str | None
     reports_bucket: str
     pdfs_bucket: str
     signed_url_ttl_seconds: int
-
-    # Hermes gateway (OpenAI-compatible) or in-process agent
-    hermes_mode: str  # http | subprocess | inprocess
+    hermes_mode: str
     hermes_api_base: str
     hermes_api_key: str | None
     hermes_model: str
+    hermes_provider: str
     hermes_timeout_seconds: float
     hermes_gateway_bin: str | None
     hermes_subprocess_idle_seconds: float
     hermes_gateway_startup_timeout: float
     hermes_agent_root: str | None
+    hermes_max_iterations: int
+    alm_accounts_root: str
     enabled_toolsets: tuple[str, ...]
     max_tokens: int
     temperature: float
-
-    # Generation backend: "hermes" (production) or "mock" (deterministic QA)
     generator: str
-
-    # Safety caps (also read live from app_settings when Supabase is connected)
     token_cap: int
     cost_cap_usd: float
-    # Pricing used for cost estimation (USD per 1M tokens)
     price_in_per_mtok: float
     price_out_per_mtok: float
-
-    # Queue loop
     poll_interval_seconds: float
-    # Pacing for synthetic phase events during a long generation (seconds).
     phase_interval_seconds: float
-
-    # PDF rendering
-    pdf_mode: str  # "browser" | "stub"
+    pdf_mode: str
     chromium_path: str | None
-
-    # Local output dir for standalone demo runs
+    worker_id: str
     output_dir: Path
 
     @classmethod
@@ -102,6 +99,7 @@ class WorkerSettings:
             hermes_api_base=os.getenv("HERMES_API_BASE", "http://127.0.0.1:8642/v1"),
             hermes_api_key=os.getenv("HERMES_API_KEY") or None,
             hermes_model=os.getenv("HERMES_MODEL", "deepseek-v4-flash"),
+            hermes_provider=os.getenv("HERMES_PROVIDER", "deepseek"),
             hermes_timeout_seconds=float(os.getenv("HERMES_TIMEOUT_SECONDS", "600")),
             hermes_gateway_bin=os.getenv("HERMES_GATEWAY_BIN") or None,
             hermes_subprocess_idle_seconds=float(
@@ -111,6 +109,8 @@ class WorkerSettings:
                 os.getenv("HERMES_GATEWAY_STARTUP_TIMEOUT", "60")
             ),
             hermes_agent_root=os.getenv("HERMES_AGENT_ROOT") or None,
+            hermes_max_iterations=int(os.getenv("HERMES_MAX_ITERATIONS", "15")),
+            alm_accounts_root=os.getenv("ALM_ACCOUNTS_ROOT", "/opt/alm/hermes/accounts"),
             enabled_toolsets=tuple(t.strip() for t in toolsets.split(",") if t.strip()),
             max_tokens=int(os.getenv("HERMES_MAX_TOKENS", "32000")),
             temperature=float(os.getenv("HERMES_TEMPERATURE", "0.2")),
@@ -123,6 +123,7 @@ class WorkerSettings:
             phase_interval_seconds=float(os.getenv("AUDITLAYER_PHASE_INTERVAL", "0")),
             pdf_mode=os.getenv("AUDITLAYER_PDF_MODE", "browser").lower(),
             chromium_path=os.getenv("CHROMIUM_PATH") or None,
+            worker_id=_default_worker_id(),
             output_dir=Path(os.getenv("AUDITLAYER_OUTPUT_DIR", "var/worker-out")),
         )
 

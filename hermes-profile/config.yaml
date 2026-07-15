@@ -1,0 +1,41 @@
+model:
+  default: deepseek-v4-pro
+  provider: deepseek
+  base_url: https://api.deepseek.com
+fallback_providers: []
+agent:
+  disabled_toolsets:
+  - clarify
+  - code_execution
+  - computer_use
+  - context_engine
+  - cronjob
+  - delegation
+  - discord
+  - discord_admin
+  - feishu_doc
+  - feishu_drive
+  - file
+  - homeassistant
+  - image_gen
+  - kanban
+  - memory
+  - messaging
+  - rl
+  - safe
+  - search
+  - session_search
+  - skills
+  - spotify
+  - terminal
+  - todo
+  - tts
+  - video
+  - video_gen
+  - vision
+  - yuanbao
+platform_toolsets:
+  cli:
+  - web
+  - browser
+  - x_search

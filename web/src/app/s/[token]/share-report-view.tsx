@@ -89,7 +89,7 @@ export function ShareReportView({
   // Show email verification UI
   if (vStatus !== "verified") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#fafaf9] px-6">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-6">
         <div className="w-full max-w-sm">
           <div className="text-center">
             <Mail className="mx-auto size-8 text-[color:var(--accent)]" />

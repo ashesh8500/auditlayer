@@ -4,9 +4,9 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   auditLimitForProfile,
+  allowedReportTypesForProfile,
   USAGE_STATUSES,
   type AuditStatus,
-  type Plan,
 } from "@/lib/domain";
 import { IntakeWizard } from "./wizard";
 
@@ -26,13 +26,13 @@ export default async function NewAuditPage() {
   if (usage >= limit) redirect("/dashboard?billing=unconfigured");
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-12">
-      <div className="mb-8">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--accent)]">
-          New audit
-        </p>
+    <main className="alm-shell py-8 sm:py-12">
+      <div className="mx-auto mb-8 max-w-2xl border-b border-border pb-6">
+        <p className="alm-kicker">New audit</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Set the research brief.</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Account, strategic goal, and optional context. Three short steps.</p>
       </div>
-      <IntakeWizard plan={(profile.plan as Plan) || "free"} />
+      <IntakeWizard reportTypes={allowedReportTypesForProfile(profile as never)} />
     </main>
   );
 }

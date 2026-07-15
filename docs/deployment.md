@@ -42,6 +42,7 @@ The authoritative schema and enums live in `docs/architecture-contract.md`.
 2. Apply migrations in order:
 
    ```bash
+   python scripts/check-migrations.py
    supabase db push
    # or run SQL from supabase/migrations/*.sql in the dashboard SQL editor
    ```
@@ -118,21 +119,24 @@ cannot run inside Vercel serverless functions. Deploy it on any host with
 
 | Mode | Deployment pattern |
 |---|---|
-| `http` (default) | Worker talks to an already-running gateway api_server — typical Hetzner setup |
+| `http` | Worker talks to an already-running gateway api_server — alternate deployment |
 | `subprocess` | Worker spawns `hermes gateway run` on first queued job, stops after idle timeout — **no dedicated gateway VM** |
-| `inprocess` | Worker imports `run_agent.AIAgent` directly (experimental) |
+| `inprocess` (production) | Worker imports `run_agent.AIAgent` directly; no loopback gateway hop |
 
 ```bash
 cd worker
 cp .env.example .env   # fill SUPABASE_* and HERMES_* (see mode-specific notes)
-uv sync
+uv sync --extra embedded --extra dev
 uv run python -m auditlayer_worker diagnose-hermes
 uv run python -m auditlayer_worker validate-hermes
 ```
 
-**Option A — Hetzner CX22 (scale-out, always-on gateway)**
+**Option A — Hetzner CX22 (production, embedded Hermes)**
 
-Set `HERMES_MODE=http`. Hermes Gateway runs as `hermes-gateway.service` on the VM.
+Set `HERMES_MODE=inprocess`, `HERMES_MODEL=deepseek-v4-flash`, and
+`HERMES_PROVIDER=deepseek`. `worker/infra/deploy.sh` runs tests, migration
+contract checks, non-mutating production schema/RPC probes, and a real model
+validation before restarting systemd. A failed gate leaves the service untouched.
 
 From the **laptop**, sync credentials and bootstrap the VM:
 
@@ -214,6 +218,8 @@ cd web && pnpm e2e
 cd worker && uv run pytest
 cd worker && uv run python -m auditlayer_worker diagnose-hermes
 cd worker && uv run python -m auditlayer_worker validate-hermes
+cd worker && uv run python -m auditlayer_worker release-preflight
+uv run python scripts/check-migrations.py
 ```
 
 Legacy v1 (archived): `make check`

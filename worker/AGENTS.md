@@ -56,6 +56,33 @@ cd worker && uv run python -m auditlayer_worker regen-pdf --audit-id <uuid>
 
 ---
 
+## Prompt version (S0.6)
+
+Every report carries a `prompt_version` so you can tell which generation rules
+produced it — critical when diagnosing old reports after prompt template changes.
+
+| Concern | Mechanism |
+|---|---|
+| **Version constant** | `PROMPT_VERSION` in `worker/auditlayer_worker/core.py` (currently `"0.7"`) |
+| **When to bump** | Any edit to the prompt template, system messages, business constraints, master skeleton, or section frameworks |
+| **Changelog** | Comment block above `PROMPT_VERSION` — add an entry on every bump |
+| **Stored in DB** | `audits.prompt_version` column (migration `0017_prompt_version.sql`); backfilled for existing audits |
+| **HTML footer** | `build_prompt_footer_line()` injects `Prompt v{version} · {timestamp} · ${cost} · {tokens}` after the report footer badge; replaces `<!-- PROMPT_VERSION_LINE -->` placeholder in master skeleton |
+| **System prompts** | `WORKER_SYSTEM_PROMPT` and `REFINE_SYSTEM_PROMPT` include `prompt v{PROMPT_VERSION}` so the model knows what rules are active |
+| **Worker writes** | `Gateway.update_audit(audit_id, prompt_version=PROMPT_VERSION)` on every generation and refinement |
+| **Tests** | `worker/tests/test_prompt_version.py` (8 tests) + `worker/_verify_s06.py` (5 checks) |
+
+### Bumping the version
+
+1. Edit `PROMPT_VERSION` in `core.py`
+2. Add a `# vX.Y — …` entry to the changelog comment block
+3. Run `uv run python _verify_s06.py` (expect failure — version mismatch)
+4. Update the expected version string in `_verify_s06.py` if it asserts `"0.6"`
+5. Run `uv run pytest tests/test_prompt_version.py -v` — update any assertions that hardcode `"0.6"`
+6. Push the migration for any schema changes, then deploy worker
+
+---
+
 ## Hermes modes
 
 | Mode | Use |

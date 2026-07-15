@@ -55,6 +55,34 @@ def test_intake_gating_and_milestone():
     assert weak.status == AuditStatus.NEEDS_REVIEW
 
 
+def test_intake_gifted_audits_bypasses_plan_limit():
+    """Gifted audits (trial/comp) bypass the plan-limit gate — matches web parity."""
+    # Free plan, 10 completed audits — normally blocked.
+    decision = evaluate_intake(
+        handle="testuser", goal="growth", plan=Plan.FREE,
+        completed_audits=10,
+    )
+    assert decision.status == AuditStatus.BLOCKED
+
+    # Same, but with gifted_audits=5 — bypasses the limit.
+    decision = evaluate_intake(
+        handle="testuser", goal="growth", plan=Plan.FREE,
+        completed_audits=10, gifted_audits=5,
+    )
+    assert decision.status == AuditStatus.QUEUED
+    assert decision.accepted is True
+
+
+def test_intake_empty_handle_blocks_regardless_of_gifted():
+    """Empty handle is always hard-blocked, even with gifted audits."""
+    decision = evaluate_intake(
+        handle="", goal="growth", plan=Plan.FREE,
+        gifted_audits=99,
+    )
+    assert decision.status == AuditStatus.BLOCKED
+    assert decision.accepted is False
+
+
 def test_next_milestone_tiers():
     assert next_milestone(150) == "Road to 2K"
     assert next_milestone(5000) == "Road to 20K"

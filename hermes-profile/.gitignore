@@ -1,0 +1,28 @@
+# Never commit local credentials or runtime state
+.env
+auth.json
+auth.lock
+state.db*
+sessions/
+logs/
+cache/
+models_dev_cache.json
+*.lock
+response_store.db*
+processes.json
+.update_check
+bin/
+.skills_prompt_snapshot.json
+
+# Export only the production config and requested skills
+*
+!.gitignore
+!config.yaml
+!README.md
+!skills/
+!skills/productivity/
+!skills/productivity/social-media-audit/
+!skills/productivity/social-media-audit/**
+!skills/ppt-production-expert/
+!skills/ppt-production-expert/narin-brand-audits/
+!skills/ppt-production-expert/narin-brand-audits/**

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRAND — Brand Opportunity Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0F172A;
+  --surface: #1E293B;
+  --surface-light: #273449;
+  --accent: #0D9488;
+  --text: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --line: #334155;
+  --green: #22C55E;
+  --green-bg: rgba(34,197,94,0.08);
+  --amber: #F59E0B;
+  --amber-bg: rgba(245,158,11,0.08);
+  --red: #EF4444;
+  --red-bg: rgba(239,68,68,0.08);
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+.container { max-width: 720px; margin: 0 auto; padding: 60px 28px 80px; }
+.hero { text-align: center; padding: 48px 0 40px; border-bottom: 1px solid var(--line); margin-bottom: 44px; }
+.hero-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.2em; color: var(--accent); margin-bottom: 20px; }
+.hero h1 { font-family: 'Playfair Display', serif; font-size: 2.6rem; font-weight: 700; line-height: 1.2; color: var(--text); margin-bottom: 12px; }
+.hero h1 span { color: var(--accent); }
+.hero-sub { font-size: 1.05rem; color: var(--text-secondary); max-width: 520px; margin: 0 auto; }
+.hero-meta { display: flex; justify-content: center; gap: 32px; margin-top: 28px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-muted); }
+.hero-meta span { color: var(--text-secondary); font-weight: 600; }
+.section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.section-header h2 { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 600; color: var(--text); }
+.section-header .emoji { font-size: 1.2rem; }
+.intro-note { background: var(--surface); border-left: 3px solid var(--accent); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; padding: 20px 22px; margin-bottom: 36px; font-size: 0.92rem; color: var(--text-secondary); line-height: 1.8; font-style: italic; }
+.intro-note strong { color: var(--text); font-style: normal; }
+.stats-strip { display: flex; justify-content: center; gap: 36px; padding: 22px 0; margin: 20px 0 32px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.stat-item { text-align: center; }
+.stat-val { font-family: 'JetBrains Mono', monospace; font-size: 1.3rem; font-weight: 600; color: var(--text); }
+.stat-lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.card-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 36px; }
+@media (max-width: 600px) { .card-grid { grid-template-columns: 1fr; } .hero h1 { font-size: 2rem; } .hero-meta { flex-direction: column; gap: 6px; } }
+.strength-card { background: var(--surface); border-left: 3px solid var(--green); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; padding: 16px 18px; }
+.strength-card .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--green); font-weight: 700; margin-bottom: 6px; }
+.strength-card h4 { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.strength-card p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
+.gap-card { background: var(--surface); border-left: 3px solid var(--red); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; padding: 18px 20px; margin-bottom: 14px; }
+.gap-card .gap-num { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--red); letter-spacing: 0.1em; margin-bottom: 6px; }
+.gap-card h4 { font-family: 'Playfair Display', serif; font-size: 1.08rem; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.gap-card p { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7; }
+.gap-card .whats-there { margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
+.gap-card .whats-there strong { color: var(--text-secondary); font-style: normal; }
+.diagnosis { background: var(--surface); border-left: 3px solid var(--amber); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; padding: 18px 20px; margin: 24px 0 36px; }
+.diagnosis .diag-label { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--amber); margin-bottom: 6px; }
+.diagnosis p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; }
+.visual-snapshot { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 24px 0 36px; }
+@media (max-width: 600px) { .visual-snapshot { grid-template-columns: 1fr; } }
+.vs-col h4 { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px; }
+.vs-col.current h4 { color: var(--text-muted); }
+.vs-col.opportunity h4 { color: var(--accent); }
+.vs-item { font-size: 0.85rem; padding: 8px 0; border-bottom: 1px solid var(--line); color: var(--text-secondary); line-height: 1.5; }
+.vs-item:last-child { border-bottom: none; }
+.vs-item .tag { display: inline-block; font-size: 0.65rem; padding: 2px 8px; border-radius: 3px; margin-right: 6px; font-weight: 600; letter-spacing: 0.05em; }
+.tag-missing { background: var(--red-bg); color: var(--red); }
+.tag-have { background: var(--green-bg); color: var(--green); }
+.pillar-map { margin: 24px 0 36px; }
+.pillar-row { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 0.88rem; }
+.pillar-row:last-child { border-bottom: none; }
+.pillar-name { flex: 1; font-weight: 500; color: var(--text); }
+.pillar-status { font-size: 0.78rem; font-weight: 600; padding: 3px 12px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+.status-strong { background: var(--green-bg); color: var(--green); }
+.status-weak { background: var(--amber-bg); color: var(--amber); }
+.status-missing { background: var(--red-bg); color: var(--red); }
+.fit-section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 32px 28px; margin: 36px 0; }
+.fit-section .fit-header { text-align: center; margin-bottom: 28px; }
+.fit-section .fit-header h2 { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.fit-section .fit-header p { font-size: 0.9rem; color: var(--text-secondary); }
+.fit-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 600px) { .fit-columns { grid-template-columns: 1fr; } }
+.fit-pillar { background: var(--surface-light); border-radius: var(--radius-sm); padding: 20px; }
+.fit-pillar .pillar-icon { font-size: 1.5rem; margin-bottom: 8px; }
+.fit-pillar h4 { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 600; color: var(--text); margin-bottom: 10px; }
+.fit-pillar ul { list-style: none; padding: 0; }
+.fit-pillar ul li { font-size: 0.84rem; color: var(--text-secondary); padding: 5px 0; padding-left: 16px; position: relative; line-height: 1.6; }
+.fit-pillar ul li::before { content: '—'; position: absolute; left: 0; color: var(--accent); font-weight: 600; }
+.opportunity-callout { background: linear-gradient(135deg, rgba(13,148,136,0.12) 0%, rgba(13,148,136,0.04) 100%); border: 1px solid rgba(13,148,136,0.25); border-radius: var(--radius); padding: 28px 28px 24px; margin: 36px 0; text-align: center; }
+.opportunity-callout h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 600; color: var(--accent); margin-bottom: 12px; }
+.opportunity-callout p { font-size: 0.92rem; color: var(--text-secondary); line-height: 1.8; max-width: 560px; margin: 0 auto; }
+.opportunity-callout p strong { color: var(--text); }
+.section-spacer { height: 36px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">Brand Opportunity Analysis</div>
+  <h1>BRAND <span>×</span> Content Strategy</h1>
+  <p class="hero-sub">A look at what's working, what's missing, and where a dedicated media manager changes the trajectory.</p>
+  <div class="hero-meta">
+    <div>@HANDLE &nbsp;·&nbsp; <span>X,XXX</span> followers</div>
+    <div>XXX posts &nbsp;·&nbsp; June 2026</div>
+  </div>
+</div>
+
+<!-- INTRO NOTE -->
+<div class="intro-note">
+  <strong>I put this together to better show you what we could work on.</strong> [One sentence on what makes this brand special — the story, the founder, the product truth. Then transition to the gap.]
+</div>
+
+<!-- STATS STRIP — replace with real metrics -->
+<div class="stats-strip">
+  <div class="stat-item"><div class="stat-val">X,XXX</div><div class="stat-lbl">Followers</div></div>
+  <div class="stat-item"><div class="stat-val">XXX</div><div class="stat-lbl">Posts</div></div>
+  <div class="stat-item"><div class="stat-val">METRIC</div><div class="stat-lbl">Label</div></div>
+  <div class="stat-item"><div class="stat-val">METRIC</div><div class="stat-lbl">Label</div></div>
+</div>
+
+<!-- WHAT'S WORKING -->
+<div class="section-header"><span class="emoji">✅</span><h2>What's Working</h2></div>
+<div class="card-grid">
+  <div class="strength-card">
+    <div class="label">Category</div>
+    <h4>Strength Title</h4>
+    <p>Specific, genuine observation. Reference actual content or brand attributes. No manufactured praise.</p>
+  </div>
+  <div class="strength-card">
+    <div class="label">Category</div>
+    <h4>Strength Title</h4>
+    <p>Keep it real. Three strengths maximum — quality over quantity.</p>
+  </div>
+  <div class="strength-card">
+    <div class="label">Category</div>
+    <h4>Strength Title</h4>
+    <p>The third strength should feel earned, not padded. If you can only find 2 genuine strengths, use 2.</p>
+  </div>
+</div>
+
+<!-- WHAT'S MISSING -->
+<div class="section-spacer"></div>
+<div class="section-header"><span class="emoji">🔍</span><h2>What's Missing From the Feed</h2></div>
+
+<div class="gap-card">
+  <div class="gap-num">GAP 01</div>
+  <h4>Gap Title — Be Specific</h4>
+  <p>Detailed explanation of what's missing, why it matters, and what it costs the brand. Reference actual content patterns observed on their feed.</p>
+  <div class="whats-there"><strong>What's there now:</strong> Describe the current state without judgment — just facts.</div>
+</div>
+
+<div class="gap-card">
+  <div class="gap-num">GAP 02</div>
+  <h4>Second Gap</h4>
+  <p>Each gap should be distinct. Don't repeat the same problem in different words. 4-5 gaps is the sweet spot.</p>
+  <div class="whats-there"><strong>What's there now:</strong> Current state observation.</div>
+</div>
+
+<!-- Add 2-3 more gap cards as needed -->
+
+<!-- DIAGNOSIS -->
+<div class="diagnosis">
+  <div class="diag-label">Diagnosis</div>
+  <p>One paragraph synthesizing the pattern. Frame constructively: "The feed hasn't caught up to the brand" not "they're failing." End with what's possible.</p>
+</div>
+
+<!-- FEED IDENTITY -->
+<div class="section-spacer"></div>
+<div class="section-header"><span class="emoji">🎨</span><h2>Feed Identity — Current vs. Opportunity</h2></div>
+<div class="visual-snapshot">
+  <div class="vs-col current">
+    <h4>Current Feed</h4>
+    <div class="vs-item"><span class="tag tag-missing">TAG</span> Observation</div>
+    <div class="vs-item"><span class="tag tag-missing">TAG</span> Observation</div>
+    <div class="vs-item"><span class="tag tag-missing">TAG</span> Observation</div>
+    <div class="vs-item"><span class="tag tag-missing">TAG</span> Observation</div>
+    <div class="vs-item"><span class="tag tag-missing">TAG</span> Observation</div>
+  </div>
+  <div class="vs-col opportunity">
+    <h4>Where It Could Go</h4>
+    <div class="vs-item"><span class="tag tag-have">TAG</span> Opportunity</div>
+    <div class="vs-item"><span class="tag tag-have">TAG</span> Opportunity</div>
+    <div class="vs-item"><span class="tag tag-have">TAG</span> Opportunity</div>
+    <div class="vs-item"><span class="tag tag-have">TAG</span> Opportunity</div>
+    <div class="vs-item"><span class="tag tag-have">TAG</span> Opportunity</div>
+  </div>
+</div>
+
+<!-- CONTENT PILLAR MAP -->
+<div class="section-header"><span class="emoji">🗺️</span><h2>Content Pillar Map</h2></div>
+<div class="pillar-map">
+  <div class="pillar-row"><span class="pillar-name">Pillar Name</span><span class="pillar-status status-strong">Strong</span></div>
+  <div class="pillar-row"><span class="pillar-name">Pillar Name</span><span class="pillar-status status-strong">Strong</span></div>
+  <div class="pillar-row"><span class="pillar-name">Pillar Name</span><span class="pillar-status status-weak">Weak</span></div>
+  <div class="pillar-row"><span class="pillar-name">Pillar Name</span><span class="pillar-status status-missing">Missing</span></div>
+  <div class="pillar-row"><span class="pillar-name">Pillar Name</span><span class="pillar-status status-missing">Missing</span></div>
+</div>
+
+<!-- WHERE I FIT -->
+<div class="fit-section">
+  <div class="fit-header">
+    <h2>Where I Fit</h2>
+    <p>Media management for BRAND — strategy, content, and community in one seat</p>
+  </div>
+  <div class="fit-columns">
+    <div class="fit-pillar">
+      <div class="pillar-icon">🧠</div>
+      <h4>Content Strategy & Creative Direction</h4>
+      <ul>
+        <li>Build the missing content pillars</li>
+        <li>Develop visual identity system</li>
+        <li>Plan weekly content calendar</li>
+        <li>Write story-driven captions</li>
+      </ul>
+    </div>
+    <div class="fit-pillar">
+      <div class="pillar-icon">🎬</div>
+      <h4>Content Creation</h4>
+      <ul>
+        <li>Original Reels and carousels</li>
+        <li>Story content and daily presence</li>
+        <li>UGC curation with balance</li>
+      </ul>
+    </div>
+    <div class="fit-pillar">
+      <div class="pillar-icon">💬</div>
+      <h4>Community Management</h4>
+      <ul>
+        <li>Daily engagement and replies</li>
+        <li>Conversation-forward content</li>
+        <li>Nurture discovery-to-follow pipeline</li>
+      </ul>
+    </div>
+    <div class="fit-pillar">
+      <div class="pillar-icon">📊</div>
+      <h4>Performance & Reporting</h4>
+      <ul>
+        <li>Track engagement and growth</li>
+        <li>Monthly performance reports</li>
+        <li>Competitive monitoring</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- THE OPEN LANE -->
+<div class="opportunity-callout">
+  <h3>The Open Lane</h3>
+  <p>[Closing synthesis. Re-state the brand's real-world wins (retail presence, product quality, press), then name the gap between that and their feed. End with: what happens when the feed catches up to the brand.]</p>
+</div>
+
+</div>
+</body>
+</html>

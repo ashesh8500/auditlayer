@@ -59,16 +59,31 @@ def render_pdf(html: str, *, mode: str = "browser", chromium_path: str | None = 
 
 
 def _chromium_pdf(chromium: str, html: str) -> bytes:
-    with tempfile.TemporaryDirectory() as tmp:
+    # Snap Chromium has a private /tmp mount. If Python creates the source and
+    # destination in the host /tmp, Chromium can report success while writing
+    # into its snap-private path, leaving no PDF visible to the worker. Keep the
+    # exchange directory under the worker's writable working directory instead.
+    temp_parent = Path(os.getenv("AUDITLAYER_PDF_TMPDIR", os.getcwd()))
+    temp_parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="auditlayer-pdf-", dir=temp_parent) as tmp:
         html_path = Path(tmp) / "report.html"
         pdf_path = Path(tmp) / "report.pdf"
+        profile_path = Path(tmp) / "profile"
+        xdg_config = Path(tmp) / "xdg-config"
+        xdg_cache = Path(tmp) / "xdg-cache"
+        xdg_data = Path(tmp) / "xdg-data"
+        for directory in (profile_path, xdg_config, xdg_cache, xdg_data):
+            directory.mkdir(parents=True, exist_ok=True)
         html_path.write_text(html, encoding="utf-8")
         cmd = [
             chromium,
             "--headless=new",
             "--no-sandbox",
             "--disable-gpu",
+            "--disable-crash-reporter",
+            "--disable-breakpad",
             "--no-pdf-header-footer",
+            f"--user-data-dir={profile_path}",
             f"--print-to-pdf={pdf_path}",
             html_path.as_uri(),
         ]
@@ -78,7 +93,12 @@ def _chromium_pdf(chromium: str, html: str) -> bytes:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             timeout=120,
-            env={**os.environ},
+            env={
+                **os.environ,
+                "XDG_CONFIG_HOME": str(xdg_config),
+                "XDG_CACHE_HOME": str(xdg_cache),
+                "XDG_DATA_HOME": str(xdg_data),
+            },
         )
         if not pdf_path.exists():
             raise RuntimeError("Chromium did not produce a PDF")

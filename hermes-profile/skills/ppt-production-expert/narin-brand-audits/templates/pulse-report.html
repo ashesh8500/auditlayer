@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brand Pulse — @BRANDHANDLE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafaf9; --surface: #ffffff; --text: #1c1917; --muted: #78716c;
+    --line: #e7e5e4; --accent: #0d9488; --accent-muted: #f0fdfa;
+    --green: #059669; --amber: #d97706; --red: #dc2626;
+    --red-muted: #fef2f2; --green-muted: #ecfdf5; --blue: #2563eb; --blue-muted: #eff6ff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .container { max-width: 680px; margin: 0 auto; padding: 48px 24px 80px; }
+  .report-header { margin-bottom: 36px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+  .report-header .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--accent); margin-bottom: 6px; }
+  .report-header h1 { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 6px; }
+  .report-header .subtitle { font-size: 0.88rem; color: var(--muted); }
+  .report-header .meta { display: flex; gap: 20px; margin-top: 12px; font-size: 0.75rem; color: var(--muted); flex-wrap: wrap; }
+  .score-diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px 18px; margin-bottom: 36px; }
+  .score-diagram .sd-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .sd-header .sd-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .sd-header .sd-overall { font-family: 'JetBrains Mono', monospace; font-size: 1.7rem; font-weight: 600; }
+  .sd-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .sd-row .sd-name { width: 150px; font-size: 0.78rem; font-weight: 500; text-align: right; flex-shrink: 0; }
+  .sd-row .sd-track { flex: 1; height: 7px; background: #f0efed; border-radius: 4px; overflow: hidden; }
+  .sd-row .sd-fill { height: 100%; border-radius: 4px; }
+  .sd-fill.high { background: var(--green); } .sd-fill.mid { background: var(--amber); } .sd-fill.low { background: var(--red); }
+  .sd-row .sd-num { width: 26px; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--muted); text-align: right; }
+  section { margin-bottom: 36px; }
+  section h2 { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 16px; }
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+  .card.strength { border-left: 3px solid var(--green); }
+  .card.gap { border-left: 3px solid var(--red); }
+  .card .card-tag { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .card.strength .card-tag { color: var(--green); } .card.gap .card-tag { color: var(--red); }
+  .card h4 { font-size: 0.92rem; font-weight: 600; margin-bottom: 6px; }
+  .card p { font-size: 0.82rem; color: #57534e; margin: 0; }
+  .move-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px 18px 52px; margin-bottom: 10px; position: relative; }
+  .move-card .move-num { position: absolute; left: 14px; top: 16px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 600; color: var(--accent); background: var(--accent-muted); width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .move-card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+  .move-card p { font-size: 0.82rem; color: #57534e; margin: 0; }
+  .mini-cal { display: grid; grid-template-columns: 60px 70px 1fr; gap: 0; margin-top: 4px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .mini-cal .ch { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px 12px; background: #f5f5f4; border-bottom: 1px solid var(--line); }
+  .mini-cal .cr { padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 0.8rem; }
+  .callout { background: var(--accent-muted); border-left: 3px solid var(--accent); padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 20px 0; }
+  .callout p { font-size: 0.84rem; color: #0f766e; margin: 0; font-weight: 500; }
+  .report-footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 0.73rem; color: var(--muted); }
+  @media (max-width: 600px) {
+    .container { padding: 28px 14px 60px; }
+    .report-header h1 { font-size: 1.5rem; }
+    .card-grid { grid-template-columns: 1fr; }
+    .score-diagram { padding: 16px 14px 14px; }
+    .sd-row .sd-name { width: 100px; font-size: 0.7rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="report-header">
+    <div class="label">Brand Pulse</div>
+    <h1>@BRANDHANDLE</h1>
+    <div class="subtitle">BRAND_DESCRIPTION</div>
+    <div class="meta"><span>MONTH YEAR</span><span>Public Instagram + web data</span></div>
+  </header>
+  <!-- SCORE DIAGRAM: 6 dimensions, width% set per brand -->
+  <div class="score-diagram">
+    <div class="sd-header"><span class="sd-label">Pulse Score</span><span class="sd-overall">XX<span>&hairsp;/ 100</span></span></div>
+    <div class="sd-row"><span class="sd-name">Brand Story</span><div class="sd-track"><div class="sd-fill high" style="width:80%"></div></div><span class="sd-num">80</span></div>
+    <div class="sd-row"><span class="sd-name">Product Quality</span><div class="sd-track"><div class="sd-fill high" style="width:85%"></div></div><span class="sd-num">85</span></div>
+    <div class="sd-row"><span class="sd-name">Visual Identity</span><div class="sd-track"><div class="sd-fill high" style="width:70%"></div></div><span class="sd-num">70</span></div>
+    <div class="sd-row"><span class="sd-name">Content Cadence</span><div class="sd-track"><div class="sd-fill high" style="width:65%"></div></div><span class="sd-num">65</span></div>
+    <div class="sd-row"><span class="sd-name">Community</span><div class="sd-track"><div class="sd-fill mid" style="width:40%"></div></div><span class="sd-num">40</span></div>
+    <div class="sd-row"><span class="sd-name">Retail-to-Social</span><div class="sd-track"><div class="sd-fill low" style="width:20%"></div></div><span class="sd-num">20</span></div>
+  </div>
+  <section>
+    <h2>🟢 What's Working</h2>
+    <div class="card-grid">
+      <div class="card strength"><div class="card-tag">Strength 1</div><h4>HEADLINE</h4><p>BODY</p></div>
+      <div class="card strength"><div class="card-tag">Strength 2</div><h4>HEADLINE</h4><p>BODY</p></div>
+    </div>
+  </section>
+  <section>
+    <h2>🔴 What's Missing</h2>
+    <div class="card-grid">
+      <div class="card gap"><div class="card-tag">Gap 1</div><h4>HEADLINE</h4><p>BODY</p></div>
+      <div class="card gap"><div class="card-tag">Gap 2</div><h4>HEADLINE</h4><p>BODY</p></div>
+    </div>
+    <div class="callout"><p>🔍 <strong>Diagnosis:</strong> DIAGNOSIS_TEXT</p></div>
+  </section>
+  <section>
+    <h2>⚡ Three Moves</h2>
+    <div class="move-card"><div class="move-num">1</div><h4>HEADLINE</h4><p>BODY</p></div>
+    <div class="move-card"><div class="move-num">2</div><h4>HEADLINE</h4><p>BODY</p></div>
+    <div class="move-card"><div class="move-num">3</div><h4>HEADLINE</h4><p>BODY</p></div>
+  </section>
+  <section>
+    <h2>📅 Weekly Rhythm</h2>
+    <div class="mini-cal">
+      <div class="ch">Day</div><div class="ch">Format</div><div class="ch">Content</div>
+      <div class="cr"><strong>Mon</strong></div><div class="cr">Reel</div><div class="cr">MONDAY_CONTENT</div>
+      <div class="cr"><strong>Tue</strong></div><div class="cr">Carousel</div><div class="cr">TUESDAY_CONTENT</div>
+      <div class="cr"><strong>Wed</strong></div><div class="cr">Reel</div><div class="cr">WEDNESDAY_CONTENT</div>
+      <div class="cr"><strong>Thu</strong></div><div class="cr">Reel</div><div class="cr">THURSDAY_CONTENT</div>
+      <div class="cr"><strong>Fri</strong></div><div class="cr">Reel</div><div class="cr">FRIDAY_CONTENT</div>
+    </div>
+    <div class="callout" style="margin-top: 16px;"><p>🎯 <strong>Target:</strong> TARGET_TEXT</p></div>
+  </section>
+  <footer class="report-footer"><p><strong>Brand Pulse · @BRANDHANDLE</strong> · MONTH YEAR · Public data · For strategic use only</p></footer>
+</div>
+</body>
+</html>

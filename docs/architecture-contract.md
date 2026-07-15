@@ -45,6 +45,12 @@ One row per `auth.users` user (1:1). Auto-created on first sign-in via the
 | `stripe_subscription_id` | text | |
 | `current_period_end` | timestamptz | |
 | `onboarding_status` | text | not null, default `'lead'` |
+| `account_type` | text | not null, default `'standard'`, check in (`standard`,`trial`,`comp`) |
+| `gifted_audits` | int | not null, default `0`, non-negative |
+| `trial_link_id` | uuid | references `trial_links(id)` |
+| `trial_plan` | text | nullable trial plan entitlement |
+| `trial_report_types` | text[] | not null, default `{}` |
+| `trial_expires_at` | timestamptz | trial entitlement expiry |
 | `created_at` | timestamptz | default `now()` |
 
 ### `audits`
@@ -71,6 +77,13 @@ One row per requested audit, owned by a profile.
 | `tokens_out` | int | not null, default `0` |
 | `created_at` | timestamptz | default `now()` |
 | `updated_at` | timestamptz | default `now()` (auto-maintained by trigger) |
+| `prompt_version` | text | | Added migration 0017. Stored on every successful generation. |
+| `report_type` | text | not null, default `'standard'` | Added migration 0010. |
+| `retry_count` | int | not null, default `0` | Added migration 0008. |
+| `last_failed_at` | timestamptz | | Added migration 0008. |
+| `research_cache` | text | not null, default `''` | Added migration 0009. |
+| `claimed_at` | timestamptz | | Set atomically by RPC claim function. |
+| `claimed_by` | text | | Worker identity that claimed the audit. |
 
 ### `audit_events`
 Append-only event trail that powers the live generation stream (via Realtime).
@@ -106,12 +119,70 @@ Single-row (`id = 1`) admin configuration for the Hermes worker.
 | column | type | default / constraints |
 |---|---|---|
 | `id` | int | **PK**, default `1`, check `id = 1` |
-| `hermes_model` | text | not null, default `'deepseek-v4-pro'` |
+| `hermes_model` | text | not null, production value `'deepseek-v4-flash'` |
 | `hermes_api_base` | text | not null, default `'http://127.0.0.1:8642/v1'` |
 | `enabled_toolsets` | jsonb | not null, default `'["web","browser","x_search"]'::jsonb` |
-| `token_cap` | int | not null, default `32000` |
+| `token_cap` | int | not null, default `120000` (combined input + output safety ceiling) |
 | `cost_cap_usd` | numeric | not null, default `3` |
 | `updated_at` | timestamptz | default `now()` (auto-maintained by trigger) |
+
+### `wellness_benchmarks`
+Normative engagement benchmarks per niche × follower bracket. Powers MOAT scoring.
+
+| column | type | default / constraints |
+|---|---|---|
+| `id` | uuid | **PK**, default `gen_random_uuid()` |
+| `niche` | text | not null (longevity, biohacking, nootropics, etc.) |
+| `followers_bracket` | text | not null (1k-10k, 10k-50k, ...) |
+| `avg_engagement` | numeric | not null, default `0` |
+| `top_formats` | jsonb | not null, default `'[]'::jsonb` |
+| `post_freq` | text | not null, default `''` |
+| `cta` | text | not null, default `''` |
+| `created_at` | timestamptz | default `now()` |
+
+Unique on (`niche`, `followers_bracket`).
+
+### `peer_graph`
+Individual creator rows populating the peer comparison section.
+
+| column | type | default / constraints |
+|---|---|---|
+| `id` | uuid | **PK**, default `gen_random_uuid()` |
+| `handle` | text | not null |
+| `niche` | text | not null |
+| `followers` | int | not null, default `0` |
+| `platform` | text | not null, default `'instagram'` |
+| `avg_likes` | int | not null, default `0` |
+| `avg_comments` | int | not null, default `0` |
+| `top_format` | text | not null, default `''` |
+| `last_scraped` | timestamptz | |
+| `benchmarks_id` | uuid | not null, references `wellness_benchmarks(id)` on delete cascade |
+| `created_at` | timestamptz | default `now()` |
+
+Unique on (`handle`, `benchmarks_id`).
+
+### `trial_links` and `admin_actions`
+
+`trial_links` is a founder-created offer, not a bearer-auth credential. Each row
+stores a cryptographically random token, `audits_granted`, expiry, `max_uses`,
+`offer_plan`, allowed `report_types`, and `access_days`. Redemption is one-time per
+profile and copies the offer into the profile's expiring trial entitlement.
+
+`admin_actions` is the durable founder audit trail. Commercial state changes and
+trial redemptions write a row in the same transaction as the state change.
+
+### Commercial RPCs
+
+- `redeem_trial_link(token, user_id)` atomically locks and redeems a valid offer.
+- `submit_entitled_audit(...)` validates report access/limits, consumes a gifted
+  credit when applicable, and inserts the audit atomically.
+- `admin_set_access(...)` provides atomic founder plan/account/credit assignment,
+  including manual enterprise access, with an `admin_actions` record.
+
+All three fix `search_path` and are executable only by `service_role`.
+
+### RPC: `get_benchmarks(niche text, bracket text) → jsonb`
+Returns the matching `wellness_benchmarks` row nested with its `peer_graph` entries as a JSON array, ordered by `avg_likes` desc.
 
 ---
 
@@ -206,6 +277,12 @@ Implementation: `supabase/migrations/0002_rls.sql`.
   have full access.
 - **app_settings**: readable/updatable by **admins only**. The worker reads via
   service-role.
+- **wellness_benchmarks**: admin-only browser access via `is_admin()`; the worker
+  and admin API use service-role. Client accounts cannot download the MOAT dataset.
+- **peer_graph**: admin-only browser access via `is_admin()`; the worker and admin
+  API use service-role. Client accounts cannot enumerate cached peers.
+- **trial_links/admin_actions**: admin-only browser reads; commercial writes use
+  service-role-only transactional RPCs.
 
 Helpers (both `SECURITY DEFINER` to avoid RLS recursion):
 - `public.is_admin()` → true if the caller's profile has `role = 'admin'`.
@@ -225,8 +302,8 @@ Helpers (both `SECURITY DEFINER` to avoid RLS recursion):
 
 ## Plan limits
 
-Maximum completed audits per plan (from legacy `src/auditlayer/domain.py`,
-`PLAN_LIMITS`). Enforced on intake by the app/worker:
+Maximum active/completed audits per plan. The web presents the decision, while
+`submit_entitled_audit` is the authoritative transactional enforcement point:
 
 | plan | limit |
 |---|---|
@@ -236,6 +313,10 @@ Maximum completed audits per plan (from legacy `src/auditlayer/domain.py`,
 | `enterprise` | 10000 |
 
 Pricing (from the rebuild plan): Starter $30, Pro $50, Enterprise (contact).
+Gifted credits are consumed before the recurring plan cap. Active trial report
+types are unioned with base-plan types; expired trials cannot consume trial
+credits. Report access is `pulse` for free, adds `standard` for starter, adds
+`extended|blueprint` for pro, and adds `enterprise` for enterprise.
 
 ---
 
