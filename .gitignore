@@ -33,3 +33,7 @@ marketing-assets/
 docs/screenshots/
 docs/plans/*.png
 docs/plans/*.html
+docs/hermes-vm-vps2.md
+docs/marketing-foundations.md
+docs/qa-s07-gate-stability.md
+infra/hermes-vm/syncthing-*.sh
