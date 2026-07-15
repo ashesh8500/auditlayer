@@ -49,8 +49,10 @@ def settings_inprocess(fake_agent_root, monkeypatch) -> WorkerSettings:
 
 
 def test_diagnose_embedded_with_installed_agent() -> None:
-    """Should return ok=True when run_agent is importable (embedded deps installed)."""
+    """Should pass when Hermes is installed and skip on clean CI runners."""
     result = diagnose_embedded()
+    if not result.agent_root_exists:
+        pytest.skip(f"optional Hermes Agent checkout is not installed: {result.error}")
     if not result.ok and "No module named" in result.error:
         pytest.skip(f"optional embedded Hermes dependencies are not installed: {result.error}")
     assert result.ok, f"Expected ok=True with hermes-agent installed; got error={result.error}"
