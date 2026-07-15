@@ -40,6 +40,7 @@ from .core import (
 )
 from .generation import ReportGenerator
 from .account_homes import ensure_account_home
+from .hermes_home_scope import HERMES_HOME_LOCK
 from .supabase_client import _utcnow
 
 
@@ -446,16 +447,17 @@ class GenerationPipeline:
     @staticmethod
     @contextmanager
     def _scoped_home(home: str | None):
-        previous = os.environ.get("HERMES_HOME")
-        if home:
-            os.environ["HERMES_HOME"] = home
-        try:
-            yield
-        finally:
-            if previous is None:
-                os.environ.pop("HERMES_HOME", None)
-            else:
-                os.environ["HERMES_HOME"] = previous
+        with HERMES_HOME_LOCK:
+            previous = os.environ.get("HERMES_HOME")
+            if home:
+                os.environ["HERMES_HOME"] = home
+            try:
+                yield
+            finally:
+                if previous is None:
+                    os.environ.pop("HERMES_HOME", None)
+                else:
+                    os.environ["HERMES_HOME"] = previous
 
     def _render_pdf(self, html: str):
         from .pdf import render_pdf

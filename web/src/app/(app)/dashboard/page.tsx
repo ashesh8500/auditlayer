@@ -61,6 +61,7 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
   const { billing, instagram_connected, instagram_error, status: statusFilter } = params;
+  const profile = await requireProfile();
   const supabase = await createClient();
 
   const query = supabase
@@ -77,8 +78,7 @@ export default async function DashboardPage({
     .order("created_at", { ascending: false })
     .limit(1);
 
-  const [profile, { data: audits }, { data: igConnections }] = await Promise.all([
-    requireProfile(),
+  const [{ data: audits }, { data: igConnections }] = await Promise.all([
     query,
     instagramQuery,
   ]);
