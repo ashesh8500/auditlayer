@@ -37,3 +37,8 @@ docs/hermes-vm-vps2.md
 docs/marketing-foundations.md
 docs/qa-s07-gate-stability.md
 infra/hermes-vm/syncthing-*.sh
+docs/plans/2026-07-07-kanban-plan.md
+docs/plans/2026-07-07-production-rehaul.md
+docs/plans/2026-07-15-cloud-native-backend.md
+docs/plans/alm-design-system-v2.md
+docs/plans/alm-v2-moat-design-spec.md
