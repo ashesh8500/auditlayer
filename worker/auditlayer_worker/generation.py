@@ -127,6 +127,7 @@ class MockReportGenerator:
         self, audit: AuditRecord, progress: Progress, *,
         ig_metrics: Any = None, research_cache: str = "",
         benchmarks: list[dict] | None = None,
+        ig_future: Any = None,
     ) -> GenerationResult:
         """Deterministic generator used when Hermes is unreachable or for CI."""
         emitter = _PhaseEmitter(audit, progress, self.phase_interval)
@@ -179,6 +180,7 @@ class HermesReportGenerator:
         self, audit: AuditRecord, progress: Progress, *,
         ig_metrics: Any = None, research_cache: str = "",
         benchmarks: list[dict] | None = None,
+        ig_future: Any = None,
     ) -> GenerationResult:
         """Generate a report. If ``research_cache`` is provided from a previous
         failed attempt, Stage 1 (tool-calling research) is skipped entirely and
@@ -207,6 +209,12 @@ class HermesReportGenerator:
             if research_cache
             else str(collect_research(audit))  # type: ignore[misc]
         )
+
+        # Resolve Instagram metrics if passed as a future (runs in parallel
+        # with web research above).
+        if ig_future is not None:
+            ig_metrics = ig_future.result()
+
         research_material = evidence
         emitter.advance_to("scoring")
         prompt = build_section_prompt(

@@ -60,6 +60,7 @@ def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
             if once:
                 return
             if not worked:
+                _prewarm_account_homes(gateway, settings)
                 time.sleep(settings.poll_interval_seconds)
     finally:
         runtime.shutdown()
@@ -138,3 +139,34 @@ def _download_report(gateway: SupabaseGateway, settings: WorkerSettings, report_
         raise RuntimeError("audit has no report_path to refine")
     data = gateway.client.storage.from_(settings.reports_bucket).download(path)
     return data.decode("utf-8") if isinstance(data, (bytes, bytearray)) else str(data)
+
+
+def _prewarm_account_homes(gateway: SupabaseGateway, settings: WorkerSettings) -> None:
+    """Pre-create account homes for the next few queued audits.
+
+    Called during idle cycles so the first audit after a quiet period
+    doesn't pay filesystem setup cost on the critical path.
+    """
+    try:
+        rows = (
+            gateway.client.table("audits")
+            .select("user_id")
+            .eq("status", "queued")
+            .not_.is_("user_id", "null")
+            .order("created_at", ascending=True)
+            .limit(3)
+            .execute()
+        )
+    except Exception:
+        return  # best-effort, don't crash the worker on DB errors
+
+    seen: set[str] = set()
+    for row in rows.data or []:
+        uid = str(row.get("user_id", ""))
+        if uid and uid not in seen:
+            seen.add(uid)
+            try:
+                from .account_homes import ensure_account_home
+                ensure_account_home(uid, settings.alm_accounts_root)
+            except Exception:
+                pass  # best-effort
