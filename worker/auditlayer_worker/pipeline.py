@@ -12,7 +12,7 @@ only the ``EventSink`` and storage differ.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
 import json
@@ -566,7 +566,11 @@ def _link_account_and_progression(gateway, audit, ig_metrics, *, research_cache:
                     "handle": audit.handle,
                     "platform": audit.platform,
                     "last_researched_at": _utcnow(),
-                    "research_snapshot": json.dumps(research_cache) if research_cache else None,
+                    # research_cache is already a plain-text evidence blob — store
+                    # it raw (bounded). Do NOT json.dumps: it double-quotes the
+                    # payload and the reader returns it verbatim, feeding the model
+                    # a quoted string on the next cache hit.
+                    "research_snapshot": (research_cache[:10000] if research_cache else None),
                     "cache_valid_until": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
                 },
                 on_conflict="user_id,handle,platform",
@@ -601,7 +605,10 @@ def _link_account_and_progression(gateway, audit, ig_metrics, *, research_cache:
 
 
 def _check_account_cache(gateway, audit) -> dict | None:
-    """Return the cached research + IG metrics for this audit's account if still valid."""
+    """Return cached WEB RESEARCH only for this audit's account if still valid.
+
+    Instagram metrics are never cached — they are always fetched fresh.
+    """
     try:
         now = datetime.now(timezone.utc)
         # Only WEB RESEARCH is cached. Instagram metrics are never read from
@@ -626,19 +633,16 @@ def _check_account_cache(gateway, audit) -> dict | None:
         snapshot = row.get("research_snapshot")
         if not snapshot:
             return None
+        # Defensive: legacy rows may have been json.dumps'd (double-quoted). If
+        # so, unwrap once. New rows are stored raw. IG metrics never cached.
+        if isinstance(snapshot, str) and snapshot.startswith('"'):
+            try:
+                snapshot = json.loads(snapshot)
+            except Exception:
+                pass
         return {
             "research_snapshot": snapshot,
             "last_researched_at": row.get("last_researched_at") or "",
         }
     except Exception:
         return None  # best-effort — fall through to fresh research
-
-
-def _serialize_ig_metrics(ig_metrics) -> str | None:
-    """Serialize InstagramMetrics to a JSON-safe string. Returns None on failure."""
-    if ig_metrics is None:
-        return None
-    try:
-        return json.dumps(asdict(ig_metrics), default=str)
-    except Exception:
-        return None
