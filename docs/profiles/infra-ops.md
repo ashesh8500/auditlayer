@@ -7,7 +7,8 @@ Hermes agent: /opt/auditlayer/.hermes/hermes-agent  REAL DIR copy (NOT symlink t
 Env: worker/.env mode 0600 — provider deepseek, model deepseek-v4-flash, DEEPSEEK_API_KEY present, HERMES_AGENT_ROOT=/opt/auditlayer/.hermes/hermes-agent, HERMES_MODE=inprocess. Cost cap $3. NEVER Codex/OpenAI.
 
 ## Deploy sequence
-worker: sudo rsync -a --delete --exclude .venv --exclude __pycache__ --exclude '*.pyc' --exclude var/ ~/projects/auditlayer/worker/ /opt/auditlayer/worker/ && sudo chown -R auditlayer:auditlayer /opt/auditlayer/worker && sudo systemctl restart auditlayer-worker@{1,2}
+worker: sudo rsync -a --delete --exclude .venv --exclude __pycache__ --exclude '*.pyc' --exclude var/ --exclude .env ~/projects/auditlayer/worker/ /opt/auditlayer/worker/ && sudo chown -R auditlayer:auditlayer /opt/auditlayer/worker && sudo systemctl restart auditlayer-worker@{1,2}
+CRITICAL: ALWAYS --exclude .env. Local worker/.env has HERMES_AGENT_ROOT=/home/asheshkaji/... which re-breaks prod (ProtectHome crash-loop). Prod /opt/auditlayer/worker/.env is canonical (HERMES_AGENT_ROOT=/opt/auditlayer/.hermes/hermes-agent). Never overwrite it.
 verify: systemctl is-active @1 @2 == active, NRestarts==0, journalctl grep 'connected'
 web: cd web && HOME=/home/asheshkaji npx vercel --prod --yes  → aliases auditlayermedia.com
 migration: npx supabase db push --linked (PAT at ~/.supabase/access-token mode 0600)

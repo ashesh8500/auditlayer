@@ -12,9 +12,10 @@ only the ``EventSink`` and storage differ.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
+import json
 import os
 from pathlib import Path
 import threading
@@ -262,66 +263,41 @@ class GenerationPipeline:
                     note=note,
                 )
 
-        # Fetch live Instagram data if the client has connected their account.
-        # Always emit a source event so the frontend can state which path is used.
-        ig_metrics = None
-        if audit.platform == "instagram" and gateway is not None:
-            try:
-                token_info = (
-                    gateway.get_instagram_token(audit.handle, audit.user_id)
-                    if audit.user_id
-                    else None
-                )
-            except Exception as exc:
-                print(
-                    f"[worker] Instagram connection lookup failed for @{audit.handle}: "
-                    f"{type(exc).__name__}"
-                )
-                token_info = None
-            if token_info is None:
+        # Check if this account has a fresh research cache we can reuse.
+        # NOTE: only WEB RESEARCH is cached (7-day TTL). Instagram metrics are
+        # ALWAYS fetched fresh below — never served from cache.
+        research_cache = audit.research_cache
+        if gateway is not None and not research_cache and not audit.force_refresh:
+            account_cache = _check_account_cache(gateway, audit)
+            if account_cache is not None:
+                research_cache = account_cache["research_snapshot"]
+                cached_at = account_cache.get("last_researched_at", "unknown")
                 sink.emit(
                     "researching",
-                    "No usable connected Instagram account was found. Using verified public Instagram signals.",
-                    event_type="instagram_public_fallback",
+                    f"Research cached — last refreshed {cached_at}",
+                    event_type="research_cached",
                 )
-            else:
-                token, ig_user_id = token_info
-                from .instagram_api import InstagramAPIClient
-                client = InstagramAPIClient(token)
-                try:
-                    ig_metrics = client.get_full_metrics(ig_user_id)
-                    sink.emit(
-                        "researching",
-                        (
-                            "Connected Instagram Graph API loaded: "
-                            f"{ig_metrics.profile.followers_count:,} followers, "
-                            f"{len(ig_metrics.recent_media)} recent posts, "
-                            f"{ig_metrics.avg_engagement_rate}% average engagement."
-                        ),
-                        event_type="instagram_api",
-                    )
-                except Exception as exc:
-                    print(
-                        f"[worker] Instagram API unavailable for @{audit.handle}: "
-                        f"{type(exc).__name__}"
-                    )
-                    sink.emit(
-                        "researching",
-                        "Connected Instagram data was unavailable. Using verified public Instagram signals.",
-                        event_type="instagram_api_fallback",
-                    )
-                finally:
-                    client.close()
+
+        # Fetch live Instagram data if the client has connected their account.
+        # Runs in parallel with web research — they're independent I/O.
+        # ALWAYS fresh, even on a research cache hit.
+        ig_metrics = None
+        ig_future = None
+        if audit.platform == "instagram" and gateway is not None:
+            ig_future = _start_instagram_fetch(gateway, audit, sink)
 
         # ── heartbeat wraps the long-running generate call ──
         result = None
         with self._scoped_home(account_home), _Heartbeat(sink) as hb:
             try:
                 result = self.generator.generate(
-                    audit, hb.progress, ig_metrics=ig_metrics,
-                    research_cache=audit.research_cache,
+                    audit, hb.progress,
+                    research_cache=research_cache,
                     benchmarks=_fetch_benchmark_cache(gateway),
+                    ig_future=ig_future,
                 )
+                if ig_future is not None:
+                    ig_metrics = ig_future.result()
                 # ── cost cap enforcement ──
                 if token_cap > 0 or cost_cap_usd > 0:
                     cost = estimate_cost(
@@ -404,17 +380,14 @@ class GenerationPipeline:
         pdf_mode = None
         if gateway is not None:
             report_path, report_url = gateway.upload_report(audit.id, final_html)
-            pdf_result = self._render_pdf(final_html)
-            pdf_mode = pdf_result.mode
-            _, pdf_url = gateway.upload_pdf(audit.id, pdf_result.data)
-            sink.emit("uploaded", f"HTML + {pdf_result.mode} PDF stored")
+            # Mark audit ready immediately — PDF is async.
             try:
                 gateway.update_audit(
                     audit.id,
                     status=AuditStatus.READY.value,
                     report_path=report_path,
                     report_url=report_url,
-                    pdf_url=pdf_url,
+                    pdf_status='pending',
                     tokens_in=result.tokens_in,
                     tokens_out=result.tokens_out,
                     cost_usd=cost.total_usd,
@@ -422,15 +395,14 @@ class GenerationPipeline:
                     prompt_version=PROMPT_VERSION,
                     milestone_label=audit.milestone_label,
                     limitations=audit.limitations,
-                    research_cache="",  # clear cache on success
+                    research_cache="",
                 )
             except Exception as exc:
                 sink.emit(
                     "failed",
                     f"update_audit failed after upload — report is in storage, manual finalize needed: {exc}",
                 )
-                # Don't crash the worker — report is safely in storage.
-                # The audit can be manually finalized via Supabase.
+            sink.emit("uploaded", "HTML report stored — PDF queued for async generation")
         else:
             report_path, pdf_url, pdf_mode = self._write_local(audit.id, final_html)
             sink.emit("uploaded", f"HTML + {pdf_mode} PDF written to {Path(report_path).parent}")
@@ -439,6 +411,11 @@ class GenerationPipeline:
             "succeeded",
             f"Ready - {result.tokens_in}+{result.tokens_out} tok, ~${cost.total_usd:.2f}",
         )
+
+        # Link audit to account and write progression data.
+        if gateway is not None and audit.user_id:
+            _link_account_and_progression(gateway, audit, ig_metrics, research_cache=result.research_cache)
+
         return RunSummary(
             audit_id=audit.id,
             status=AuditStatus.READY.value,
@@ -451,8 +428,6 @@ class GenerationPipeline:
             prompt_version=PROMPT_VERSION,
             report_path=report_path,
             report_url=report_url,
-            pdf_url=pdf_url,
-            pdf_mode=pdf_mode,
         )
 
     def refine(
@@ -508,3 +483,162 @@ class GenerationPipeline:
         pdf_path = out / f"{audit_id}.pdf"
         pdf_path.write_bytes(pdf_result.data)
         return str(html_path), str(pdf_path), pdf_result.mode
+
+
+def _start_instagram_fetch(gateway, audit, sink):
+    """Launch Instagram API fetch in a background thread.
+
+    Runs token lookup and full-metrics call while the generator does
+    independent web research. Returns a Future that resolves to
+    ig_metrics or None.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    pool = ThreadPoolExecutor(max_workers=1)
+
+    def _fetch():
+        try:
+            token_info = (
+                gateway.get_instagram_token(audit.handle, audit.user_id)
+                if audit.user_id
+                else None
+            )
+        except Exception as exc:
+            print(
+                f"[worker] Instagram connection lookup failed for @{audit.handle}: "
+                f"{type(exc).__name__}"
+            )
+            token_info = None
+
+        if token_info is None:
+            sink.emit(
+                "researching",
+                "No usable connected Instagram account was found. Using verified public Instagram signals.",
+                event_type="instagram_public_fallback",
+            )
+            return None
+
+        token, ig_user_id = token_info
+        from .instagram_api import InstagramAPIClient
+
+        client = InstagramAPIClient(token)
+        try:
+            metrics = client.get_full_metrics(ig_user_id)
+            sink.emit(
+                "researching",
+                (
+                    "Connected Instagram Graph API loaded: "
+                    f"{metrics.profile.followers_count:,} followers, "
+                    f"{len(metrics.recent_media)} recent posts, "
+                    f"{metrics.avg_engagement_rate}% average engagement."
+                ),
+                event_type="instagram_api",
+            )
+            return metrics
+        except Exception as exc:
+            print(
+                f"[worker] Instagram API unavailable for @{audit.handle}: "
+                f"{type(exc).__name__}"
+            )
+            sink.emit(
+                "researching",
+                "Connected Instagram data was unavailable. Using verified public Instagram signals.",
+                event_type="instagram_api_fallback",
+            )
+            return None
+        finally:
+            client.close()
+
+    return pool.submit(_fetch)
+
+
+def _link_account_and_progression(gateway, audit, ig_metrics, *, research_cache: str = "") -> None:
+    """Upsert the account row and write progression data after a successful audit.
+
+    Best-effort — failures here must not block the audit from being marked ready.
+    """
+    try:
+        account = (
+            gateway.client.table("accounts")
+            .upsert(
+                {
+                    "user_id": audit.user_id,
+                    "handle": audit.handle,
+                    "platform": audit.platform,
+                    "last_researched_at": _utcnow(),
+                    "research_snapshot": json.dumps(research_cache) if research_cache else None,
+                    "cache_valid_until": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+                },
+                on_conflict="user_id,handle,platform",
+            )
+            .execute()
+        )
+        account_id = (account.data or [{}])[0].get("id")
+        if not account_id:
+            return
+
+        # Link the audit to this account.
+        gateway.client.table("audits").update(
+            {"account_id": account_id}
+        ).eq("id", audit.id).execute()
+
+        # Write progression row if we have metrics.
+        if ig_metrics is not None:
+            profile = getattr(ig_metrics, "profile", None)
+            gateway.client.table("account_progression").upsert(
+                {
+                    "account_id": account_id,
+                    "audit_id": audit.id,
+                    "followers": int(getattr(profile, "followers_count", 0) or 0),
+                    "engagement": float(getattr(ig_metrics, "avg_engagement_rate", 0) or 0),
+                    "avg_likes": float(getattr(ig_metrics, "avg_likes", 0) or 0),
+                    "avg_comments": float(getattr(ig_metrics, "avg_comments", 0) or 0),
+                },
+                on_conflict="audit_id",
+            ).execute()
+    except Exception:
+        pass  # best-effort — don't fail the audit over account bookkeeping
+
+
+def _check_account_cache(gateway, audit) -> dict | None:
+    """Return the cached research + IG metrics for this audit's account if still valid."""
+    try:
+        now = datetime.now(timezone.utc)
+        # Only WEB RESEARCH is cached. Instagram metrics are never read from
+        # cache — they are always fetched fresh per audit.
+        res = (
+            gateway.client.table("accounts")
+            .select("research_snapshot, last_researched_at, cache_valid_until")
+            .eq("user_id", audit.user_id)
+            .eq("handle", audit.handle)
+            .eq("platform", audit.platform)
+            .limit(1)
+            .execute()
+        )
+        row = (res.data or [None])[0]
+        if row is None:
+            return None
+        cache_valid = row.get("cache_valid_until")
+        if not cache_valid:
+            return None
+        if now >= datetime.fromisoformat(cache_valid):
+            return None
+        snapshot = row.get("research_snapshot")
+        if not snapshot:
+            return None
+        return {
+            "research_snapshot": snapshot,
+            "last_researched_at": row.get("last_researched_at") or "",
+        }
+    except Exception:
+        return None  # best-effort — fall through to fresh research
+
+
+def _serialize_ig_metrics(ig_metrics) -> str | None:
+    """Serialize InstagramMetrics to a JSON-safe string. Returns None on failure."""
+    if ig_metrics is None:
+        return None
+    try:
+        return json.dumps(asdict(ig_metrics), default=str)
+    except Exception:
+        return None
