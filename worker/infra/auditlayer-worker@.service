@@ -1,0 +1,40 @@
+# /etc/systemd/system/auditlayer-worker@.service
+# Template unit — run N worker instances with:
+#   sudo systemctl enable --now auditlayer-worker@1
+#   sudo systemctl enable --now auditlayer-worker@2
+#
+# Each instance claims audits independently via Supabase RPC
+# (SELECT ... FOR UPDATE SKIP LOCKED). Concurrent workers never
+# contend for the same row.
+#
+# Install:
+#   sudo cp worker/infra/auditlayer-worker@.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now auditlayer-worker@1 auditlayer-worker@2
+[Unit]
+Description=AuditLayerMedia worker instance %i
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=auditlayer
+WorkingDirectory=/opt/auditlayer/worker
+EnvironmentFile=/opt/auditlayer/worker/.env
+Environment=AUDITLAYER_WORKER_ID=worker-%i
+Environment=AUDITLAYER_OUTPUT_DIR=var/worker-out/%i
+ExecStart=/usr/local/bin/uv run python -m auditlayer_worker run
+Restart=on-failure
+RestartSec=30
+MemoryMax=1G
+TasksMax=128
+LimitNOFILE=4096
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target
