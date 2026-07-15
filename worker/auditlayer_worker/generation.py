@@ -21,8 +21,10 @@ from .core import (
     AuditRecord,
     REFINE_SYSTEM_PROMPT,
     WORKER_SYSTEM_PROMPT,
+    assemble_report_html,
     build_refinement_prompt,
     build_report_prompt,
+    build_section_prompt,
     build_worker_prompt,
     extract_fragment,
     extract_html,
@@ -71,6 +73,20 @@ _PHASE_DETAILS = {
     "scoring": "Scoring across 8 weighted dimensions",
     "composing": "Composing the self-contained HTML report",
 }
+
+_REPORT_MAX_TOKENS = {
+    "pulse": 6000,
+    "standard": 12000,
+    "blueprint": 12000,
+    "extended": 18000,
+    "enterprise": 24000,
+}
+
+SECTION_SYSTEM_PROMPT = (
+    "You are AuditLayer's report analyst. Use only the supplied verified evidence "
+    "and account data. Return the required section elements only, with exact h2 "
+    "headings. Do not call tools and do not return the fixed page shell or CSS."
+)
 
 
 class _PhaseEmitter:
@@ -193,21 +209,83 @@ class HermesReportGenerator:
             ig_metrics=ig_metrics,
             benchmarks=benchmarks,
         )
+        chat_toolsets = self.toolsets
+        system_prompt = WORKER_SYSTEM_PROMPT
+        local_assembly = False
+        research_material = ""
+        collect_research = getattr(self.client, "collect_research", None)
+        if callable(collect_research):
+            evidence = str(collect_research(audit))
+            research_material = evidence
+            emitter.advance_to("scoring")
+            prompt = build_section_prompt(
+                audit,
+                evidence,
+                ig_metrics=ig_metrics,
+                benchmarks=benchmarks,
+            )
+            chat_toolsets = ()
+            system_prompt = SECTION_SYSTEM_PROMPT
+            local_assembly = True
 
         result = self.client.chat(
             messages=[
-                {"role": "system", "content": WORKER_SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
             model=self.model,
-            toolsets=self.toolsets,
-            max_tokens=self.max_tokens,
+            toolsets=chat_toolsets,
+            max_tokens=min(
+                self.max_tokens,
+                _REPORT_MAX_TOKENS.get(audit.report_type or "standard", 12000),
+            ),
             temperature=self.temperature,
             stream=True,
             on_delta=on_delta,
             session_id=session_id,
         )
         emitter.advance_to("composing")
+
+        if local_assembly:
+            try:
+                report_html = assemble_report_html(audit, result.content)
+                tokens_in = result.usage.tokens_in
+                tokens_out = result.usage.tokens_out
+                estimated = result.usage.estimated
+            except ValueError:
+                retry_result = self.client.chat(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "Formatting correction only. Return HTML section elements now. "
+                                "The first character must be < and the response must start with <section>."
+                            ),
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    model=self.model,
+                    toolsets=(),
+                    max_tokens=min(
+                        self.max_tokens,
+                        _REPORT_MAX_TOKENS.get(audit.report_type or "standard", 12000),
+                    ),
+                    temperature=self.temperature,
+                    stream=False,
+                    session_id=session_id,
+                )
+                report_html = assemble_report_html(audit, retry_result.content)
+                tokens_in = result.usage.tokens_in + retry_result.usage.tokens_in
+                tokens_out = result.usage.tokens_out + retry_result.usage.tokens_out
+                estimated = result.usage.estimated or retry_result.usage.estimated
+            return GenerationResult(
+                html=report_html,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                model=result.model,
+                estimated=estimated,
+                research_cache=research_material,
+            )
 
         # Try to extract HTML from the combined response
         try:

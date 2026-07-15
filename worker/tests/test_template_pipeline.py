@@ -5,17 +5,30 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 
 from auditlayer_worker.core import (
     AuditRecord,
+    REPORT_SECTIONS,
     ReportType,
+    assemble_report_html,
     build_report_prompt,
+    build_section_prompt,
     load_master_skeleton,
 )
 from auditlayer_worker.generation import HermesReportGenerator, MockReportGenerator
+from auditlayer_worker.hermes import ChatResult, Usage
+
+
+def _complete_standard_sections(body: str = "Analysis") -> str:
+    return "".join(
+        f"<section><h2>{'Road to 10K' if heading == 'Road to [Milestone]' else heading}</h2>"
+        f"<p>{body}</p></section>"
+        for heading in REPORT_SECTIONS[ReportType.STANDARD.value]
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -177,6 +190,30 @@ def test_build_report_prompt_contains_skeleton_inline(sample_audit):
     assert "```" in prompt  # closing fence
 
 
+def test_section_prompt_and_local_skeleton_assembly(sample_audit):
+    evidence = "Verified public evidence"
+    prompt = build_section_prompt(sample_audit, evidence)
+    assert evidence in prompt
+    assert "Master Skeleton Template" not in prompt
+    assert "Return only the report <section> elements" in prompt
+
+    fragment = _complete_standard_sections()
+    html = assemble_report_html(sample_audit, fragment)
+    assert html.startswith("<!DOCTYPE html>")
+    assert "--accent: #0d9488" in html
+    assert fragment in html
+    assert "@hemalpatelphd" in html
+    assert "@{handle}" not in html
+
+
+def test_local_assembly_rejects_missing_required_sections(sample_audit):
+    with pytest.raises(ValueError, match="required section headings"):
+        assemble_report_html(
+            sample_audit,
+            "<section><h2>Executive Summary</h2><p>Incomplete</p></section>",
+        )
+
+
 # ---------------------------------------------------------------------------
 # generation.py integration
 # ---------------------------------------------------------------------------
@@ -204,6 +241,85 @@ def test_mock_generator_still_works():
     assert result.tokens_out > 0
     assert "<!doctype html>" in result.html.lower() or "<html" in result.html.lower()
     assert "@test_user" in result.html or "test_user" in result.html
+
+
+def test_standard_generator_uses_bounded_single_pass(sample_audit):
+    class RecordingClient:
+        def __init__(self):
+            self.calls: list[dict] = []
+            self.research_calls = 0
+
+        def collect_research(self, audit):
+            self.research_calls += 1
+            return "Bounded verified evidence from three web searches."
+
+        def chat(self, **kwargs):
+            self.calls.append(kwargs)
+            return ChatResult(
+                content=_complete_standard_sections("complete report"),
+                usage=Usage(tokens_in=1200, tokens_out=900),
+                model="deepseek-v4-flash",
+            )
+
+    client = RecordingClient()
+    generator = HermesReportGenerator(
+        client=cast(Any, client),
+        model="deepseek-v4-flash",
+        toolsets=("web", "x_search"),
+        max_tokens=32000,
+        temperature=0.2,
+        phase_interval=0,
+    )
+
+    result = generator.generate(sample_audit, lambda _phase, _detail: None)
+
+    assert client.research_calls == 1
+    assert len(client.calls) == 1
+    assert client.calls[0]["max_tokens"] == 12000
+    assert client.calls[0]["toolsets"] == ()
+    assert "Bounded verified evidence" in client.calls[0]["messages"][1]["content"]
+    assert "2,500 words" in client.calls[0]["messages"][1]["content"]
+    assert "Master Skeleton Template" not in client.calls[0]["messages"][1]["content"]
+    assert result.html.startswith("<!DOCTYPE html>")
+
+
+def test_bounded_generator_retries_one_format_miss(sample_audit):
+    class FormattingClient:
+        def __init__(self):
+            self.calls: list[dict] = []
+
+        def collect_research(self, audit):
+            return "Verified evidence"
+
+        def chat(self, **kwargs):
+            self.calls.append(kwargs)
+            content = (
+                "I prepared the analysis."
+                if len(self.calls) == 1
+                else _complete_standard_sections("recovered")
+            )
+            return ChatResult(
+                content=content,
+                usage=Usage(tokens_in=100, tokens_out=50),
+                model="deepseek-v4-flash",
+            )
+
+    client = FormattingClient()
+    generator = HermesReportGenerator(
+        client=cast(Any, client),
+        model="deepseek-v4-flash",
+        toolsets=("web",),
+        max_tokens=32000,
+        temperature=0.2,
+        phase_interval=0,
+    )
+
+    result = generator.generate(sample_audit, lambda _phase, _detail: None)
+
+    assert len(client.calls) == 2
+    assert result.tokens_in == 200
+    assert result.tokens_out == 100
+    assert "recovered" in result.html
 
 
 # ---------------------------------------------------------------------------

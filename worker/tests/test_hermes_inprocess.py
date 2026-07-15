@@ -6,6 +6,8 @@ import os
 import sys
 import types
 from dataclasses import replace
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -116,6 +118,30 @@ class TestHermesHomeScoping:
 
 
 class TestIterationBudget:
+    def test_bounded_research_uses_shared_web_home_and_restores_account_home(
+        self, settings, monkeypatch
+    ):
+        seen_homes: list[str | None] = []
+
+        def fake_handle_function_call(*_args, **_kwargs):
+            seen_homes.append(os.environ.get("HERMES_HOME"))
+            return '{"success": true, "data": {"web": []}}'
+
+        monkeypatch.setitem(
+            sys.modules,
+            "model_tools",
+            SimpleNamespace(handle_function_call=fake_handle_function_call),
+        )
+        monkeypatch.setenv("HERMES_HOME", "/opt/alm/hermes/accounts/customer")
+        client = InProcessHermesClient(settings)
+
+        client.collect_research(
+            SimpleNamespace(id="audit-1", handle="creator", platform="instagram")
+        )
+
+        assert seen_homes == [str(Path.home() / ".hermes")] * 3
+        assert os.environ["HERMES_HOME"] == "/opt/alm/hermes/accounts/customer"
+
     def test_codex_gpt5_omits_unsupported_temperature(self, settings):
         client = InProcessHermesClient(settings)
 
@@ -169,6 +195,9 @@ class TestIterationBudget:
         assert result.usage.tokens_in == 11
         assert captured["max_iterations"] == 3
         assert captured["provider"] == "deepseek"
+        assert captured["enabled_toolsets"] == []
+        assert captured["skip_context_files"] is True
+        assert captured["skip_memory"] is True
         assert captured["iteration_budget"].max_total == 3
         assert captured["request_overrides"] == {"temperature": 0.0}
         assert captured["system_message"] == "system"
