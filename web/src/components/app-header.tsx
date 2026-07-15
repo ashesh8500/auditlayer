@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FilePlus2, LayoutDashboard, Shield } from "lucide-react";
+import { Building2, FilePlus2, LayoutDashboard, Shield } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { getProfile } from "@/lib/auth";
@@ -26,6 +26,12 @@ export async function AppHeader() {
         </Link>
 
         <nav aria-label="Account navigation" className="flex min-w-0 items-center gap-0.5 text-sm sm:gap-1">
+          <Link href="/accounts">
+            <Button variant="ghost" size="sm">
+              <Building2 className="size-4 sm:hidden" />
+              <span className="hidden sm:inline">Accounts</span>
+            </Button>
+          </Link>
           <Link href="/dashboard">
             <Button variant="ghost" size="sm">
               <LayoutDashboard className="size-4 sm:hidden" />
