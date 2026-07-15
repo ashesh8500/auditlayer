@@ -22,7 +22,12 @@ def _settings(**over) -> WorkerSettings:
     from dataclasses import replace
 
     base = WorkerSettings.from_env()
-    return replace(base, **over)
+    values = {
+        "supabase_url": "https://test.supabase.co",
+        "supabase_service_role_key": "test-service-role-key",
+    }
+    values.update(over)
+    return replace(base, **values)
 
 
 def _make_gateway(settings: WorkerSettings) -> tuple[SupabaseGateway, MagicMock]:
