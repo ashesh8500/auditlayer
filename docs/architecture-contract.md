@@ -119,7 +119,7 @@ Single-row (`id = 1`) admin configuration for the Hermes worker.
 | column | type | default / constraints |
 |---|---|---|
 | `id` | int | **PK**, default `1`, check `id = 1` |
-| `hermes_model` | text | not null, production value `'gpt-5.6-sol'` |
+| `hermes_model` | text | not null, production value `'deepseek-v4-flash'` |
 | `hermes_api_base` | text | not null, default `'http://127.0.0.1:8642/v1'` |
 | `enabled_toolsets` | jsonb | not null, default `'["web","browser","x_search"]'::jsonb` |
 | `token_cap` | int | not null, default `32000` |

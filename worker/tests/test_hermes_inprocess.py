@@ -135,7 +135,10 @@ class TestIterationBudget:
         fake_auth = types.SimpleNamespace(resolve_codex_runtime_credentials=fake_resolve)
         monkeypatch.setitem(sys.modules, "hermes_cli.auth", fake_auth)
         monkeypatch.setenv("HERMES_HOME", "/shared/operator-home")
-        client = InProcessHermesClient(settings, hermes_home=str(tmp_path / "account-home"))
+        client = InProcessHermesClient(
+            replace(settings, hermes_provider="openai-codex"),
+            hermes_home=str(tmp_path / "account-home"),
+        )
 
         credentials = client._resolve_unscoped_credentials()
 
@@ -191,7 +194,7 @@ class TestIterationBudget:
         assert result.content == "ok"
         assert result.usage.tokens_in == 11
         assert captured["max_iterations"] == 3
-        assert captured["provider"] == "openai-codex"
+        assert captured["provider"] == "deepseek"
         assert captured["iteration_budget"].max_total == 3
         assert captured["request_overrides"] == {"temperature": 0.0}
         assert captured["system_message"] == "system"

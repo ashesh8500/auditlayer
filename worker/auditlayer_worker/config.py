@@ -98,8 +98,8 @@ class WorkerSettings:
             hermes_mode=os.getenv("HERMES_MODE", "http").strip().lower(),
             hermes_api_base=os.getenv("HERMES_API_BASE", "http://127.0.0.1:8642/v1"),
             hermes_api_key=os.getenv("HERMES_API_KEY") or None,
-            hermes_model=os.getenv("HERMES_MODEL", "gpt-5.6-sol"),
-            hermes_provider=os.getenv("HERMES_PROVIDER", "openai-codex"),
+            hermes_model=os.getenv("HERMES_MODEL", "deepseek-v4-flash"),
+            hermes_provider=os.getenv("HERMES_PROVIDER", "deepseek"),
             hermes_timeout_seconds=float(os.getenv("HERMES_TIMEOUT_SECONDS", "600")),
             hermes_gateway_bin=os.getenv("HERMES_GATEWAY_BIN") or None,
             hermes_subprocess_idle_seconds=float(

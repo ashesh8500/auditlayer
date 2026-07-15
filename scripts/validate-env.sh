@@ -41,14 +41,15 @@ check_worker() {
   echo "--- Worker (Hermes / Hetzner) ---"
   check_var worker SUPABASE_URL "Supabase project URL"
   check_var worker SUPABASE_SERVICE_ROLE_KEY "bypass RLS"
-  check_var worker HERMES_MODEL "production: gpt-5.6-sol"
-  check_var worker HERMES_PROVIDER "production: openai-codex"
+  check_var worker HERMES_MODEL "production: deepseek-v4-flash"
+  check_var worker HERMES_PROVIDER "production: deepseek"
+  check_var worker DEEPSEEK_API_KEY "DeepSeek API token"
   check_var worker AUDITLAYER_GENERATOR "hermes (prod) | mock (QA)"
-  if [[ "${HERMES_MODEL:-}" != "gpt-5.6-sol" ]]; then
-    fail "worker: HERMES_MODEL must be gpt-5.6-sol for this release"
+  if [[ "${HERMES_MODEL:-}" != "deepseek-v4-flash" ]]; then
+    fail "worker: HERMES_MODEL must be deepseek-v4-flash for this release"
   fi
-  if [[ "${HERMES_PROVIDER:-}" != "openai-codex" ]]; then
-    fail "worker: HERMES_PROVIDER must be openai-codex for this release"
+  if [[ "${HERMES_PROVIDER:-}" != "deepseek" ]]; then
+    fail "worker: HERMES_PROVIDER must be deepseek for this release"
   fi
   if [[ "${HERMES_MODE:-}" != "inprocess" ]]; then
     fail "worker: HERMES_MODE must be inprocess for embedded Hermes"

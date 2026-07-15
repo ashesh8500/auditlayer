@@ -133,8 +133,8 @@ uv run python -m auditlayer_worker validate-hermes
 
 **Option A — Hetzner CX22 (production, embedded Hermes)**
 
-Set `HERMES_MODE=inprocess`, `HERMES_MODEL=gpt-5.6-sol`, and
-`HERMES_PROVIDER=openai-codex`. `worker/infra/deploy.sh` runs tests, migration
+Set `HERMES_MODE=inprocess`, `HERMES_MODEL=deepseek-v4-flash`, and
+`HERMES_PROVIDER=deepseek`. `worker/infra/deploy.sh` runs tests, migration
 contract checks, non-mutating production schema/RPC probes, and a real model
 validation before restarting systemd. A failed gate leaves the service untouched.
 
@@ -197,7 +197,7 @@ uv run python -m auditlayer_worker regen-pdf --audit-id <uuid>
 | `uv run python -m auditlayer_worker validate-hermes` | Same host | `ok=True`, `skipped=False` |
 | `uv run python -m auditlayer_worker demo --generator mock` | Anywhere | Offline pipeline smoke (no tokens) |
 
-Real `gpt-5.6-sol` generation requires Hermes (`http` or `subprocess` mode with
+Real `deepseek-v4-flash` generation requires Hermes (`http` or `subprocess` mode with
 a valid `HERMES_API_KEY` matching `API_SERVER_KEY`, or `inprocess` with a local
 hermes-agent install). Local laptops without Hermes should use
 `--generator mock` for QA.

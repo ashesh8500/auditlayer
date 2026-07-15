@@ -6,7 +6,7 @@
 insert into public.app_settings (id)
 values (1)
 on conflict (id) do update
-set hermes_model = 'gpt-5.6-sol';
+set hermes_model = 'deepseek-v4-flash';
 
 
 -- ---------------------------------------------------------------------------

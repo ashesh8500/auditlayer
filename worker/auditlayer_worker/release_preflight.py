@@ -56,10 +56,10 @@ def run_preflight(settings: WorkerSettings) -> PreflightResult:
         errors.append("AUDITLAYER_GENERATOR must be hermes")
     if settings.hermes_mode != "inprocess":
         errors.append("HERMES_MODE must be inprocess")
-    if settings.hermes_model != "gpt-5.6-sol":
-        errors.append("HERMES_MODEL must be gpt-5.6-sol")
-    if settings.hermes_provider != "openai-codex":
-        errors.append("HERMES_PROVIDER must be openai-codex")
+    if settings.hermes_model != "deepseek-v4-flash":
+        errors.append("HERMES_MODEL must be deepseek-v4-flash")
+    if settings.hermes_provider != "deepseek":
+        errors.append("HERMES_PROVIDER must be deepseek")
     if not settings.has_supabase:
         errors.append("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required")
 
@@ -108,8 +108,8 @@ def run_preflight(settings: WorkerSettings) -> PreflightResult:
                     row = rows[0]
                     token_cap = int(row["token_cap"])
                     cost_cap = float(row["cost_cap_usd"])
-                    if row["hermes_model"] != "gpt-5.6-sol":
-                        errors.append("app_settings.hermes_model must be gpt-5.6-sol")
+                    if row["hermes_model"] != "deepseek-v4-flash":
+                        errors.append("app_settings.hermes_model must be deepseek-v4-flash")
                     if token_cap <= 0 or cost_cap <= 0:
                         errors.append("app_settings token/cost caps must be positive")
             except Exception as exc:  # noqa: BLE001

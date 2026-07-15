@@ -15,7 +15,7 @@ context.
 |---|---|---|
 | **Web** (`web/`) | Deployed on Vercel | Target: https://auditlayermedia.com (fallback: https://web-delta-dun-29.vercel.app) |
 | **Supabase** | Live project linked | Ref `eamnfmtkvglbnugzmotw`, region Singapore |
-| **Worker** (`worker/`) | **hermes-vm** | Embedded Hermes (`gpt-5.6-sol`, `openai-codex`); deployment is gated by `release-preflight` |
+| **Worker** (`worker/`) | **hermes-vm** | Embedded Hermes (`deepseek-v4-flash`, `deepseek`); deployment is gated by `release-preflight` |
 | **Stripe** | Configured code path | Starter/Pro via webhook; enterprise is founder-assigned in admin, without automatic Stripe seats/invoices |
 | **Custom domain** | DNS pending | `auditlayermedia.com` on Vercel; Cloudflare A/CNAME not set yet — `make dns-vercel` |
 | **Magic link email** | Needs Resend **or** Supabase template fix | Google OAuth works; see § Auth below |
@@ -183,7 +183,7 @@ without the browser's PKCE verifier cookie.
 | `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` | Claim audits, upload reports |
 | `HERMES_API_KEY` | Must match gateway `API_SERVER_KEY` |
 | `HERMES_MODE` | production `inprocess` |
-| `HERMES_MODEL` + `HERMES_PROVIDER` | production `gpt-5.6-sol` + `openai-codex` |
+| `HERMES_MODEL` + `HERMES_PROVIDER` | production `deepseek-v4-flash` + `deepseek` |
 | `AUDITLAYER_PDF_MODE` | `browser` for real PDFs (needs Chrome/Chromium) |
 
 **Precedence:** `worker/.env` overrides repo root `.env` when both exist.
