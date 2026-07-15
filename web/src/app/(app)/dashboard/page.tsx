@@ -78,9 +78,15 @@ export default async function DashboardPage({
     .order("created_at", { ascending: false })
     .limit(1);
 
-  const [{ data: audits }, { data: igConnections }] = await Promise.all([
+  const [{ data: audits }, { data: igConnections }, { data: accounts }] = await Promise.all([
     query,
     instagramQuery,
+    (supabase as any)
+      .from("accounts")
+      .select("id, handle, platform, created_at")
+      .eq("user_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(10),
   ]);
   let list = audits ?? [];
 
@@ -102,7 +108,7 @@ export default async function DashboardPage({
   const totalAudits = (audits ?? []).length;
   const connectedIg = igConnections?.[0] ?? null;
 
-  const limit = auditLimitForProfile(profile);
+  const limit = auditLimitForProfile(profile as any);
   const atCap = !isAdminUnlimited(profile.role) && usage >= limit;
   const billingMsg = billing ? BILLING_MESSAGES[billing] : undefined;
   const activeAudit = (audits ?? []).find((audit) =>
@@ -140,6 +146,32 @@ export default async function DashboardPage({
           </Button>
         </Link>
       </div>
+
+      {/* Tracked accounts */}
+      {accounts && accounts.length > 0 && (
+        <section className="mt-8">
+          <p className="alm-kicker">Your accounts</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(accounts as any[]).map((account: any) => (
+              <Link
+                key={account.id}
+                href={`/audits/new?handle=${encodeURIComponent(account.handle)}`}
+                className="group rounded-[var(--radius)] border border-border bg-card p-4 transition-shadow hover:shadow-[var(--shadow-md)] alm-focus"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[color:var(--accent-muted)] text-sm font-semibold text-[color:var(--accent)]">
+                    @
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-sm font-semibold">@{account.handle}</h3>
+                    <p className="text-xs text-muted-foreground capitalize">{account.platform}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {(activeAudit || latestReady) && (
         <section className="mt-8 grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
@@ -348,7 +380,7 @@ export default async function DashboardPage({
                             </p>
                           )}
                           <p className="mt-0.5 text-[10px] text-muted-foreground">
-                            {new Date(audit.created_at).toLocaleDateString(
+                            {new Date(audit.created_at ?? "").toLocaleDateString(
                               "en-US",
                               { month: "short", day: "numeric", year: "numeric" },
                             )}

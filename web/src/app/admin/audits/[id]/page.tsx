@@ -111,7 +111,7 @@ export default async function AdminAuditDetail({
                 className="flex gap-3 rounded-[var(--radius)] border border-border bg-card px-4 py-2 text-xs"
               >
                 <span className="font-mono text-[10px] text-muted-foreground">
-                  {new Date(e.created_at).toLocaleString()}
+                  {new Date(e.created_at ?? "").toLocaleString()}
                 </span>
                 <span className="font-medium">{e.event_type}</span>
                 {e.phase && (

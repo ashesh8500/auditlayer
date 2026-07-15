@@ -5,7 +5,6 @@ import { ArrowLeft, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/env";
 import {
   PLATFORM_LABELS,
   type AuditStatus,
@@ -101,7 +100,6 @@ export default async function AuditDetailPage({
             auditId={id}
             initialEvents={events}
             status={status}
-            realtimeEnabled={isSupabaseConfigured()}
             retryCount={audit.retry_count ?? 0}
           />
         )}
@@ -163,6 +161,7 @@ async function ReadyReport({
           <ReportViewer
             auditId={auditId}
             reportReady={Boolean(audit.report_path)}
+            pdfReady={(audit as any).pdf_status === 'ready'}
             refinements={(refinementRows ?? []) as RefinementRow[]}
           />
         </div>

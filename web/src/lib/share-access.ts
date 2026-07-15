@@ -109,17 +109,17 @@ export async function getAuditForShare(
   }
 
   if (link.mode === "public") {
-    return { audit, link: link as ShareLinkRow, mode: "public" };
+    return { audit: audit as any, link: link as ShareLinkRow, mode: "public" };
   }
 
   // Email mode — check verification
   const verified = await getShareSession(token);
   if (verified || link.verified_at) {
-    return { audit, link: link as ShareLinkRow, mode: "email", verified: true };
+    return { audit: audit as any, link: link as ShareLinkRow, mode: "email", verified: true };
   }
 
   return {
-    audit,
+    audit: audit as any,
     link: link as ShareLinkRow,
     mode: "email",
     needsVerification: true,

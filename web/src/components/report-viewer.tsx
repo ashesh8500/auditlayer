@@ -27,10 +27,12 @@ const initialState: RefinementState = { status: "idle" };
 export function ReportViewer({
   auditId,
   reportReady,
+  pdfReady,
   refinements,
 }: {
   auditId: string;
   reportReady: boolean;
+  pdfReady: boolean;
   refinements: RefinementRow[];
 }) {
   const [state, action, pending] = useActionState(
@@ -59,8 +61,12 @@ export function ReportViewer({
             </Button>
           </a>
           <a href={reportReady ? pdfDownload : undefined} download>
-            <Button variant="outline" size="sm" disabled={!reportReady}>
-              <FileText className="size-4" />
+            <Button variant="outline" size="sm" disabled={!pdfReady}>
+              {!pdfReady && reportReady ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <FileText className="size-4" />
+              )}
               PDF
             </Button>
           </a>

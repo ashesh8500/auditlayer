@@ -62,19 +62,17 @@ const PHASE_STEPS: { phase: AuditEventPhase; label: string; blurb: string }[] = 
 
 const TERMINAL: AuditStatus[] = ["ready", "failed", "blocked"];
 
-const POLL_MS = 4000;
+const POLL_MS = 15000; // Silent backup — Supabase Realtime handles the fast path
 
 export function LiveTimeline({
   auditId,
   initialEvents,
   status: initialStatus,
-  realtimeEnabled,
   retryCount,
 }: {
   auditId: string;
   initialEvents: TimelineEvent[];
   status: AuditStatus;
-  realtimeEnabled: boolean;
   retryCount?: number;
 }) {
   const router = useRouter();
@@ -130,9 +128,8 @@ export function LiveTimeline({
     }
   }, [auditId, mergeEvents, router]);
 
-  // Realtime (best-effort; polling is the guarantee).
+  // Realtime — primary live stream. Polling is the silent backup.
   useEffect(() => {
-    if (!realtimeEnabled) return;
     const supabase = createClient();
     const channel = supabase
       .channel(`audit:${auditId}`)
@@ -169,9 +166,9 @@ export function LiveTimeline({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [auditId, mergeEvents, realtimeEnabled, router]);
+  }, [auditId, mergeEvents, router]);
 
-  // Always poll while non-terminal — do not depend on Realtime alone.
+  // Always poll while non-terminal — silent backup for Realtime drops.
   useEffect(() => {
     if (TERMINAL.includes(currentStatus)) return;
     void poll();
@@ -197,12 +194,15 @@ export function LiveTimeline({
   const hasConnectedInstagramData = instagramSourceEvent?.event_type === "instagram_api";
   // Never render raw worker exceptions to clients. Historical rows may predate
   // server-side sanitisation, so the UI keeps generic errors generic too.
+  const researchCacheEvent = [...events]
+    .reverse()
+    .find((event) => event.event_type === "research_cached");
   const errorDetail = isCostCap ? errorEvent?.detail || "" : "";
   const activeIndex = PHASE_STEPS.findIndex((s) => !seenPhases.has(s.phase));
   const isLiveStream =
     realtimeConnected &&
     lastEventAt !== null &&
-    (lastPollAt ?? lastEventAt) - lastEventAt < 30_000;
+    (lastPollAt ?? lastEventAt) - lastEventAt < 10_000;
   const isUpdating = !TERMINAL.includes(status) && !seenPhases.has("failed");
   const canRetry = (retryCount ?? 0) < MAX_RETRIES;
   const retryLabel = retryStatusLabel(retryCount ?? 0);
@@ -215,7 +215,6 @@ export function LiveTimeline({
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
             <RefreshCw className="size-3.5 animate-spin text-[color:var(--accent)]" />
             Auto-updating
-            {realtimeEnabled && (
               <>
                 <span className="text-border">·</span>
                 <Radio
@@ -223,7 +222,6 @@ export function LiveTimeline({
                 />
                 {isLiveStream ? "Live stream" : realtimeConnected ? "Realtime idle" : "Connecting…"}
               </>
-            )}
             {lastPollAt && (
               <span className="hidden font-mono text-[10px] sm:inline">
                 · synced {new Date(lastPollAt).toLocaleTimeString()}
@@ -288,6 +286,14 @@ export function LiveTimeline({
               : "Using public Instagram signals"
           }
           body={instagramSourceEvent.detail}
+        />
+      )}
+      {researchCacheEvent && (
+        <Banner
+          tone="var(--accent)"
+          icon={<Check className="size-4" />}
+          title="Research cache hit"
+          body={researchCacheEvent.detail}
         />
       )}
 

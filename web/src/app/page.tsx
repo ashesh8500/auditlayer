@@ -21,12 +21,10 @@ const SCORE_ROWS = [
 ] as const;
 
 const REPORT_ANSWERS = [
-  ["01", "Baseline", "Where the account stands across content, growth, engagement, brand, and conversion."],
-  ["02", "Constraints", "The structural issues limiting reach, trust, and audience action."],
-  ["03", "Peer context", "Same-tier accounts that reveal a credible competitive gap."],
-  ["04", "Next week", "A short execution plan with formats, angles, and priorities."],
-  ["05", "Trajectory", "Measurable checkpoints for the next 30 and 90 days."],
-  ["06", "Revenue move", "The commercial action that fits the audience and current maturity."],
+  ["01", "Diagnosis", "Where the account stands across content, growth, engagement, brand, and conversion — plus the structural issues limiting reach, trust, and audience action."],
+  ["02", "Competitive context", "Same-tier accounts that reveal a credible competitive gap, with benchmark scores and format comparisons so you know exactly where you stand."],
+  ["03", "Action plan", "A ranked next-week execution plan with formats, angles, and priorities, plus measurable checkpoints for the next 30 and 90 days."],
+  ["04", "Revenue move", "The commercial action that fits the audience and current maturity, timed to land when trust and engagement are highest."],
 ] as const;
 
 const PRICING = [
@@ -99,31 +97,52 @@ export default async function Home() {
 
           <div id="sample" className="relative scroll-mt-24 bg-[#14241f] p-4 shadow-[var(--shadow-lg)] sm:p-7">
             <div className="absolute -right-20 -top-20 size-64 rounded-full bg-[color:var(--accent)]/25 blur-3xl" aria-hidden="true" />
-            <div className="relative rotate-[0.5deg] bg-card p-5 shadow-2xl sm:p-8">
-              <div className="flex items-start justify-between gap-4 border-b border-border pb-5">
-                <div><p className="alm-kicker">Sample intelligence brief</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">@glowstate</h2></div>
-                <div className="text-right"><b className="font-mono text-4xl">48</b><span className="font-mono text-xs text-muted-foreground"> / 100</span></div>
-              </div>
-              <div className="py-5">
-                {SCORE_ROWS.map(([label, score]) => (
-                  <div key={label} className="grid grid-cols-[7.5rem_1fr_1.5rem] items-center gap-3 border-b border-border/70 py-2.5 text-xs">
-                    <span className="text-muted-foreground">{label}</span>
-                    <span className="h-1.5 bg-muted"><span className="block h-full bg-[color:var(--accent)]" style={{ width: `${score}%` }} /></span>
-                    <b className="font-mono">{score}</b>
+            <div className="relative max-h-[520px] overflow-y-auto pr-1">
+              <div className="rotate-[0.5deg] bg-card p-5 shadow-2xl sm:p-8">
+                <div className="flex items-start justify-between gap-4 border-b border-border pb-5">
+                  <div><p className="alm-kicker">Sample intelligence brief</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">@glowstate</h2></div>
+                  <div className="text-right"><b className="font-mono text-4xl">48</b><span className="font-mono text-xs text-muted-foreground"> / 100</span></div>
+                </div>
+                <div className="py-5">
+                  {SCORE_ROWS.map(([label, score]) => (
+                    <div key={label} className="grid grid-cols-[7.5rem_1fr_1.5rem] items-center gap-3 border-b border-border/70 py-2.5 text-xs">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="h-1.5 bg-muted"><span className="block h-full bg-[color:var(--accent)]" style={{ width: `${score}%` }} /></span>
+                      <b className="font-mono">{score}</b>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-l-2 border-[color:var(--accent)] bg-[color:var(--accent-muted)] p-4">
+                  <p className="font-mono text-[0.62rem] font-semibold uppercase tracking-widest text-[color:var(--accent)]">Primary constraint</p>
+                  <p className="mt-2 text-sm font-medium leading-6">A coherent brand without a repeatable distribution system.</p>
+                </div>
+                <div className="mt-5 grid gap-2 sm:grid-cols-3">
+                  {["Shift the format mix", "Tighten reply time", "Guide first visits"].map((move, index) => (
+                    <div key={move} className="border-t border-border pt-3 text-xs leading-5 text-muted-foreground"><b className="mr-2 font-mono text-[color:var(--accent)]">0{index + 1}</b>{move}</div>
+                  ))}
+                </div>
+                <div className="mt-6 border-t border-border pt-5">
+                  <p className="font-mono text-[0.62rem] font-semibold uppercase tracking-widest text-muted-foreground">Peer benchmark</p>
+                  <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
+                    {[["@peakmethod", "72"], ["@formdaily", "61"], ["@buildclub", "53"]].map(([handle, score]) => (
+                      <div key={handle} className="rounded border border-border bg-muted/50 p-2.5 text-center">
+                        <p className="font-semibold">{handle}</p>
+                        <b className="font-mono text-lg text-[color:var(--accent)]">{score}</b>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+                <div className="mt-5 border-t border-border pt-5">
+                  <p className="font-mono text-[0.62rem] font-semibold uppercase tracking-widest text-muted-foreground">30-day checkpoints</p>
+                  <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">
+                    <li className="flex gap-2"><span className="font-mono text-[color:var(--accent)]">✓</span> Format mix shifted to 40% short-form, 30% carousel, 30% long-form</li>
+                    <li className="flex gap-2"><span className="font-mono text-[color:var(--accent)]">✓</span> Reply time under 90 minutes on top-performing posts</li>
+                    <li className="flex gap-2"><span className="font-mono text-[color:var(--accent)]">✓</span> One partnership post with a same-tier account</li>
+                  </ul>
+                </div>
               </div>
-              <div className="border-l-2 border-[color:var(--accent)] bg-[color:var(--accent-muted)] p-4">
-                <p className="font-mono text-[0.62rem] font-semibold uppercase tracking-widest text-[color:var(--accent)]">Primary constraint</p>
-                <p className="mt-2 text-sm font-medium leading-6">A coherent brand without a repeatable distribution system.</p>
-              </div>
-              <div className="mt-5 grid gap-2 sm:grid-cols-3">
-                {["Shift the format mix", "Tighten reply time", "Guide first visits"].map((move, index) => (
-                  <div key={move} className="border-t border-border pt-3 text-xs leading-5 text-muted-foreground"><b className="mr-2 font-mono text-[color:var(--accent)]">0{index + 1}</b>{move}</div>
-                ))}
-              </div>
+              <p className="mt-4 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-white/55">Fictional sample · representative report structure</p>
             </div>
-            <p className="relative mt-4 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-white/55">Fictional sample · representative report structure</p>
           </div>
         </section>
 
@@ -147,7 +166,7 @@ export default async function Home() {
 
         <section className="alm-shell py-20 sm:py-28">
           <div className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
-            <div><p className="alm-kicker">Inside every report</p><h2 className="mt-4 text-4xl font-semibold leading-tight tracking-[-0.045em]">Six answers. No dashboard theater.</h2><p className="mt-5 text-sm leading-6 text-muted-foreground">The report is designed to be read, discussed, and used. Every section moves from evidence to implication to action.</p></div>
+            <div><p className="alm-kicker">Inside every report</p><h2 className="mt-4 text-4xl font-semibold leading-tight tracking-[-0.045em]">The answers that matter. No dashboard theater.</h2><p className="mt-5 text-sm leading-6 text-muted-foreground">The report is designed to be read, discussed, and used. Every section moves from evidence to implication to action.</p></div>
             <div className="grid border-l border-t border-border sm:grid-cols-2">
               {REPORT_ANSWERS.map(([number, title, body]) => <article key={number} className="border-b border-r border-border bg-card p-5 sm:p-6"><span className="font-mono text-xs text-[color:var(--accent)]">{number}</span><h3 className="mt-7 text-lg font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p></article>)}
             </div>

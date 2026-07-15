@@ -20,7 +20,7 @@ export default async function NewAuditPage() {
   const usage = (audits ?? []).filter((a) =>
     USAGE_STATUSES.includes(a.status as AuditStatus),
   ).length;
-  const limit = auditLimitForProfile(profile);
+  const limit = auditLimitForProfile(profile as any);
 
   // Server-side guard: bounce capped users to the dashboard's upgrade path.
   if (usage >= limit) redirect("/dashboard?billing=unconfigured");

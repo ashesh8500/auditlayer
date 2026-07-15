@@ -110,7 +110,7 @@ export default async function AdminHome({
                       <StatusBadge status={a.status as AuditStatus} />
                     </td>
                     <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
-                      {new Date(a.created_at).toLocaleDateString()}
+                      {new Date(a.created_at ?? "").toLocaleDateString()}
                     </td>
                   </tr>
                 ))

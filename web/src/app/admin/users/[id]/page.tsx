@@ -74,7 +74,7 @@ export default async function AdminUserDetail({
           <span>{profile.email ?? "No email"}</span>
           <span>·</span>
           <span className="font-mono text-xs">
-            Joined {new Date(profile.created_at).toLocaleDateString()}
+            Joined {new Date(profile.created_at ?? "").toLocaleDateString()}
           </span>
           <Badge tone="info">{profile.onboarding_status}</Badge>
         </div>
@@ -157,7 +157,7 @@ export default async function AdminUserDetail({
                       <StatusBadge status={a.status as AuditStatus} />
                     </td>
                     <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
-                      {new Date(a.created_at).toLocaleDateString()}
+                      {new Date(a.created_at ?? "").toLocaleDateString()}
                     </td>
                   </tr>
                 ))
