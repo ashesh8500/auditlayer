@@ -59,15 +59,16 @@ class SupabaseGateway:
 
     # -- instagram token ---------------------------------------------------
 
-    def get_instagram_token(self, ig_username: str) -> tuple[str, int] | None:
+    def get_instagram_token(self, ig_username: str, user_id: str) -> tuple[str, int] | None:
         res = (
             self.client.table("instagram_connections")
             .select(
                 "ig_user_id, long_lived_token, long_lived_expires_at, is_active"
             )
             .eq("ig_username", ig_username)
+            .eq("user_id", user_id)
             .eq("is_active", True)
-            .order("created_at", ascending=False)
+            .order("created_at", desc=True)
             .limit(1)
             .execute()
         )

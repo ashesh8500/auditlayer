@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import pytest
 
 from auditlayer_worker.billing import estimate_cost
 from auditlayer_worker.config import WorkerSettings
@@ -22,6 +23,7 @@ from auditlayer_worker.core import (
 from auditlayer_worker.generation import MockReportGenerator
 from auditlayer_worker.pdf import render_pdf
 from auditlayer_worker.pipeline import GenerationPipeline, PrintEventSink
+from auditlayer_worker.worker import build_generator
 
 
 def _settings(**over) -> WorkerSettings:
@@ -103,6 +105,14 @@ def test_extract_fragment_rejects_scripts():
         pass
 
 
+def test_extract_fragment_preserves_requested_heading():
+    with pytest.raises(ValueError, match="changed the requested section heading"):
+        extract_fragment(
+            "<section><h2>Attacker Heading</h2><p>safe text</p></section>",
+            expected_heading="Score Breakdown",
+        )
+
+
 def test_replace_section_swaps_one_section():
     html = "<main><section><h2>Strengths</h2><p>old</p></section></main>"
     out = replace_section(html, "Strengths", "<section><h2>Strengths</h2><p>new</p></section>")
@@ -144,6 +154,28 @@ def test_mock_pipeline_emits_all_phases_and_writes_files(tmp_path):
     assert (tmp_path / "demo-test-1.html").exists()
     assert (tmp_path / "demo-test-1.pdf").exists()
     assert summary.cost_usd > 0
+
+
+def test_generator_factory_rejects_non_deepseek_runtime():
+    settings = _settings(
+        generator="hermes",
+        hermes_provider="openai-codex",
+        hermes_model="gpt-5.6-sol",
+    )
+    with pytest.raises(RuntimeError, match="DeepSeek V4 Flash"):
+        build_generator(settings)
+
+
+def test_generator_factory_rejects_non_inprocess_runtime():
+    settings = replace(
+        _settings(),
+        generator="hermes",
+        hermes_provider="deepseek",
+        hermes_model="deepseek-v4-flash",
+        hermes_mode="http",
+    )
+    with pytest.raises(RuntimeError, match="in-process bounded research"):
+        build_generator(settings)
 
 
 def test_pipeline_gate_blocks_when_calibration_blocks():

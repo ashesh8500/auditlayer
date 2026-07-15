@@ -16,7 +16,8 @@ from typing import Any
 
 import httpx
 
-GRAPH_API_BASE = "https://graph.instagram.com/v21.0"
+INSTAGRAM_GRAPH_API_BASE = "https://graph.instagram.com/v21.0"
+FACEBOOK_GRAPH_API_BASE = "https://graph.facebook.com/v21.0"
 
 
 # ── Data models ──────────────────────────────────────────────
@@ -90,6 +91,10 @@ class InstagramAPIClient:
 
     def __init__(self, access_token: str):
         self._token = access_token
+        self._instagram_login = access_token.startswith("IGA")
+        self._base_url = (
+            INSTAGRAM_GRAPH_API_BASE if self._instagram_login else FACEBOOK_GRAPH_API_BASE
+        )
         self._client = httpx.Client(timeout=30.0)
 
     def close(self) -> None:
@@ -111,7 +116,8 @@ class InstagramAPIClient:
             "website",
             "account_type",
         ]
-        data = self._get(f"/{ig_user_id}", params={"fields": ",".join(fields)})
+        user_path = "/me" if self._instagram_login else f"/{ig_user_id}"
+        data = self._get(user_path, params={"fields": ",".join(fields)})
         return InstagramProfile(
             ig_user_id=int(data["id"]),
             username=data.get("username", ""),
@@ -141,7 +147,7 @@ class InstagramAPIClient:
             "comments_count",
         ]
         data = self._get(
-            f"/{ig_user_id}/media",
+            "/me/media" if self._instagram_login else f"/{ig_user_id}/media",
             params={"fields": ",".join(fields), "limit": str(limit)},
         )
         media_list: list[InstagramMedia] = []
@@ -222,7 +228,7 @@ class InstagramAPIClient:
     # ── Helpers ───────────────────────────────────────────────
 
     def _get(self, path: str, params: dict[str, str] | None = None) -> dict[str, Any]:
-        url = f"{GRAPH_API_BASE}{path}"
+        url = f"{self._base_url}{path}"
         p = dict(params or {})
         p["access_token"] = self._token
         resp = self._client.get(url, params=p)
