@@ -122,7 +122,7 @@ Single-row (`id = 1`) admin configuration for the Hermes worker.
 | `hermes_model` | text | not null, production value `'deepseek-v4-flash'` |
 | `hermes_api_base` | text | not null, default `'http://127.0.0.1:8642/v1'` |
 | `enabled_toolsets` | jsonb | not null, default `'["web","browser","x_search"]'::jsonb` |
-| `token_cap` | int | not null, default `32000` |
+| `token_cap` | int | not null, default `120000` (combined input + output safety ceiling) |
 | `cost_cap_usd` | numeric | not null, default `3` |
 | `updated_at` | timestamptz | default `now()` (auto-maintained by trigger) |
 

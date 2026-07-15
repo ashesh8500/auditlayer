@@ -156,8 +156,9 @@ jobs:
         env:
           SUPABASE_URL: https://example.supabase.co
           SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
-          HERMES_MODEL: gpt-5.6-sol
-          HERMES_PROVIDER: openai-codex
+          HERMES_MODEL: deepseek-v4-flash
+          HERMES_PROVIDER: deepseek
+          DEEPSEEK_API_KEY: ci-placeholder
           HERMES_MODE: inprocess
           AUDITLAYER_GENERATOR: hermes
 

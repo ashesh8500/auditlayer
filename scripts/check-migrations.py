@@ -15,6 +15,8 @@ REQUIRED = {
     "0020": ("peer_graph", "row level security"),
     "0021": ("get_benchmarks", "is_admin", "service_role"),
     "0022": ("redeem_trial_link", "submit_entitled_audit", "admin_set_access", "row level security"),
+    "0023": ("deepseek-v4-flash",),
+    "0024": ("token_cap", "120000"),
 }
 
 

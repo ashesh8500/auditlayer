@@ -110,8 +110,10 @@ def run_preflight(settings: WorkerSettings) -> PreflightResult:
                     cost_cap = float(row["cost_cap_usd"])
                     if row["hermes_model"] != "deepseek-v4-flash":
                         errors.append("app_settings.hermes_model must be deepseek-v4-flash")
-                    if token_cap <= 0 or cost_cap <= 0:
-                        errors.append("app_settings token/cost caps must be positive")
+                    if token_cap < 120_000:
+                        errors.append("app_settings.token_cap must be at least 120000 combined tokens")
+                    if cost_cap <= 0:
+                        errors.append("app_settings.cost_cap_usd must be positive")
             except Exception as exc:  # noqa: BLE001
                 errors.append(f"app_settings probe failed: {exc}")
 
