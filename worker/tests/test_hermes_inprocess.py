@@ -122,6 +122,30 @@ class TestIterationBudget:
         assert client._request_overrides("gpt-5.6-sol", 0.2) == {}
         assert client._request_overrides("deepseek-v4-pro", 0.2) == {"temperature": 0.2}
 
+    def test_scoped_codex_credentials_are_resolved_before_home_switch(
+        self, settings, tmp_path, monkeypatch
+    ):
+        """Account memory isolation must not hide the shared OAuth store."""
+        observed: dict[str, str | None] = {}
+
+        def fake_resolve():
+            observed["home"] = os.environ.get("HERMES_HOME")
+            return {"api_key": "oauth-token", "base_url": "https://chatgpt.com/backend-api/codex"}
+
+        fake_auth = types.SimpleNamespace(resolve_codex_runtime_credentials=fake_resolve)
+        monkeypatch.setitem(sys.modules, "hermes_cli.auth", fake_auth)
+        monkeypatch.setenv("HERMES_HOME", "/shared/operator-home")
+        client = InProcessHermesClient(settings, hermes_home=str(tmp_path / "account-home"))
+
+        credentials = client._resolve_unscoped_credentials()
+
+        assert observed["home"] == "/shared/operator-home"
+        assert credentials == {
+            "api_key": "oauth-token",
+            "base_url": "https://chatgpt.com/backend-api/codex",
+            "api_mode": "codex_responses",
+        }
+
     def test_chat_passes_iteration_budget_and_temperature(self, settings, monkeypatch):
         """chat() constrains AIAgent iterations and forwards temperature overrides."""
         captured: dict = {}

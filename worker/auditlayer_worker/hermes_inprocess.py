@@ -62,6 +62,27 @@ class InProcessHermesClient:
         else:
             os.environ["HERMES_HOME"] = previous
 
+    def _resolve_unscoped_credentials(self) -> dict[str, str]:
+        """Resolve shared OAuth credentials before entering an account home.
+
+        ``HERMES_HOME`` scopes account memory, but Hermes also stores OAuth
+        credentials below that root.  Fresh account homes intentionally contain
+        no copied secrets, so Codex credentials must be resolved from the
+        operator home before the scope changes and then passed directly to the
+        in-process agent.
+        """
+        if self._hermes_home is None or self.settings.hermes_provider != "openai-codex":
+            return {}
+
+        from hermes_cli.auth import resolve_codex_runtime_credentials  # type: ignore[import-not-found]
+
+        credentials = resolve_codex_runtime_credentials()
+        return {
+            "api_key": str(credentials["api_key"]),
+            "base_url": str(credentials["base_url"]),
+            "api_mode": "codex_responses",
+        }
+
     def chat(
         self,
         messages: list[dict],
@@ -76,6 +97,7 @@ class InProcessHermesClient:
     ) -> ChatResult:
         del session_id  # In-process sessions are isolated through HERMES_HOME.
 
+        credential_overrides = self._resolve_unscoped_credentials()
         previous_home = self._scope_hermes_home()
         try:
             from run_agent import AIAgent, IterationBudget  # type: ignore[import-not-found]
@@ -99,6 +121,7 @@ class InProcessHermesClient:
             agent = AIAgent(
                 model=model,
                 provider=self.settings.hermes_provider,
+                **credential_overrides,
                 enabled_toolsets=list(toolsets) or None,
                 max_tokens=max_tokens,
                 max_iterations=self._max_iterations,
