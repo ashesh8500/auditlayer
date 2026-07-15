@@ -134,7 +134,7 @@ INSTAGRAM_LIMITATION = (
 # diagnostics) read this to know which generation rules are active.
 # ---------------------------------------------------------------------------
 
-PROMPT_VERSION = "0.9"
+PROMPT_VERSION = "1.0"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework
@@ -149,6 +149,7 @@ PROMPT_VERSION = "0.9"
 #          fail closed on completion limits, and require cached-peer verification
 #   v0.8 — Add report type content budgets to reduce latency and repetition
 #   v0.9 — Replace model-authored HTML with validated JSON and deterministic local rendering
+#   v1.0 — Restore the Narin 15-section structure and heading-specific deterministic renderers
 
 
 def build_prompt_footer_line(
@@ -398,13 +399,13 @@ STANDARD_SECTIONS = [
     "Peer Comparison",
     "Content Format Analysis",
     "Engagement Growth Strategy",
+    "Content Calendar & Creative Board",
     "Quick Wins — This Week",
     "Success Benchmarks",
     "Audience Profile",
     "Road to [Milestone]",
     "Audit Cadence",
-    "Footer",
-    "Powered by AuditLayerMedia",
+    "Get the Execution Plan",
 ]
 
 EXTENDED_SECTIONS = [
@@ -691,6 +692,12 @@ def assemble_report_html(audit: AuditRecord, sections_html: str) -> str:
         raise ValueError(
             f"Report response did not contain the required section headings in order: {expected}"
         )
+    # This validated heading is template-owned text, not model-authored markup.
+    # Preserve its canonical spelling while all free values remain escaped.
+    fragment = fragment.replace(
+        "<h2>Content Calendar &amp; Creative Board</h2>",
+        "<h2>Content Calendar & Creative Board</h2>",
+    )
     report_type = (audit.report_type or "standard").title()
     now = datetime.now(timezone.utc).strftime("%B %d, %Y")
     replacements = {
@@ -811,91 +818,141 @@ def assemble_structured_report_html(
     *,
     ig_metrics: Any = None,
 ) -> str:
-    """Validate DeepSeek JSON and deterministically render the report sections."""
+    """Validate report JSON and render heading-specific, escaped HTML locally."""
     payload = _extract_structured_payload(model_content)
     sections = payload.get("sections")
     expected = _load_template_sections(audit.report_type or "standard")
     if not isinstance(sections, list) or len(sections) != len(expected):
         raise ValueError("Structured report has the wrong section count")
 
+    def render_table(parts: list[str], heading: str, headers: list[str], rows: list[list[str]]) -> None:
+        esc = html_lib.escape
+        if heading == "Content Calendar & Creative Board" and len(headers) == 4:
+            parts.append('<h3>Weekly Rhythm</h3><div class="calendar-grid">')
+            parts.extend(f'<div class="ch">{esc(cell)}</div>' for cell in headers)
+            for row in rows:
+                parts.extend(f'<div class="cr">{esc(cell)}</div>' for cell in row)
+            parts.append("</div>")
+            return
+        groups = [rows]
+        if heading == "Success Benchmarks":
+            groups = [rows[:4], rows[4:8], rows[8:]]
+        group_names = ("Profile Health", "Content Performance", "Business Outcomes")
+        for group_index, group in enumerate(groups):
+            if not group:
+                continue
+            if heading == "Success Benchmarks":
+                parts.append(f"<h3>{group_names[group_index]}</h3>")
+            parts.append('<table class="data-table"><thead><tr>')
+            parts.extend(f"<th>{esc(cell)}</th>" for cell in headers)
+            parts.append("</tr></thead><tbody>")
+            for row in group:
+                parts.append("<tr>")
+                for cell_index, cell in enumerate(row):
+                    if heading == "Success Benchmarks" and cell_index == len(row) - 1:
+                        color = "red" if cell.lower() == "critical" else "green" if cell.lower() == "organic" else "amber"
+                        parts.append(f'<td><span class="priority {color}">{esc(cell)}</span></td>')
+                    else:
+                        parts.append(f"<td>{esc(cell)}</td>")
+                parts.append("</tr>")
+            parts.append("</tbody></table>")
+
     rendered: list[str] = []
     for index, (section, required_heading) in enumerate(zip(sections, expected, strict=True)):
         if not isinstance(section, dict):
             raise ValueError("Structured report section must be an object")
-        allowed_keys = {"heading", "lede", "items", "table", "callout"}
-        if not set(section).issubset(allowed_keys):
+        if not set(section).issubset({"heading", "lede", "items", "table", "callout"}):
             raise ValueError("Structured report section has unsupported fields")
         heading = _structured_text(section.get("heading"), "heading", 120)
-        heading_matches = (
-            heading.startswith("Road to ")
-            if required_heading == "Road to [Milestone]"
-            else heading == required_heading
-        )
-        if not heading_matches:
+        if not (heading.startswith("Road to ") if required_heading == "Road to [Milestone]" else heading == required_heading):
             raise ValueError(f"Structured report heading {index + 1} is invalid")
         lede = _structured_text(section.get("lede"), "lede", 5000)
-        parts = [f"<section><h2>{html_lib.escape(heading)}</h2>"]
-
-        connected_key_metrics = heading == "Key Metrics" and ig_metrics is not None
-        if connected_key_metrics:
-            parts.append("<p>These values come directly from the connected Instagram Graph API.</p>")
-            parts.append(_instagram_metric_block(ig_metrics))
-        else:
-            parts.append(f"<p>{html_lib.escape(lede)}</p>")
+        esc = html_lib.escape
+        parts = [f"<section><h2>{esc(heading)}</h2>"]
+        connected = heading == "Key Metrics" and ig_metrics is not None
+        parts.append(_instagram_metric_block(ig_metrics) if connected else f"<p>{esc(lede)}</p>")
 
         items = section.get("items", [])
         if not isinstance(items, list) or len(items) > 5:
             raise ValueError("Structured report items are invalid")
+        clean_items: list[tuple[str, str, str]] = []
         for item in items:
             if not isinstance(item, dict) or not set(item).issubset({"title", "body", "value"}):
                 raise ValueError("Structured report item is invalid")
-            title = _structured_text(item.get("title"), "item title", 300)
-            body = _structured_text(item.get("body"), "item body", 3000)
             raw_value = item.get("value", "")
-            value = "" if raw_value in (None, "") else _structured_text(raw_value, "item value", 300)
-            if not connected_key_metrics:
+            clean_items.append((
+                _structured_text(item.get("title"), "item title", 300),
+                _structured_text(item.get("body"), "item body", 3000),
+                "" if raw_value in (None, "") else _structured_text(raw_value, "item value", 300),
+            ))
+
+        if not connected and heading == "Executive Summary":
+            overall = clean_items[0][2] if clean_items and clean_items[0][2] else "—"
+            parts.append('<div class="score-diagram"><div class="sd-header"><span class="sd-label">Overall Score</span>'
+                         f'<span class="sd-overall">{esc(overall)}<span>/ 100</span></span></div>')
+            for title, _, value in clean_items:
+                score = int(value) if value.isdigit() and 0 <= int(value) <= 100 else 0
+                level = "high" if score >= 70 else "mid" if score >= 40 else "low"
+                parts.append(f'<div class="sd-row"><span class="sd-name">{esc(title)}</span><div class="sd-track">'
+                             f'<div class="sd-fill {level}"></div></div><span class="sd-num">{score}</span></div>')
+            parts.append("</div>")
+        elif not connected and heading in {"Strengths", "Weaknesses"}:
+            kind = "strength" if heading == "Strengths" else "weakness"
+            parts.append('<div class="sw-grid">')
+            for number, (title, body, _) in enumerate(clean_items, 1):
+                parts.append(f'<div class="sw-card {kind}"><div class="sw-label">{kind.title()} {number}</div>'
+                             f'<h4>{esc(title)}</h4><p>{esc(body)}</p></div>')
+            parts.append("</div>")
+        elif not connected and heading == "Content Calendar & Creative Board":
+            pillars = ("Educational & Strategy", "Portfolio & Proof", "Engagement & Community", "Growth & Reach")
+            for number in range(10):
+                title, body, value = clean_items[number % len(clean_items)] if clean_items else ("Content idea", lede, "")
+                parts.append(f'<div class="idea-card"><div class="idea-meta">{esc(pillars[min(number // 3, 3)])}</div>'
+                             f'<h4>{esc(title)}</h4><p>{esc(body)}</p>' +
+                             (f'<div class="idea-meta">{esc(value)}</div>' if value else "") + "</div>")
+        elif not connected and (heading == "Quick Wins — This Week" or heading.startswith("Road to ")):
+            for title, body, _ in clean_items:
+                parts.append(f'<div class="timeline-item"><div class="t-dot accent"></div><div class="t-content">'
+                             f'<h4>{esc(title)}</h4><p>{esc(body)}</p></div></div>')
+        elif not connected and heading == "Get the Execution Plan":
+            parts.append('<div class="upgrade-box"><h3>Standard diagnosis → Extended operating system</h3>')
+            for title, body, value in clean_items:
+                parts.append(f'<p><strong>{esc(title)}</strong> {esc(body)} {esc(value)}</p>')
+            parts.append('<a class="cta-btn" href="https://auditlayermedia.com/pricing">Upgrade to Extended — $50/month</a></div>')
+        elif not connected:
+            for number, (title, body, value) in enumerate(clean_items, 1):
                 parts.append('<div class="rec-card">')
+                if heading == "Engagement Growth Strategy":
+                    parts.append(f'<div class="num">{number}</div>')
                 if value:
-                    parts.append(f'<div class="value">{html_lib.escape(value)}</div>')
-                parts.append(f"<h3>{html_lib.escape(title)}</h3><p>{html_lib.escape(body)}</p></div>")
+                    parts.append(f'<div class="value">{esc(value)}</div>')
+                parts.append(f"<h4>{esc(title)}</h4><p>{esc(body)}</p></div>")
 
         table = section.get("table")
         if table is not None:
             if not isinstance(table, dict) or set(table) != {"headers", "rows"}:
                 raise ValueError("Structured report table is invalid")
-            headers = table.get("headers")
-            rows = table.get("rows")
+            headers, rows = table.get("headers"), table.get("rows")
             if not isinstance(headers, list) or not 1 <= len(headers) <= 8:
                 raise ValueError("Structured report table headers are invalid")
             if not isinstance(rows, list) or len(rows) > 12:
                 raise ValueError("Structured report table rows are invalid")
             clean_headers = [_structured_text(value, "table header", 200) for value in headers]
-            if not connected_key_metrics:
-                parts.append('<table class="data-table"><thead><tr>')
-                parts.extend(f"<th>{html_lib.escape(value)}</th>" for value in clean_headers)
-                parts.append("</tr></thead><tbody>")
+            clean_rows: list[list[str]] = []
             for row in rows:
                 if not isinstance(row, list) or len(row) != len(clean_headers):
                     raise ValueError("Structured report table row is invalid")
-                clean_row = [
-                    _structured_text(value, "table cell", 1000)
-                    for value in row
-                ]
-                if not connected_key_metrics:
-                    parts.append("<tr>")
-                    parts.extend(f"<td>{html_lib.escape(value)}</td>" for value in clean_row)
-                    parts.append("</tr>")
-            if not connected_key_metrics:
-                parts.append("</tbody></table>")
+                clean_rows.append([_structured_text(value, "table cell", 1000) for value in row])
+            if not connected:
+                render_table(parts, heading, clean_headers, clean_rows)
 
         callout = section.get("callout")
         if callout is not None:
             clean_callout = _structured_text(callout, "callout", 2000)
-            if not connected_key_metrics:
-                parts.append(f'<div class="callout">{html_lib.escape(clean_callout)}</div>')
+            if not connected:
+                parts.append(f'<div class="callout accent"><p>{esc(clean_callout)}</p></div>')
         parts.append("</section>")
         rendered.append("".join(parts))
-
     return assemble_report_html(audit, "".join(rendered))
 
 
@@ -1082,8 +1139,8 @@ Business constraints:
 - This is a {report_type} report. Follow the {section_count}-section framework exactly.
 - CRITICAL: Use these EXACT section headings as your <h2> elements — verbatim, no exceptions:
 {section_ref}
-- DO NOT rename, rephrase, consolidate, or omit any section. 'Executive Summary' stays 'Executive Summary' — do NOT replace it with 'Overall Score' or any variant. 'Footer' stays 'Footer' — do NOT replace it with 'What Comes Next', 'Report Notes', or any variant. Every heading must match character-for-character exactly as listed above.
-- 'Powered by AuditLayerMedia' MUST be its own <h2> section at the end, not a div or footer badge. It is the final section heading.
+- DO NOT rename, rephrase, consolidate, or omit any section. Every heading must match character-for-character exactly as listed above.
+- Footer and powered-by branding are local template chrome after section 15, never report sections.
 
 Known limitations:
 {limitations}

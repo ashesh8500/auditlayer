@@ -67,6 +67,7 @@
   .data-table td:first-child { font-weight: 500; }
   .data-table .num { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; text-align: right; font-weight: 500; }
   /* Cards */
+  .sw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
   .sw-card { background: var(--surface); border-radius: var(--radius-sm); padding: 22px 24px; margin-bottom: 16px; border: 1px solid var(--line); }
   .sw-card.strength { border-left: 3px solid var(--green); }
   .sw-card.weakness { border-left: 3px solid var(--red); }
@@ -81,7 +82,10 @@
   .callout.accent { background: var(--accent-muted); border: 1px solid var(--accent); }
   .callout.accent p { color: var(--accent-hover); }
   /* Score Diagram */
-  .score-diagram { margin-bottom: 32px; }
+  .score-diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px 20px; margin-bottom: 32px; }
+  .score-diagram .sd-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .score-diagram .sd-overall { font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 600; }
+  .score-diagram .sd-overall span { font-size: 0.85rem; color: var(--muted); font-weight: 400; }
   .overall-score { text-align: center; margin-bottom: 24px; }
   .overall-score .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
   .overall-score .value { font-family: 'JetBrains Mono', monospace; font-size: 2.8rem; font-weight: 700; color: var(--red); }
@@ -96,6 +100,22 @@
   .sd-value.red { color: var(--red); }
   .sd-value.amber { color: var(--amber); }
   .sd-value.green { color: var(--green); }
+  .sd-name { width: 160px; font-size: 0.8rem; font-weight: 500; text-align: right; flex-shrink: 0; }
+  .sd-num { width: 28px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--muted); text-align: right; }
+  .sd-fill.high { background: var(--green); } .sd-fill.mid { background: var(--amber); } .sd-fill.low { background: var(--red); }
+  .idea-card { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; padding: 22px 24px; margin-bottom: 14px; }
+  .idea-card .idea-meta { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .calendar-grid { display: grid; grid-template-columns: 100px 80px 160px 1fr; margin: 16px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .calendar-grid .ch { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--muted); padding: 10px 14px; background: #f5f5f4; }
+  .calendar-grid .cr { padding: 10px 14px; border-top: 1px solid var(--line); font-size: 0.85rem; }
+  .timeline-item { display: flex; gap: 16px; margin-bottom: 20px; }
+  .timeline-item .t-dot { flex-shrink: 0; width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; }
+  .timeline-item .t-dot.accent { background: var(--accent); }
+  .upgrade-box { background: linear-gradient(135deg,#0d9488,#0f766e); border-radius: 12px; padding: 32px; margin: 32px 0; color: #fff; text-align: center; }
+  .upgrade-box p, .upgrade-box h3 { color: #fff; }
+  .upgrade-box .cta-btn { display: inline-block; background: #fff; color: var(--accent); font-weight: 700; padding: 12px 28px; border-radius: 8px; text-decoration: none; }
+  .powered-by { text-align: center; color: var(--muted); }
+  .priority { font-weight: 600; } .priority.red { color: var(--red); } .priority.amber { color: var(--amber); } .priority.green { color: var(--green); }
   /* Dot indicators */
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
   .dot.green { background: var(--green); }

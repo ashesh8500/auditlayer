@@ -125,7 +125,7 @@ def test_build_report_prompt_basic(sample_audit):
     # Section list
     assert "Required Sections" in prompt
     assert "1. Executive Summary" in prompt
-    assert "15. Powered by AuditLayerMedia" in prompt
+    assert "15. Get the Execution Plan" in prompt
     # Master Skeleton Template
     assert "Master Skeleton Template" in prompt
     assert "master-skeleton.html" not in prompt  # should be inlined, not referenced
