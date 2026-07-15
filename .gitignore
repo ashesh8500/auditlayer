@@ -22,3 +22,14 @@ supabase/deferred/
 
 # Local logo/media explorations (production web assets live under web/public/)
 assets/
+
+# v0.1 freeze — untracked infra/marketing noise kept out of diff/CI
+.dockerignore
+.env.docker
+Dockerfile
+docker-compose.yml
+docker-entrypoint.sh
+marketing-assets/
+docs/screenshots/
+docs/plans/*.png
+docs/plans/*.html
