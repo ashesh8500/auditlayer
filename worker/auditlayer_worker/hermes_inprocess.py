@@ -120,8 +120,9 @@ class InProcessHermesClient:
                     }
                 )
         if not verified:
-            raise RuntimeError("no verified web evidence was returned")
-        return json.dumps({"web": verified}, ensure_ascii=False)[:12000]
+            import logging
+            logging.getLogger("auditlayer").warning("collect_research: no web evidence found — proceeding without web research")
+        return json.dumps({"web": verified[:8]}, ensure_ascii=False)[:12000]
 
 
     def chat(

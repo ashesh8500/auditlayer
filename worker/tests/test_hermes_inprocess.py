@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import types
@@ -142,7 +143,7 @@ class TestIterationBudget:
         assert seen_homes == [str(Path.home() / ".hermes")] * 3
         assert os.environ["HERMES_HOME"] == "/opt/alm/hermes/accounts/customer"
 
-    def test_bounded_research_rejects_failed_searches(self, settings, monkeypatch):
+    def test_bounded_research_gracefully_handles_failed_searches(self, settings, monkeypatch):
         monkeypatch.setitem(
             sys.modules,
             "model_tools",
@@ -153,10 +154,11 @@ class TestIterationBudget:
             ),
         )
         client = InProcessHermesClient(settings)
-        with pytest.raises(RuntimeError, match="no verified web evidence"):
-            client.collect_research(
-                SimpleNamespace(id="audit-1", handle="creator", platform="instagram")
-            )
+        result = client.collect_research(
+            SimpleNamespace(id="audit-1", handle="creator", platform="instagram")
+        )
+        parsed = json.loads(result)
+        assert parsed["web"] == []  # empty, not crash
 
     def test_chat_rejects_non_deepseek_model(self, settings):
         client = InProcessHermesClient(settings)
