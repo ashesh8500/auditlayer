@@ -873,7 +873,7 @@ def assemble_structured_report_html(
         parts.append(_instagram_metric_block(ig_metrics) if connected else f"<p>{esc(lede)}</p>")
 
         items = section.get("items", [])
-        if not isinstance(items, list) or len(items) > 5:
+        if not isinstance(items, list) or len(items) > 10:  # Creative Board can have 10 ideas
             raise ValueError("Structured report items are invalid")
         clean_items: list[tuple[str, str, str]] = []
         for item in items:

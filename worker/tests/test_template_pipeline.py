@@ -269,7 +269,7 @@ def test_structured_report_rejects_duplicate_keys_and_nonfinite_numbers(sample_a
 def test_structured_report_rejects_excess_cardinality(sample_audit):
     payload = json.loads(_complete_standard_payload())
     payload["sections"][0]["items"] = [
-        {"title": f"Item {index}", "body": "Body"} for index in range(6)
+        {"title": f"Item {index}", "body": "Body"} for index in range(11)
     ]
     with pytest.raises(ValueError, match="items are invalid"):
         assemble_structured_report_html(sample_audit, json.dumps(payload))
@@ -298,7 +298,7 @@ def test_connected_key_metrics_suppresses_model_metrics(sample_audit):
 def test_connected_key_metrics_still_validates_model_cardinality(sample_audit):
     payload = json.loads(_complete_standard_payload())
     payload["sections"][1]["items"] = [
-        {"title": f"Item {index}", "body": "Body"} for index in range(6)
+        {"title": f"Item {index}", "body": "Body"} for index in range(11)
     ]
     metrics = SimpleNamespace(
         profile=SimpleNamespace(followers_count=3660),
