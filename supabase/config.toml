@@ -245,9 +245,11 @@ otp_expiry = 3600
 
 # Magic link uses token_hash + server-side verifyOtp (not PKCE code exchange).
 # Required for SSR: email clients open links without the PKCE verifier cookie.
-[auth.email.template.magic_link]
-subject = "Sign in to AuditLayer"
-content_path = "./supabase/templates/magic_link.html"
+# The hosted project uses its existing template because free tier config pushes
+# cannot modify templates without custom SMTP.
+# [auth.email.template.magic_link]
+# subject = "Sign in to AuditLayer"
+# content_path = "./supabase/templates/magic_link.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
@@ -375,14 +377,14 @@ enabled = false
 # Obtain from https://clerk.com/setup/supabase
 # domain = "example.clerk.accounts.dev"
 
-# OAuth server configuration
+# OAuth server configuration for the AuditLayerMedia MCP connector.
 [auth.oauth_server]
-# Enable OAuth server functionality
-enabled = false
+# Every client still requires explicit approval on the consent page.
+enabled = true
 # Path for OAuth consent flow UI
 authorization_url_path = "/oauth/consent"
-# Allow dynamic client registration
-allow_dynamic_registration = false
+# ChatGPT, Claude, and other MCP clients can register without manual client secrets.
+allow_dynamic_registration = true
 
 [edge_runtime]
 enabled = true
