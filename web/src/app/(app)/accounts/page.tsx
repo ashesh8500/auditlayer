@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, Plus } from "lucide-react";
+import { Bot, Building2, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { requireProfile } from "@/lib/auth";
@@ -37,12 +37,20 @@ export default async function AccountsPage() {
             The accounts you audit live here. Start a new audit from any of them.
           </p>
         </div>
-        <Link href="/audits/new">
-          <Button size="lg" className="font-medium">
-            <Plus className="size-4" />
-            New audit
-          </Button>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/settings/ai-connections">
+            <Button size="lg" variant="outline" className="font-medium">
+              <Bot className="size-4" />
+              AI Connections
+            </Button>
+          </Link>
+          <Link href="/audits/new">
+            <Button size="lg" className="font-medium">
+              <Plus className="size-4" />
+              New audit
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {list.length === 0 ? (

@@ -18,6 +18,7 @@ context.
 | **Worker** (`worker/`) | **hermes-vm** | Embedded Hermes (`deepseek-v4-flash`, `deepseek`); deployment is gated by `release-preflight` |
 | **Stripe** | Configured code path | Starter/Pro via webhook; enterprise is founder-assigned in admin, without automatic Stripe seats/invoices |
 | **Custom domain** | DNS pending | `auditlayermedia.com` on Vercel; Cloudflare A/CNAME not set yet — `make dns-vercel` |
+| **MCP connector** | Read only implementation | Remote endpoint `/mcp`, Supabase OAuth 2.1 with dynamic registration, consent `/oauth/consent`; see `docs/mcp-connector.md` |
 | **Magic link email** | Needs Resend **or** Supabase template fix | Google OAuth works; see § Auth below |
 | **Legacy v1** (`legacy/`) | Archived | Do not extend |
 
