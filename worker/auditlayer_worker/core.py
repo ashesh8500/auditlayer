@@ -133,8 +133,11 @@ INSTAGRAM_LIMITATION = (
 # business constraints change. Downstream consumers (pipeline, embedded,
 # diagnostics) read this to know which generation rules are active.
 # ---------------------------------------------------------------------------
-
-PROMPT_VERSION = "1.0"
+# v1.0 — Standard 15-section framework with Narin's exact headings, Creative Board
+# v1.1 — Rich visual renderers matching golden report: score colors (green/amber/red),
+#        metric grid with status colors, sw-card labels from item titles,
+#        rounded data tables, per-section item guidance in prompt
+PROMPT_VERSION = "1.1"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework
@@ -541,14 +544,27 @@ def build_section_prompt(
 Return one JSON object only, with no markdown or commentary, in this schema:
 {{"sections":[{{"heading":"exact required heading","lede":"section synthesis",
 "items":[{{"title":"finding title","body":"evidence based explanation","value":"optional metric"}}],
-"table":{{"headers":["column"],"rows":[["cell"]]}},"callout":"optional action"}}]}}
+"table":{{"headers":["column"],"rows":[["cell"]]}},"callout":"optional key takeaway"}}]}}
 
-Use every required section exactly once and in the required order. The heading must
-match its required heading exactly, except Road to [Milestone] must use the actual
-milestone. Each section requires heading and lede. Items, table, and callout are
-optional. Keep each lede to 1 to 3 sentences and use no more than 5 items per
-section. Use tables only where comparison rows materially improve clarity, with no
-more than 12 rows. Return analysis as plain text values only. Do not return HTML, CSS, URLs
+SECTION-BY-SECTION GUIDE (use items for different purposes per section):
+- Executive Summary: items = 8 scored dimensions (title=name, value=score 0-100). Write 2-3 rich lede paragraphs.
+- Key Metrics: items = 4 metric cards (title=value e.g. "1,081", body=label e.g. "Followers red"). Include "red" / "amber" / "green" in body for color. Add table with 4-8 metric rows and callout with key takeaway.
+- Strengths / Weaknesses: items = 5-6 findings each (title as card headline, body as evidence paragraph).
+- Root Cause Analysis: items = key causal factors with evidence, use lede for narrative synthesis.
+- Peer Comparison: items = comparison points. Add table with 4-5 columns (your account + 3 peers) and a callout summarizing the gap.
+- Content Format Analysis: items = format types found, body describes performance patterns.
+- Engagement Growth Strategy: items = numbered strategies, lede for overarching approach.
+- Content Calendar & Creative Board: items = exactly 10 creative ideas (title=idea name, body=execution detail, value=format tag).
+- Quick Wins / Road to [Milestone]: items = 4-6 action steps (title as step name, body as implementation detail).
+- Success Benchmarks: items = milestone phases with table for timeline.
+- Audience Profile: items = audience segments, lede for overall profile.
+- Audit Cadence: items = recommended check-ins with cadence details.
+- Get the Execution Plan: items = upgrade value props in title/body/value format.
+
+Each section requires heading and lede. Items, table, and callout are optional.
+Keep each lede to 1 to 3 sentences and use no more than 10 items per section.
+Use tables only where comparison rows materially improve clarity, with no more
+than 12 rows. Return analysis as plain text values only. Do not return HTML, CSS, URLs
 as markup, scripts, markdown fences, or extra root fields. Connected Instagram
 metrics are inserted deterministically by local code, so analyze them but do not
 invent replacements for their displayed values. Use only supplied account data and
@@ -587,6 +603,9 @@ class _ReportSectionParser(HTMLParser):
             if name == "class":
                 if not re.fullmatch(r"[A-Za-z0-9 _-]{1,200}", value):
                     raise ValueError("unsafe class")
+            elif name == "style":
+                if not re.fullmatch(r"width:\d{1,3}%", value):
+                    raise ValueError("unsafe style")
             elif name == "href" and tag == "a":
                 if not value.lower().startswith(("https://", "http://")):
                     raise ValueError("unsafe link")
@@ -892,17 +911,24 @@ def assemble_structured_report_html(
                          f'<span class="sd-overall">{esc(overall)}<span>/ 100</span></span></div>')
             for title, _, value in clean_items:
                 score = int(value) if value.isdigit() and 0 <= int(value) <= 100 else 0
-                level = "high" if score >= 70 else "mid" if score >= 40 else "low"
-                parts.append(f'<div class="sd-row"><span class="sd-name">{esc(title)}</span><div class="sd-track">'
-                             f'<div class="sd-fill {level}"></div></div><span class="sd-num">{score}</span></div>')
+                color = "green" if score >= 70 else "amber" if score >= 40 else "red"
+                parts.append(f'<div class="sd-row"><span class="sd-label">{esc(title)}</span><div class="sd-track">'
+                             f'<div class="sd-fill {color}" style="width:{score}%"></div></div>'
+                             f'<span class="sd-value {color}">{score}</span></div>')
             parts.append("</div>")
         elif not connected and heading in {"Strengths", "Weaknesses"}:
             kind = "strength" if heading == "Strengths" else "weakness"
             parts.append('<div class="sw-grid">')
-            for number, (title, body, _) in enumerate(clean_items, 1):
-                parts.append(f'<div class="sw-card {kind}"><div class="sw-label">{kind.title()} {number}</div>'
-                             f'<h4>{esc(title)}</h4><p>{esc(body)}</p></div>')
+            for title, body, _ in clean_items:
+                parts.append(f'<div class="sw-card {kind}"><div class="sw-label">{esc(title)}</div><p>{esc(body)}</p></div>')
             parts.append("</div>")
+        elif not connected and heading == "Key Metrics":
+            if clean_items:
+                parts.append('<div class="metric-grid">')
+                for title, body, value in clean_items:
+                    color = "red" if "red" in (body or "").lower() else "amber" if "amber" in (body or "").lower() else "green"
+                    parts.append(f'<div class="metric-card"><div class="value {color}">{esc(title)}</div><div class="label">{esc(body)}</div></div>')
+                parts.append("</div>")
         elif not connected and heading == "Content Calendar & Creative Board":
             pillars = ("Educational & Strategy", "Portfolio & Proof", "Engagement & Community", "Growth & Reach")
             for number in range(10):
