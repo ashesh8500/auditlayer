@@ -3,11 +3,10 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { parseAuthorizationId } from "@/lib/mcp/authorization";
 
 function authorizationId(formData: FormData): string {
-  const value = String(formData.get("authorization_id") ?? "");
-  if (!/^[0-9a-f-]{20,}$/i.test(value)) throw new Error("Invalid authorization request");
-  return value;
+  return parseAuthorizationId(formData.get("authorization_id"));
 }
 
 export async function approveMcpAuthorization(formData: FormData) {
