@@ -5,18 +5,19 @@
 PYTHON ?= .venv/bin/python
 SUPABASE ?= npx supabase@latest
 
+# Legacy v1 targets run against the archived app in legacy/.
 test:
-	PYTHONPATH=src $(PYTHON) -m pytest
+	PYTHONPATH=legacy/src $(PYTHON) -m pytest legacy/tests
 
 e2e:
-	$(PYTHON) scripts/e2e-smoke.py
+	$(PYTHON) legacy/scripts/e2e-smoke.py
 
 check: test e2e
-	PYTHONPATH=src $(PYTHON) -m auditlayer check-config
-	PYTHONPATH=src $(PYTHON) -m auditlayer validate-hermes
+	PYTHONPATH=legacy/src $(PYTHON) -m auditlayer check-config
+	PYTHONPATH=legacy/src $(PYTHON) -m auditlayer validate-hermes
 
 diagnose-hermes:
-	PYTHONPATH=src $(PYTHON) -m auditlayer diagnose-hermes
+	PYTHONPATH=legacy/src $(PYTHON) -m auditlayer diagnose-hermes
 
 smoke:
 	scripts/smoke-check.sh http://127.0.0.1:8000

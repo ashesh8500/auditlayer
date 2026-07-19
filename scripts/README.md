@@ -1,7 +1,8 @@
 # scripts/
 
-Legacy v1 smoke scripts (`e2e-smoke.py`, `smoke-check.sh`) remain for the archived
-portal. **v2 agents should use the Makefile and `docs/agent-handoff.md` instead.**
+The v1 smoke scripts (`e2e-smoke.py`, `smoke-check.sh`) for the archived
+portal live in `legacy/scripts/`; `smoke-check.sh` is also kept here for `make smoke`.
+**v2 agents should use the Makefile and `docs/agent-handoff.md` instead.**
 
 ## v2 quick commands (preferred)
 
