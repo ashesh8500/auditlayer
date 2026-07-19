@@ -64,7 +64,15 @@ class WorkerHealth:
 def start_health_server(*, poll_interval_seconds: float) -> WorkerHealth:
     state = WorkerHealth()
     host = os.getenv("AUDITLAYER_HEALTH_HOST", "127.0.0.1")
-    port = int(os.getenv("AUDITLAYER_HEALTH_PORT", "8787"))
+    configured_port = os.getenv("AUDITLAYER_HEALTH_PORT")
+    if configured_port:
+        port = int(configured_port)
+    else:
+        # Template worker instances share one host. Derive a stable, distinct
+        # loopback port from AUDITLAYER_WORKER_ID=worker-%i.
+        worker_id = os.getenv("AUDITLAYER_WORKER_ID", "")
+        suffix = worker_id.rsplit("-", 1)[-1]
+        port = 8787 + (int(suffix) if suffix.isdigit() else 0)
     stale_after = max(60.0, poll_interval_seconds * 4)
 
     class Handler(BaseHTTPRequestHandler):
