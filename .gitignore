@@ -44,3 +44,6 @@ docs/plans/alm-design-system-v2.md
 docs/plans/alm-v2-moat-design-spec.md
 worker/auditlayer_worker/stripe_payouts.py
 worker/tests/test_stripe_payouts.py
+
+# agent worktrees (local orchestration)
+.worktrees/
