@@ -111,6 +111,9 @@ def cmd_regen_pdf(settings: WorkerSettings, audit_id: str) -> int:
     html = data.decode("utf-8") if isinstance(data, (bytes, bytearray)) else str(data)
 
     pdf_result = render_pdf(html, mode=settings.pdf_mode, chromium_path=settings.chromium_path)
+    if pdf_result.mode != "browser":
+        print(f"ERROR: {pdf_result.note or 'Browser PDF rendering was unavailable'}", file=sys.stderr)
+        return 1
     pdf_path, _ = gateway.upload_pdf(audit_id, pdf_result.data)
     gateway.update_audit(audit_id, pdf_path=pdf_path, pdf_status="ready")
     gateway.emit_event(

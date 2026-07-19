@@ -87,19 +87,27 @@ def _chromium_pdf(chromium: str, html: str) -> bytes:
             f"--print-to-pdf={pdf_path}",
             html_path.as_uri(),
         ]
-        subprocess.run(
-            cmd,
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=120,
-            env={
-                **os.environ,
-                "XDG_CONFIG_HOME": str(xdg_config),
-                "XDG_CACHE_HOME": str(xdg_cache),
-                "XDG_DATA_HOME": str(xdg_data),
-            },
-        )
+        try:
+            subprocess.run(
+                cmd,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=120,
+                env={
+                    **os.environ,
+                    "XDG_CONFIG_HOME": str(xdg_config),
+                    "XDG_CACHE_HOME": str(xdg_cache),
+                    "XDG_DATA_HOME": str(xdg_data),
+                },
+            )
+        except subprocess.TimeoutExpired:
+            # Chrome can finish writing a large PDF but keep helper processes
+            # alive past the command timeout. Accept only a real, non-empty
+            # artifact; otherwise preserve the failure for retry handling.
+            if pdf_path.exists() and pdf_path.stat().st_size > 1024:
+                return pdf_path.read_bytes()
+            raise
         if not pdf_path.exists():
             raise RuntimeError("Chromium did not produce a PDF")
         return pdf_path.read_bytes()
