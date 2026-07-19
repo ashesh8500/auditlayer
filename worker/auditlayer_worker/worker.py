@@ -182,7 +182,7 @@ def _prewarm_account_homes(gateway: SupabaseGateway, settings: WorkerSettings) -
             .select("user_id")
             .eq("status", "queued")
             .not_.is_("user_id", "null")
-            .order("created_at", ascending=True)
+            .order("created_at", desc=False)
             .limit(3)
             .execute()
         )
