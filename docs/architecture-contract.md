@@ -71,8 +71,8 @@ One row per requested audit, owned by a profile.
 | `model` | text | |
 | `report_path` | text | Storage object path in the private `reports` bucket — the authoritative artifact locator |
 | `pdf_path` | text | Storage object path in the private `pdfs` bucket. Added migration 0025 |
-| `report_url` | text | **Deprecated, always NULL** (migration 0028). Signed URLs are minted per request, never persisted |
-| `pdf_url` | text | **Deprecated, always NULL** (migration 0028). Same rule as `report_url` |
+| `report_url` | text | **Deprecated, always NULL** (migration 0029). Signed URLs are minted per request, never persisted |
+| `pdf_url` | text | **Deprecated, always NULL** (migration 0029). Same rule as `report_url` |
 | `cost_usd` | numeric | not null, default `0` |
 | `tokens_in` | int | not null, default `0` |
 | `tokens_out` | int | not null, default `0` |
@@ -257,7 +257,7 @@ ownership RLS policies in `supabase/migrations/0003_storage.sql`.
 the owning audit id, used by ownership checks. The worker uploads with the
 service-role key and persists only the object paths (`audits.report_path`,
 `audits.pdf_path`). `audits.report_url` / `audits.pdf_url` are deprecated and
-kept NULL (migration 0028): signed URLs are short-lived, minted per request by
+kept NULL (migration 0029): signed URLs are short-lived, minted per request by
 the web app's same-origin proxy routes, and must never be stored.
 
 ---
