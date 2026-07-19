@@ -66,6 +66,8 @@ def _claim_and_render_one(gateway: SupabaseGateway, settings: WorkerSettings) ->
         pdf_result = render_pdf(
             html, mode=settings.pdf_mode, chromium_path=settings.chromium_path
         )
+        if pdf_result.mode != "browser":
+            raise RuntimeError(pdf_result.note or "Browser PDF rendering was unavailable")
         pdf_path, _ = gateway.upload_pdf(audit_id, pdf_result.data)
         gateway.client.table("audits").update(
             {
