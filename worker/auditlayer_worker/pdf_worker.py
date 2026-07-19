@@ -73,9 +73,9 @@ def _claim_and_render_one(gateway: SupabaseGateway, settings: WorkerSettings) ->
         pdf_result = render_pdf(
             html, mode=settings.pdf_mode, chromium_path=settings.chromium_path
         )
-        _, pdf_url = gateway.upload_pdf(audit_id, pdf_result.data)
+        pdf_path = gateway.upload_pdf(audit_id, pdf_result.data)
         gateway.client.table("audits").update(
-            {"pdf_status": "ready", "pdf_url": pdf_url, "pdf_path": f"{audit_id}.pdf"}
+            {"pdf_status": "ready", "pdf_path": pdf_path}
         ).eq("id", audit_id).execute()
         gateway.emit_event(
             audit_id,

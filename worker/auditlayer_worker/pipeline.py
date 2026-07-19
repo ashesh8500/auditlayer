@@ -152,8 +152,7 @@ class RunSummary:
     estimated_tokens: bool
     prompt_version: str = ""
     report_path: str | None = None
-    report_url: str | None = None
-    pdf_url: str | None = None
+    pdf_path: str | None = None
     pdf_mode: str | None = None
     note: str = ""
 
@@ -376,17 +375,17 @@ class GenerationPipeline:
         )
         final_html = inject_prompt_footer(result.html, footer_line)
 
-        report_path = report_url = pdf_url = None
+        report_path = pdf_path = None
         pdf_mode = None
         if gateway is not None:
-            report_path, report_url = gateway.upload_report(audit.id, final_html)
-            # Mark audit ready immediately — PDF is async.
+            report_path = gateway.upload_report(audit.id, final_html)
+            # Mark audit ready immediately — PDF is async. Only storage paths
+            # are persisted; signed URLs are never written to the audits row.
             try:
                 gateway.update_audit(
                     audit.id,
                     status=AuditStatus.READY.value,
                     report_path=report_path,
-                    report_url=report_url,
                     pdf_status='pending',
                     tokens_in=result.tokens_in,
                     tokens_out=result.tokens_out,
@@ -404,7 +403,7 @@ class GenerationPipeline:
                 )
             sink.emit("uploaded", "HTML report stored — PDF queued for async generation")
         else:
-            report_path, pdf_url, pdf_mode = self._write_local(audit.id, final_html)
+            report_path, pdf_path, pdf_mode = self._write_local(audit.id, final_html)
             sink.emit("uploaded", f"HTML + {pdf_mode} PDF written to {Path(report_path).parent}")
 
         sink.emit(
@@ -427,7 +426,8 @@ class GenerationPipeline:
             estimated_tokens=result.estimated,
             prompt_version=PROMPT_VERSION,
             report_path=report_path,
-            report_url=report_url,
+            pdf_path=pdf_path,
+            pdf_mode=pdf_mode,
         )
 
     def refine(

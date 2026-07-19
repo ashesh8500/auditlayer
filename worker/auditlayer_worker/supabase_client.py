@@ -216,24 +216,32 @@ class SupabaseGateway:
 
     # -- storage -----------------------------------------------------------
 
-    def upload_report(self, audit_id: str, html: str) -> tuple[str, str]:
+    def upload_report(self, audit_id: str, html: str) -> str:
         path = f"{audit_id}.html"
         return self._upload(self.settings.reports_bucket, path, html.encode("utf-8"), "text/html")
 
-    def upload_pdf(self, audit_id: str, data: bytes) -> tuple[str, str]:
+    def upload_pdf(self, audit_id: str, data: bytes) -> str:
         path = f"{audit_id}.pdf"
         return self._upload(self.settings.pdfs_bucket, path, data, "application/pdf")
 
-    def _upload(self, bucket: str, path: str, data: bytes, content_type: str) -> tuple[str, str]:
+    def _upload(self, bucket: str, path: str, data: bytes, content_type: str) -> str:
         store = self.client.storage.from_(bucket)
         store.upload(
             path=path,
             file=data,
             file_options={"content-type": content_type, "upsert": "true"},
         )
+        return path
+
+    def signed_url(self, bucket: str, path: str) -> str:
+        """Mint a short-lived signed URL for in-request use only.
+
+        Never persist the result — the web app serves artifacts via same-origin
+        proxies that re-download from ``report_path`` / ``pdf_path``.
+        """
+        store = self.client.storage.from_(bucket)
         signed = store.create_signed_url(path, self.settings.signed_url_ttl_seconds)
-        url = signed.get("signedURL") or signed.get("signedUrl") or ""
-        return path, url
+        return signed.get("signedURL") or signed.get("signedUrl") or ""
 
     # -- benchmark cache ----------------------------------------------------
 

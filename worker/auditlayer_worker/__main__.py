@@ -110,8 +110,8 @@ def cmd_regen_pdf(settings: WorkerSettings, audit_id: str) -> int:
     html = data.decode("utf-8") if isinstance(data, (bytes, bytearray)) else str(data)
 
     pdf_result = render_pdf(html, mode=settings.pdf_mode, chromium_path=settings.chromium_path)
-    pdf_path, pdf_url = gateway.upload_pdf(audit_id, pdf_result.data)
-    gateway.update_audit(audit_id, pdf_url=pdf_url)
+    pdf_path = gateway.upload_pdf(audit_id, pdf_result.data)
+    gateway.update_audit(audit_id, pdf_path=pdf_path)
     gateway.emit_event(
         audit_id,
         "uploaded",
@@ -126,6 +126,8 @@ def cmd_regen_pdf(settings: WorkerSettings, audit_id: str) -> int:
     print(f"pdf_path   : {pdf_path}")
     if pdf_result.note:
         print(f"note       : {pdf_result.note}")
+    # Short-lived operator URL (in-request only, never persisted).
+    pdf_url = gateway.signed_url(settings.pdfs_bucket, pdf_path)
     print(f"pdf_url    : {pdf_url[:80]}..." if len(pdf_url) > 80 else f"pdf_url    : {pdf_url}")
     return 0 if pdf_result.mode == "browser" else 1
 
@@ -216,8 +218,8 @@ def cmd_demo(settings: WorkerSettings, args: argparse.Namespace) -> int:
     print(f"est_cost_usd     : ${summary.cost_usd:.4f}")
     if summary.report_path:
         print(f"html             : {summary.report_path}")
-    if summary.pdf_url:
-        print(f"pdf ({summary.pdf_mode}): {summary.pdf_url}")
+    if summary.pdf_path:
+        print(f"pdf ({summary.pdf_mode}): {summary.pdf_path}")
     if summary.note:
         print(f"note             : {summary.note}")
     return 0 if summary.status == "ready" else 1
