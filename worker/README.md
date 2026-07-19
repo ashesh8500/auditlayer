@@ -27,9 +27,9 @@ GenerationPipeline ── emits audit_events ──▶ Supabase Realtime ──�
    │     http       → existing Gateway api_server at HERMES_API_BASE
    │     subprocess → worker spawns `hermes gateway run`, same HTTP client
    │     inprocess  → run_agent.AIAgent directly (no HTTP)
-   ├─ Storage bucket "reports"  (text/html, signed URL)
+   ├─ Storage bucket "reports"  (text/html, private; web proxies per request)
    ├─ Storage bucket "pdfs"     (application/pdf, headless Chromium or stub)
-   └─ audits row: status=ready, report_url, pdf_url, tokens_in/out, cost_usd
+   └─ audits row: status=ready, report_path, pdf_path, tokens_in/out, cost_usd
 ```
 
 ### Hermes modes (`HERMES_MODE`)
@@ -110,7 +110,7 @@ or enable it locally via `hermes gateway setup` + an `API_SERVER_KEY` and
 
 | Table | Worker reads | Worker writes |
 |---|---|---|
-| `audits` | `handle, platform, goal, context, limitations, status=queued` | `status, report_path, report_url, pdf_url, tokens_in, tokens_out, cost_usd, model, milestone_label, admin_notes` |
+| `audits` | `handle, platform, goal, context, limitations, status=queued` | `status, report_path, pdf_path, tokens_in, tokens_out, cost_usd, model, milestone_label, admin_notes` |
 | `audit_events` | — | one row per phase: `phase, event_type, detail, actor='worker'` |
 | `refinements` | `section, instruction, status=queued` | `status (running/done/failed), error` |
 | `app_settings` (`id=1`) | `hermes_model, hermes_api_base, enabled_toolsets, token_cap, cost_cap_usd` | — |
