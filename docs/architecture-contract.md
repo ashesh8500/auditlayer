@@ -283,6 +283,13 @@ Implementation: `supabase/migrations/0002_rls.sql`.
   API use service-role. Client accounts cannot enumerate cached peers.
 - **trial_links/admin_actions**: admin-only browser reads; commercial writes use
   service-role-only transactional RPCs.
+- **instagram_connections**: a user can `select` only their own connections
+  (`user_id = auth.uid()`); there is no browser write access. All writes and
+  token handling go through the service-role key. The
+  `"Service role can manage connections"` policy is scoped `TO service_role`
+  (fixed in `supabase/migrations/0028_fix_instagram_connections_rls.sql` — the
+  0007 original had no `TO` clause, so it applied to PUBLIC and exposed
+  `long_lived_token` to every authenticated user).
 
 Helpers (both `SECURITY DEFINER` to avoid RLS recursion):
 - `public.is_admin()` → true if the caller's profile has `role = 'admin'`.
