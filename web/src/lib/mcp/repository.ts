@@ -18,7 +18,7 @@ export function createSupabaseMcpRepository(): McpRepository {
     async listAccounts(userId) {
       const { data, error } = await admin
         .from("accounts")
-        .select("id,handle,platform,display_name,last_researched_at,cache_valid_until,research_snapshot,ig_metrics_snapshot")
+        .select("id,handle,platform,display_name,last_researched_at,cache_valid_until,research_snapshot")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
       if (error) throw new Error(`Could not list accounts: ${error.message}`);
@@ -28,7 +28,7 @@ export function createSupabaseMcpRepository(): McpRepository {
     async getAccount(userId, accountId) {
       const { data, error } = await admin
         .from("accounts")
-        .select("id,handle,platform,display_name,last_researched_at,cache_valid_until,research_snapshot,ig_metrics_snapshot")
+        .select("id,handle,platform,display_name,last_researched_at,cache_valid_until,research_snapshot")
         .eq("user_id", userId)
         .eq("id", accountId)
         .maybeSingle();
@@ -72,7 +72,7 @@ export function createSupabaseMcpRepository(): McpRepository {
     async listAudits(userId, accountId, limit) {
       const { data, error } = await admin
         .from("audits")
-        .select("id,account_id,status,report_type,goal,created_at,updated_at,prompt_version,report_path,report_url,research_cache")
+        .select("id,account_id,status,report_type,goal,created_at,updated_at,prompt_version,report_path,research_cache")
         .eq("user_id", userId)
         .eq("account_id", accountId)
         .order("created_at", { ascending: false })
@@ -84,7 +84,7 @@ export function createSupabaseMcpRepository(): McpRepository {
     async getAudit(userId, accountId, auditId) {
       const { data, error } = await admin
         .from("audits")
-        .select("id,account_id,status,report_type,goal,created_at,updated_at,prompt_version,report_path,report_url,research_cache")
+        .select("id,account_id,status,report_type,goal,created_at,updated_at,prompt_version,report_path,research_cache")
         .eq("user_id", userId)
         .eq("account_id", accountId)
         .eq("id", auditId)

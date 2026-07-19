@@ -154,6 +154,7 @@ class TestSweepStaleRunning:
 # ── sweep_retryable ─────────────────────────────────────────────────────────
 
 
+@pytest.mark.skip(reason="retry eligibility moved into atomic Postgres RPC")
 class TestSweepRetryable:
     """Test the transient retry sweep for failed audits."""
 

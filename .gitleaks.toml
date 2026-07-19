@@ -1,0 +1,8 @@
+title = "AuditLayer gitleaks configuration"
+
+[allowlist]
+description = "Known synthetic Facebook secret fixture in a historical planning document"
+commits = [
+  "e576c8d74966b7c2f6b3559cbffaf277cb533701",
+  "8ad7610d71ee557a1e18e2c5324ce1df398e90d1",
+]

@@ -12,6 +12,7 @@ import traceback
 from pathlib import Path
 
 from .config import WorkerSettings, load_env_files
+from .observability import log_event
 from .pipeline import _fetch_benchmark_cache
 from .pdf import render_pdf
 from .supabase_client import SupabaseGateway
@@ -19,10 +20,13 @@ from .supabase_client import SupabaseGateway
 
 def run_pdf_worker(settings: WorkerSettings, *, once: bool = False) -> None:
     gateway = SupabaseGateway(settings)
-    print(f"[pdf-worker] connected; polling every {settings.poll_interval_seconds}s")
+    log_event("pdf_worker_started", poll_interval_seconds=settings.poll_interval_seconds)
 
     try:
         while True:
+            recovered = gateway.reap_stale_pdf_claims()
+            if recovered.get("retried") or recovered.get("exhausted"):
+                log_event("stale_pdf_claims_reaped", **recovered)
             claimed = _claim_and_render_one(gateway, settings)
             if once:
                 return
@@ -33,26 +37,12 @@ def run_pdf_worker(settings: WorkerSettings, *, once: bool = False) -> None:
 
 
 def _claim_and_render_one(gateway: SupabaseGateway, settings: WorkerSettings) -> bool:
-    res = (
-        gateway.client.table("audits")
-        .select("id, report_path")
-        .eq("pdf_status", "pending")
-        .order("created_at", ascending=True)
-        .limit(1)
-        .execute()
-    )
-    rows = res.data or []
-    if not rows:
+    row = gateway.claim_next_pdf()
+    if row is None:
         return False
 
-    row = rows[0]
     audit_id = str(row["id"])
     report_path = row.get("report_path") or ""
-
-    # Mark as generating so no other worker picks it up.
-    gateway.client.table("audits").update({"pdf_status": "generating"}).eq(
-        "id", audit_id
-    ).execute()
 
     try:
         html_data = (
@@ -63,19 +53,28 @@ def _claim_and_render_one(gateway: SupabaseGateway, settings: WorkerSettings) ->
             html_data
         )
     except Exception as exc:
-        print(f"[pdf-worker] failed to download HTML for {audit_id}: {exc}")
-        gateway.client.table("audits").update({"pdf_status": "failed"}).eq(
-            "id", audit_id
-        ).execute()
+        log_event(
+            "pdf_source_download_failed",
+            level="error",
+            audit_id=audit_id,
+            error_type=type(exc).__name__,
+        )
+        gateway.mark_pdf_attempt_failed(audit_id, type(exc).__name__)
         return True
 
     try:
         pdf_result = render_pdf(
             html, mode=settings.pdf_mode, chromium_path=settings.chromium_path
         )
-        _, pdf_url = gateway.upload_pdf(audit_id, pdf_result.data)
+        pdf_path, _ = gateway.upload_pdf(audit_id, pdf_result.data)
         gateway.client.table("audits").update(
-            {"pdf_status": "ready", "pdf_url": pdf_url, "pdf_path": f"{audit_id}.pdf"}
+            {
+                "pdf_status": "ready",
+                "pdf_path": pdf_path,
+                "pdf_claimed_at": None,
+                "pdf_claimed_by": None,
+                "pdf_last_error": None,
+            }
         ).eq("id", audit_id).execute()
         gateway.emit_event(
             audit_id,
@@ -83,18 +82,21 @@ def _claim_and_render_one(gateway: SupabaseGateway, settings: WorkerSettings) ->
             f"PDF ready ({len(pdf_result.data):,} bytes, {pdf_result.mode})",
             event_type="pdf_ready",
         )
-        print(f"[pdf-worker] {audit_id} PDF ready ({len(pdf_result.data):,} bytes)")
-    except Exception as exc:
-        print(f"[pdf-worker] {audit_id} PDF failed: {exc}\n{traceback.format_exc()[-500:]}")
-        gateway.client.table("audits").update({"pdf_status": "failed"}).eq(
-            "id", audit_id
-        ).execute()
-        gateway.emit_event(
-            audit_id,
-            "failed",
-            "PDF generation failed. A founder has been notified.",
-            event_type="error",
+        log_event(
+            "pdf_ready",
+            audit_id=audit_id,
+            bytes=len(pdf_result.data),
+            mode=pdf_result.mode,
         )
+    except Exception as exc:
+        log_event(
+            "pdf_failed",
+            level="error",
+            audit_id=audit_id,
+            error_type=type(exc).__name__,
+            traceback_tail=traceback.format_exc()[-500:],
+        )
+        gateway.mark_pdf_attempt_failed(audit_id, type(exc).__name__)
 
     return True
 

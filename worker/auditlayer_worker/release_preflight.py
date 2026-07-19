@@ -12,6 +12,10 @@ from .hermes_embedded import diagnose_embedded
 _REQUIRED_RPCS = {
     "claim_next_queued",
     "claim_next_refinement",
+    "claim_next_pdf",
+    "mark_pdf_attempt_failed",
+    "reap_stale_pdf_claims",
+    "sweep_retryable_audits",
     "reap_stale_running",
     "get_benchmarks",
     "redeem_trial_link",

@@ -29,6 +29,7 @@ from .generation import MockReportGenerator
 from .hermes import diagnose_hermes, validate_hermes
 from .hermes_runtime import HermesRuntime
 from .pdf import render_pdf
+from .pdf_worker import run_pdf_worker
 from .pipeline import GenerationPipeline, PrintEventSink
 from .release_preflight import run_preflight
 from .supabase_client import SupabaseGateway
@@ -110,8 +111,8 @@ def cmd_regen_pdf(settings: WorkerSettings, audit_id: str) -> int:
     html = data.decode("utf-8") if isinstance(data, (bytes, bytearray)) else str(data)
 
     pdf_result = render_pdf(html, mode=settings.pdf_mode, chromium_path=settings.chromium_path)
-    pdf_path, pdf_url = gateway.upload_pdf(audit_id, pdf_result.data)
-    gateway.update_audit(audit_id, pdf_url=pdf_url)
+    pdf_path, _ = gateway.upload_pdf(audit_id, pdf_result.data)
+    gateway.update_audit(audit_id, pdf_path=pdf_path, pdf_status="ready")
     gateway.emit_event(
         audit_id,
         "uploaded",
@@ -126,7 +127,6 @@ def cmd_regen_pdf(settings: WorkerSettings, audit_id: str) -> int:
     print(f"pdf_path   : {pdf_path}")
     if pdf_result.note:
         print(f"note       : {pdf_result.note}")
-    print(f"pdf_url    : {pdf_url[:80]}..." if len(pdf_url) > 80 else f"pdf_url    : {pdf_url}")
     return 0 if pdf_result.mode == "browser" else 1
 
 
@@ -136,6 +136,17 @@ def cmd_run(settings: WorkerSettings, once: bool) -> int:
         print("Use `python -m auditlayer_worker demo` to verify generation without Supabase.", file=sys.stderr)
         return 2
     run_worker_loop(settings, once=once)
+    return 0
+
+
+def cmd_run_pdf(settings: WorkerSettings, once: bool) -> int:
+    if not settings.has_supabase:
+        print(
+            "ERROR: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set for `run-pdf`.",
+            file=sys.stderr,
+        )
+        return 2
+    run_pdf_worker(settings, once=once)
     return 0
 
 
@@ -230,6 +241,9 @@ def build_parser() -> argparse.ArgumentParser:
     run_p = sub.add_parser("run", help="Run the Supabase-backed queue worker loop")
     run_p.add_argument("--once", action="store_true", help="Drain one item and exit")
 
+    pdf_p = sub.add_parser("run-pdf", help="Run the asynchronous PDF queue worker")
+    pdf_p.add_argument("--once", action="store_true", help="Drain one PDF item and exit")
+
     demo_p = sub.add_parser("demo", help="Run a standalone generation (no Supabase)")
     demo_p.add_argument("--handle", required=True, help="Handle or profile URL")
     demo_p.add_argument("--goal", default=Goal.GROWTH.value, choices=[g.value for g in Goal])
@@ -254,6 +268,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "run":
         return cmd_run(settings, once=args.once)
+    if args.command == "run-pdf":
+        return cmd_run_pdf(settings, once=args.once)
     if args.command == "demo":
         return cmd_demo(settings, args)
     if args.command == "regen-pdf":

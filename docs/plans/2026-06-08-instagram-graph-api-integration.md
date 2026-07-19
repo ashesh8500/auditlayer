@@ -86,7 +86,7 @@ Two options:
 **Add:**
 ```env
 FACEBOOK_APP_ID=123456789012345
-FACEBOOK_APP_SECRET=a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
+FACEBOOK_APP_SECRET=replace-with-a-real-secret-from-your-private-secret-manager
 ```
 
 **Verification:**
