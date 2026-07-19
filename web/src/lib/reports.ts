@@ -8,40 +8,37 @@ export interface ReportUrls {
   pdfUrl: string | null;
 }
 
-const SIGNED_TTL_SECONDS = 600; // 10 minutes — short-lived per the contract.
+const SIGNED_TTL_SECONDS = 600;
 
 /**
- * Mint short-lived signed URLs for a ready report's HTML + PDF artifacts.
- * Ownership MUST be verified by the caller before invoking this. Uses the
- * service-role client to sign objects in the private `reports`/`pdfs` buckets.
+ * Mint short-lived signed URLs for a ready report's private artifacts.
+ * Ownership MUST be verified by the caller before invoking this.
+ *
+ * URLs are derived from `report_path` on every request. Persisted
+ * `audits.report_url` / `audits.pdf_url` values are deprecated and stay NULL.
  */
 export async function getReportUrls(audit: {
   id: string;
   report_path: string | null;
-  report_url: string | null;
-  pdf_url: string | null;
 }): Promise<ReportUrls> {
-  if (!isSupabaseAdminConfigured()) {
-    return { htmlUrl: audit.report_url, pdfUrl: audit.pdf_url };
+  if (!isSupabaseAdminConfigured() || !audit.report_path) {
+    return { htmlUrl: null, pdfUrl: null };
   }
 
   const admin = createAdminClient();
-  let htmlUrl: string | null = audit.report_url;
-  let pdfUrl: string | null = audit.pdf_url;
+  let htmlUrl: string | null = null;
+  let pdfUrl: string | null = null;
 
-  if (audit.report_path) {
-    const { data } = await admin.storage
-      .from("reports")
-      .createSignedUrl(audit.report_path, SIGNED_TTL_SECONDS);
-    if (data?.signedUrl) htmlUrl = data.signedUrl;
+  const { data } = await admin.storage
+    .from("reports")
+    .createSignedUrl(audit.report_path, SIGNED_TTL_SECONDS);
+  if (data?.signedUrl) htmlUrl = data.signedUrl;
 
-    // Worker stores PDFs at `{audit_id}.pdf` in the pdfs bucket root.
-    const pdfPath = `${audit.id}.pdf`;
-    const { data: signed } = await admin.storage
-      .from("pdfs")
-      .createSignedUrl(pdfPath, SIGNED_TTL_SECONDS);
-    if (signed?.signedUrl) pdfUrl = signed.signedUrl;
-  }
+  const pdfPath = `${audit.id}.pdf`;
+  const { data: signed } = await admin.storage
+    .from("pdfs")
+    .createSignedUrl(pdfPath, SIGNED_TTL_SECONDS);
+  if (signed?.signedUrl) pdfUrl = signed.signedUrl;
 
   return { htmlUrl, pdfUrl };
 }

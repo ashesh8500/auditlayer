@@ -70,4 +70,4 @@ Required result:
 
 ## Legacy v1 (optional)
 
-`make check` under archived `src/auditlayer` — reference only. Do not use for new traffic.
+`make check` under archived `legacy/src/auditlayer` — reference only. Do not use for new traffic.

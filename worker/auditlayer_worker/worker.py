@@ -9,6 +9,7 @@ from .config import WorkerSettings
 from .core import PROMPT_VERSION, AuditRecord
 from .generation import HermesReportGenerator, MockReportGenerator, ReportGenerator
 from .hermes_runtime import HermesRuntime
+from .observability import log_event, start_health_server
 from .pipeline import GenerationPipeline, SupabaseEventSink
 from .supabase_client import AppSettings, SupabaseGateway
 
@@ -44,19 +45,31 @@ def build_generator(
 def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
     gateway = SupabaseGateway(settings)
     runtime = HermesRuntime(settings)
-    print(f"[worker] connected to Supabase; polling every {settings.poll_interval_seconds}s")
-    print(f"[worker] generator={settings.generator} hermes_mode={runtime.mode} pdf_mode={settings.pdf_mode}")
+    health = start_health_server(poll_interval_seconds=settings.poll_interval_seconds)
+    log_event(
+        "worker_started",
+        poll_interval_seconds=settings.poll_interval_seconds,
+        generator=settings.generator,
+        hermes_mode=runtime.mode,
+        pdf_mode=settings.pdf_mode,
+    )
 
     try:
         while True:
-            worked = _drain_once(settings, gateway, runtime)
-            retried = gateway.sweep_retryable()
-            if retried:
-                print(f"[worker] re-queued {retried} failed audit(s) for retry")
-            reaped = gateway.sweep_stale_running()
-            if reaped:
-                print(f"[worker] reaped {reaped} stale running audit(s)")
-            runtime.tick_idle(worked)
+            try:
+                worked = _drain_once(settings, gateway, runtime)
+                retried = gateway.sweep_retryable()
+                if retried:
+                    log_event("audits_requeued", count=retried)
+                reaped = gateway.sweep_stale_running()
+                if reaped:
+                    log_event("stale_audits_reaped", count=reaped)
+                runtime.tick_idle(worked)
+                health.heartbeat(worked=worked)
+            except Exception as exc:
+                health.heartbeat(worked=False, error_type=type(exc).__name__)
+                log_event("worker_loop_failed", level="error", error_type=type(exc).__name__)
+                raise
             if once:
                 return
             if not worked:
@@ -77,13 +90,17 @@ def _drain_once(
     if audit_row is not None:
         audit = AuditRecord.from_row(audit_row)
         sink = SupabaseEventSink(gateway, audit.id)
-        print(f"[worker] claimed audit {audit.id} @{audit.handle}")
+        log_event("audit_claimed", audit_id=audit.id, handle=audit.handle)
         summary = pipeline.run(audit, sink, gateway=gateway, token_cap=app_settings.token_cap,
                               cost_cap_usd=app_settings.cost_cap_usd)
-        print(
-            f"[worker] audit {audit.id} -> {summary.status} "
-            f"({summary.wall_clock_seconds}s, {summary.tokens_in}+{summary.tokens_out} tok, "
-            f"${summary.cost_usd:.2f})"
+        log_event(
+            "audit_finished",
+            audit_id=audit.id,
+            status=summary.status,
+            wall_clock_seconds=summary.wall_clock_seconds,
+            tokens_in=summary.tokens_in,
+            tokens_out=summary.tokens_out,
+            cost_usd=summary.cost_usd,
         )
         return True
 
@@ -102,7 +119,12 @@ def _process_refinement(
     audit_id = str(row["audit_id"])
     section = row.get("section", "")
     instruction = row.get("instruction", "")
-    print(f"[worker] claimed refinement {refinement_id} (audit {audit_id}, section '{section}')")
+    log_event(
+        "refinement_claimed",
+        refinement_id=refinement_id,
+        audit_id=audit_id,
+        section=section,
+    )
 
     audit_res = gateway.client.table("audits").select("*").eq("id", audit_id).limit(1).execute()
     audit_rows = audit_res.data or []
@@ -120,8 +142,15 @@ def _process_refinement(
         gateway.update_refinement(refinement_id, status="done", error="")
         gateway.update_audit(audit_id, prompt_version=PROMPT_VERSION)
         sink.emit("refinement", f"Section '{section}' refined and re-uploaded")
-    except Exception:  # noqa: BLE001
-        print(f"[worker] refinement {refinement_id} failed\n{traceback.format_exc()}")
+    except Exception as exc:  # noqa: BLE001
+        log_event(
+            "refinement_failed",
+            level="error",
+            refinement_id=refinement_id,
+            audit_id=audit_id,
+            error_type=type(exc).__name__,
+            traceback_tail=traceback.format_exc()[-500:],
+        )
         public_error = "Refinement failed safely. The team has the diagnostic details."
         gateway.emit_event(
             audit_id,
@@ -157,8 +186,13 @@ def _prewarm_account_homes(gateway: SupabaseGateway, settings: WorkerSettings) -
             .limit(3)
             .execute()
         )
-    except Exception:
-        return  # best-effort, don't crash the worker on DB errors
+    except Exception as exc:
+        log_event(
+            "account_home_prewarm_query_failed",
+            level="warning",
+            error_type=type(exc).__name__,
+        )
+        return
 
     seen: set[str] = set()
     for row in rows.data or []:
@@ -168,5 +202,10 @@ def _prewarm_account_homes(gateway: SupabaseGateway, settings: WorkerSettings) -
             try:
                 from .account_homes import ensure_account_home
                 ensure_account_home(uid, settings.alm_accounts_root)
-            except Exception:
-                pass  # best-effort
+            except Exception as exc:
+                log_event(
+                    "account_home_prewarm_failed",
+                    level="warning",
+                    user_id=uid,
+                    error_type=type(exc).__name__,
+                )

@@ -116,8 +116,6 @@ async function ReadyReport({
   auditId: string;
   audit: {
     report_path: string | null;
-    report_url: string | null;
-    pdf_url: string | null;
     id: string;
   };
   supabase: Awaited<ReturnType<typeof createClient>>;

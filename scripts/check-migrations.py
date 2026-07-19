@@ -20,12 +20,24 @@ REQUIRED = {
 }
 
 
+def _policy_blocks(sql: str) -> list[tuple[str, str, str]]:
+    """Return (policy name, table, statement) for CREATE POLICY statements."""
+    pattern = re.compile(
+        r'create\s+policy\s+(?:"([^"]+)"|([a-z0-9_]+))\s+on\s+([a-z0-9_.]+)(.*?);',
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return [
+        ((match.group(1) or match.group(2)), match.group(3), match.group(0))
+        for match in pattern.finditer(sql)
+    ]
+
+
 def main() -> int:
     files = sorted(MIGRATIONS.glob("*.sql"))
     versions: list[str] = []
     by_version: dict[str, Path] = {}
     for path in files:
-        match = re.match(r"^(\d{4})_[a-z0-9_]+\.sql$", path.name)
+        match = re.match(r"^(\d{4}|\d{14})_[a-z0-9_]+\.sql$", path.name)
         if not match:
             raise SystemExit(f"invalid migration filename: {path.name}")
         version = match.group(1)
@@ -44,8 +56,35 @@ def main() -> int:
         for needle in needles:
             if needle not in sql:
                 raise SystemExit(f"{path.name} missing release contract: {needle}")
+
+    # Security checks apply to every migration, not only the release-contract
+    # subset above. Historical mistakes are accepted only when a later
+    # migration explicitly drops the unsafe policy.
+    lowered_by_path = {path: path.read_text(encoding="utf-8").lower() for path in files}
+    for index, path in enumerate(files):
+        sql = lowered_by_path[path]
         if "security definer" in sql and "set search_path" not in sql:
             raise SystemExit(f"{path.name} has SECURITY DEFINER without fixed search_path")
+        later_sql = "\n".join(lowered_by_path[p] for p in files[index + 1 :])
+        for policy_name, table, statement in _policy_blocks(sql):
+            unsafe_all = (
+                re.search(r"\bfor\s+all\b", statement, flags=re.IGNORECASE)
+                and re.search(
+                    r"\busing\s*\(\s*true\s*\)", statement, flags=re.IGNORECASE
+                )
+                and not re.search(
+                    r"\bto\s+service_role\b", statement, flags=re.IGNORECASE
+                )
+            )
+            if not unsafe_all:
+                continue
+            remediation = (
+                f'drop policy if exists "{policy_name.lower()}" on {table.lower()}'
+            )
+            if remediation not in later_sql:
+                raise SystemExit(
+                    f"{path.name} has unscoped FOR ALL policy {policy_name!r} on {table}"
+                )
 
     print(f"migration contract OK: {len(files)} files, latest={versions[-1]}")
     return 0

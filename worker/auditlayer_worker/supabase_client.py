@@ -87,6 +87,29 @@ class SupabaseGateway:
             return None
         return (str(token), int(ig_user_id))
 
+    def refresh_instagram_connection(
+        self,
+        *,
+        user_id: str,
+        ig_user_id: int,
+        account_type: str,
+        followers_count: int,
+        media_count: int,
+        observed_at: str,
+    ) -> None:
+        """Make connection health agree with the live snapshot used by an audit."""
+        self.client.table("instagram_connections").update(
+            {
+                "account_type": account_type or None,
+                "followers_count": followers_count,
+                "media_count": media_count,
+                "last_refreshed_at": observed_at,
+                "updated_at": _utcnow(),
+            }
+        ).eq("user_id", user_id).eq("ig_user_id", ig_user_id).eq(
+            "is_active", True
+        ).execute()
+
     # -- RPC claim helpers -------------------------------------------------
 
     def _claim_via_rpc(self, rpc_name: str) -> dict | None:
@@ -123,50 +146,49 @@ class SupabaseGateway:
     # -- retry sweep --------------------------------------------------------
 
     def sweep_retryable(self) -> int:
-        from datetime import timedelta
-
+        """Atomically requeue eligible failures and block exhausted audits."""
         from .core import MAX_RETRIES, RETRY_BACKOFF_BASE_SECONDS
 
-        TRANSIENT_RETRY_DELAY_SECONDS = 300  # 5 minutes
-
         try:
-            res = (
-                self.client.table("audits")
-                .select("id,retry_count,last_failed_at")
-                .eq("status", "failed")
-                .execute()
-            )
+            res = self.client.rpc(
+                "sweep_retryable_audits",
+                {
+                    "p_max_retries": MAX_RETRIES,
+                    "p_transient_delay_seconds": 300,
+                    "p_base_delay_seconds": RETRY_BACKOFF_BASE_SECONDS,
+                },
+            ).execute()
         except Exception:
             return 0
+        data = res.data or {}
+        if isinstance(data, list):
+            data = data[0] if data else {}
+        return int(data.get("requeued", 0)) if isinstance(data, dict) else 0
 
-        re_queued = 0
-        now = datetime.now(timezone.utc)
-        for row in (res.data or []):
-            retry_count = row.get("retry_count") or 0
-            if retry_count >= MAX_RETRIES:
-                continue
-            last_failed = row.get("last_failed_at")
-            if last_failed:
-                if retry_count < 2:
-                    backoff = TRANSIENT_RETRY_DELAY_SECONDS
-                else:
-                    backoff = min(
-                        (2 ** retry_count) * RETRY_BACKOFF_BASE_SECONDS,
-                        3600,
-                    )
-                eligible_at = datetime.fromisoformat(last_failed) + timedelta(seconds=backoff)
-                if now < eligible_at:
-                    continue
-            try:
-                self.client.table("audits").update({
-                    "status": "queued",
-                    "retry_count": retry_count + 1,
-                    "updated_at": _utcnow(),
-                }).eq("id", row["id"]).eq("status", "failed").execute()
-                re_queued += 1
-            except Exception:
-                pass
-        return re_queued
+    def claim_next_pdf(self) -> dict | None:
+        """Atomically claim the oldest pending PDF using SKIP LOCKED."""
+        return self._claim_via_rpc("claim_next_pdf")
+
+    def mark_pdf_attempt_failed(self, audit_id: str, error_type: str) -> str:
+        res = self.client.rpc(
+            "mark_pdf_attempt_failed",
+            {
+                "p_audit_id": audit_id,
+                "p_error": error_type,
+                "p_max_attempts": 3,
+            },
+        ).execute()
+        return str(res.data or "failed")
+
+    def reap_stale_pdf_claims(self, cutoff_minutes: int = 15) -> dict:
+        res = self.client.rpc(
+            "reap_stale_pdf_claims",
+            {"cutoff_minutes": cutoff_minutes, "p_max_attempts": 3},
+        ).execute()
+        data = res.data or {}
+        if isinstance(data, list):
+            data = data[0] if data else {}
+        return data if isinstance(data, dict) else {}
 
     # -- stale running reaper ------------------------------------------------
 
@@ -225,15 +247,19 @@ class SupabaseGateway:
         return self._upload(self.settings.pdfs_bucket, path, data, "application/pdf")
 
     def _upload(self, bucket: str, path: str, data: bytes, content_type: str) -> tuple[str, str]:
+        """Upload a private artifact and return its durable path.
+
+        The second tuple item is retained as an empty compatibility value for
+        older call sites. Signed URLs are request-scoped and must be created by
+        the web proxy when an authorized reader asks for the artifact.
+        """
         store = self.client.storage.from_(bucket)
         store.upload(
             path=path,
             file=data,
             file_options={"content-type": content_type, "upsert": "true"},
         )
-        signed = store.create_signed_url(path, self.settings.signed_url_ttl_seconds)
-        url = signed.get("signedURL") or signed.get("signedUrl") or ""
-        return path, url
+        return path, ""
 
     # -- benchmark cache ----------------------------------------------------
 

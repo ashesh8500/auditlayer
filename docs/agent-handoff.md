@@ -107,7 +107,7 @@ hermes gateway restart   # after ~/.hermes/.env has API_SERVER_ENABLED=true, API
 ### Legacy v1 only (do not use for new work)
 
 ```bash
-make check             # old src/auditlayer tests — archived path
+make check             # legacy v1 tests (legacy/src/auditlayer) — archived path
 ```
 
 ---

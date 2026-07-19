@@ -32,6 +32,6 @@ reference only and is **not** part of the new build.
 - Do not run the v1 app in production.
 - Do not modify these files expecting them to affect the live product.
 
-The canonical originals still exist at the repo root (`src/`, `templates/`, etc.)
-until the rebuild fully supersedes them; this is a copy made so parallel work is not
-disrupted.
+This archive is the only copy of the v1 app — the former root-level duplicates
+(`src/`, `templates/`, `tests/`, `pyproject.toml`, `requirements.txt`, `uv.lock`)
+were removed once the rebuild fully superseded them.

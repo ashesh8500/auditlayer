@@ -12,7 +12,7 @@
 
 ## v1 reference (archived)
 
-This repo previously contained a runnable AuditLayer portal skeleton under `src/auditlayer/`. It was intentionally dependency-light: stdlib WSGI, SQLite, Jinja2 templates, and an optional Hermes HTTP adapter.
+The archived v1 portal lives under `legacy/` (`legacy/src/auditlayer/`). It was intentionally dependency-light: stdlib WSGI, SQLite, Jinja2 templates, and an optional Hermes HTTP adapter. Run the v1 commands below from the repo root with `PYTHONPATH=legacy/src` (or `cd legacy` and use `PYTHONPATH=src`).
 
 ## What It Covers
 
@@ -43,8 +43,8 @@ This repo previously contained a runnable AuditLayer portal skeleton under `src/
 ## Run Locally
 
 ```bash
-python3 -m pip install -r requirements.txt
-PYTHONPATH=src python3 -m auditlayer serve
+python3 -m pip install -r legacy/requirements.txt
+PYTHONPATH=legacy/src python3 -m auditlayer serve
 ```
 
 Open `http://127.0.0.1:8000`.
@@ -148,7 +148,7 @@ PDF exports are written to `AUDITLAYER_PDF_DIR` and logged as `pdf_exported`.
 Run the oldest queued audit once:
 
 ```bash
-PYTHONPATH=src python3 -m auditlayer run-next
+PYTHONPATH=legacy/src python3 -m auditlayer run-next
 ```
 
 Or call the protected HTTP worker endpoint:
@@ -164,7 +164,7 @@ This is deliberately single-job execution. Use systemd timers, cron, or a proces
 For a continuously supervised worker:
 
 ```bash
-PYTHONPATH=src python3 -m auditlayer worker --interval 15
+PYTHONPATH=legacy/src python3 -m auditlayer worker --interval 15
 ```
 
 ## Production Deployment
@@ -178,14 +178,14 @@ Systemd examples live in `infra/systemd/`:
 Before starting services, validate configuration:
 
 ```bash
-PYTHONPATH=src python3 -m auditlayer check-config
+PYTHONPATH=legacy/src python3 -m auditlayer check-config
 ```
 
 When `AUDITLAYER_GENERATOR=hermes`, validate the Hermes API path before accepting paid traffic:
 
 ```bash
 make diagnose-hermes
-PYTHONPATH=src python3 -m auditlayer validate-hermes
+PYTHONPATH=legacy/src python3 -m auditlayer validate-hermes
 ```
 
 `diagnose-hermes` checks local Hermes Gateway state and TCP reachability without spending model tokens. `validate-hermes` then sends a tiny OpenAI-compatible `/chat/completions` request to the configured Hermes endpoint and verifies that the configured model responds. It does not run a full audit.
@@ -250,7 +250,7 @@ Plan inference prefers Stripe metadata `auditlayer_plan` or `plan`. If metadata 
 ## QA
 
 ```bash
-PYTHONPATH=src pytest
+PYTHONPATH=legacy/src pytest
 ```
 
 The test suite covers intake normalization, credential review behavior, plan caps, tiered milestone logic, persistence, report generation, report-ready delivery, section-scoped refinement, refinement guardrails, admin auth, worker execution, magic-link auth, Stripe signature verification, billing updates, and the WSGI health/intake surface.

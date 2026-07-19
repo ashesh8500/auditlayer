@@ -42,6 +42,8 @@ from .core import (
 from .generation import ReportGenerator
 from .account_homes import ensure_account_home
 from .hermes_home_scope import HERMES_HOME_LOCK
+from .observability import log_event
+from .quality import evaluate_report_quality
 from .supabase_client import _utcnow
 
 
@@ -267,9 +269,11 @@ class GenerationPipeline:
         # NOTE: only WEB RESEARCH is cached (7-day TTL). Instagram metrics are
         # ALWAYS fetched fresh below — never served from cache.
         research_cache = audit.research_cache
+        reused_account_cache = False
         if gateway is not None and not research_cache and not audit.force_refresh:
             account_cache = _check_account_cache(gateway, audit)
             if account_cache is not None:
+                reused_account_cache = True
                 research_cache = account_cache["research_snapshot"]
                 cached_at = account_cache.get("last_researched_at", "unknown")
                 sink.emit(
@@ -375,19 +379,32 @@ class GenerationPipeline:
             version=PROMPT_VERSION,
         )
         final_html = inject_prompt_footer(result.html, footer_line)
+        quality = evaluate_report_quality(
+            final_html,
+            report_type=audit.report_type or "standard",
+            ig_metrics=ig_metrics,
+        )
+        delivery_status = (
+            AuditStatus.READY if quality.passed else AuditStatus.NEEDS_REVIEW
+        )
+        sink.emit(
+            "quality_check",
+            quality.summary,
+            event_type="quality_passed" if quality.passed else "quality_blocked",
+        )
 
         report_path = report_url = pdf_url = None
         pdf_mode = None
         if gateway is not None:
-            report_path, report_url = gateway.upload_report(audit.id, final_html)
+            report_path, _ = gateway.upload_report(audit.id, final_html)
             # Mark audit ready immediately — PDF is async.
             try:
                 gateway.update_audit(
                     audit.id,
-                    status=AuditStatus.READY.value,
+                    status=delivery_status.value,
                     report_path=report_path,
-                    report_url=report_url,
                     pdf_status='pending',
+                    admin_notes=(quality.summary[:500] if not quality.passed else ""),
                     tokens_in=result.tokens_in,
                     tokens_out=result.tokens_out,
                     cost_usd=cost.total_usd,
@@ -398,27 +415,61 @@ class GenerationPipeline:
                     research_cache="",
                 )
             except Exception as exc:
+                log_event(
+                    "audit_finalization_failed",
+                    level="error",
+                    audit_id=audit.id,
+                    error_type=type(exc).__name__,
+                    report_path=report_path,
+                )
                 sink.emit(
                     "failed",
-                    f"update_audit failed after upload — report is in storage, manual finalize needed: {exc}",
+                    "Report storage succeeded but audit finalization failed. The artifact is held for operator recovery.",
+                    event_type="finalization_failed",
+                )
+                return RunSummary(
+                    audit_id=audit.id,
+                    status=AuditStatus.FAILED.value,
+                    wall_clock_seconds=round(time.monotonic() - started_at, 2),
+                    tokens_in=result.tokens_in,
+                    tokens_out=result.tokens_out,
+                    cost_usd=cost.total_usd,
+                    model=result.model,
+                    estimated_tokens=result.estimated,
+                    prompt_version=PROMPT_VERSION,
+                    report_path=report_path,
+                    note="Audit row finalization failed after private artifact upload.",
                 )
             sink.emit("uploaded", "HTML report stored — PDF queued for async generation")
         else:
             report_path, pdf_url, pdf_mode = self._write_local(audit.id, final_html)
             sink.emit("uploaded", f"HTML + {pdf_mode} PDF written to {Path(report_path).parent}")
 
-        sink.emit(
-            "succeeded",
-            f"Ready - {result.tokens_in}+{result.tokens_out} tok, ~${cost.total_usd:.2f}",
-        )
+        if quality.passed:
+            sink.emit(
+                "succeeded",
+                f"Ready - {result.tokens_in}+{result.tokens_out} tok, ~${cost.total_usd:.2f}",
+            )
+        else:
+            sink.emit(
+                "needs_review",
+                "Report generated but held for founder review by the deterministic quality gate.",
+                event_type="quality_blocked",
+            )
 
         # Link audit to account and write progression data.
         if gateway is not None and audit.user_id:
-            _link_account_and_progression(gateway, audit, ig_metrics, research_cache=result.research_cache)
+            _link_account_and_progression(
+                gateway,
+                audit,
+                ig_metrics,
+                research_cache=result.research_cache,
+                research_refreshed=not reused_account_cache,
+            )
 
         return RunSummary(
             audit_id=audit.id,
-            status=AuditStatus.READY.value,
+            status=delivery_status.value,
             wall_clock_seconds=round(time.monotonic() - started_at, 2),
             tokens_in=result.tokens_in,
             tokens_out=result.tokens_out,
@@ -427,7 +478,6 @@ class GenerationPipeline:
             estimated_tokens=result.estimated,
             prompt_version=PROMPT_VERSION,
             report_path=report_path,
-            report_url=report_url,
         )
 
     def refine(
@@ -504,11 +554,16 @@ def _start_instagram_fetch(gateway, audit, sink):
                 else None
             )
         except Exception as exc:
-            print(
-                f"[worker] Instagram connection lookup failed for @{audit.handle}: "
-                f"{type(exc).__name__}"
+            log_event(
+                "instagram_connection_lookup_failed",
+                level="warning",
+                audit_id=audit.id,
+                handle=audit.handle,
+                error_type=type(exc).__name__,
             )
-            token_info = None
+            raise RuntimeError(
+                "Could not verify the connected Instagram account; refusing public fallback"
+            ) from exc
 
         if token_info is None:
             sink.emit(
@@ -524,6 +579,29 @@ def _start_instagram_fetch(gateway, audit, sink):
         client = InstagramAPIClient(token)
         try:
             metrics = client.get_full_metrics(ig_user_id)
+            if audit.user_id:
+                profile = metrics.profile
+                try:
+                    gateway.refresh_instagram_connection(
+                        user_id=audit.user_id,
+                        ig_user_id=ig_user_id,
+                        account_type=profile.account_type,
+                        followers_count=profile.followers_count,
+                        media_count=profile.media_count,
+                        observed_at=profile.fetched_at,
+                    )
+                except Exception as exc:
+                    log_event(
+                        "instagram_connection_snapshot_update_failed",
+                        level="warning",
+                        audit_id=audit.id,
+                        error_type=type(exc).__name__,
+                    )
+                    sink.emit(
+                        "researching",
+                        "Live Instagram data loaded, but connection health could not be refreshed.",
+                        event_type="internal_warning",
+                    )
             sink.emit(
                 "researching",
                 (
@@ -536,43 +614,64 @@ def _start_instagram_fetch(gateway, audit, sink):
             )
             return metrics
         except Exception as exc:
-            print(
-                f"[worker] Instagram API unavailable for @{audit.handle}: "
-                f"{type(exc).__name__}"
+            log_event(
+                "instagram_api_fetch_failed",
+                level="warning",
+                audit_id=audit.id,
+                handle=audit.handle,
+                error_type=type(exc).__name__,
             )
             sink.emit(
-                "researching",
-                "Connected Instagram data was unavailable. Using verified public Instagram signals.",
-                event_type="instagram_api_fallback",
+                "failed",
+                "Connected Instagram data was unavailable. The audit will retry rather than use stale public metrics.",
+                event_type="instagram_api_required",
             )
-            return None
+            raise RuntimeError(
+                "Connected Instagram Graph API unavailable; refusing stale fallback"
+            ) from exc
         finally:
             client.close()
 
     return pool.submit(_fetch)
 
 
-def _link_account_and_progression(gateway, audit, ig_metrics, *, research_cache: str = "") -> None:
+def _link_account_and_progression(
+    gateway,
+    audit,
+    ig_metrics,
+    *,
+    research_cache: str = "",
+    research_refreshed: bool = True,
+) -> None:
     """Upsert the account row and write progression data after a successful audit.
 
-    Best-effort — failures here must not block the audit from being marked ready.
+    A cache hit must not renew the research timestamp or expiry. Instagram
+    observations are written independently below.
     """
     try:
+        account_fields = {
+            "user_id": audit.user_id,
+            "handle": audit.handle,
+            "platform": audit.platform,
+        }
+        if research_refreshed:
+            account_fields.update(
+                {
+                    "last_researched_at": _utcnow(),
+                    # Research is a bounded evidence blob. Volatile Instagram
+                    # metrics are sourced from the live connection snapshot.
+                    "research_snapshot": (
+                        research_cache[:10000] if research_cache else None
+                    ),
+                    "cache_valid_until": (
+                        datetime.now(timezone.utc) + timedelta(hours=24)
+                    ).isoformat(),
+                }
+            )
         account = (
             gateway.client.table("accounts")
             .upsert(
-                {
-                    "user_id": audit.user_id,
-                    "handle": audit.handle,
-                    "platform": audit.platform,
-                    "last_researched_at": _utcnow(),
-                    # research_cache is already a plain-text evidence blob — store
-                    # it raw (bounded). Do NOT json.dumps: it double-quotes the
-                    # payload and the reader returns it verbatim, feeding the model
-                    # a quoted string on the next cache hit.
-                    "research_snapshot": (research_cache[:10000] if research_cache else None),
-                    "cache_valid_until": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
-                },
+                account_fields,
                 on_conflict="user_id,handle,platform",
             )
             .execute()
@@ -600,8 +699,14 @@ def _link_account_and_progression(gateway, audit, ig_metrics, *, research_cache:
                 },
                 on_conflict="audit_id",
             ).execute()
-    except Exception:
-        pass  # best-effort — don't fail the audit over account bookkeeping
+    except Exception as exc:
+        log_event(
+            "account_progression_link_failed",
+            level="warning",
+            audit_id=audit.id,
+            handle=audit.handle,
+            error_type=type(exc).__name__,
+        )
 
 
 def _check_account_cache(gateway, audit) -> dict | None:
@@ -644,5 +749,12 @@ def _check_account_cache(gateway, audit) -> dict | None:
             "research_snapshot": snapshot,
             "last_researched_at": row.get("last_researched_at") or "",
         }
-    except Exception:
-        return None  # best-effort — fall through to fresh research
+    except Exception as exc:
+        log_event(
+            "account_research_cache_read_failed",
+            level="warning",
+            audit_id=audit.id,
+            handle=audit.handle,
+            error_type=type(exc).__name__,
+        )
+        return None

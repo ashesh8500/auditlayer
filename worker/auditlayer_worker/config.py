@@ -94,7 +94,7 @@ class WorkerSettings:
             ),
             reports_bucket=os.getenv("AUDITLAYER_REPORTS_BUCKET", "reports"),
             pdfs_bucket=os.getenv("AUDITLAYER_PDFS_BUCKET", "pdfs"),
-            signed_url_ttl_seconds=int(os.getenv("AUDITLAYER_SIGNED_URL_TTL", str(60 * 60 * 24 * 365))),
+            signed_url_ttl_seconds=int(os.getenv("AUDITLAYER_SIGNED_URL_TTL", "900")),
             hermes_mode=os.getenv("HERMES_MODE", "http").strip().lower(),
             hermes_api_base=os.getenv("HERMES_API_BASE", "http://127.0.0.1:8642/v1"),
             hermes_api_key=os.getenv("HERMES_API_KEY") or None,

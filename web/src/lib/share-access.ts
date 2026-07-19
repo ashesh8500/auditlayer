@@ -18,8 +18,6 @@ type AuditRow = {
   milestone_label: string | null;
   model: string | null;
   report_path: string | null;
-  report_url: string | null;
-  pdf_url: string | null;
   cost_usd: number;
   tokens_in: number;
   tokens_out: number;

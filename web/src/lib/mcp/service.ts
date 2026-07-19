@@ -7,7 +7,6 @@ export type AccountRecord = {
   cache_valid_until: string | null;
   memory?: unknown;
   research_snapshot?: string | null;
-  ig_metrics_snapshot?: string | null;
 };
 
 export type ConnectionRecord = {
@@ -38,7 +37,6 @@ export type AuditRecord = {
   updated_at: string;
   prompt_version: string | null;
   report_path?: string | null;
-  report_url?: string | null;
   research_cache?: unknown;
 };
 
@@ -205,7 +203,9 @@ export function createMcpService(userId: string, repository: McpRepository) {
         source_artifact: sourceArtifact,
         evidence: {
           research_snapshot: account.research_snapshot?.slice(0, 12000) ?? null,
-          instagram_snapshot: account.ig_metrics_snapshot?.slice(0, 12000) ?? null,
+          instagram_snapshot: null,
+          instagram_snapshot_note:
+            "Use connected_metrics and progression; legacy cached Instagram snapshots are not authoritative.",
         },
       };
     },
