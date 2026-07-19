@@ -72,7 +72,7 @@ export function createSupabaseMcpRepository(): McpRepository {
     async listAudits(userId, accountId, limit) {
       const { data, error } = await admin
         .from("audits")
-        .select("id,account_id,status,report_type,goal,created_at,updated_at,prompt_version,report_path,report_url,research_cache")
+        .select("id,account_id,status,report_type,goal,created_at,updated_at,prompt_version,report_path,research_cache")
         .eq("user_id", userId)
         .eq("account_id", accountId)
         .order("created_at", { ascending: false })
@@ -84,7 +84,7 @@ export function createSupabaseMcpRepository(): McpRepository {
     async getAudit(userId, accountId, auditId) {
       const { data, error } = await admin
         .from("audits")
-        .select("id,account_id,status,report_type,goal,created_at,updated_at,prompt_version,report_path,report_url,research_cache")
+        .select("id,account_id,status,report_type,goal,created_at,updated_at,prompt_version,report_path,research_cache")
         .eq("user_id", userId)
         .eq("account_id", accountId)
         .eq("id", auditId)

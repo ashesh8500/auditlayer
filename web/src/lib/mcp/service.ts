@@ -38,7 +38,6 @@ export type AuditRecord = {
   updated_at: string;
   prompt_version: string | null;
   report_path?: string | null;
-  report_url?: string | null;
   research_cache?: unknown;
 };
 
