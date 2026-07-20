@@ -42,7 +42,6 @@ From repo root: `make dev-web`, `make web-check`, `make deploy-prod`.
 | `/admin` | Founder console (requires `profiles.role=admin`) |
 | `/api/webhooks/stripe` | Stripe → plan updates |
 | `/api/audits/[id]/report` | Same-origin HTML proxy (iframe-safe) |
-| `/api/audits/[id]/pdf` | PDF download proxy |
 | `/api/audits/[id]/live` | Polling fallback for timeline |
 
 Session refresh + protected-route redirect: `proxy.ts` → `src/lib/supabase/middleware.ts`.

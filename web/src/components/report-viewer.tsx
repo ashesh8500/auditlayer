@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Download, FileText, Loader2, Wand2 } from "lucide-react";
+import { Download, Loader2, Wand2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -27,12 +27,10 @@ const initialState: RefinementState = { status: "idle" };
 export function ReportViewer({
   auditId,
   reportReady,
-  pdfReady,
   refinements,
 }: {
   auditId: string;
   reportReady: boolean;
-  pdfReady: boolean;
   refinements: RefinementRow[];
 }) {
   const [state, action, pending] = useActionState(
@@ -45,7 +43,6 @@ export function ReportViewer({
 
   const reportSrc = `/api/audits/${auditId}/report`;
   const htmlDownload = `/api/audits/${auditId}/report?download=1`;
-  const pdfDownload = `/api/audits/${auditId}/pdf`;
 
   return (
     <div className="space-y-6">
@@ -53,21 +50,11 @@ export function ReportViewer({
         <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           Report
         </h2>
-        <div className="flex gap-2">
+        <div>
           <a href={reportReady ? htmlDownload : undefined} download>
             <Button variant="outline" size="sm" disabled={!reportReady}>
               <Download className="size-4" />
-              HTML
-            </Button>
-          </a>
-          <a href={reportReady ? pdfDownload : undefined} download>
-            <Button variant="outline" size="sm" disabled={!pdfReady}>
-              {!pdfReady && reportReady ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <FileText className="size-4" />
-              )}
-              PDF
+              Download report
             </Button>
           </a>
         </div>

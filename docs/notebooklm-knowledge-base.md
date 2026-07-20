@@ -76,7 +76,7 @@ AuditLayerMedia is built on a three-layer architecture:
 
 2. **Report Generation Worker** (Hetzner VM) — A Python service that claims queued audits, researches accounts across Instagram/TikTok/YouTube/X, runs competitive analysis, and generates the 15-section HTML report. Uses Nous Research's Hermes Agent framework for AI-powered research and synthesis.
 
-3. **Control Plane** (Supabase) — Postgres database with Row-Level Security, private Storage buckets for reports and PDFs, Realtime subscriptions for live audit progress, and service-role gating for admin operations.
+3. **Control Plane** (Supabase) — Postgres database with Row-Level Security, private Storage for self-contained HTML reports, Realtime subscriptions for live audit progress, and service-role gating for admin operations.
 
 The worker is template-driven — the report CSS and section structure are loaded dynamically from a canonical reference template at runtime, so format updates don't require code changes.
 
@@ -86,7 +86,7 @@ The worker is template-driven — the report CSS and section structure are loade
 - 2 accounts · 5 audits per month
 - Full 15-section report
 - Same-tier peer benchmarks
-- HTML + PDF export
+- Immersive HTML reader, sharing, and direct HTML download
 - Section-scoped refinements
 
 ### Pro — $50/month

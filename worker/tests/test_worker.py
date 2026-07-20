@@ -21,7 +21,7 @@ from auditlayer_worker.core import (
     replace_section,
 )
 from auditlayer_worker.generation import MockReportGenerator
-from auditlayer_worker.pdf import render_pdf
+
 from auditlayer_worker.pipeline import GenerationPipeline, PrintEventSink
 from auditlayer_worker.worker import build_generator
 
@@ -126,15 +126,8 @@ def test_estimate_cost_within_band():
     assert cost.tokens_in == 20000
 
 
-def test_pdf_stub_is_valid_pdf():
-    result = render_pdf("<html><body>hi</body></html>", mode="stub")
-    assert result.mode == "stub"
-    assert result.data.startswith(b"%PDF")
-    assert result.data.rstrip().endswith(b"%%EOF")
-
-
 def test_mock_pipeline_emits_all_phases_and_writes_files(tmp_path):
-    settings = _settings(generator="mock", output_dir=tmp_path, pdf_mode="stub")
+    settings = _settings(generator="mock", output_dir=tmp_path)
     audit = AuditRecord(
         id="demo-test-1",
         handle="hemalpatelphd",
@@ -152,7 +145,6 @@ def test_mock_pipeline_emits_all_phases_and_writes_files(tmp_path):
         assert required in phases, f"missing phase {required}"
     assert summary.status == "ready"
     assert (tmp_path / "demo-test-1.html").exists()
-    assert (tmp_path / "demo-test-1.pdf").exists()
     assert summary.cost_usd > 0
 
 

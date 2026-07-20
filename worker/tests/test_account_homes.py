@@ -26,7 +26,7 @@ def _settings(tmp_path: Path, accounts_root: Path) -> WorkerSettings:
         WorkerSettings.from_env(),
         generator="mock",
         output_dir=tmp_path,
-        pdf_mode="stub",
+
         alm_accounts_root=str(accounts_root),
     )
 

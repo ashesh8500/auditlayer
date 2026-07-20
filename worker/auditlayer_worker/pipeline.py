@@ -18,6 +18,7 @@ from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
+import re
 import threading
 import time
 import traceback
@@ -155,8 +156,6 @@ class RunSummary:
     prompt_version: str = ""
     report_path: str | None = None
     report_url: str | None = None
-    pdf_url: str | None = None
-    pdf_mode: str | None = None
     note: str = ""
 
 
@@ -393,17 +392,14 @@ class GenerationPipeline:
             event_type="quality_passed" if quality.passed else "quality_blocked",
         )
 
-        report_path = report_url = pdf_url = None
-        pdf_mode = None
+        report_path = report_url = None
         if gateway is not None:
             report_path, _ = gateway.upload_report(audit.id, final_html)
-            # Mark audit ready immediately — PDF is async.
             try:
                 gateway.update_audit(
                     audit.id,
                     status=delivery_status.value,
                     report_path=report_path,
-                    pdf_status='pending',
                     admin_notes=(quality.summary[:500] if not quality.passed else ""),
                     tokens_in=result.tokens_in,
                     tokens_out=result.tokens_out,
@@ -440,10 +436,10 @@ class GenerationPipeline:
                     report_path=report_path,
                     note="Audit row finalization failed after private artifact upload.",
                 )
-            sink.emit("uploaded", "HTML report stored — PDF queued for async generation")
+            sink.emit("uploaded", "HTML report stored")
         else:
-            report_path, pdf_url, pdf_mode = self._write_local(audit.id, final_html)
-            sink.emit("uploaded", f"HTML + {pdf_mode} PDF written to {Path(report_path).parent}")
+            report_path = self._write_local(audit.id, final_html)
+            sink.emit("uploaded", f"HTML report written to {Path(report_path).parent}")
 
         if quality.passed:
             sink.emit(
@@ -463,6 +459,7 @@ class GenerationPipeline:
                 gateway,
                 audit,
                 ig_metrics,
+                score=_extract_overall_score(final_html),
                 research_cache=result.research_cache,
                 research_refreshed=not reused_account_cache,
             )
@@ -517,22 +514,12 @@ class GenerationPipeline:
                 else:
                     os.environ["HERMES_HOME"] = previous
 
-    def _render_pdf(self, html: str):
-        from .pdf import render_pdf
-
-        return render_pdf(html, mode=self.settings.pdf_mode, chromium_path=self.settings.chromium_path)
-
-    def _write_local(self, audit_id: str, html: str) -> tuple[str, str, str]:
-        from .pdf import render_pdf
-
+    def _write_local(self, audit_id: str, html: str) -> str:
         out = self.settings.output_dir
         out.mkdir(parents=True, exist_ok=True)
         html_path = out / f"{audit_id}.html"
         html_path.write_text(html, encoding="utf-8")
-        pdf_result = render_pdf(html, mode=self.settings.pdf_mode, chromium_path=self.settings.chromium_path)
-        pdf_path = out / f"{audit_id}.pdf"
-        pdf_path.write_bytes(pdf_result.data)
-        return str(html_path), str(pdf_path), pdf_result.mode
+        return str(html_path)
 
 
 def _start_instagram_fetch(gateway, audit, sink):
@@ -635,11 +622,20 @@ def _start_instagram_fetch(gateway, audit, sink):
     return pool.submit(_fetch)
 
 
+def _extract_overall_score(report_html: str) -> int | None:
+    match = re.search(r'class="sd-overall">(\d{1,3})<span>/ 100', report_html)
+    if not match:
+        return None
+    score = int(match.group(1))
+    return score if 0 <= score <= 100 else None
+
+
 def _link_account_and_progression(
     gateway,
     audit,
     ig_metrics,
     *,
+    score: int | None = None,
     research_cache: str = "",
     research_refreshed: bool = True,
 ) -> None:
@@ -685,17 +681,35 @@ def _link_account_and_progression(
             {"account_id": account_id}
         ).eq("id", audit.id).execute()
 
-        # Write progression row if we have metrics.
-        if ig_metrics is not None:
-            profile = getattr(ig_metrics, "profile", None)
+        # Every scored report contributes a progression point. Connected
+        # metrics enrich it when available; the score itself is locally owned.
+        if ig_metrics is not None or score is not None:
+            profile = getattr(ig_metrics, "profile", None) if ig_metrics is not None else None
             gateway.client.table("account_progression").upsert(
                 {
                     "account_id": account_id,
                     "audit_id": audit.id,
-                    "followers": int(getattr(profile, "followers_count", 0) or 0),
-                    "engagement": float(getattr(ig_metrics, "avg_engagement_rate", 0) or 0),
-                    "avg_likes": float(getattr(ig_metrics, "avg_likes", 0) or 0),
-                    "avg_comments": float(getattr(ig_metrics, "avg_comments", 0) or 0),
+                    "followers": (
+                        int(getattr(profile, "followers_count", 0) or 0)
+                        if profile is not None
+                        else None
+                    ),
+                    "engagement": (
+                        float(getattr(ig_metrics, "avg_engagement_rate", 0) or 0)
+                        if ig_metrics is not None
+                        else None
+                    ),
+                    "avg_likes": (
+                        float(getattr(ig_metrics, "avg_likes", 0) or 0)
+                        if ig_metrics is not None
+                        else None
+                    ),
+                    "avg_comments": (
+                        float(getattr(ig_metrics, "avg_comments", 0) or 0)
+                        if ig_metrics is not None
+                        else None
+                    ),
+                    "score": score,
                 },
                 on_conflict="audit_id",
             ).execute()

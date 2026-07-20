@@ -159,7 +159,6 @@ async function ReadyReport({
           <ReportViewer
             auditId={auditId}
             reportReady={Boolean(audit.report_path)}
-            pdfReady={(audit as any).pdf_status === 'ready'}
             refinements={(refinementRows ?? []) as RefinementRow[]}
           />
         </div>

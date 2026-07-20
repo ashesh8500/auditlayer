@@ -54,7 +54,6 @@ class WorkerSettings:
     supabase_url: str | None
     supabase_service_role_key: str | None
     reports_bucket: str
-    pdfs_bucket: str
     signed_url_ttl_seconds: int
     hermes_mode: str
     hermes_api_base: str
@@ -78,8 +77,6 @@ class WorkerSettings:
     price_out_per_mtok: float
     poll_interval_seconds: float
     phase_interval_seconds: float
-    pdf_mode: str
-    chromium_path: str | None
     worker_id: str
     output_dir: Path
 
@@ -93,7 +90,6 @@ class WorkerSettings:
                 os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_KEY") or None
             ),
             reports_bucket=os.getenv("AUDITLAYER_REPORTS_BUCKET", "reports"),
-            pdfs_bucket=os.getenv("AUDITLAYER_PDFS_BUCKET", "pdfs"),
             signed_url_ttl_seconds=int(os.getenv("AUDITLAYER_SIGNED_URL_TTL", "900")),
             hermes_mode=os.getenv("HERMES_MODE", "http").strip().lower(),
             hermes_api_base=os.getenv("HERMES_API_BASE", "http://127.0.0.1:8642/v1"),
@@ -121,8 +117,6 @@ class WorkerSettings:
             price_out_per_mtok=float(os.getenv("AUDITLAYER_PRICE_OUT_PER_MTOK", "0.28")),
             poll_interval_seconds=float(os.getenv("AUDITLAYER_POLL_INTERVAL", "5")),
             phase_interval_seconds=float(os.getenv("AUDITLAYER_PHASE_INTERVAL", "0")),
-            pdf_mode=os.getenv("AUDITLAYER_PDF_MODE", "browser").lower(),
-            chromium_path=os.getenv("CHROMIUM_PATH") or None,
             worker_id=_default_worker_id(),
             output_dir=Path(os.getenv("AUDITLAYER_OUTPUT_DIR", "var/worker-out")),
         )

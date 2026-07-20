@@ -24,7 +24,7 @@ Required result:
 
 | Gate | Command / check | Required evidence |
 |---|---|---|
-| Supabase migrations | `make supabase-push` | Tables + RLS + `reports`/`pdfs` buckets exist |
+| Supabase migrations | `make supabase-push` | Tables + RLS + private `reports` bucket exist |
 | Founders admin | SQL in `supabase/seed.sql` | Ashesh + Narin `role = 'admin'` |
 | Google OAuth | Supabase → Auth → Providers | Sign-in works; callback `https://<domain>/auth/callback` |
 | Magic link email | Resend on Vercel **or** Supabase template | Link uses `token_hash`, not `ConfirmationURL` alone |
@@ -34,8 +34,7 @@ Required result:
 | Hermes gateway | `cd worker && uv run python -m auditlayer_worker diagnose-hermes` | `ok=true`, `tcp_reachable=true`, `auth_ok=true`, `api_server_state=connected` |
 | Hermes health | `cd worker && uv run python -m auditlayer_worker validate-hermes` | `ok=True`, `skipped=False` |
 | Worker running | `make hermes-vm-worker` on hermes-vm | `systemctl is-active auditlayer-worker` = active |
-| End-to-end audit | Intake → worker → ready | HTML in iframe; PDF downloads |
-| PDF quality | `AUDITLAYER_PDF_MODE=browser` + Chromium | Real PDF (~1MB), not 673-byte stub |
+| End-to-end audit | Intake → worker → ready | Workspace viewer, immersive reader, sharing, and HTML download work |
 
 ---
 

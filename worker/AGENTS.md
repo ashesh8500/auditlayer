@@ -11,7 +11,7 @@ Long-running Python service that:
 1. Claims `queued` audits (and `queued` refinements) from Supabase
 2. Runs Hermes `social-media-audit` generation with guardrails
 3. Streams `audit_events` phases for the live UI
-4. Uploads HTML + PDF to private Storage
+4. Uploads self-contained HTML to private Storage
 5. Records `tokens_in`, `tokens_out`, `cost_usd`
 
 **Self-contained** — logic in `auditlayer_worker/core.py`. Do not import `legacy/`.
@@ -26,7 +26,6 @@ make worker-once
 cd worker && uv run pytest
 cd worker && uv run python -m auditlayer_worker diagnose-hermes
 cd worker && uv run python -m auditlayer_worker demo --handle iamsrk --generator mock
-cd worker && uv run python -m auditlayer_worker regen-pdf --audit-id <uuid>
 ```
 
 ---
@@ -41,7 +40,6 @@ cd worker && uv run python -m auditlayer_worker regen-pdf --audit-id <uuid>
 | `hermes.py` | HTTP client to gateway `/v1/chat/completions` |
 | `hermes_runtime.py` | `HERMES_MODE`: http / subprocess / inprocess |
 | `supabase_client.py` | Claim, events, storage upload |
-| `pdf.py` | `browser` (Chromium) vs `stub` PDF |
 | `config.py` | Env loading — `worker/.env` overrides repo `.env` |
 
 ---

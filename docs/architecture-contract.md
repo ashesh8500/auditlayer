@@ -17,10 +17,10 @@ The rebuild stack:
 - `legacy/` — archived v1 stdlib WSGI app (see `legacy/README.md`).
 
 Supabase is the control plane: Postgres (data), Auth (magic link + Google OAuth),
-Row Level Security, Storage (report HTML/PDF), and Realtime (live generation
+Row Level Security, Storage (self-contained report HTML), and Realtime (live generation
 stream). The Python worker claims queued audits via the **service-role** key
 (which bypasses RLS), runs the Hermes agent, streams `audit_events`, and uploads
-the final self-contained HTML + PDF to Storage.
+the final self-contained HTML to Storage.
 
 ---
 
@@ -70,8 +70,7 @@ One row per requested audit, owned by a profile.
 | `milestone_label` | text | |
 | `model` | text | |
 | `report_path` | text | |
-| `report_url` | text | |
-| `pdf_url` | text | |
+| `report_url` | text | deprecated; kept null and replaced by request-scoped access |
 | `cost_usd` | numeric | not null, default `0` |
 | `tokens_in` | int | not null, default `0` |
 | `tokens_out` | int | not null, default `0` |
@@ -235,27 +234,29 @@ peers → scoring → composing → uploaded → succeeded → failed → refine
 - `peers` — same-tier peer/competitor analysis.
 - `scoring` — computing the performance score.
 - `composing` — synthesizing the self-contained HTML report.
-- `uploaded` — HTML/PDF written to Storage.
+- `uploaded` — self-contained HTML written to Storage.
 - `succeeded` — terminal success (status → `ready`).
 - `failed` — terminal failure (status → `failed`).
 - `refinement` — a section-scoped refinement pass.
 
 ---
 
-## Storage buckets (private)
+## Storage bucket (private)
 
-Both buckets are **private** (`public = false`); access is via signed URLs or the
-ownership RLS policies in `supabase/migrations/0003_storage.sql`.
+The `reports` bucket is **private** (`public = false`). Access is through
+owner/admin-checked same-origin routes.
 
 | bucket | mime | size limit | purpose |
 |---|---|---|---|
 | `reports` | `text/html` | 10 MB | self-contained HTML reports |
-| `pdfs` | `application/pdf` | 25 MB | rendered PDF exports |
 
 **Path convention:** `<bucket>/<audit_id>/<filename>` — the first path segment is
 the owning audit id, used by ownership checks. The worker uploads with the
-service-role key; `audits.report_path` stores the object path, and
-`audits.report_url` / `audits.pdf_url` hold signed or canonical URLs.
+service-role key; `audits.report_path` stores the durable object path. Signed
+access is request-scoped and is never persisted on the audit row.
+
+The historical `pdfs` bucket may remain temporarily for rollback safety, but
+the application has no read/write path for it and no PDF columns or queue RPCs.
 
 ---
 

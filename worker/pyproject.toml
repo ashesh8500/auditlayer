@@ -1,7 +1,7 @@
 [project]
 name = "auditlayer-worker"
 version = "0.1.0"
-description = "AuditLayer Hermes worker: claims queued audits from Supabase, runs guardrailed Hermes generation, streams a granular event timeline, and uploads HTML/PDF reports."
+description = "AuditLayer Hermes worker: claims queued audits from Supabase, runs guardrailed Hermes generation, streams a granular event timeline, and uploads self-contained HTML reports."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 authors = [{ name = "AuditLayer" }]

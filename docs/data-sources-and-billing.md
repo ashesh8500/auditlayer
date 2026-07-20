@@ -16,8 +16,8 @@ Scope: the automated worker pipeline (`worker/`) calling the Hermes Gateway
 **Inflow** = everything the agent pulls in to research the subject. Some inflow
 is *metered* (you pay per call/scrape), some is *free* (browser compute on the
 VM, or skill knowledge). **Outflow** = what the model produces and where it
-goes: tokens billed by the model provider, plus the HTML/PDF artifacts and their
-delivery.
+goes: tokens billed by the model provider, plus the self-contained HTML artifact
+and its delivery.
 
 ```mermaid
 flowchart LR
@@ -36,7 +36,6 @@ flowchart LR
     PromptTok["Prompt tokens consumed (metered per 1M)"]
     CompletionTok["Completion tokens produced (metered per 1M)"]
     HTML["Self-contained HTML report"]
-    PDF["Rendered PDF (headless Chromium, VM compute)"]
     Delivery["Signed URL + live audit_events stream to frontend"]
   end
 
@@ -50,9 +49,7 @@ flowchart LR
   Agent --> PromptTok
   Agent --> CompletionTok
   Agent --> HTML
-  HTML --> PDF
   HTML --> Delivery
-  PDF --> Delivery
 ```
 
 ### Inflow detail (what each source reliably returns)
@@ -99,7 +96,7 @@ Model token rates use the worker defaults for `deepseek-v4-pro`-class pricing
 (`AUDITLAYER_PRICE_IN_PER_MTOK=0.27`, `AUDITLAYER_PRICE_OUT_PER_MTOK=1.10`);
 set these to your contracted rates. Tool-call rates are xAI's published
 `$5 / 1,000 calls` ($0.005/call) for `web_search` and `x_search` (verified Jun
-2026). Browser fetches and PDF rendering are VM compute, amortized into infra.
+2026). Browser fetches are VM compute, amortized into infra.
 
 | Cost driver | Billing unit | Approx. unit cost | Typical qty / audit | Per-audit cost |
 |---|---|---|---|---|
@@ -108,8 +105,7 @@ set these to your contracted rates. Tool-call rates are xAI's published
 | `web_search` (Exa via Hermes) | per call | ~$0.005 | 8–16 | $0.04–$0.08 |
 | `x_search` (xAI) | per call | $0.005 | 0–10 (X targets only) | $0.00–$0.05 |
 | `browser` navigations (FxTwitter, TikTok, YouTube, IG wall, TwStalker) | VM compute | ~$0 marginal | 5–20 | ~$0.00 |
-| PDF render (headless Chromium) | VM compute | ~$0 marginal | 1 | ~$0.00 |
-| Supabase Storage + egress (HTML+PDF, ~0.2–1 MB) | per GB stored/egress | negligible at pilot scale | 1 | <$0.01 |
+| Supabase Storage + egress (self-contained HTML) | per GB stored/egress | negligible at pilot scale | 1 | <$0.01 |
 | Fixed infra (CX22 VM + Cloudflare Tunnel), amortized | per audit | ~$4.90/mo ÷ volume | 1 | ~$0.05 @ 100/mo |
 | **Per-audit total (free-toolset path)** | | | | **~$0.30–$1.00** |
 

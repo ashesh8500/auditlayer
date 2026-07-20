@@ -69,7 +69,7 @@ The authoritative schema and enums live in `docs/architecture-contract.md`.
      3. **Or** configure custom SMTP in Supabase → Authentication → SMTP, then
         push `supabase/templates/magic_link.html` via `supabase config push`
         (uses `token_hash` server verification — see `web/src/app/auth/callback/route.ts`).
-6. Confirm private Storage buckets `reports` and `pdfs` exist (see `0003_storage.sql`).
+6. Confirm the private Storage bucket `reports` exists (see `0003_storage.sql`).
 7. Enable **Realtime** on `audit_events` and `audits` for the live generation stream.
 
 ---
@@ -168,26 +168,6 @@ Worker env vars: see `worker/.env.example`. Token pricing for cost display on au
 
 - `AUDITLAYER_PRICE_IN_PER_MTOK` (default `0.27`)
 - `AUDITLAYER_PRICE_OUT_PER_MTOK` (default `1.10`)
-
-### PDF export (`AUDITLAYER_PDF_MODE`)
-
-| Mode | When to use |
-|---|---|
-| `browser` (recommended) | Host has Chromium or Google Chrome — renders the stored HTML report to a real PDF via headless `--print-to-pdf` |
-| `stub` | CI/local QA without a browser binary — emits a valid minimal placeholder PDF |
-
-On macOS with Chrome installed, set `AUDITLAYER_PDF_MODE=browser` (default). Optionally pin
-`CHROMIUM_PATH=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`.
-On Hetzner, install `chromium` and keep `AUDITLAYER_PDF_MODE=browser`.
-
-Re-render a stored report after switching modes:
-
-```bash
-cd worker
-uv run python -m auditlayer_worker regen-pdf --audit-id <uuid>
-```
-
----
 
 ## 4. Hermes verification
 

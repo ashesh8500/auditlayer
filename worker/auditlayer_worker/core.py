@@ -459,6 +459,42 @@ REPORT_SECTIONS: dict[str, list[str]] = {
     "blueprint": BLUEPRINT_SECTIONS,
 }
 
+# Versioned scoring contract. The model supplies evidence-backed dimension
+# scores; local code owns the aggregate so the headline can never inherit an
+# arbitrary first item.
+SCORE_DIMENSIONS: tuple[tuple[str, int], ...] = (
+    ("Profile Clarity", 10),
+    ("Content Quality", 15),
+    ("Content Consistency", 10),
+    ("Audience Fit", 15),
+    ("Engagement Health", 15),
+    ("Growth Readiness", 15),
+    ("Conversion Path", 10),
+    ("Brand Differentiation", 10),
+)
+
+
+def calculate_weighted_overall_score(
+    dimensions: list[tuple[str, str, str]],
+) -> int:
+    """Validate the canonical dimensions and return their weighted score."""
+    if len(dimensions) != len(SCORE_DIMENSIONS):
+        raise ValueError("Executive Summary must contain all eight score dimensions")
+    weighted_total = 0
+    total_weight = 0
+    for (title, _body, raw_value), (required_title, weight) in zip(
+        dimensions, SCORE_DIMENSIONS, strict=True
+    ):
+        if title != required_title:
+            raise ValueError(
+                f"Executive Summary score dimension must be {required_title}"
+            )
+        if not raw_value.isdigit() or not 0 <= int(raw_value) <= 100:
+            raise ValueError(f"Invalid score for {required_title}")
+        weighted_total += int(raw_value) * weight
+        total_weight += weight
+    return round(weighted_total / total_weight)
+
 
 def _load_template_sections(report_type: str = "standard") -> list[str]:
     """Return the section list for the given report type."""
@@ -547,7 +583,13 @@ Return one JSON object only, with no markdown or commentary, in this schema:
 "table":{{"headers":["column"],"rows":[["cell"]]}},"callout":"optional key takeaway"}}]}}
 
 SECTION-BY-SECTION GUIDE (use items for different purposes per section):
-- Executive Summary: items = 8 scored dimensions (title=name, value=score 0-100). Write 2-3 rich lede paragraphs.
+- Executive Summary: items = these exact 8 scored dimensions in this exact order:
+  Profile Clarity (10%), Content Quality (15%), Content Consistency (10%),
+  Audience Fit (15%), Engagement Health (15%), Growth Readiness (15%),
+  Conversion Path (10%), Brand Differentiation (10%). Set value to the
+  dimension score from 0-100 and body to its evidence-based rationale. Do not
+  provide an overall score; local code computes the weighted aggregate. Write
+  2-3 rich lede paragraphs.
 - Key Metrics: items = 4 metric cards (title=value e.g. "1,081", body=label e.g. "Followers red"). Include "red" / "amber" / "green" in body for color. Add table with 4-8 metric rows and callout with key takeaway.
 - Strengths / Weaknesses: items = 5-6 findings each (title as card headline, body as evidence paragraph).
 - Root Cause Analysis: items = key causal factors with evidence, use lede for narrative synthesis.
@@ -906,9 +948,9 @@ def assemble_structured_report_html(
             ))
 
         if not connected and heading == "Executive Summary":
-            overall = clean_items[0][2] if clean_items and clean_items[0][2] else "—"
+            overall = calculate_weighted_overall_score(clean_items)
             parts.append('<div class="score-diagram"><div class="sd-header"><span class="sd-label">Overall Score</span>'
-                         f'<span class="sd-overall">{esc(overall)}<span>/ 100</span></span></div>')
+                         f'<span class="sd-overall">{overall}<span>/ 100</span></span></div>')
             for title, _, value in clean_items:
                 score = int(value) if value.isdigit() and 0 <= int(value) <= 100 else 0
                 color = "green" if score >= 70 else "amber" if score >= 40 else "red"

@@ -20,7 +20,7 @@ Enter a handle, answer 3 questions, get a self-contained HTML audit report: wher
 ```
 Browser → Next.js (web/) → Supabase (Auth, Postgres, Storage, Realtime)
                                 ↑
-                           worker/ + Hermes Gateway → HTML + PDF
+                           worker/ + Hermes Gateway → self-contained HTML
 ```
 
 **Prod (current):** https://web-delta-dun-29.vercel.app  
@@ -71,7 +71,7 @@ auditlayer/
 
 | Tier | Price | Includes |
 |---|---|---|
-| **Starter** | $30/mo | 5 audits, refinements, PDF + HTML |
+| **Starter** | $30/mo | 5 audits, refinements, HTML reader + download |
 | **Pro** | $50/mo | 15 audits, competitive comparison, priority generation |
 | **Enterprise** | Contact | Manual seat assignment via SQL |
 

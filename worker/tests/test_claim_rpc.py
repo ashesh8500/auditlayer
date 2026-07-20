@@ -158,24 +158,6 @@ class TestMockedClaimRPC:
         assert result["id"] == "r1"
         mock_client.table.assert_not_called()
 
-    def test_claim_next_pdf_uses_atomic_rpc(self):
-        settings = _settings()
-        gw, mock_client = _make_gateway(settings)
-        mock_response = MagicMock()
-        mock_response.data = {
-            "id": "a1",
-            "report_path": "a1.html",
-            "pdf_status": "generating",
-        }
-        mock_client.rpc.return_value.execute.return_value = mock_response
-
-        result = gw.claim_next_pdf()
-
-        assert result and result["pdf_status"] == "generating"
-        mock_client.rpc.assert_called_once_with(
-            "claim_next_pdf", {"worker_id": settings.worker_id}
-        )
-        mock_client.table.assert_not_called()
 
     def test_retry_sweep_is_database_owned(self):
         settings = _settings()

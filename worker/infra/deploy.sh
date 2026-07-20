@@ -6,7 +6,6 @@ echo "=== AuditLayer worker deploy ==="
 REPO_DIR="${AUDITLAYER_REPO_DIR:-$HOME/projects/auditlayer}"
 PROFILE_DIR="${AUDITLAYER_HERMES_PROFILE_DIR:-$HOME/.hermes/profiles/alm-production}"
 WORKER_SERVICES="${AUDITLAYER_WORKER_SERVICES:-auditlayer-worker@1 auditlayer-worker@2}"
-PDF_SERVICE="${AUDITLAYER_PDF_SERVICE:-auditlayer-pdf-worker}"
 
 export PATH="$HOME/.local/bin:$PATH"
 
@@ -55,18 +54,17 @@ uv run python -m auditlayer_worker validate-hermes
 
 echo "== Install canonical systemd units =="
 sudo cp "$REPO_DIR/worker/infra/auditlayer-worker@.service" /etc/systemd/system/
-sudo cp "$REPO_DIR/worker/infra/auditlayer-pdf-worker.service" /etc/systemd/system/
 sudo systemctl daemon-reload
 
 echo "== Restart worker services =="
-for service in $WORKER_SERVICES $PDF_SERVICE; do
+for service in $WORKER_SERVICES; do
   sudo systemctl enable "$service"
   sudo systemctl restart "$service"
 done
 
 echo "== Verify worker service status =="
 sleep 3
-for service in $WORKER_SERVICES $PDF_SERVICE; do
+for service in $WORKER_SERVICES; do
   sudo systemctl status "$service" --no-pager
 done
 

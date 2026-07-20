@@ -27,14 +27,14 @@ Hetzner Hermes worker (`worker/`) claims queued audits via service-role
     ↓
 Hermes Gateway API (`127.0.0.1:8642/v1`) → social-media-audit skill → HTML report
     ↓
-Result: self-contained HTML + PDF in Supabase Storage; signed URLs per request
+Result: self-contained HTML in Supabase Storage; served through authorized app routes
 ```
 
 | Layer | Location | Role |
 |---|---|---|
 | **Web app** | `web/` | Next.js (App Router, TS, Tailwind, shadcn). Auth, intake, billing, live stream, report viewer, admin console. Deployed on **Vercel**. |
-| **Control plane** | `supabase/` | Postgres schema, RLS, private Storage buckets (`reports`, `pdfs`), Realtime on `audit_events`. Contract: `docs/architecture-contract.md`. |
-| **Hermes worker** | `worker/` | Python service on **Hetzner CX22**. Claims `queued` audits, runs generation, streams `audit_events.phase`, uploads HTML/PDF. Self-contained (`auditlayer_worker/core.py`). |
+| **Control plane** | `supabase/` | Postgres schema, RLS, private report Storage, Realtime on `audit_events`. Contract: `docs/architecture-contract.md`. |
+| **Hermes worker** | `worker/` | Python service on **Hetzner CX22**. Claims `queued` audits, runs generation, streams `audit_events.phase`, uploads HTML. Self-contained (`auditlayer_worker/core.py`). |
 | **Legacy v1** | `legacy/` | Archived stdlib WSGI + SQLite portal. Reference only — do not extend for new features. |
 
 - **Auth:** Supabase magic link + Google OAuth. Admin gating via `profiles.role = 'admin'` (Ashesh + Narin).
@@ -146,7 +146,7 @@ The core engine lives in `~/.hermes/skills/productivity/social-media-audit/`. Th
 - Three screens max — no feature creep
 - The guided question flow is sacrosanct — don't add steps to the wizard
 - Preserve founder/admin operability: every new workflow needs a visible state, an event log entry, and a test.
-- Preserve client isolation: reports, refinements, dashboard data, and PDF exports must be owner-session or admin gated.
+- Preserve client isolation: reports, refinements, shares, and dashboard data must be owner-session or admin gated.
 - Do not call live Hermes in ordinary tests.
 
 ### Deployment pipeline: dev → QA → production
@@ -168,7 +168,7 @@ Feature branch → git push → Vercel preview deploy (automatic)
 - **QA gate:** Before merging, verify on the preview URL:
   - Landing page loads (no errors)
   - Login / Google OAuth works
-  - Core flow: new audit → timeline → report viewer → PDF download
+  - Core flow: new audit → timeline → report viewer → immersive reader/share
   - New feature works as expected
   - No regressions on existing features
 - **Production deploy:** Merge to `master`, then `make deploy-prod` (or `cd web && npx vercel deploy --prod`).
@@ -198,7 +198,7 @@ make deploy-prod       # Vercel production deploy
 # Worker Hermes checks (on gateway host)
 cd worker && uv run python -m auditlayer_worker diagnose-hermes
 cd worker && uv run python -m auditlayer_worker validate-hermes
-cd worker && uv run python -m auditlayer_worker regen-pdf --audit-id <uuid>
+
 ```
 
 `diagnose-hermes` must show `tcp_reachable=true`, `auth_ok=true`, `api_server_state=connected`, `ok=true`. `validate-hermes` must return `ok=True` and `skipped=False`. HTTP 401 → `HERMES_API_KEY` must match gateway `API_SERVER_KEY`.
@@ -209,6 +209,6 @@ cd worker && uv run python -m auditlayer_worker regen-pdf --audit-id <uuid>
 |---|---|---|
 | Portal UI / auth / billing | `web/` | `worker/` Hermes prompts |
 | Schema / RLS / storage | `supabase/` | — |
-| Generation / PDF / refinements | `worker/` | `web/` calling Hermes |
+| Generation / refinements | `worker/` | `web/` calling Hermes |
 | Report HTML content / CSS | docs + skill | Random new portal features |
 | Legacy reference | `legacy/` | Production paths |

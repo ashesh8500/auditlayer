@@ -86,6 +86,33 @@ def test_fresh_research_gets_bounded_24_hour_expiry() -> None:
     assert account_fields["research_snapshot"] == "fresh evidence"
 
 
+def test_progression_records_locally_computed_score_without_connected_metrics() -> None:
+    gateway = SimpleNamespace(client=_Client())
+
+    _link_account_and_progression(
+        gateway,
+        _audit(),
+        None,
+        score=62,
+        research_refreshed=False,
+    )
+
+    progression = next(
+        fields
+        for table, operation, fields, _kwargs in gateway.client.calls
+        if table == "account_progression" and operation == "upsert"
+    )
+    assert progression == {
+        "account_id": "account-1",
+        "audit_id": "audit-1",
+        "followers": None,
+        "engagement": None,
+        "avg_likes": None,
+        "avg_comments": None,
+        "score": 62,
+    }
+
+
 def test_connected_instagram_failure_refuses_stale_fallback() -> None:
     gateway = MagicMock()
     gateway.get_instagram_token.return_value = ("token", 123)

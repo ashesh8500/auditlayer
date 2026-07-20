@@ -62,7 +62,7 @@ def test_mock_pipeline_injects_prompt_version_footer(tmp_path):
 
     settings = replace(
         WorkerSettings.from_env(),
-        generator="mock", output_dir=tmp_path, pdf_mode="stub",
+        generator="mock", output_dir=tmp_path,
     )
     audit = AuditRecord(
         id="test-ver-2",

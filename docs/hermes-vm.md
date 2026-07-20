@@ -72,9 +72,6 @@ cd ~/projects/auditlayer && npx supabase@latest db push
 `infra/hermes-vm/bootstrap.sh` installs/checks:
 
 - `uv` + `worker` Python deps
-- Google Chrome (`/usr/bin/google-chrome`) + `CHROMIUM_PATH` in `worker/.env`.
-  Do not use snap Chromium: `NoNewPrivileges=true` correctly prevents
-  `snap-confine` from acquiring the capabilities it requires.
 - Supabase CLI via `npx` (when token synced)
 - Vercel CLI via `npm install -g`
 - Shell aliases in `~/.bashrc`

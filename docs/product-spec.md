@@ -101,7 +101,7 @@ The pricing model evolved through client feedback:
 | Enterprise | $249/mo (20 + white-label) | $249/mo (20 + white-label) | Contact Sales |
 
 **Current pricing (v3 Live Demo):**
-- Starter: $30/month — 5 audits, 10 chat refinements, PDF + HTML export
+- Starter: $30/month — 5 audits, 10 focused refinements, immersive HTML reader and download
 - Pro: $50/month — 15 audits, automated competitive comparison, growth trajectory forecasting, priority generation
 - Enterprise: Contact Sales — unlimited audits, white-label reports, API access, dedicated support
 
@@ -175,7 +175,7 @@ Result: self-contained HTML report saved, viewer rendered
 ### Phase 2: Chat Refinement (Week 3-4)
 - Floating chat panel connected to real API
 - Section-scoped refinement with context injection
-- Report export (PDF via headless Chrome, HTML direct download)
+- Report delivery through the immersive reader, secure share links, and HTML download
 
 ### Phase 3: Pro Features (Week 5-6)
 - Automated competitive comparison generation

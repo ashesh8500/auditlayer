@@ -15,6 +15,7 @@ import pytest
 from auditlayer_worker.core import (
     AuditRecord,
     REPORT_SECTIONS,
+    SCORE_DIMENSIONS,
     ReportType,
     assemble_report_html,
     assemble_structured_report_html,
@@ -41,7 +42,14 @@ def _complete_standard_payload(body: str = "Analysis") -> str:
                 {
                     "heading": "Road to 10K" if heading == "Road to [Milestone]" else heading,
                     "lede": body,
-                    "items": [{"title": "Finding", "body": body, "value": ""}],
+                    "items": (
+                        [
+                            {"title": title, "body": body, "value": "60"}
+                            for title, _weight in SCORE_DIMENSIONS
+                        ]
+                        if heading == "Executive Summary"
+                        else [{"title": "Finding", "body": body, "value": ""}]
+                    ),
                 }
                 for heading in REPORT_SECTIONS[ReportType.STANDARD.value]
             ]
@@ -247,6 +255,32 @@ def test_structured_report_autofills_connected_instagram_metrics(sample_audit):
     assert "3.5 posts per week" in html
     assert "<script>not markup</script>" not in html
     assert "&lt;script&gt;not markup&lt;/script&gt;" in html
+
+
+def test_structured_report_computes_weighted_overall_score_locally(sample_audit):
+    payload = json.loads(_complete_standard_payload())
+    payload["sections"][0]["items"] = [
+        {"title": title, "body": "Evidence-based rationale", "value": str(score)}
+        for title, score in zip(
+            [
+                "Profile Clarity",
+                "Content Quality",
+                "Content Consistency",
+                "Audience Fit",
+                "Engagement Health",
+                "Growth Readiness",
+                "Conversion Path",
+                "Brand Differentiation",
+            ],
+            [80, 70, 60, 50, 40, 30, 20, 10],
+            strict=True,
+        )
+    ]
+
+    html = assemble_structured_report_html(sample_audit, json.dumps(payload))
+
+    assert '<span class="sd-overall">46<span>/ 100</span></span>' in html
+    assert '<span class="sd-overall">80<span>/ 100</span></span>' not in html
 
 
 def test_structured_report_rejects_duplicate_keys_and_nonfinite_numbers(sample_audit):

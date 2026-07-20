@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { AlertTriangle, ArrowRight, Search } from "lucide-react";
 
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import {
   type AuditStatus,
   type Platform,
 } from "@/lib/domain";
+import { needsFounderAction } from "@/lib/admin-review";
 import { OnboardingSelect } from "./onboarding-select";
 
 export default async function AdminHome({
@@ -57,7 +58,7 @@ export default async function AdminHome({
     : clients;
   const auditList = audits ?? [];
   const queued = auditList.filter((a) => a.status === "queued").length;
-  const review = auditList.filter((a) => a.status === "needs_review").length;
+  const actionRequired = auditList.filter((a) => needsFounderAction(a.status));
 
   return (
     <main className="alm-shell py-8 sm:py-12 animate-page-in">
@@ -66,9 +67,48 @@ export default async function AdminHome({
         <div className="flex flex-wrap gap-2 text-xs">
           <Badge tone="neutral">{clients.length} clients</Badge>
           <Badge tone="info">{queued} queued</Badge>
-          <Badge tone="warning">{review} need review</Badge>
+          <Badge tone="warning">{actionRequired.length} need action</Badge>
         </div>
       </div>
+
+      {actionRequired.length > 0 && (
+        <section className="mt-8 rounded-[var(--radius)] border border-[color:var(--amber)]/30 bg-[color:var(--amber-muted)] p-5 sm:p-6">
+          <div className="flex items-start gap-3">
+            <div className="grid size-9 shrink-0 place-items-center rounded-full bg-card text-[color:var(--amber)]">
+              <AlertTriangle className="size-4" />
+            </div>
+            <div>
+              <p className="alm-kicker text-[color:var(--amber)]">Action required</p>
+              <h2 className="mt-1 text-lg font-semibold">Reports waiting on a founder decision</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Review quality holds, blocked audits, and exhausted failures before they reach clients.
+              </p>
+            </div>
+          </div>
+          <ul className="mt-5 divide-y divide-[color:var(--amber)]/20 border-y border-[color:var(--amber)]/20">
+            {actionRequired.slice(0, 8).map((audit) => (
+              <li key={audit.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <StatusBadge status={audit.status as AuditStatus} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">@{audit.handle}</p>
+                    <p className="text-xs capitalize text-muted-foreground">
+                      {PLATFORM_LABELS[audit.platform as Platform] ?? audit.platform} · {new Date(audit.created_at ?? "").toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href={`/admin/audits/${audit.id}`}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--accent)] hover:underline"
+                >
+                  Review
+                  <ArrowRight className="size-3" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Audits */}
       <section className="mt-8">

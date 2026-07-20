@@ -1,9 +1,9 @@
 """Supabase access for the worker (service-role key, bypasses RLS).
 
-Wraps supabase-py for the queue claim, event stream, report/PDF uploads,
+Wraps supabase-py for the queue claim, event stream, and report uploads,
 billing writes, and app_settings reads. Conforms to the shared data contract:
 tables ``audits``, ``audit_events``, ``refinements``, ``app_settings`` and
-private storage buckets ``reports`` (text/html) and ``pdfs`` (application/pdf).
+the private ``reports`` Storage bucket, and account progression data.
 """
 
 from __future__ import annotations
@@ -165,30 +165,6 @@ class SupabaseGateway:
             data = data[0] if data else {}
         return int(data.get("requeued", 0)) if isinstance(data, dict) else 0
 
-    def claim_next_pdf(self) -> dict | None:
-        """Atomically claim the oldest pending PDF using SKIP LOCKED."""
-        return self._claim_via_rpc("claim_next_pdf")
-
-    def mark_pdf_attempt_failed(self, audit_id: str, error_type: str) -> str:
-        res = self.client.rpc(
-            "mark_pdf_attempt_failed",
-            {
-                "p_audit_id": audit_id,
-                "p_error": error_type,
-                "p_max_attempts": 3,
-            },
-        ).execute()
-        return str(res.data or "failed")
-
-    def reap_stale_pdf_claims(self, cutoff_minutes: int = 15) -> dict:
-        res = self.client.rpc(
-            "reap_stale_pdf_claims",
-            {"cutoff_minutes": cutoff_minutes, "p_max_attempts": 3},
-        ).execute()
-        data = res.data or {}
-        if isinstance(data, list):
-            data = data[0] if data else {}
-        return data if isinstance(data, dict) else {}
 
     # -- stale running reaper ------------------------------------------------
 
@@ -242,9 +218,6 @@ class SupabaseGateway:
         path = f"{audit_id}.html"
         return self._upload(self.settings.reports_bucket, path, html.encode("utf-8"), "text/html")
 
-    def upload_pdf(self, audit_id: str, data: bytes) -> tuple[str, str]:
-        path = f"{audit_id}.pdf"
-        return self._upload(self.settings.pdfs_bucket, path, data, "application/pdf")
 
     def _upload(self, bucket: str, path: str, data: bytes, content_type: str) -> tuple[str, str]:
         """Upload a private artifact and return its durable path.

@@ -4,7 +4,7 @@
     python -m auditlayer_worker demo --handle ...    # standalone demo (no Supabase)
     python -m auditlayer_worker diagnose-hermes
     python -m auditlayer_worker validate-hermes
-    python -m auditlayer_worker regen-pdf --audit-id <uuid>
+
 """
 
 from __future__ import annotations
@@ -28,11 +28,10 @@ from .core import (
 from .generation import MockReportGenerator
 from .hermes import diagnose_hermes, validate_hermes
 from .hermes_runtime import HermesRuntime
-from .pdf import render_pdf
-from .pdf_worker import run_pdf_worker
+
 from .pipeline import GenerationPipeline, PrintEventSink
 from .release_preflight import run_preflight
-from .supabase_client import SupabaseGateway
+
 from .worker import build_generator, run_worker_loop
 
 
@@ -89,49 +88,6 @@ def cmd_validate(settings: WorkerSettings) -> int:
     return 0 if result.ok else 1
 
 
-def cmd_regen_pdf(settings: WorkerSettings, audit_id: str) -> int:
-    if not settings.has_supabase:
-        print("ERROR: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set for `regen-pdf`.", file=sys.stderr)
-        return 2
-
-    gateway = SupabaseGateway(settings)
-    res = gateway.client.table("audits").select("*").eq("id", audit_id).limit(1).execute()
-    rows = res.data or []
-    if not rows:
-        print(f"ERROR: audit {audit_id} not found", file=sys.stderr)
-        return 1
-
-    row = rows[0]
-    report_path = row.get("report_path")
-    if not report_path:
-        print("ERROR: audit has no report_path — generate the HTML report first.", file=sys.stderr)
-        return 1
-
-    data = gateway.client.storage.from_(settings.reports_bucket).download(report_path)
-    html = data.decode("utf-8") if isinstance(data, (bytes, bytearray)) else str(data)
-
-    pdf_result = render_pdf(html, mode=settings.pdf_mode, chromium_path=settings.chromium_path)
-    if pdf_result.mode != "browser":
-        print(f"ERROR: {pdf_result.note or 'Browser PDF rendering was unavailable'}", file=sys.stderr)
-        return 1
-    pdf_path, _ = gateway.upload_pdf(audit_id, pdf_result.data)
-    gateway.update_audit(audit_id, pdf_path=pdf_path, pdf_status="ready")
-    gateway.emit_event(
-        audit_id,
-        "uploaded",
-        f"PDF regenerated ({pdf_result.mode}, {len(pdf_result.data)} bytes)",
-        event_type="pdf_regenerated",
-    )
-
-    print("== PDF regeneration ==")
-    print(f"audit_id   : {audit_id}")
-    print(f"pdf_mode   : {pdf_result.mode}")
-    print(f"pdf_bytes  : {len(pdf_result.data)}")
-    print(f"pdf_path   : {pdf_path}")
-    if pdf_result.note:
-        print(f"note       : {pdf_result.note}")
-    return 0 if pdf_result.mode == "browser" else 1
-
 
 def cmd_run(settings: WorkerSettings, once: bool) -> int:
     if not settings.has_supabase:
@@ -141,16 +97,6 @@ def cmd_run(settings: WorkerSettings, once: bool) -> int:
     run_worker_loop(settings, once=once)
     return 0
 
-
-def cmd_run_pdf(settings: WorkerSettings, once: bool) -> int:
-    if not settings.has_supabase:
-        print(
-            "ERROR: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set for `run-pdf`.",
-            file=sys.stderr,
-        )
-        return 2
-    run_pdf_worker(settings, once=once)
-    return 0
 
 
 def cmd_demo(settings: WorkerSettings, args: argparse.Namespace) -> int:
@@ -230,8 +176,7 @@ def cmd_demo(settings: WorkerSettings, args: argparse.Namespace) -> int:
     print(f"est_cost_usd     : ${summary.cost_usd:.4f}")
     if summary.report_path:
         print(f"html             : {summary.report_path}")
-    if summary.pdf_url:
-        print(f"pdf ({summary.pdf_mode}): {summary.pdf_url}")
+
     if summary.note:
         print(f"note             : {summary.note}")
     return 0 if summary.status == "ready" else 1
@@ -244,8 +189,6 @@ def build_parser() -> argparse.ArgumentParser:
     run_p = sub.add_parser("run", help="Run the Supabase-backed queue worker loop")
     run_p.add_argument("--once", action="store_true", help="Drain one item and exit")
 
-    pdf_p = sub.add_parser("run-pdf", help="Run the asynchronous PDF queue worker")
-    pdf_p.add_argument("--once", action="store_true", help="Drain one PDF item and exit")
 
     demo_p = sub.add_parser("demo", help="Run a standalone generation (no Supabase)")
     demo_p.add_argument("--handle", required=True, help="Handle or profile URL")
@@ -256,8 +199,6 @@ def build_parser() -> argparse.ArgumentParser:
     demo_p.add_argument("--require-hermes", action="store_true", help="Do not fall back to mock")
     demo_p.add_argument("--skip-gate", action="store_true", help="Skip the needs_review/blocked gate")
 
-    regen_p = sub.add_parser("regen-pdf", help="Re-render and upload PDF from stored HTML report")
-    regen_p.add_argument("--audit-id", required=True, help="Audit UUID")
 
     sub.add_parser("diagnose-hermes", help="Check Hermes gateway reachability/auth")
     sub.add_parser("validate-hermes", help="Send a tiny health-check completion")
@@ -271,12 +212,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "run":
         return cmd_run(settings, once=args.once)
-    if args.command == "run-pdf":
-        return cmd_run_pdf(settings, once=args.once)
+
     if args.command == "demo":
         return cmd_demo(settings, args)
-    if args.command == "regen-pdf":
-        return cmd_regen_pdf(settings, args.audit_id)
+
     if args.command == "diagnose-hermes":
         return cmd_diagnose(settings)
     if args.command == "validate-hermes":

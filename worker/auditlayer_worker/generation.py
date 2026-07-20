@@ -22,6 +22,7 @@ from .core import (
     AuditRecord,
     REFINE_SYSTEM_PROMPT,
     REPORT_SECTIONS,
+    SCORE_DIMENSIONS,
     assemble_structured_report_html,
     build_refinement_prompt,
     build_section_prompt,
@@ -318,7 +319,18 @@ def _mock_report_html(audit: AuditRecord) -> str:
             {
                 "heading": (f"Road to {milestone}" if h == "Road to [Milestone]" else h),
                 "lede": f"Mock analysis for @{audit.handle}.",
-                "items": [{"title": "Finding", "body": "Deterministic placeholder.", "value": ""}],
+                "items": (
+                    [
+                        {
+                            "title": title,
+                            "body": "Deterministic score rationale.",
+                            "value": str(55 + index * 3),
+                        }
+                        for index, (title, _weight) in enumerate(SCORE_DIMENSIONS)
+                    ]
+                    if h == "Executive Summary"
+                    else [{"title": "Finding", "body": "Deterministic placeholder.", "value": ""}]
+                ),
             }
             for h in sections
         ]

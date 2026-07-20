@@ -51,7 +51,6 @@ def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
         poll_interval_seconds=settings.poll_interval_seconds,
         generator=settings.generator,
         hermes_mode=runtime.mode,
-        pdf_mode=settings.pdf_mode,
     )
 
     try:

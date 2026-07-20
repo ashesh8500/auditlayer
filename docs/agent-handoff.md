@@ -33,15 +33,15 @@ after first sign-in via SQL in `supabase/seed.sql`.
 
 ```
 Browser → Vercel (web/) → Supabase (Auth, Postgres, Storage, Realtime)
-                              ↑ claim queued / upload HTML+PDF
+                              ↑ claim queued / upload HTML
                          worker/ (Python, long-running, Hermes)
                               ↓
                          Hermes Gateway :8642/v1 → social-media-audit skill
 ```
 
 - **Web never calls Hermes.** Only the worker does.
-- **Reports** live in private Storage buckets; the web app serves HTML/PDF via
-  same-origin proxies (`/api/audits/[id]/report`, `/pdf`) — not raw signed URLs in iframes.
+- **Reports** live as private self-contained HTML artifacts; the web app serves
+  them through authorized same-origin report and immersive-reader routes.
 - **Live timeline:** Realtime + 4s polling on `/api/audits/[id]/live`.
 
 ---
@@ -86,7 +86,7 @@ cd worker && uv run python -m auditlayer_worker diagnose-hermes
 cd worker && uv run python -m auditlayer_worker validate-hermes
 cd worker && uv run python -m auditlayer_worker release-preflight
 cd worker && uv run python -m auditlayer_worker demo --handle iamsrk --generator mock
-cd worker && uv run python -m auditlayer_worker regen-pdf --audit-id <uuid>
+
 ```
 
 ### Supabase CLI (via npx — no global install)
@@ -118,7 +118,7 @@ make check             # legacy v1 tests (legacy/src/auditlayer) — archived pa
 2. **Open:** https://web-delta-dun-29.vercel.app/login — use **Google** until Resend is configured.
 3. **New audit:** `/audits/new` — try `iamsrk` or `instagram.com/hemalpatelphd`.
 4. **Watch:** `/audits/{id}` — status should move `queued → running → ready` (~5–10 min with Hermes).
-5. **Report:** HTML in iframe + PDF download button.
+5. **Report:** HTML in the workspace viewer, immersive reader, share link, and direct download.
 
 If timeline stuck at `queued`, worker is not running or lacks `SUPABASE_SERVICE_ROLE_KEY`.
 
@@ -131,7 +131,7 @@ If timeline stuck at `queued`, worker is not running or lacks `SUPABASE_SERVICE_
 | Intake rules, plan limits, platform detection | `web/src/lib/domain.ts`, `worker/auditlayer_worker/core.py` |
 | Auth (magic link, OAuth, callback) | `web/src/app/login/`, `web/src/app/auth/callback/route.ts`, `web/src/lib/auth/magic-link-email.ts` |
 | Billing / Stripe | `web/src/lib/actions/billing.ts`, `web/src/app/api/webhooks/stripe/route.ts` |
-| Report viewer / PDF proxy | `web/src/components/report-viewer.tsx`, `web/src/app/api/audits/[id]/report/route.ts` |
+| Report viewer / reader proxy | `web/src/components/report-viewer.tsx`, `web/src/app/api/audits/[id]/report/route.ts` |
 | Live timeline | `web/src/components/live-timeline.tsx`, `web/src/app/api/audits/[id]/live/route.ts` |
 | Admin console | `web/src/app/admin/` |
 | DB schema / RLS | `supabase/migrations/*.sql` → update `docs/architecture-contract.md` |
@@ -185,7 +185,7 @@ without the browser's PKCE verifier cookie.
 | `HERMES_API_KEY` | Must match gateway `API_SERVER_KEY` |
 | `HERMES_MODE` | production `inprocess` |
 | `HERMES_MODEL` + `HERMES_PROVIDER` | production `deepseek-v4-flash` + `deepseek` |
-| `AUDITLAYER_PDF_MODE` | `browser` for real PDFs (needs Chrome/Chromium) |
+
 
 **Precedence:** `worker/.env` overrides repo root `.env` when both exist.
 

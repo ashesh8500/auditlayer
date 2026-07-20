@@ -59,7 +59,7 @@ src/app/
   (app)/dashboard/      # client area
   (app)/audits/         # wizard + detail + live stream
   admin/                # founder console
-  api/                  # Stripe webhook, report/pdf proxies, live polling
+  api/                  # Stripe webhook, report proxy, live polling
 src/lib/
   domain.ts             # intake calibration (authoritative with worker)
   auth/                 # branded magic-link email (Resend)

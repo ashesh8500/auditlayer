@@ -7,6 +7,7 @@
 >
 > **v1 (archived):** The stdlib WSGI + SQLite portal lives in `legacy/`. The
 > sections below describe v1 behavior for reference only.
+> PDF export described below is legacy-only and is not a current product or roadmap feature.
 
 ---
 

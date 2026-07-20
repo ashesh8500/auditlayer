@@ -73,7 +73,7 @@ def test_prompt_footer_is_inserted_without_model_placeholder() -> None:
 
 
 def test_budget_breach_blocks_without_entering_retry_loop(tmp_path) -> None:
-    settings = _settings(generator="mock", output_dir=tmp_path, pdf_mode="stub")
+    settings = _settings(generator="mock", output_dir=tmp_path)
     pipeline = GenerationPipeline(settings, MockReportGenerator())
     audit = AuditRecord(
         id="budget-test",
@@ -100,7 +100,7 @@ def test_budget_breach_blocks_without_entering_retry_loop(tmp_path) -> None:
 
 
 def test_missing_benchmark_schema_fails_closed(tmp_path) -> None:
-    settings = _settings(generator="mock", output_dir=tmp_path, pdf_mode="stub")
+    settings = _settings(generator="mock", output_dir=tmp_path)
     pipeline = GenerationPipeline(settings, MockReportGenerator())
     audit = AuditRecord(
         id="schema-test",

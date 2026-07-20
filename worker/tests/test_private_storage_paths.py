@@ -34,9 +34,7 @@ def _gateway() -> tuple[SupabaseGateway, _Store]:
     store = _Store()
     gateway = object.__new__(SupabaseGateway)
     gateway.client = _Client(store)
-    gateway.settings = cast(
-        Any, SimpleNamespace(reports_bucket="reports", pdfs_bucket="pdfs")
-    )
+    gateway.settings = cast(Any, SimpleNamespace(reports_bucket="reports"))
     return gateway, store
 
 
@@ -48,13 +46,3 @@ def test_report_upload_returns_private_path_without_signed_url() -> None:
     assert path == "audit-123.html"
     assert url == ""
     assert store.uploads[0]["file_options"]["content-type"] == "text/html"
-
-
-def test_pdf_upload_returns_private_path_without_signed_url() -> None:
-    gateway, store = _gateway()
-
-    path, url = gateway.upload_pdf("audit-123", b"%PDF")
-
-    assert path == "audit-123.pdf"
-    assert url == ""
-    assert store.uploads[0]["file_options"]["content-type"] == "application/pdf"

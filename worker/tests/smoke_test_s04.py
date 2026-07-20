@@ -10,7 +10,7 @@ def _settings():
     from dataclasses import replace
     from auditlayer_worker.config import WorkerSettings
     base = WorkerSettings.from_env()
-    return replace(base, generator="mock", pdf_mode="stub")
+    return replace(base, generator="mock")
 
 
 def _audit(**over):
