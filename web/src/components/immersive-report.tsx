@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
+import { Brand } from "@/components/brand";
 
 /**
  * ImmersiveReport — full-width reading experience.
@@ -94,7 +95,7 @@ export function ImmersiveReport({
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg)]">
       {/* Minimal top bar */}
-      <header className="sticky top-0 z-20 flex min-h-14 items-center justify-between gap-4 border-b border-[var(--line)] bg-[#14241f] px-4 py-2 text-white backdrop-blur-sm sm:px-6">
+      <header className="sticky top-0 z-20 flex min-h-14 items-center justify-between gap-4 border-b border-[var(--line)] bg-[color:var(--forest)] px-4 py-2 text-white backdrop-blur-sm sm:px-6">
         <a
           href={backHref}
           className="inline-flex items-center gap-1.5 text-xs text-white/70 transition-colors hover:text-white alm-focus"
@@ -102,9 +103,10 @@ export function ImmersiveReport({
           <ArrowLeft className="size-3.5" />
           {backLabel}
         </a>
-        <span className="font-mono text-[0.6rem] font-medium uppercase tracking-[0.1em] text-[#8de0d3]">
-          Focused report reader
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="hidden font-mono text-xs font-medium uppercase tracking-[0.1em] text-[color:var(--teal-on-forest)] sm:inline">Focused report reader</span>
+          <Brand inverse showName={false} />
+        </div>
       </header>
 
       {/* Report content */}

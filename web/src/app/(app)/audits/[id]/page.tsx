@@ -49,6 +49,8 @@ export default async function AuditDetailPage({
     ? (audit.limitations as string[])
     : [];
   const status = audit.status as AuditStatus;
+  const reportVersion = Number((audit as any).report_version ?? 1);
+  const promptVersion = String((audit as any).prompt_version ?? "—");
 
   return (
     <main className="alm-shell py-8 sm:py-12 animate-page-in">
@@ -68,7 +70,15 @@ export default async function AuditDetailPage({
               {PLATFORM_LABELS[audit.platform as Platform] ?? audit.platform}
             </span>
           </div>
-          <div className="sm:text-right"><p className="mb-2 font-mono text-[0.6rem] uppercase tracking-widest text-muted-foreground">Audit status</p><StatusBadge status={status} /></div>
+          <div className="sm:text-right">
+            <p className="mb-2 font-mono text-[0.6rem] uppercase tracking-widest text-muted-foreground">Audit status</p>
+            <StatusBadge status={status} />
+            {status === "ready" && (
+              <p className="mt-2 font-mono text-[0.65rem] text-muted-foreground">
+                Report v{reportVersion} · Method {promptVersion}
+              </p>
+            )}
+          </div>
         </div>
         {audit.milestone_label && (
           <p className="mt-1 text-sm text-muted-foreground">
@@ -126,6 +136,14 @@ async function ReadyReport({
     .eq("audit_id", auditId)
     .order("created_at", { ascending: false });
 
+  const { data: versionRows } = await (supabase as any)
+    .from("audit_report_versions")
+    .select(
+      "id, version, prompt_version, change_type, changed_section, change_summary, created_at",
+    )
+    .eq("audit_id", auditId)
+    .order("version", { ascending: false });
+
   // Fetch share links (table may not exist yet if migration hasn't been run)
   let shareLinks: ShareLinkRow[] = [];
   try {
@@ -142,8 +160,8 @@ async function ReadyReport({
   return (
     <div className="space-y-6">
       {/* Read full report button */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-[#14241f] px-5 py-5 text-white sm:px-6">
-        <div><p className="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[#8de0d3]">Report ready</p><h2 className="mt-1 text-lg font-semibold">Read the analysis without the workspace controls.</h2></div>
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-[color:var(--forest)] px-5 py-5 text-white sm:px-6">
+        <div><p className="font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--teal-on-forest)]">Report ready</p><h2 className="mt-1 text-lg font-semibold">Read the analysis without the workspace controls.</h2></div>
         <Link href={`/audits/${auditId}/read`}>
           <Button size="sm" variant="secondary">
             <BookOpen className="size-3.5" />
@@ -151,6 +169,49 @@ async function ReadyReport({
           </Button>
         </Link>
       </div>
+
+      {(versionRows ?? []).length > 0 && (
+        <section className="rounded-[var(--radius)] border border-border bg-card p-5 shadow-[var(--shadow)]">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="alm-kicker">Version history</p>
+              <h2 className="mt-1 text-base font-semibold">Immutable report revisions</h2>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              New audits remain separate evidence snapshots.
+            </p>
+          </div>
+          <ul className="mt-4 divide-y divide-border border-y border-border">
+            {(versionRows ?? []).map((version: any, index: number) => (
+              <li
+                key={version.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+              >
+                <div>
+                  <p className="font-medium">
+                    Report v{version.version}{index === 0 ? " · Current" : ""}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {version.change_type === "refinement"
+                      ? `Refined ${version.changed_section || "report"}`
+                      : "Initial generation"}
+                    {version.prompt_version ? ` · Method ${version.prompt_version}` : ""}
+                    {` · ${new Date(version.created_at).toLocaleString()}`}
+                  </p>
+                </div>
+                <a
+                  href={`/api/audits/${auditId}/report?version=${version.version}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="alm-focus inline-flex min-h-10 items-center text-xs font-semibold text-[color:var(--accent)] hover:underline"
+                >
+                  Open version
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Side-by-side: report + downloads | refinements + share links */}
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">

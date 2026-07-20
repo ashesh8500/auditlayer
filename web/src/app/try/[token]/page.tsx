@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AlertCircle, Clock, Ban, Users, ArrowRight } from "lucide-react";
 
 import { validateTrialToken } from "@/lib/trials";
+import { Brand } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -73,19 +74,10 @@ export default async function TryPage({
   const auditsGranted = result.auditsGranted;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#14241f] px-4 py-10 sm:px-6">
+    <main className="flex min-h-screen items-center justify-center bg-[color:var(--forest)] px-4 py-10 sm:px-6">
       <div className="w-full max-w-2xl">
-        {/* ALM badge */}
         <div className="mb-8 flex justify-center text-white">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-sm font-semibold tracking-tight"
-          >
-            <span className="grid size-8 place-items-center bg-[#9fe8dc] font-mono text-[9px] font-bold text-[#14241f]">
-              ALM
-            </span>
-            AuditLayerMedia
-          </Link>
+          <Brand inverse />
         </div>
 
         {/* Card */}
@@ -107,16 +99,16 @@ export default async function TryPage({
             </p>
 
           <div className="mt-8 space-y-3">
-            <Link href={`/login?trial=${encodeURIComponent(token)}`} className="block w-full">
-              <Button size="lg" className="w-full font-semibold">
+            <Button asChild size="lg" className="w-full font-semibold">
+              <Link href={`/login?trial=${encodeURIComponent(token)}`}>
                 Claim trial access
-              </Button>
-            </Link>
-            <Link href={`/login?trial=${encodeURIComponent(token)}`} className="block w-full">
-              <Button size="lg" variant="outline" className="w-full font-medium">
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="w-full font-medium">
+              <Link href={`/login?trial=${encodeURIComponent(token)}`}>
                 I already have an account
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
 
           <p className="mt-5 text-xs text-muted-foreground">

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Bot, Database, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { WORKSPACE_ACCOUNT_STATUSES } from "@/lib/account-ownership";
 import { getSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { approveMcpAuthorization, denyMcpAuthorization } from "./actions";
@@ -34,6 +35,7 @@ export default async function OAuthConsentPage({
     .from("accounts")
     .select("id,handle,platform")
     .eq("user_id", user.id)
+    .in("ownership_status", [...WORKSPACE_ACCOUNT_STATUSES])
     .order("created_at", { ascending: false });
 
   return (
@@ -79,7 +81,7 @@ export default async function OAuthConsentPage({
                   <li key={account.id}>@{account.handle}, {account.platform}</li>
                 ))
               ) : (
-                <li>No tracked accounts yet</li>
+                <li>No connected or managed accounts yet</li>
               )}
             </ul>
           </section>

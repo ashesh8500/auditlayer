@@ -136,4 +136,24 @@ describe("AuditLayerMedia MCP service", () => {
       source_artifact: { id: "audit-one" },
     });
   });
+
+  it("never presents expired metrics as connected evidence", async () => {
+    const expiredRepository = repository();
+    expiredRepository.getConnection = async () => ({
+      account_type: "CREATOR",
+      followers_count: 12500,
+      media_count: 340,
+      is_active: true,
+      long_lived_expires_at: "2000-01-01T00:00:00Z",
+      last_refreshed_at: "2026-07-16T12:00:00Z",
+    });
+    const service = createMcpService("user-one", expiredRepository);
+
+    await expect(service.getAccountContext("account-one")).resolves.toMatchObject({
+      connection: { status: "reconnection_required" },
+    });
+    await expect(
+      service.buildCreatorContext("account-one", "monthly_content_strategy", "audit-one"),
+    ).resolves.toMatchObject({ connected_metrics: null });
+  });
 });

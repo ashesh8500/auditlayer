@@ -22,7 +22,7 @@ import {
   openBillingPortal,
 } from "@/lib/actions/billing";
 
-export const metadata = { title: "Dashboard — AuditLayerMedia" };
+export const metadata = { title: "Reports — AuditLayerMedia" };
 
 const BILLING_MESSAGES: Record<string, { tone: string; text: string }> = {
   success: {
@@ -49,6 +49,20 @@ const FILTERABLE_STATUSES: (AuditStatus | "all")[] = [
   "blocked",
 ];
 
+type DashboardAuditRow = {
+  id: string;
+  handle: string;
+  platform: string;
+  status: string;
+  goal: string | null;
+  milestone_label: string | null;
+  created_at: string | null;
+  retry_count: number | null;
+  last_failed_at: string | null;
+  report_version: number | null;
+  prompt_version: string | null;
+};
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -64,10 +78,10 @@ export default async function DashboardPage({
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const query = supabase
+  const query = (supabase as any)
     .from("audits")
     .select(
-      "id, handle, platform, status, goal, milestone_label, created_at, retry_count, last_failed_at",
+      "id, handle, platform, status, goal, milestone_label, created_at, retry_count, last_failed_at, report_version, prompt_version",
     )
     .order("created_at", { ascending: false });
 
@@ -78,43 +92,38 @@ export default async function DashboardPage({
     .order("created_at", { ascending: false })
     .limit(1);
 
-  const [{ data: audits }, { data: igConnections }, { data: accounts }] = await Promise.all([
+  const [{ data: audits }, { data: igConnections }] = await Promise.all([
     query,
     instagramQuery,
-    (supabase as any)
-      .from("accounts")
-      .select("id, handle, platform, created_at")
-      .eq("user_id", profile.id)
-      .order("created_at", { ascending: false })
-      .limit(10),
   ]);
-  let list = audits ?? [];
+  const auditRows = (audits ?? []) as DashboardAuditRow[];
+  let list = auditRows;
 
   // Apply status filter client-side (avoids Supabase generics constraints)
   if (statusFilter && statusFilter !== "all") {
     list = list.filter((a) => a.status === statusFilter);
   }
 
-  const usage = (audits ?? []).filter((a) =>
+  const usage = auditRows.filter((a) =>
     USAGE_STATUSES.includes(a.status as AuditStatus),
   ).length;
 
   // The first query already has every status. Derive counts locally instead of
   // paying for a second trans-Pacific database round trip.
   const statusCounts: Record<string, number> = {};
-  for (const a of audits ?? []) {
+  for (const a of auditRows) {
     statusCounts[a.status] = (statusCounts[a.status] || 0) + 1;
   }
-  const totalAudits = (audits ?? []).length;
+  const totalAudits = auditRows.length;
   const connectedIg = igConnections?.[0] ?? null;
 
   const limit = auditLimitForProfile(profile as any);
   const atCap = !isAdminUnlimited(profile.role) && usage >= limit;
   const billingMsg = billing ? BILLING_MESSAGES[billing] : undefined;
-  const activeAudit = (audits ?? []).find((audit) =>
+  const activeAudit = auditRows.find((audit) =>
     ["queued", "running", "needs_review"].includes(audit.status),
   );
-  const latestReady = (audits ?? []).find((audit) => audit.status === "ready");
+  const latestReady = auditRows.find((audit) => audit.status === "ready");
 
   return (
     <main className="alm-shell py-8 sm:py-12 animate-page-in">
@@ -133,11 +142,11 @@ export default async function DashboardPage({
 
       <div className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-7">
         <div>
-          <p className="alm-kicker">Research desk</p>
+          <p className="alm-kicker">Report library</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-            {profile.full_name ? `${profile.full_name.split(" ")[0]}'s workspace` : "Your workspace"}
+            {profile.full_name ? `${profile.full_name.split(" ")[0]}'s reports` : "Your reports"}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">Active work, next action, and completed intelligence.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Active work and completed intelligence, organised by account.</p>
         </div>
         <Link href="/audits/new">
           <Button size="lg" disabled={atCap} className="font-medium">
@@ -147,47 +156,22 @@ export default async function DashboardPage({
         </Link>
       </div>
 
-      {/* Tracked accounts */}
-      {accounts && accounts.length > 0 && (
-        <section className="mt-8">
-          <p className="alm-kicker">Your accounts</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {(accounts as any[]).map((account: any) => (
-              <Link
-                key={account.id}
-                href={`/audits/new?handle=${encodeURIComponent(account.handle)}`}
-                className="group rounded-[var(--radius)] border border-border bg-card p-4 transition-shadow hover:shadow-[var(--shadow-md)] alm-focus"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[color:var(--accent-muted)] text-sm font-semibold text-[color:var(--accent)]">
-                    @
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="truncate text-sm font-semibold">@{account.handle}</h3>
-                    <p className="text-xs text-muted-foreground capitalize">{account.platform}</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
       {(activeAudit || latestReady) && (
         <section className="mt-8 grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
           {activeAudit ? (
-            <Link href={`/audits/${activeAudit.id}`} className="group bg-[#14241f] p-6 text-white shadow-[var(--shadow-lg)] sm:p-8 alm-focus">
+            <Link href={`/audits/${activeAudit.id}`} className="group bg-[color:var(--forest)] p-6 text-white shadow-[var(--shadow-lg)] sm:p-8 alm-focus">
               <div className="flex items-center justify-between gap-4">
-                <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.13em] text-[#8de0d3]">Active audit · {STATUS_LABELS[activeAudit.status as AuditStatus]}</span>
+                <span className="font-mono text-xs font-semibold uppercase tracking-[0.13em] text-[color:var(--teal-on-forest)]">Active audit · {STATUS_LABELS[activeAudit.status as AuditStatus]}</span>
                 <ArrowUpRight className="size-5 text-white/50 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               </div>
               <h2 className="mt-10 text-3xl font-semibold tracking-tight">@{activeAudit.handle}</h2>
               <p className="mt-2 max-w-lg text-sm text-white/60">{activeAudit.status === "needs_review" ? "A founder review is needed before research can continue." : "Open the audit to follow verified worker phases and current progress."}</p>
-              <div className="mt-8 h-1 bg-white/10"><div className={`h-full bg-[#8de0d3] ${activeAudit.status === "running" ? "w-2/3" : "w-1/4"}`} /></div>
+              <div className="mt-8 h-1 bg-white/10"><div className={`h-full bg-[color:var(--teal-on-forest)] ${activeAudit.status === "running" ? "w-2/3" : "w-1/4"}`} /></div>
             </Link>
           ) : (
-            <Link href={`/audits/${latestReady!.id}`} className="group bg-[#14241f] p-6 text-white shadow-[var(--shadow-lg)] sm:p-8 alm-focus">
-              <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.13em] text-[#8de0d3]">Latest report</span>
+            <Link href={`/audits/${latestReady!.id}`} className="group bg-[color:var(--forest)] p-6 text-white shadow-[var(--shadow-lg)] sm:p-8 alm-focus">
+              <span className="font-mono text-xs font-semibold uppercase tracking-[0.13em] text-[color:var(--teal-on-forest)]">Latest report · v{latestReady!.report_version ?? 1}</span>
               <h2 className="mt-10 text-3xl font-semibold tracking-tight">@{latestReady!.handle}</h2>
               <p className="mt-2 text-sm text-white/60">Your report is ready to read, share, refine, or download.</p>
               <span className="mt-8 inline-flex items-center gap-2 text-sm font-medium">Open report <ArrowRight className="size-4" /></span>
@@ -195,7 +179,7 @@ export default async function DashboardPage({
           )}
           <aside className="alm-panel flex flex-col justify-between p-6">
             <div><p className="alm-kicker">Next action</p><h2 className="mt-4 text-xl font-semibold">{activeAudit ? "Stay with the current run" : "Start another account review"}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{activeAudit ? "The status view updates from real audit events. No action is needed unless review is requested." : "Use a Pulse audit for a focused diagnostic or a full report for deeper strategy."}</p></div>
-            <Link href={activeAudit ? `/audits/${activeAudit.id}` : "/audits/new"} className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--accent)]">{activeAudit ? "View status" : "Create audit"}<ArrowRight className="size-4" /></Link>
+            <Link href={activeAudit ? `/audits/${activeAudit.id}` : "/audits/new"} className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--accent)]">{activeAudit ? "View status" : "New Audit"}<ArrowRight className="size-4" /></Link>
           </aside>
         </section>
       )}
@@ -384,6 +368,8 @@ export default async function DashboardPage({
                               "en-US",
                               { month: "short", day: "numeric", year: "numeric" },
                             )}
+                            {audit.status === "ready" ? ` · Report v${audit.report_version ?? 1}` : ""}
+                            {audit.prompt_version ? ` · Method ${audit.prompt_version}` : ""}
                           </p>
                         </div>
                         <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 shrink-0" />

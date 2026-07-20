@@ -1,5 +1,6 @@
 import "server-only";
 
+import { WORKSPACE_ACCOUNT_STATUSES } from "@/lib/account-ownership";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import type {
@@ -20,6 +21,7 @@ export function createSupabaseMcpRepository(): McpRepository {
         .from("accounts")
         .select("id,handle,platform,display_name,last_researched_at,cache_valid_until,research_snapshot")
         .eq("user_id", userId)
+        .in("ownership_status", [...WORKSPACE_ACCOUNT_STATUSES])
         .order("created_at", { ascending: false });
       if (error) throw new Error(`Could not list accounts: ${error.message}`);
       return (data ?? []) as AccountRecord[];
@@ -31,6 +33,7 @@ export function createSupabaseMcpRepository(): McpRepository {
         .select("id,handle,platform,display_name,last_researched_at,cache_valid_until,research_snapshot")
         .eq("user_id", userId)
         .eq("id", accountId)
+        .in("ownership_status", [...WORKSPACE_ACCOUNT_STATUSES])
         .maybeSingle();
       if (error) throw new Error(`Could not read account: ${error.message}`);
       return (data as AccountRecord | null) ?? null;

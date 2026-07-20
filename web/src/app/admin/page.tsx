@@ -14,6 +14,28 @@ import {
 import { needsFounderAction } from "@/lib/admin-review";
 import { OnboardingSelect } from "./onboarding-select";
 
+type AdminAuditRow = {
+  id: string;
+  user_id: string;
+  handle: string;
+  platform: string;
+  status: string;
+  created_at: string | null;
+  report_version: number | null;
+  prompt_version: string | null;
+};
+
+type AdminClientRow = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  role: string;
+  plan: string;
+  subscription_status: string;
+  onboarding_status: string;
+  created_at: string | null;
+};
+
 export default async function AdminHome({
   searchParams,
 }: {
@@ -41,14 +63,14 @@ export default async function AdminHome({
         "id, email, full_name, role, plan, subscription_status, onboarding_status, created_at",
       )
       .order("created_at", { ascending: false }),
-    admin
+    (admin as any)
       .from("audits")
-      .select("id, user_id, handle, platform, status, created_at")
+      .select("id, user_id, handle, platform, status, created_at, report_version, prompt_version")
       .order("created_at", { ascending: false })
       .limit(40),
   ]);
 
-  const clients = profiles ?? [];
+  const clients = (profiles ?? []) as AdminClientRow[];
   const filteredClients = searchLower
     ? clients.filter(
         (c) =>
@@ -56,7 +78,7 @@ export default async function AdminHome({
           c.full_name?.toLowerCase().includes(searchLower),
       )
     : clients;
-  const auditList = audits ?? [];
+  const auditList = (audits ?? []) as AdminAuditRow[];
   const queued = auditList.filter((a) => a.status === "queued").length;
   const actionRequired = auditList.filter((a) => needsFounderAction(a.status));
 
@@ -122,13 +144,14 @@ export default async function AdminHome({
                 <th className="px-4 py-2 font-medium">Handle</th>
                 <th className="px-4 py-2 font-medium">Platform</th>
                 <th className="px-4 py-2 font-medium">Status</th>
+                <th className="px-4 py-2 font-medium">Version</th>
                 <th className="px-4 py-2 font-medium">Created</th>
               </tr>
             </thead>
             <tbody>
               {auditList.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
+                  <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
                     No audits yet.
                   </td>
                 </tr>
@@ -148,6 +171,10 @@ export default async function AdminHome({
                     </td>
                     <td className="px-4 py-2">
                       <StatusBadge status={a.status as AuditStatus} />
+                    </td>
+                    <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
+                      v{a.report_version ?? 1}
+                      {a.prompt_version ? ` · ${a.prompt_version}` : ""}
                     </td>
                     <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
                       {new Date(a.created_at ?? "").toLocaleDateString()}

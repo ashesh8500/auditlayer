@@ -79,13 +79,20 @@ class InProcessHermesClient:
         )
 
         def search(query: str) -> str:
-            return handle_function_call(
-                "web_search",
-                {"query": query, "limit": 5},
-                task_id=f"audit-{audit.id}-research",
-                user_task="bounded public account research",
-                enabled_toolsets=["web"],
-            )
+            try:
+                return handle_function_call(
+                    "web_search",
+                    {"query": query, "limit": 5},
+                    task_id=f"audit-{audit.id}-research",
+                    user_task="bounded public account research",
+                    enabled_toolsets=["web"],
+                )
+            except Exception as exc:  # noqa: BLE001 - each source degrades independently
+                import logging
+                logging.getLogger("auditlayer").warning(
+                    "collect_research query failed safely: %s", type(exc).__name__
+                )
+                return json.dumps({"success": False, "data": {"web": []}})
 
         with HERMES_HOME_LOCK:
             account_home = os.environ.get("HERMES_HOME")
@@ -115,14 +122,19 @@ class InProcessHermesClient:
                 verified.append(
                     {
                         "url": url,
-                        "title": str(item.get("title") or ""),
-                        "description": str(item.get("description") or ""),
+                        "title": str(item.get("title") or "")[:500],
+                        "description": str(item.get("description") or "")[:2500],
                     }
                 )
         if not verified:
             import logging
             logging.getLogger("auditlayer").warning("collect_research: no web evidence found — proceeding without web research")
-        return json.dumps({"web": verified[:8]}, ensure_ascii=False)[:12000]
+        bounded = verified[:8]
+        payload = json.dumps({"web": bounded}, ensure_ascii=False)
+        while len(payload) > 12000 and bounded:
+            bounded.pop()
+            payload = json.dumps({"web": bounded}, ensure_ascii=False)
+        return payload
 
 
     def chat(

@@ -19,6 +19,8 @@
   --line: #dcd7ca;
   --accent: #0d9488;
   --accent-muted: #e0f2ed;
+  --forest: #14241f;
+  --teal-on-forest: #9fe8dc;
   --green: #059669;
   --amber: #d97706;
   --red: #dc2626;
@@ -130,6 +132,8 @@
   /* Direct access to AuditLayer semantic colors as Tailwind utilities */
   --color-accent-base: var(--accent);
   --color-accent-soft: var(--accent-muted);
+  --color-forest: var(--forest);
+  --color-teal-on-forest: var(--teal-on-forest);
   --color-success: var(--green);
   --color-warning: var(--amber);
   --color-danger: var(--red);

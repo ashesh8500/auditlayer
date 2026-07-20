@@ -54,4 +54,33 @@ test.describe("public smoke (no Supabase creds required)", () => {
     await page.goto("/audits/new");
     await expect(page).toHaveURL(/\/login/);
   });
+
+  test("sample report is honest and navigable", async ({ page }) => {
+    await page.goto("/sample");
+    await expect(page.getByText(/fictional sample intelligence brief/i)).toBeVisible();
+    await expect(page.getByText(/no client data/i)).toBeVisible();
+    await page.getByRole("tab", { name: "Benchmark" }).click();
+    await expect(page.getByRole("heading", { name: /distribution discipline/i })).toBeVisible();
+    await page.getByRole("tab", { name: "Action plan" }).click();
+    await expect(page.getByText(/ranked next actions/i)).toBeVisible();
+  });
+
+  test("Instagram approval surfaces fail closed and stay public", async ({ request, page }) => {
+    const start = await request.get("/api/auth/instagram/start", { maxRedirects: 0 });
+    expect(start.status()).toBe(307);
+    expect(start.headers().location).toContain("/login");
+
+    const callback = await request.get(
+      "/api/auth/instagram/callback?code=review-code&state=wrong-state",
+      { maxRedirects: 0 },
+    );
+    expect(callback.status()).toBe(307);
+    expect(callback.headers().location).toContain("instagram_error=not_authenticated");
+
+    await page.goto("/data-deletion");
+    await expect(
+      page.getByRole("heading", { name: /delete your Instagram connection or account data/i }),
+    ).toBeVisible();
+    await expect(page.getByText(/disconnect and delete access/i).first()).toBeVisible();
+  });
 });

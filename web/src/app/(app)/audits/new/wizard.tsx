@@ -320,7 +320,7 @@ export function IntakeWizard({ reportTypes }: { reportTypes: ReportType[] }) {
               ) : (
                 <>
                   <Sparkles className="size-4" />
-                  Generate Audit
+                  Start Audit
                 </>
               )}
             </Button>

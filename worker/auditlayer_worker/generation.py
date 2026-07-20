@@ -219,6 +219,18 @@ class HermesReportGenerator:
             ig_metrics = ig_future.result()
 
         research_material = evidence
+        try:
+            evidence_payload = json.loads(evidence)
+            has_web_evidence = bool(evidence_payload.get("web"))
+        except (TypeError, json.JSONDecodeError):
+            has_web_evidence = False
+        if not has_web_evidence:
+            limitation = (
+                "Public web search returned no verifiable evidence during this run. "
+                "Recommendations use the other supplied evidence and are not described as web-verified."
+            )
+            if limitation not in audit.limitations:
+                audit.limitations.append(limitation)
         emitter.advance_to("scoring")
         prompt = build_section_prompt(
             audit,

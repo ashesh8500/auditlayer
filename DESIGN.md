@@ -3,13 +3,13 @@ version: alpha
 name: AuditLayerMedia
 description: Clinical credibility meets hyper-clean digital publishing.
 colors:
-  primary: "#1c1917"
-  secondary: "#78716c"
+  primary: "#14241f"
+  secondary: "#65736e"
   accent: "#0d9488"
-  accent-muted: "#f0fdfa"
-  bg: "#fafaf9"
-  surface: "#ffffff"
-  line: "#e7e5e4"
+  accent-muted: "#e0f2ed"
+  bg: "#f5f1e8"
+  surface: "#fffdf8"
+  line: "#dcd7ca"
   green: "#059669"
   green-muted: "#ecfdf5"
   amber: "#d97706"
@@ -39,9 +39,9 @@ typography:
     fontFamily: JetBrains Mono
     fontSize: 0.875rem
 rounded:
-  sm: 6px
-  md: 10px
-  lg: 16px
+  sm: 4px
+  md: 8px
+  lg: 14px
 spacing:
   xs: 8px
   sm: 16px
@@ -71,13 +71,13 @@ The aesthetic is characterized by a warm-white background, crisp dark-ink typogr
 
 The palette is strictly divided between neutral surfaces, semantic highlights, and our brand accent:
 
-- **Primary Text (#1c1917):** A deep, warm coal/ink color for maximum readability and journalistic gravitas. Avoid pure black.
-- **Secondary Text (#78716c):** A stone gray for secondary details and subtext.
+- **Primary Text (#14241f):** A deep forest ink color for maximum readability and editorial authority. Avoid pure black.
+- **Secondary Text (#65736e):** A desaturated forest gray for secondary details and subtext.
 - **Teal Accent (#0d9488):** Represents clinical precision, research quality, and calm authority. Used for primary CTAs and key highlights.
-- **Teal Muted (#f0fdfa):** Used as a subtle background tint for brand components and highlighted boxes.
-- **Background (#fafaf9):** A warm, soft stone white that reduces eye strain and reads like premium cream paper.
-- **Surface (#ffffff):** Pure white used for elevated cards to stand out from the warm neutral background.
-- **Line (#e7e5e4):** Crisp divider line color to structure layout segments.
+- **Teal Muted (#e0f2ed):** Used as a subtle background tint for selected and explanatory brand components.
+- **Background (#f5f1e8):** A warm cream canvas that reads like premium paper.
+- **Surface (#fffdf8):** A warm-white report and interface surface that lifts from the cream canvas.
+- **Line (#dcd7ca):** Crisp warm divider color used to structure layout segments.
 
 ## Typography
 
@@ -99,9 +99,9 @@ We utilize flat, architectural layout sheets over deep 3D space:
 
 ## Shapes
 
-- **Standard Rounded Corners (10px):** Balanced, approachable curve used for cards, pricing tiers, and inputs.
-- **Compact Corners (6px):** Used for micro-badges, buttons, and inline metrics.
-- **Deep Rounded Corners (16px):** Used for large container blocks like the Hero or Report Mockups.
+- **Standard Rounded Corners (8px):** Balanced, precise curve used for panels, pricing tiers, and inputs.
+- **Compact Corners (4px):** Used for small controls and inline metrics.
+- **Deep Rounded Corners (14px):** Reserved for large container blocks and selected overlays.
 
 ## Components
 

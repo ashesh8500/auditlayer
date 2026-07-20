@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import re
 from typing import Any
 
@@ -18,6 +18,21 @@ import httpx
 
 INSTAGRAM_GRAPH_API_BASE = "https://graph.instagram.com/v21.0"
 FACEBOOK_GRAPH_API_BASE = "https://graph.facebook.com/v21.0"
+INSTAGRAM_TOKEN_REFRESH_WINDOW_DAYS = 7
+
+
+def should_refresh_instagram_token(
+    expires_at: str, *, now: datetime | None = None
+) -> bool:
+    """Return true when a direct Instagram token is inside its refresh window."""
+    if not expires_at:
+        return False
+    try:
+        expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    current = now or datetime.now(timezone.utc)
+    return expiry <= current + timedelta(days=INSTAGRAM_TOKEN_REFRESH_WINDOW_DAYS)
 
 
 # ── Data models ──────────────────────────────────────────────
@@ -99,6 +114,24 @@ class InstagramAPIClient:
 
     def close(self) -> None:
         self._client.close()
+
+    def refresh_long_lived_token(self) -> tuple[str, int]:
+        """Refresh a direct Instagram Login token for another 60-day window."""
+        if not self._instagram_login:
+            raise ValueError("Only Instagram Login tokens can use the refresh endpoint")
+        response = self._client.get(
+            "https://graph.instagram.com/refresh_access_token",
+            params={
+                "grant_type": "ig_refresh_token",
+                "access_token": self._token,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        token = str(data.get("access_token") or "")
+        if not token:
+            raise ValueError("Instagram refresh did not return an access token")
+        return token, int(data.get("expires_in") or 5_184_000)
 
     # ── Profile ───────────────────────────────────────────────
 

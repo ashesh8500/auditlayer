@@ -71,7 +71,12 @@ export default async function AdminAuditDetail({
             {owner?.email ?? "unknown"} · {owner?.plan ?? ""}
           </p>
         </div>
-        <StatusBadge status={audit.status as AuditStatus} />
+        <div className="text-right">
+          <StatusBadge status={audit.status as AuditStatus} />
+          <p className="mt-2 font-mono text-[0.65rem] text-muted-foreground">
+            Report v{(audit as any).report_version ?? 1} · Method {(audit as any).prompt_version || "—"}
+          </p>
+        </div>
       </header>
 
       {audit.admin_notes && (

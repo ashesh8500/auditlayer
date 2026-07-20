@@ -1,56 +1,50 @@
 import Link from "next/link";
-import { Building2, FilePlus2, LayoutDashboard, Shield } from "lucide-react";
+import { Building2, FilePlus2, Files, Shield } from "lucide-react";
 
+import { signOut } from "@/app/login/actions";
+import { Brand } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { getProfile } from "@/lib/auth";
-import { signOut } from "@/app/login/actions";
 
 export async function AppHeader() {
   const profile = await getProfile();
   const isAdmin = profile?.role === "admin";
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">
-      <div className="alm-shell flex h-16 items-center justify-between gap-3">
-        {/* Logo */}
-        <Link
-          href="/dashboard"
-          className="flex shrink-0 items-center gap-2.5 group alm-focus"
-        >
-          <span className="grid size-8 place-items-center bg-[#14241f] font-mono text-[9px] font-bold text-[#9fe8dc] transition-colors group-hover:bg-[var(--accent)] group-hover:text-white">
-            ALM
-          </span>
-          <span className="hidden text-sm font-semibold tracking-tight text-foreground sm:block">
-            AuditLayerMedia
-          </span>
-        </Link>
+    <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-xl">
+      <div className="alm-shell flex min-h-16 items-center justify-between gap-3 py-2">
+        <Brand href="/accounts" nameClassName="hidden sm:block" />
 
         <nav aria-label="Account navigation" className="flex min-w-0 items-center gap-0.5 text-sm sm:gap-1">
-          <Link href="/accounts">
-            <Button variant="ghost" size="sm">
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/accounts">
               <Building2 className="size-4 sm:hidden" />
               <span className="hidden sm:inline">Accounts</span>
-            </Button>
-          </Link>
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm">
-              <LayoutDashboard className="size-4 sm:hidden" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </Button>
-          </Link>
-          <Link href="/audits/new">
-            <Button variant="ghost" size="sm">
+              <span className="sr-only sm:hidden">Accounts</span>
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/dashboard">
+              <Files className="size-4 sm:hidden" />
+              <span className="hidden sm:inline">Reports</span>
+              <span className="sr-only sm:hidden">Reports</span>
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/audits/new">
               <FilePlus2 className="size-4 sm:hidden" />
-              <span className="hidden sm:inline">New audit</span>
-            </Button>
-          </Link>
+              <span className="hidden sm:inline">New Audit</span>
+              <span className="sr-only sm:hidden">New Audit</span>
+            </Link>
+          </Button>
           {isAdmin && (
-            <Link href="/admin">
-              <Button variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/admin">
                 <Shield className="size-4 sm:hidden" />
                 <span className="hidden sm:inline">Admin</span>
-              </Button>
-            </Link>
+                <span className="sr-only sm:hidden">Admin</span>
+              </Link>
+            </Button>
           )}
           <form action={signOut}>
             <Button variant="outline" size="sm" type="submit">

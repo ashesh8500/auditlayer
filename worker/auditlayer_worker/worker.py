@@ -137,10 +137,19 @@ def _process_refinement(
     try:
         current_html = _download_report(gateway, settings, report_path)
         new_html, _t_in, _t_out = pipeline.refine(audit, current_html, section, instruction, sink)
-        gateway.upload_report(audit_id, new_html)
-        gateway.update_refinement(refinement_id, status="done", error="")
-        gateway.update_audit(audit_id, prompt_version=PROMPT_VERSION)
-        sink.emit("refinement", f"Section '{section}' refined and re-uploaded")
+        new_report_path, _ = gateway.upload_report(audit_id, new_html)
+        new_version = gateway.finalize_refinement_report(
+            audit_id=audit_id,
+            refinement_id=refinement_id,
+            report_path=new_report_path,
+            prompt_version=PROMPT_VERSION,
+            changed_section=section,
+            change_summary=instruction,
+        )
+        sink.emit(
+            "refinement",
+            f"Section '{section}' saved as report version {new_version}",
+        )
     except Exception as exc:  # noqa: BLE001
         log_event(
             "refinement_failed",

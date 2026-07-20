@@ -22,10 +22,11 @@ def test_database_finalization_failure_never_announces_ready(monkeypatch, tmp_pa
     )
 
     class Gateway:
-        def upload_report(self, audit_id: str, html: str):
+        def upload_report(self, audit_id: str, html: str, *, version: int | None = None):
             assert audit_id == audit.id
             assert "</html>" in html
-            return (f"{audit_id}.html", "")
+            assert version == 1
+            return (f"{audit_id}/v{version}.html", "")
 
         def update_audit(self, _audit_id: str, **_fields):
             raise RuntimeError("database unavailable")
@@ -43,4 +44,4 @@ def test_database_finalization_failure_never_announces_ready(monkeypatch, tmp_pa
     phases = [phase for _, phase, _ in sink.events]
     assert "succeeded" not in phases
     assert phases[-1] == "failed"
-    assert summary.report_path == "finalize-fail-1.html"
+    assert summary.report_path == "finalize-fail-1/v1.html"

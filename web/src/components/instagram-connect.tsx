@@ -1,22 +1,16 @@
-"use client";
+import { CheckCircle2, ExternalLink, ShieldCheck, Unplug } from "lucide-react";
 
-import { useCallback, useEffect, useState } from "react";
-import Script from "next/script";
-import { RefreshCw } from "lucide-react";
+import { disconnectInstagram } from "@/lib/actions/instagram";
 import { Button } from "@/components/ui/button";
 
-declare global {
-  interface Window {
-    FB: any;
-    fbAsyncInit?: () => void;
-  }
-}
-
 interface ConnectedAccount {
+  id: string;
+  ig_user_id: string | number;
   ig_username: string;
   followers_count: number;
   media_count: number;
   account_type: string;
+  long_lived_expires_at: string;
   last_refreshed_at: string;
 }
 
@@ -26,181 +20,125 @@ interface Props {
   searchParams?: { instagram_connected?: string; instagram_error?: string };
 }
 
-export function InstagramConnect({
-  connectedAccount,
-  plan,
-  searchParams,
-}: Props) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(
-    searchParams?.instagram_connected ?? null,
+function InstagramIcon({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
   );
-  const [sdkReady, setSdkReady] = useState(false);
+}
 
-  useEffect(() => {
-    // Initialize FB SDK
-    window.fbAsyncInit = () => {
-      window.FB?.init({
-        appId: "1919113942129447",
-        cookie: true,
-        xfbml: true,
-        version: "v21.0",
-      });
-      setSdkReady(true);
-    };
-  }, []);
+const ERROR_MESSAGES: Record<string, string> = {
+  invalid_state: "The connection session expired. Start again from this page.",
+  permission_denied: "Instagram access was not approved. Nothing was connected.",
+  no_code: "Instagram did not return an authorization code. Please try again.",
+  not_authenticated: "Sign in again before connecting Instagram.",
+  not_configured: "Instagram connection is temporarily unavailable.",
+  instagram_oauth_not_configured: "Instagram connection is temporarily unavailable.",
+  instagram_token_exchange_failed: "Instagram could not complete the connection. Please try again.",
+  instagram_long_lived_exchange_failed: "Instagram could not create a durable connection. Please try again.",
+  instagram_profile_fetch_failed: "We could not read the approved Instagram profile.",
+  instagram_professional_account_required:
+    "Connect an Instagram Business or Creator account. Personal accounts are not supported by this API.",
+  instagram_connection_store_failed: "The account was approved but could not be saved. Please contact support.",
+  connection_failed: "Instagram could not be connected. Please try again or contact support.",
+};
 
-  const handleConnect = useCallback(() => {
-    if (!window.FB) {
-      setError("Facebook SDK not loaded. Try refreshing the page.");
-      return;
-    }
+export function InstagramConnect({ connectedAccount, searchParams }: Props) {
+  const instagramError = searchParams?.instagram_error;
+  const success = searchParams?.instagram_connected;
 
-    setLoading(true);
-    setError(null);
-
-    window.FB.login(
-      (response: any) => {
-        if (response.authResponse) {
-          // Got Facebook access token — send to backend
-          const accessToken = response.authResponse.accessToken;
-          fetch("/api/auth/instagram/connect", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ access_token: accessToken }),
-          })
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.error) {
-                setError(data.error);
-              } else {
-                setSuccess(data.ig_username);
-                // Reload to show connected state
-                window.location.href = `/dashboard?instagram_connected=${data.ig_username}`;
-              }
-            })
-            .catch(() => setError("Failed to connect. Please try again."))
-            .finally(() => setLoading(false));
-        } else {
-          setError("Login was cancelled or failed.");
-          setLoading(false);
-        }
-      },
-      {
-        scope: "pages_show_list",
-        return_scopes: true,
-      },
-    );
-  }, []);
-
-  // Connected state
   if (connectedAccount) {
+    const expiresAt = new Date(connectedAccount.long_lived_expires_at);
     return (
-      <div className="rounded-[var(--radius)] border border-green-200 bg-green-50 p-5">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 text-base leading-none text-green-600">✓</div>
-          <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-green-900">
-              Instagram Connected
-            </h3>
-            <p className="mt-0.5 text-sm text-green-700">
-              @{connectedAccount.ig_username} ·{" "}
-              {connectedAccount.followers_count.toLocaleString()} followers ·{" "}
-              {connectedAccount.account_type}
-            </p>
-            <p className="mt-1 text-xs text-green-600/80">
-              Connected{" "}
-              {new Date(
-                connectedAccount.last_refreshed_at,
-              ).toLocaleDateString()}
-              {" · "}
-              Audits for this account will use live metrics from Instagram.
-            </p>
+      <section className="alm-panel p-5 sm:p-6" aria-labelledby="instagram-connection-title">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[color:var(--green-muted)] text-[color:var(--green)]">
+              <CheckCircle2 className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="alm-kicker text-[color:var(--green)]">Live Instagram data</p>
+              <h2 id="instagram-connection-title" className="mt-1 truncate text-lg font-semibold">
+                @{connectedAccount.ig_username} is connected
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {connectedAccount.followers_count.toLocaleString()} followers ·{" "}
+                {connectedAccount.media_count.toLocaleString()} posts ·{" "}
+                {connectedAccount.account_type === "CREATOR" ? "Creator" : "Business"}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Read-only access refreshes report metrics. Authorization expires{" "}
+                {expiresAt.toLocaleDateString()} unless renewed by Instagram.
+              </p>
+            </div>
           </div>
+          <form action={disconnectInstagram}>
+            <input type="hidden" name="connection_id" value={connectedAccount.id} />
+            <Button type="submit" variant="outline" className="min-h-10 w-full sm:w-auto">
+              <Unplug className="size-4" />
+              Disconnect and delete access
+            </Button>
+          </form>
         </div>
-      </div>
+      </section>
     );
   }
 
-  const instagramError = searchParams?.instagram_error;
-
   return (
-    <>
-      {/* Facebook SDK */}
-      <Script
-        src="https://connect.facebook.net/en_US/sdk.js"
-        strategy="afterInteractive"
-        onLoad={() => {
-          window.fbAsyncInit?.();
-        }}
-      />
-
-      <div className="rounded-[var(--radius)] border border-border bg-card p-5">
-        <h3 className="font-semibold">Instagram Integration</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Connect your Instagram Business or Creator account to get real
-          follower counts, engagement metrics, and content data in your audit
-          reports — instead of estimated figures.
-        </p>
-
-        {/* Qualifying tip */}
-        <div className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          <strong>Works with:</strong> Instagram Business and Creator accounts
-          connected to a Facebook Page.{" "}
-          <strong>Not supported:</strong> Personal Instagram accounts. If you
-          don&apos;t have a Business/Creator account, audits will use web
-          research and industry benchmarks instead.
+    <section className="alm-panel p-5 sm:p-6" aria-labelledby="instagram-connection-title">
+      <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div>
+          <p className="alm-kicker">Connected data</p>
+          <h2 id="instagram-connection-title" className="mt-2 text-xl font-semibold tracking-tight">
+            Connect Instagram for verified metrics
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Approve read-only access to your Instagram Business or Creator account. No Facebook Page is required. AuditLayerMedia reads profile and recent-content metrics for your reports and cannot publish, edit, comment, or message on your behalf.
+          </p>
         </div>
-
-        {/* Messages */}
-        {success && (
-          <div className="mt-3 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
-            ✓ Connected <strong>@{success}</strong> successfully. Your audits
-            will now include live Instagram data.
-          </div>
-        )}
-        {error && (
-          <div className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-        {instagramError && (
-          <div className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            Connection failed:{" "}
-            {instagramError === "permission_denied"
-              ? "You denied the permission request. Try again when ready."
-              : instagramError === "no_code"
-                ? "No authorization code received. Please try again."
-                : instagramError === "not_authenticated"
-                  ? "You must be signed in to connect Instagram."
-                  : instagramError.replace(/_/g, " ")}
-          </div>
-        )}
-
-        <div className="mt-4">
-          <Button
-            onClick={handleConnect}
-            disabled={loading || !sdkReady}
-            className="gap-2 font-medium"
-            style={{ background: "#1877F2" }}
-          >
-            {loading ? (
-              <>
-                <RefreshCw className="size-4 animate-spin" />
-                Connecting...
-              </>
-            ) : (
-              "Connect Instagram"
-            )}
-          </Button>
-          {!sdkReady && (
-            <span className="ml-2 text-xs text-muted-foreground">
-              Loading Facebook SDK...
-            </span>
-          )}
-        </div>
+        <Button asChild size="lg" className="min-h-11 w-full px-5 lg:w-auto">
+          <a href="/api/auth/instagram/start">
+            <InstagramIcon />
+            Connect Instagram
+          </a>
+        </Button>
       </div>
-    </>
+
+      <div className="mt-5 grid gap-3 border-t border-border pt-5 text-xs text-muted-foreground sm:grid-cols-3">
+        <p className="flex gap-2"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />Read-only professional-account access</p>
+        <p className="flex gap-2"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />Tokens stay server-side and owner-scoped</p>
+        <p className="flex gap-2"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />Disconnecting deletes stored access</p>
+      </div>
+
+      {success && (
+        <p className="mt-4 border border-[color:var(--green)]/20 bg-[color:var(--green-muted)] px-4 py-3 text-sm text-[color:var(--green)]">
+          Connected <strong>@{success}</strong>. Future audits for this account can use verified Instagram metrics.
+        </p>
+      )}
+      {instagramError && (
+        <p role="alert" className="mt-4 border border-[color:var(--red)]/20 bg-[color:var(--red-muted)] px-4 py-3 text-sm text-[color:var(--red)]">
+          {ERROR_MESSAGES[instagramError] ?? ERROR_MESSAGES.connection_failed}
+        </p>
+      )}
+
+      <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+        <a href="/privacy#instagram-data" className="inline-flex items-center gap-1 hover:text-foreground">
+          Instagram data use <ExternalLink className="size-3" />
+        </a>
+        <a href="/support#instagram" className="inline-flex items-center gap-1 hover:text-foreground">
+          Connection help <ExternalLink className="size-3" />
+        </a>
+      </p>
+    </section>
   );
 }

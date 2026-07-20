@@ -56,6 +56,12 @@ function researchStatus(account: AccountRecord): "current" | "stale" | "unavaila
   return Date.parse(account.cache_valid_until) > Date.now() ? "current" : "stale";
 }
 
+function connectionIsLive(connection: ConnectionRecord | null): boolean {
+  if (!connection?.is_active) return false;
+  const expiresAt = Date.parse(connection.long_lived_expires_at);
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+}
+
 export function createMcpService(userId: string, repository: McpRepository) {
   return {
     async listAccounts() {
@@ -79,7 +85,7 @@ export function createMcpService(userId: string, repository: McpRepository) {
       const connection = await repository.getConnection(userId, account);
       const connectionStatus = !connection
         ? "not_connected"
-        : !connection.is_active || Date.parse(connection.long_lived_expires_at) <= Date.now()
+        : !connectionIsLive(connection)
           ? "reconnection_required"
           : "active";
 
@@ -190,11 +196,11 @@ export function createMcpService(userId: string, repository: McpRepository) {
           research_status: researchStatus(account),
           last_researched_at: account.last_researched_at,
         },
-        connected_metrics: connection
+        connected_metrics: connectionIsLive(connection)
           ? {
-              followers_count: connection.followers_count,
-              media_count: connection.media_count,
-              observed_at: connection.last_refreshed_at,
+              followers_count: connection!.followers_count,
+              media_count: connection!.media_count,
+              observed_at: connection!.last_refreshed_at,
               provenance: "connected_instagram",
             }
           : null,

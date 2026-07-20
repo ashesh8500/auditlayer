@@ -48,13 +48,22 @@ def _audit():
     )
 
 
+def _metrics():
+    return SimpleNamespace(
+        profile=SimpleNamespace(followers_count=1000),
+        avg_engagement_rate=2.5,
+        avg_likes=40.0,
+        avg_comments=5.0,
+    )
+
+
 def test_reusing_research_does_not_slide_cache_expiry() -> None:
     gateway = SimpleNamespace(client=_Client())
 
     _link_account_and_progression(
         gateway,
         _audit(),
-        None,
+        _metrics(),
         research_cache="old evidence",
         research_refreshed=False,
     )
@@ -64,6 +73,7 @@ def test_reusing_research_does_not_slide_cache_expiry() -> None:
         "user_id": "user-1",
         "handle": "creator",
         "platform": "instagram",
+        "ownership_status": "connected",
     }
 
 
@@ -74,7 +84,7 @@ def test_fresh_research_gets_bounded_24_hour_expiry() -> None:
     _link_account_and_progression(
         gateway,
         _audit(),
-        None,
+        _metrics(),
         research_cache="fresh evidence",
         research_refreshed=True,
     )
@@ -86,7 +96,7 @@ def test_fresh_research_gets_bounded_24_hour_expiry() -> None:
     assert account_fields["research_snapshot"] == "fresh evidence"
 
 
-def test_progression_records_locally_computed_score_without_connected_metrics() -> None:
+def test_public_audit_target_is_not_promoted_to_workspace_account() -> None:
     gateway = SimpleNamespace(client=_Client())
 
     _link_account_and_progression(
@@ -97,25 +107,16 @@ def test_progression_records_locally_computed_score_without_connected_metrics() 
         research_refreshed=False,
     )
 
-    progression = next(
-        fields
-        for table, operation, fields, _kwargs in gateway.client.calls
-        if table == "account_progression" and operation == "upsert"
-    )
-    assert progression == {
-        "account_id": "account-1",
-        "audit_id": "audit-1",
-        "followers": None,
-        "engagement": None,
-        "avg_likes": None,
-        "avg_comments": None,
-        "score": 62,
-    }
+    assert gateway.client.calls == []
 
 
 def test_connected_instagram_failure_refuses_stale_fallback() -> None:
     gateway = MagicMock()
-    gateway.get_instagram_token.return_value = ("token", 123)
+    gateway.get_instagram_token.return_value = (
+        "token",
+        123,
+        "2026-09-18T00:00:00+00:00",
+    )
     sink = MagicMock()
 
     with patch(
@@ -135,7 +136,11 @@ def test_connected_instagram_failure_refuses_stale_fallback() -> None:
 
 def test_live_instagram_snapshot_refreshes_connection_health() -> None:
     gateway = MagicMock()
-    gateway.get_instagram_token.return_value = ("token", 123)
+    gateway.get_instagram_token.return_value = (
+        "token",
+        123,
+        "2026-09-18T00:00:00+00:00",
+    )
     sink = MagicMock()
     profile = SimpleNamespace(
         account_type="CREATOR",

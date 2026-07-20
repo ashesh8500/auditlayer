@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -13,6 +13,7 @@ from auditlayer_worker.instagram_api import (
     InstagramAPIClient,
     InstagramMedia,
     MediaSummary,
+    should_refresh_instagram_token,
     summarize_media,
 )
 from auditlayer_worker.supabase_client import SupabaseGateway
@@ -48,7 +49,11 @@ def test_instagram_token_lookup_uses_supported_desc_order():
     gateway = object.__new__(SupabaseGateway)
     gateway.client = SimpleNamespace(table=lambda _name: query)
 
-    assert gateway.get_instagram_token("auditlayermedia", "customer-1") == ("token", 123)
+    assert gateway.get_instagram_token("auditlayermedia", "customer-1") == (
+        "token",
+        123,
+        "2099-01-01T00:00:00+00:00",
+    )
     assert query.order_kwargs == {"desc": True}
     assert ("user_id", "customer-1") in query.filters
 
@@ -81,6 +86,83 @@ def test_instagram_client_selects_endpoint_for_token_type(
 
     assert client._base_url == expected_base
     assert seen == [expected_profile, expected_media]
+
+
+def test_instagram_login_token_can_be_refreshed(monkeypatch):
+    client = InstagramAPIClient("IGA_old")
+    seen = {}
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"access_token": "IGA_new", "expires_in": 5_184_000}
+
+    def fake_get(url, params):
+        seen["url"] = url
+        seen["params"] = params
+        return Response()
+
+    monkeypatch.setattr(client._client, "get", fake_get)
+    try:
+        token, expires_in = client.refresh_long_lived_token()
+    finally:
+        client.close()
+
+    assert token == "IGA_new"
+    assert expires_in == 5_184_000
+    assert seen == {
+        "url": "https://graph.instagram.com/refresh_access_token",
+        "params": {
+            "grant_type": "ig_refresh_token",
+            "access_token": "IGA_old",
+        },
+    }
+
+
+def test_instagram_token_refresh_window_is_seven_days():
+    now = datetime(2026, 7, 20, tzinfo=timezone.utc)
+    assert should_refresh_instagram_token(
+        (now + timedelta(days=6)).isoformat(), now=now
+    )
+    assert not should_refresh_instagram_token(
+        (now + timedelta(days=8)).isoformat(), now=now
+    )
+
+
+def test_gateway_persists_refreshed_instagram_token():
+    class Query:
+        def __init__(self):
+            self.values = None
+            self.filters = []
+
+        def update(self, values):
+            self.values = values
+            return self
+
+        def eq(self, *args):
+            self.filters.append(args)
+            return self
+
+        def execute(self):
+            return SimpleNamespace(data=[])
+
+    query = Query()
+    gateway = object.__new__(SupabaseGateway)
+    gateway.client = SimpleNamespace(table=lambda _name: query)
+
+    gateway.update_instagram_token(
+        user_id="customer-1",
+        ig_user_id=123,
+        token="IGA_new",
+        expires_at="2026-09-18T00:00:00+00:00",
+    )
+
+    assert query.values["long_lived_token"] == "IGA_new"
+    assert query.values["long_lived_expires_at"] == "2026-09-18T00:00:00+00:00"
+    assert ("user_id", "customer-1") in query.filters
+    assert ("ig_user_id", 123) in query.filters
 
 
 

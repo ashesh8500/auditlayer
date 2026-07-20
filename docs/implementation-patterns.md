@@ -132,7 +132,7 @@ When unsure, call `send_message(action="list")` to enumerate available targets.
 
 ### Assembly Phase Timings
 - Report compilation (15 sections): 2-4 minutes
-- Total end-to-end: 3-5 minutes
+- Total end-to-end: typically 6-8 minutes
 
 ### Token Budget Guidelines
 - Research phase: ~15K-25K tokens (input)

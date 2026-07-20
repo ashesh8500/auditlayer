@@ -1,93 +1,112 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { completeInstagramOAuth } from "@/lib/facebook-oauth";
+import { completeInstagramOAuth } from "@/lib/instagram-oauth";
+import {
+  INSTAGRAM_OAUTH_STATE_COOKIE,
+  instagramOAuthServerConfig,
+} from "@/lib/instagram-oauth-config";
+import { instagramOAuthStateMatches } from "@/lib/instagram-oauth-url";
+
+const STATE_COOKIE_PATH = "/api/auth/instagram/callback";
+
+function clearStateCookie(response: NextResponse) {
+  response.cookies.set(INSTAGRAM_OAUTH_STATE_COOKIE, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: STATE_COOKIE_PATH,
+    maxAge: 0,
+  });
+}
+
+function dashboardRedirect(
+  request: NextRequest,
+  parameter: "instagram_connected" | "instagram_error",
+  value: string,
+) {
+  const response = NextResponse.redirect(
+    new URL(`/dashboard?${parameter}=${encodeURIComponent(value)}`, request.url),
+  );
+  clearStateCookie(response);
+  return response;
+}
 
 /**
- * Facebook OAuth callback for Instagram Graph API connection.
- * GET /api/auth/instagram/callback?code=...&state=...
- *
- * Completes the OAuth flow: code → tokens → Instagram account → Supabase storage.
- * Redirects back to the dashboard with success/error query params.
+ * Direct Instagram Business Login callback.
+ * Validates user-bound CSRF state, exchanges the code server-side, and stores
+ * the professional connection plus workspace account in one DB transaction.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  const error = searchParams.get("error");
-  const errorDescription = searchParams.get("error_description");
+  const returnedState = searchParams.get("state");
+  const stateCookie = request.cookies.get(INSTAGRAM_OAUTH_STATE_COOKIE)?.value;
 
-  // Facebook returned an error (user denied permissions, etc.)
-  if (error) {
-    const msg = errorDescription
-      ? `permission_denied: ${errorDescription}`
-      : "permission_denied";
-    return NextResponse.redirect(
-      new URL(`/dashboard?instagram_error=${encodeURIComponent(msg)}`, request.url),
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    const response = NextResponse.redirect(
+      new URL("/login?next=/dashboard&instagram_error=not_authenticated", request.url),
     );
+    clearStateCookie(response);
+    return response;
   }
 
+  const userBoundState = returnedState ? `${user.id}:${returnedState}` : null;
+  if (!instagramOAuthStateMatches(stateCookie, userBoundState)) {
+    return dashboardRedirect(request, "instagram_error", "invalid_state");
+  }
+  if (searchParams.get("error")) {
+    return dashboardRedirect(request, "instagram_error", "permission_denied");
+  }
   if (!code) {
-    return NextResponse.redirect(
-      new URL("/dashboard?instagram_error=no_code", request.url),
-    );
+    return dashboardRedirect(request, "instagram_error", "no_code");
   }
 
   try {
-    // Get the authenticated user
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.redirect(
-        new URL("/login?instagram_error=not_authenticated", request.url),
-      );
-    }
-
-    // Complete OAuth — exchange code for tokens and fetch IG accounts
-    const tokens = await completeInstagramOAuth(code);
-
-    // Store in Supabase using admin client (bypasses RLS)
+    const config = instagramOAuthServerConfig();
+    const tokens = await completeInstagramOAuth(code, config);
+    const expiresAt = new Date(Date.now() + tokens.expiresIn * 1000).toISOString();
     const adminClient = createAdminClient();
-
-    const { error: dbError } = await (adminClient as any)
-      .from("instagram_connections")
-      .upsert(
-        {
-          user_id: user.id,
-          ig_user_id: tokens.igUserId,
-          ig_username: tokens.igUsername,
-          long_lived_token: tokens.accessToken,
-          long_lived_expires_at: new Date(
-            Date.now() + 60 * 24 * 60 * 60 * 1000, // 60 days
-          ).toISOString(),
-          account_type: tokens.accountType,
-          followers_count: tokens.followersCount,
-          media_count: tokens.mediaCount,
-          is_active: true,
-          last_refreshed_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id, ig_user_id" },
-      );
-
-    if (dbError) throw dbError;
-
-    return NextResponse.redirect(
-      new URL(
-        `/dashboard?instagram_connected=${encodeURIComponent(tokens.igUsername)}`,
-        request.url,
-      ),
+    const { error: dbError } = await (adminClient as any).rpc(
+      "persist_instagram_connection",
+      {
+        p_user_id: user.id,
+        p_ig_user_id: tokens.igUserId,
+        p_ig_username: tokens.igUsername,
+        p_long_lived_token: tokens.accessToken,
+        p_long_lived_expires_at: expiresAt,
+        p_account_type: tokens.accountType,
+        p_followers_count: tokens.followersCount,
+        p_media_count: tokens.mediaCount,
+      },
     );
-  } catch (err: any) {
-    console.error("Instagram OAuth callback error:", err);
-    const msg = err.message?.slice(0, 200) || "unknown_error";
-    return NextResponse.redirect(
-      new URL(
-        `/dashboard?instagram_error=${encodeURIComponent(msg)}`,
-        request.url,
-      ),
+    if (dbError) throw new Error("instagram_connection_store_failed");
+
+    return dashboardRedirect(
+      request,
+      "instagram_connected",
+      tokens.igUsername,
     );
+  } catch (error) {
+    const errorCode =
+      error instanceof Error &&
+      [
+        "instagram_oauth_not_configured",
+        "instagram_token_exchange_failed",
+        "instagram_long_lived_exchange_failed",
+        "instagram_profile_fetch_failed",
+        "instagram_professional_account_required",
+        "instagram_connection_store_failed",
+      ].includes(error.message)
+        ? error.message
+        : "connection_failed";
+    console.error("Instagram OAuth callback failed", { code: errorCode });
+    return dashboardRedirect(request, "instagram_error", errorCode);
   }
 }

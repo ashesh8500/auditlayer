@@ -394,11 +394,11 @@ class GenerationPipeline:
 
         report_path = report_url = None
         if gateway is not None:
-            report_path, _ = gateway.upload_report(audit.id, final_html)
+            report_path, _ = gateway.upload_report(audit.id, final_html, version=1)
             try:
                 gateway.update_audit(
                     audit.id,
-                    status=delivery_status.value,
+                    status=AuditStatus.RUNNING.value,
                     report_path=report_path,
                     admin_notes=(quality.summary[:500] if not quality.passed else ""),
                     tokens_in=result.tokens_in,
@@ -409,6 +409,13 @@ class GenerationPipeline:
                     milestone_label=audit.milestone_label,
                     limitations=audit.limitations,
                     research_cache="",
+                )
+                gateway.finalize_initial_report(
+                    audit_id=audit.id,
+                    delivery_status=delivery_status.value,
+                    report_path=report_path,
+                    prompt_version=PROMPT_VERSION,
+                    template_version="master-skeleton-v1",
                 )
             except Exception as exc:
                 log_event(
@@ -560,10 +567,37 @@ def _start_instagram_fetch(gateway, audit, sink):
             )
             return None
 
-        token, ig_user_id = token_info
-        from .instagram_api import InstagramAPIClient
+        token, ig_user_id, expires_at = token_info
+        from .instagram_api import InstagramAPIClient, should_refresh_instagram_token
 
         client = InstagramAPIClient(token)
+        if token.startswith("IGA") and should_refresh_instagram_token(expires_at):
+            try:
+                refreshed_token, expires_in = client.refresh_long_lived_token()
+                refreshed_expires_at = (
+                    datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+                ).isoformat()
+                gateway.update_instagram_token(
+                    user_id=audit.user_id,
+                    ig_user_id=ig_user_id,
+                    token=refreshed_token,
+                    expires_at=refreshed_expires_at,
+                )
+                client.close()
+                client = InstagramAPIClient(refreshed_token)
+                sink.emit(
+                    "researching",
+                    "Instagram authorization renewed before live metrics were loaded.",
+                    event_type="instagram_token_refreshed",
+                )
+            except Exception as exc:
+                log_event(
+                    "instagram_token_refresh_failed",
+                    level="warning",
+                    audit_id=audit.id,
+                    error_type=type(exc).__name__,
+                )
+
         try:
             metrics = client.get_full_metrics(ig_user_id)
             if audit.user_id:
@@ -639,16 +673,20 @@ def _link_account_and_progression(
     research_cache: str = "",
     research_refreshed: bool = True,
 ) -> None:
-    """Upsert the account row and write progression data after a successful audit.
+    """Update a connected workspace account after a successful audit.
 
-    A cache hit must not renew the research timestamp or expiry. Instagram
-    observations are written independently below.
+    Public audit targets belong in ``audits`` and must never be promoted into
+    the user's Accounts workspace. A connected metrics result is the proof
+    that this handle belongs to an owner-scoped Instagram connection.
     """
+    if ig_metrics is None:
+        return
     try:
         account_fields = {
             "user_id": audit.user_id,
             "handle": audit.handle,
             "platform": audit.platform,
+            "ownership_status": "connected",
         }
         if research_refreshed:
             account_fields.update(

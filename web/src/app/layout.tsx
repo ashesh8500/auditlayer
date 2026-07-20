@@ -18,9 +18,25 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://auditlayermedia.com",
+  ),
   title: "AuditLayerMedia — Social media competitive intelligence",
   description:
-    "Deep, structured social media audits for creators, brands, and media managers. The report is the product.",
+    "Evidence-led social media audits for health, wellness, and expert-led brands. See the constraint, competitive context, and next actions.",
+  openGraph: {
+    type: "website",
+    siteName: "AuditLayerMedia",
+    title: "AuditLayerMedia — Know what to do next",
+    description:
+      "Evidence, diagnosis, and a ranked action plan for social growth.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AuditLayerMedia — Know what to do next",
+    description:
+      "Evidence, diagnosis, and a ranked action plan for social growth.",
+  },
 };
 
 export default function RootLayout({

@@ -233,7 +233,7 @@ Add to `layout.tsx` sidebar:
 
 ### Current state (fully built)
 
-✅ Facebook JS SDK OAuth flow (`FB.login()` → `POST /api/auth/instagram/connect`)  
+Superseded: direct Instagram Business Login (`GET /api/auth/instagram/start` → Instagram → validated callback). No Facebook Page intermediary.
 ✅ Token storage in `instagram_connections` table  
 ✅ Worker fetches live IG data before generation (`instagram_api.py` → `pipeline.py`)  
 ✅ Prompt injection of live metrics (`build_worker_prompt()` with `ig_metrics`)  
@@ -241,13 +241,14 @@ Add to `layout.tsx` sidebar:
 
 ### What you still need to do
 
-1. **Meta App Review** — The `instagram_basic` scope works without review for testers. For production (non-tester users), you need App Review approval. Without it, non-tester users see an error when connecting. Start the review at https://developers.facebook.com/apps/1919113942129447/app-review/
+1. **Meta App Review** — Request Advanced Access for `instagram_business_basic`. Until approval, only configured app roles/testers can complete the production connection.
 
 2. **Add Instagram Testers** — For Narin to test: Meta App Dashboard → Roles → Instagram Testers → add her Instagram username. She must accept the invitation in her IG app settings.
 
 3. **Verify production env vars on Vercel:**
-   - `FACEBOOK_APP_ID=1919113942129447` ✅ (already hardcoded in `instagram-oauth-url.ts`)
-   - `FACEBOOK_APP_SECRET=<secret>` — verify it's set and correct
+   - `INSTAGRAM_APP_ID` — server-side Instagram Login app ID
+   - `INSTAGRAM_APP_SECRET` — server-side Instagram Login app secret
+   - `NEXT_PUBLIC_SITE_URL=https://auditlayermedia.com`
    - Verify the OAuth redirect URI is configured in Meta App: `https://auditlayermedia.com/api/auth/instagram/callback`
 
 4. **Worker restart after IG code changes** — The worker on Hetzner needs to be running code that includes `instagram_api.py`. Since Syncthing syncs code changes, restart the worker: `systemctl --user restart auditlayer-worker`
@@ -338,7 +339,7 @@ Add to `layout.tsx` sidebar:
 - [ ] Non-admin cannot access admin routes
 
 ### Instagram (existing — status check)
-- [ ] `FACEBOOK_APP_SECRET` set on Vercel
+- [ ] `INSTAGRAM_APP_ID` and `INSTAGRAM_APP_SECRET` set on Vercel
 - [ ] Meta App OAuth redirect configured
 - [ ] Instagram tester added for Narin
 - [ ] End-to-end: connect → audit → live metrics in report

@@ -43,6 +43,28 @@ def test_report_upload_returns_private_path_without_signed_url() -> None:
 
     path, url = gateway.upload_report("audit-123", "<html></html>")
 
-    assert path == "audit-123.html"
+    assert path.startswith("audit-123/revisions/")
+    assert path.endswith(".html")
     assert url == ""
     assert store.uploads[0]["file_options"]["content-type"] == "text/html"
+    assert store.uploads[0]["file_options"]["upsert"] == "false"
+
+
+def test_versioned_report_upload_uses_immutable_revision_path() -> None:
+    gateway, store = _gateway()
+
+    path, url = gateway.upload_report("audit-123", "<html></html>", version=2)
+
+    assert path.startswith("audit-123/revisions/")
+    assert path.endswith(".html")
+    assert url == ""
+    assert store.uploads[0]["path"] == path
+
+
+def test_report_upload_paths_never_collide() -> None:
+    gateway, _store = _gateway()
+
+    first, _ = gateway.upload_report("audit-123", "one")
+    second, _ = gateway.upload_report("audit-123", "two")
+
+    assert first != second

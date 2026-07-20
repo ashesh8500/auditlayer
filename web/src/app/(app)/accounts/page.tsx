@@ -2,6 +2,10 @@ import Link from "next/link";
 import { ArrowRight, Bot, Building2, Plus, TrendingDown, TrendingUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  isLiveInstagramConnection,
+  WORKSPACE_ACCOUNT_STATUSES,
+} from "@/lib/account-ownership";
 import { requireProfile } from "@/lib/auth";
 import {
   summarizeProgression,
@@ -19,6 +23,7 @@ type AccountRow = {
   avatar_url: string | null;
   last_researched_at: string | null;
   created_at: string | null;
+  ownership_status: "connected" | "managed";
 };
 
 type ConnectionRow = {
@@ -41,9 +46,10 @@ export default async function AccountsPage() {
       (supabase as any)
         .from("accounts")
         .select(
-          "id, handle, platform, display_name, avatar_url, last_researched_at, created_at",
+          "id, handle, platform, display_name, avatar_url, last_researched_at, created_at, ownership_status",
         )
         .eq("user_id", profile.id)
+        .in("ownership_status", [...WORKSPACE_ACCOUNT_STATUSES])
         .order("created_at", { ascending: false }),
       (supabase as any)
         .from("account_progression")
@@ -64,11 +70,7 @@ export default async function AccountsPage() {
   }
   const liveHandles = new Set(
     ((connections ?? []) as ConnectionRow[])
-      .filter(
-        (connection) =>
-          connection.is_active &&
-          new Date(connection.long_lived_expires_at).getTime() > Date.now(),
-      )
+      .filter(isLiveInstagramConnection)
       .map((connection) => connection.ig_username.toLowerCase()),
   );
 
@@ -78,10 +80,10 @@ export default async function AccountsPage() {
         <div>
           <p className="alm-kicker">Your accounts</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-            Tracked accounts
+            Connected accounts
           </h1>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-            See the latest score, live metrics, and change from the previous audit.
+            Accounts you connected or explicitly manage. Public audit targets stay in Reports.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -105,14 +107,14 @@ export default async function AccountsPage() {
           <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-[color:var(--accent-muted)]">
             <Building2 className="size-6 text-[color:var(--accent)]" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">No accounts yet</h2>
+          <h2 className="text-xl font-bold text-foreground">No connected accounts yet</h2>
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
-            Run your first audit and its account history will appear here automatically.
+            Connect a professional Instagram account to make it part of your managed workspace.
           </p>
-          <Link href="/audits/new" className="mt-6 inline-block">
+          <Link href="/settings/ai-connections" className="mt-6 inline-block">
             <Button size="lg" className="font-semibold">
               <Plus className="size-4" />
-              Run an audit
+              Connect Instagram
             </Button>
           </Link>
         </div>

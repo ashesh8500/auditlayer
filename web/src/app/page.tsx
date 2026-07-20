@@ -6,25 +6,22 @@ import {
   Check,
   ChevronRight,
   FileSearch,
+  LockKeyhole,
   Route,
   ShieldCheck,
+  UserRoundCheck,
 } from "lucide-react";
 
+import { PublicShell } from "@/components/public-shell";
+import { SampleReportPreview } from "@/components/sample-report-preview";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
 
-const SCORE_ROWS = [
-  ["Content strategy", 32],
-  ["Engagement depth", 55],
-  ["Brand cohesion", 68],
-  ["Conversion path", 22],
-] as const;
-
 const REPORT_ANSWERS = [
-  ["01", "Diagnosis", "Where the account stands across content, growth, engagement, brand, and conversion — plus the structural issues limiting reach, trust, and audience action."],
-  ["02", "Competitive context", "Same-tier accounts that reveal a credible competitive gap, with benchmark scores and format comparisons so you know exactly where you stand."],
-  ["03", "Action plan", "A ranked next-week execution plan with formats, angles, and priorities, plus measurable checkpoints for the next 30 and 90 days."],
-  ["04", "Revenue move", "The commercial action that fits the audience and current maturity, timed to land when trust and engagement are highest."],
+  ["01", "Diagnosis", "Where the account stands across content, growth, engagement, brand, and conversion — plus the structural issue limiting reach, trust, or audience action."],
+  ["02", "Competitive context", "Relevant same-tier accounts that reveal a credible gap, with benchmark scores and format comparisons that explain where the difference comes from."],
+  ["03", "Action plan", "A ranked next-week execution plan with formats, angles, owners, and measurable checkpoints for the next 30 and 90 days."],
+  ["04", "Revenue move", "The commercial action that fits the audience and current maturity, timed to land when trust and engagement are strongest."],
 ] as const;
 
 const PRICING = [
@@ -32,8 +29,8 @@ const PRICING = [
     name: "Pulse",
     price: "Free",
     cadence: "",
-    note: "One focused diagnostic",
-    features: ["Score breakdown", "Strengths and gaps", "Three immediate moves"],
+    note: "One focused decision-ready diagnostic",
+    features: ["Six-dimension score", "Primary constraint", "Three immediate moves"],
     cta: "Run a Free Pulse Audit",
     featured: false,
   },
@@ -41,8 +38,8 @@ const PRICING = [
     name: "Starter",
     price: "$30",
     cadence: "/ month",
-    note: "5 full audits per month",
-    features: ["15-section intelligence report", "Peer benchmarking", "7-day and 90-day plans", "One refinement"],
+    note: "5 complete reports per month",
+    features: ["15-section intelligence report", "Same-tier peer benchmarking", "7-day and 90-day plans", "One refinement"],
     cta: "Choose Starter",
     featured: true,
   },
@@ -50,8 +47,8 @@ const PRICING = [
     name: "Pro",
     price: "$50",
     cadence: "/ month",
-    note: "15 full audits per month",
-    features: ["Everything in Starter", "Priority queue", "Competitor deep-dives", "Two refinements"],
+    note: "15 extended reports per month",
+    features: ["Everything in Starter", "Extended content diagnosis", "Competitor deep-dives", "Two refinements"],
     cta: "Choose Pro",
     featured: false,
   },
@@ -59,105 +56,65 @@ const PRICING = [
 
 export default async function Home() {
   const user = await getSession();
-  if (user) redirect("/dashboard");
+  if (user) redirect("/accounts");
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border/90 bg-background/90 backdrop-blur-xl">
-        <div className="alm-shell flex h-16 items-center justify-between">
-          <Brand />
-          <nav aria-label="Primary navigation" className="flex items-center gap-1 sm:gap-3">
-            <Link prefetch={false} href="#method" className="hidden px-3 py-2 text-sm text-muted-foreground hover:text-foreground sm:block">Method</Link>
-            <Link prefetch={false} href="#pricing" className="hidden px-3 py-2 text-sm text-muted-foreground hover:text-foreground sm:block">Pricing</Link>
-            <Link prefetch={false} href="/login"><Button size="sm">Sign in</Button></Link>
-          </nav>
-        </div>
-      </header>
-
+    <PublicShell>
       <main>
         <section className="alm-shell grid min-h-[calc(100vh-4rem)] items-center gap-10 py-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:py-20">
           <div className="max-w-xl">
-            <p className="alm-kicker">Competitive intelligence for social growth</p>
+            <p className="alm-kicker">Competitive intelligence for health, wellness, and expert-led brands</p>
             <h1 className="mt-5 text-[clamp(3.2rem,8vw,6.9rem)] font-semibold leading-[0.86] tracking-[-0.075em]">
               Know what to do <span className="text-[color:var(--accent)]">next.</span>
             </h1>
             <p className="mt-7 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">
-              AuditLayerMedia turns public social signals into a clear diagnosis, a same-tier benchmark, and an executable growth plan.
+              See where your account stands, what is limiting growth, which peers prove the gap, and the next actions to take.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link prefetch={false} href="/login"><Button size="lg" className="w-full sm:w-auto">Run a Free Pulse Audit <ArrowRight className="size-4" /></Button></Link>
-              <Link prefetch={false} href="#sample"><Button size="lg" variant="outline" className="w-full sm:w-auto">Explore the sample</Button></Link>
+              <Button asChild size="lg" className="min-h-11 px-5">
+                <Link href="/login">Run a Free Pulse Audit <ArrowRight className="size-4" /></Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="min-h-11 px-5">
+                <Link href="/sample">View a Sample Report</Link>
+              </Button>
             </div>
-            <div className="mt-9 grid grid-cols-3 border-y border-border py-4 font-mono text-[0.65rem] uppercase tracking-[0.08em] text-muted-foreground">
+            <div className="mt-9 grid grid-cols-3 border-y border-border py-4 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
               <span><b className="block text-lg text-foreground">6</b>dimensions</span>
               <span><b className="block text-lg text-foreground">15</b>sections</span>
               <span><b className="block text-lg text-foreground">90</b>day path</span>
             </div>
           </div>
 
-          <div id="sample" className="relative scroll-mt-24 bg-[#14241f] p-4 shadow-[var(--shadow-lg)] sm:p-7">
-            <div className="absolute -right-20 -top-20 size-64 rounded-full bg-[color:var(--accent)]/25 blur-3xl" aria-hidden="true" />
-            <div className="relative max-h-[520px] overflow-y-auto pr-1">
-              <div className="rotate-[0.5deg] bg-card p-5 shadow-2xl sm:p-8">
-                <div className="flex items-start justify-between gap-4 border-b border-border pb-5">
-                  <div><p className="alm-kicker">Sample intelligence brief</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">@glowstate</h2></div>
-                  <div className="text-right"><b className="font-mono text-4xl">48</b><span className="font-mono text-xs text-muted-foreground"> / 100</span></div>
-                </div>
-                <div className="py-5">
-                  {SCORE_ROWS.map(([label, score]) => (
-                    <div key={label} className="grid grid-cols-[7.5rem_1fr_1.5rem] items-center gap-3 border-b border-border/70 py-2.5 text-xs">
-                      <span className="text-muted-foreground">{label}</span>
-                      <span className="h-1.5 bg-muted"><span className="block h-full bg-[color:var(--accent)]" style={{ width: `${score}%` }} /></span>
-                      <b className="font-mono">{score}</b>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-l-2 border-[color:var(--accent)] bg-[color:var(--accent-muted)] p-4">
-                  <p className="font-mono text-[0.62rem] font-semibold uppercase tracking-widest text-[color:var(--accent)]">Primary constraint</p>
-                  <p className="mt-2 text-sm font-medium leading-6">A coherent brand without a repeatable distribution system.</p>
-                </div>
-                <div className="mt-5 grid gap-2 sm:grid-cols-3">
-                  {["Shift the format mix", "Tighten reply time", "Guide first visits"].map((move, index) => (
-                    <div key={move} className="border-t border-border pt-3 text-xs leading-5 text-muted-foreground"><b className="mr-2 font-mono text-[color:var(--accent)]">0{index + 1}</b>{move}</div>
-                  ))}
-                </div>
-                <div className="mt-6 border-t border-border pt-5">
-                  <p className="font-mono text-[0.62rem] font-semibold uppercase tracking-widest text-muted-foreground">Peer benchmark</p>
-                  <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
-                    {[["@peakmethod", "72"], ["@formdaily", "61"], ["@buildclub", "53"]].map(([handle, score]) => (
-                      <div key={handle} className="rounded border border-border bg-muted/50 p-2.5 text-center">
-                        <p className="font-semibold">{handle}</p>
-                        <b className="font-mono text-lg text-[color:var(--accent)]">{score}</b>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="mt-5 border-t border-border pt-5">
-                  <p className="font-mono text-[0.62rem] font-semibold uppercase tracking-widest text-muted-foreground">30-day checkpoints</p>
-                  <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">
-                    <li className="flex gap-2"><span className="font-mono text-[color:var(--accent)]">✓</span> Format mix shifted to 40% short-form, 30% carousel, 30% long-form</li>
-                    <li className="flex gap-2"><span className="font-mono text-[color:var(--accent)]">✓</span> Reply time under 90 minutes on top-performing posts</li>
-                    <li className="flex gap-2"><span className="font-mono text-[color:var(--accent)]">✓</span> One partnership post with a same-tier account</li>
-                  </ul>
-                </div>
-              </div>
-              <p className="mt-4 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-white/55">Fictional sample · representative report structure</p>
-            </div>
+          <div id="sample" className="scroll-mt-24">
+            <SampleReportPreview />
           </div>
         </section>
 
-        <section id="method" className="border-y border-border bg-[#14241f] py-20 text-white scroll-mt-16">
+        <section aria-label="Product trust" className="border-y border-border bg-card/60">
+          <div className="alm-shell grid gap-px bg-border sm:grid-cols-3">
+            {[
+              [LockKeyhole, "Private reports", "Owner-scoped access and controlled share links."],
+              [ShieldCheck, "Evidence with limits", "Collection limits stay visible instead of being hidden."],
+              [UserRoundCheck, "Human calibration", "Media strategy shapes the diagnosis, not a generic analytics template."],
+            ].map(([Icon, title, body]) => {
+              const TrustIcon = Icon as typeof LockKeyhole;
+              return <div key={title as string} className="bg-card px-5 py-6"><TrustIcon className="size-5 text-[color:var(--accent)]" /><h2 className="mt-4 text-sm font-semibold">{title as string}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{body as string}</p></div>;
+            })}
+          </div>
+        </section>
+
+        <section id="method" className="scroll-mt-16 border-y border-border bg-[color:var(--forest)] py-20 text-white">
           <div className="alm-shell">
             <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
-              <div><p className="alm-kicker !text-[#76d7ca]">From signal to strategy</p><h2 className="mt-4 text-4xl font-semibold leading-tight tracking-[-0.045em] sm:text-5xl">Research that ends in a decision.</h2></div>
+              <div><p className="alm-kicker text-[color:var(--teal-on-forest)]">Evidence → diagnosis → decision</p><h2 className="mt-4 text-4xl font-semibold leading-tight tracking-[-0.045em] sm:text-5xl">Research that ends in a decision.</h2><p className="mt-5 max-w-lg text-sm leading-6 text-white/70">The report is the product. Every layer moves from observable signal to strategic implication to an action someone can own.</p></div>
               <div className="grid gap-px bg-white/15 sm:grid-cols-3">
                 {[
-                  [FileSearch, "Observe", "Public content, account signals, and format patterns."],
-                  [BarChart3, "Calibrate", "Scores and same-tier comparisons with visible limitations."],
+                  [FileSearch, "Observe", "Public content, approved account metrics, and format patterns."],
+                  [BarChart3, "Calibrate", "Scores and same-tier comparisons with limitations attached."],
                   [Route, "Act", "A ranked next-week plan and measurable trajectory."],
                 ].map(([Icon, title, body]) => {
                   const MethodIcon = Icon as typeof FileSearch;
-                  return <article key={title as string} className="bg-[#14241f] p-6"><MethodIcon className="size-5 text-[#76d7ca]" /><h3 className="mt-8 text-lg font-semibold">{title as string}</h3><p className="mt-2 text-sm leading-6 text-white/60">{body as string}</p></article>;
+                  return <article key={title as string} className="bg-[color:var(--forest)] p-6"><MethodIcon className="size-5 text-[color:var(--teal-on-forest)]" /><h3 className="mt-8 text-lg font-semibold">{title as string}</h3><p className="mt-2 text-sm leading-6 text-white/65">{body as string}</p></article>;
                 })}
               </div>
             </div>
@@ -171,39 +128,38 @@ export default async function Home() {
               {REPORT_ANSWERS.map(([number, title, body]) => <article key={number} className="border-b border-r border-border bg-card p-5 sm:p-6"><span className="font-mono text-xs text-[color:var(--accent)]">{number}</span><h3 className="mt-7 text-lg font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p></article>)}
             </div>
           </div>
+          <div className="mt-12 flex flex-col items-start justify-between gap-5 border-y border-border py-6 sm:flex-row sm:items-center">
+            <div><p className="text-sm font-semibold">Start with the focused diagnosis.</p><p className="mt-1 text-xs text-muted-foreground">No credit card. Upgrade only when the reports earn their keep.</p></div>
+            <Button asChild className="min-h-11 px-5"><Link href="/login">Run a Free Pulse Audit <ArrowRight className="size-4" /></Link></Button>
+          </div>
         </section>
 
-        <section id="pricing" className="border-y border-border bg-[color:var(--panel)] py-20 scroll-mt-16">
+        <section id="pricing" className="scroll-mt-16 border-y border-border bg-[color:var(--panel)] py-20">
           <div className="alm-shell">
-            <div className="max-w-2xl"><p className="alm-kicker">Pricing</p><h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">Start with a Pulse. Upgrade for depth.</h2><p className="mt-4 text-muted-foreground">No credit card for the free Pulse audit. Paid plans unlock complete reports and refinements.</p></div>
+            <div className="max-w-2xl"><p className="alm-kicker">Pricing</p><h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">Start with a Pulse. Upgrade for depth.</h2><p className="mt-4 text-muted-foreground">The free Pulse identifies the decision. Paid plans add complete evidence, peer context, execution detail, and refinements.</p></div>
             <div className="mt-10 grid gap-4 lg:grid-cols-3">
-              {PRICING.map((tier) => <article key={tier.name} className={`flex min-h-[25rem] flex-col border p-6 ${tier.featured ? "border-[#14241f] bg-[#14241f] text-white shadow-[var(--shadow-lg)]" : "border-border bg-card"}`}>
-                <div className="flex items-center justify-between"><h3 className="text-xl font-semibold">{tier.name}</h3>{tier.featured && <span className="font-mono text-[0.58rem] uppercase tracking-widest text-[#76d7ca]">Most popular</span>}</div>
-                <div className="mt-9"><b className="font-mono text-4xl">{tier.price}</b>{"cadence" in tier && <span className={`text-xs ${tier.featured ? "text-white/55" : "text-muted-foreground"}`}>{tier.cadence}</span>}<p className={`mt-2 text-xs ${tier.featured ? "text-white/55" : "text-muted-foreground"}`}>{tier.note}</p></div>
-                <ul className="mt-8 flex-1 space-y-3">{tier.features.map(feature => <li key={feature} className={`flex gap-2 text-sm ${tier.featured ? "text-white/75" : "text-muted-foreground"}`}><Check className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />{feature}</li>)}</ul>
-                <Link prefetch={false} href="/login" className="mt-8"><Button variant={tier.featured ? "secondary" : "outline"} className="w-full">{tier.cta}</Button></Link>
+              {PRICING.map((tier) => <article key={tier.name} className={`flex min-h-[24rem] flex-col border p-6 ${tier.featured ? "border-[color:var(--forest)] bg-[color:var(--forest)] text-white shadow-[var(--shadow-lg)]" : "border-border bg-card"}`}>
+                <div className="flex items-center justify-between"><h3 className="text-xl font-semibold">{tier.name}</h3>{tier.featured && <span className="font-mono text-xs uppercase tracking-widest text-[color:var(--teal-on-forest)]">Most popular</span>}</div>
+                <div className="mt-9"><b className="font-mono text-4xl">{tier.price}</b><span className={`text-xs ${tier.featured ? "text-white/60" : "text-muted-foreground"}`}>{tier.cadence}</span><p className={`mt-2 text-xs ${tier.featured ? "text-white/60" : "text-muted-foreground"}`}>{tier.note}</p></div>
+                <ul className="mt-8 flex-1 space-y-3">{tier.features.map(feature => <li key={feature} className={`flex gap-2 text-sm ${tier.featured ? "text-white/80" : "text-muted-foreground"}`}><Check className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />{feature}</li>)}</ul>
+                <Button asChild variant={tier.featured ? "secondary" : "outline"} className="mt-8 min-h-11 w-full"><Link href="/login">{tier.cta}</Link></Button>
               </article>)}
             </div>
           </div>
         </section>
 
         <section className="alm-shell grid gap-12 py-20 lg:grid-cols-2 lg:py-28">
-          <div><p className="alm-kicker">What to expect</p><h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">Evidence with its limits attached.</h2><div className="mt-8 flex gap-4 border-t border-border pt-5"><ShieldCheck className="size-5 shrink-0 text-[color:var(--accent)]" /><p className="text-sm leading-6 text-muted-foreground">AuditLayerMedia uses public information and available account data. Reports state collection limitations and confidence context rather than filling gaps with invented certainty.</p></div></div>
+          <div><p className="alm-kicker">What to expect</p><h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">Evidence with its limits attached.</h2><div className="mt-8 flex gap-4 border-t border-border pt-5"><ShieldCheck className="size-5 shrink-0 text-[color:var(--accent)]" /><p className="text-sm leading-6 text-muted-foreground">AuditLayerMedia uses public information and approved account data. Reports state collection limitations and confidence context rather than filling gaps with invented certainty.</p></div></div>
           <div className="space-y-2">
             {[
               ["How long does an audit take?", "Most reports are ready in 6–8 minutes. Status pages show the real worker phase while research is running."],
               ["Which platforms are supported?", "Instagram, TikTok, and YouTube are the primary supported platforms. Data access varies by account and platform."],
-              ["Can I share the report?", "Yes. Ready reports can be read in the focused reader, downloaded, and shared through controlled links."],
-            ].map(([question, answer]) => <details key={question} className="group border-b border-border bg-card"><summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-5 font-medium alm-focus"><span>{question}</span><ChevronRight className="size-4 shrink-0 transition-transform group-open:rotate-90" /></summary><p className="px-5 pb-5 text-sm leading-6 text-muted-foreground">{answer}</p></details>)}
+              ["Can I connect Instagram without a Facebook Page?", "Yes. Business and Creator accounts connect directly through Instagram Business Login with read-only access."],
+              ["Can I share the report?", "Yes. Ready reports can be read in the focused reader and shared through controlled links."],
+            ].map(([question, answer]) => <details key={question} className="group border-b border-border bg-card"><summary className="alm-focus flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-medium"><span>{question}</span><ChevronRight className="size-4 shrink-0 transition-transform group-open:rotate-90" /></summary><p className="px-5 pb-5 text-sm leading-6 text-muted-foreground">{answer}</p></details>)}
           </div>
         </section>
       </main>
-
-      <footer className="border-t border-border py-8"><div className="alm-shell flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><Brand /><p className="mt-3 max-w-md text-xs leading-5 text-muted-foreground">Competitive intelligence for evidence-led social growth.</p></div><div className="flex gap-5 text-xs text-muted-foreground"><Link prefetch={false} href="/support">Support</Link><Link prefetch={false} href="/privacy">Privacy</Link><span>© {new Date().getFullYear()}</span></div></div></footer>
-    </div>
+    </PublicShell>
   );
-}
-
-function Brand() {
-  return <Link prefetch={false} href="/" className="flex items-center gap-2.5 font-semibold tracking-tight alm-focus"><span className="grid size-8 place-items-center bg-[#14241f] font-mono text-[0.58rem] font-bold text-[#9fe8dc]">ALM</span><span className="text-sm">AuditLayerMedia</span></Link>;
 }

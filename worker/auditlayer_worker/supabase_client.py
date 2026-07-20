@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
+from uuid import uuid4
 
 from .config import WorkerSettings
 
@@ -59,7 +60,9 @@ class SupabaseGateway:
 
     # -- instagram token ---------------------------------------------------
 
-    def get_instagram_token(self, ig_username: str, user_id: str) -> tuple[str, int] | None:
+    def get_instagram_token(
+        self, ig_username: str, user_id: str
+    ) -> tuple[str, int, str] | None:
         res = (
             self.client.table("instagram_connections")
             .select(
@@ -85,7 +88,24 @@ class SupabaseGateway:
         ig_user_id = row.get("ig_user_id")
         if ig_user_id is None:
             return None
-        return (str(token), int(ig_user_id))
+        return (str(token), int(ig_user_id), str(expires or ""))
+
+    def update_instagram_token(
+        self,
+        *,
+        user_id: str,
+        ig_user_id: int,
+        token: str,
+        expires_at: str,
+    ) -> None:
+        """Persist a refreshed direct Instagram Login token."""
+        self.client.table("instagram_connections").update(
+            {
+                "long_lived_token": token,
+                "long_lived_expires_at": expires_at,
+                "updated_at": _utcnow(),
+            }
+        ).eq("user_id", user_id).eq("ig_user_id", ig_user_id).execute()
 
     def refresh_instagram_connection(
         self,
@@ -214,9 +234,60 @@ class SupabaseGateway:
 
     # -- storage -----------------------------------------------------------
 
-    def upload_report(self, audit_id: str, html: str) -> tuple[str, str]:
-        path = f"{audit_id}.html"
+    def upload_report(
+        self, audit_id: str, html: str, *, version: int | None = None
+    ) -> tuple[str, str]:
+        del version  # Display versions are allocated atomically in Postgres.
+        path = f"{audit_id}/revisions/{uuid4().hex}.html"
         return self._upload(self.settings.reports_bucket, path, html.encode("utf-8"), "text/html")
+
+    def finalize_initial_report(
+        self,
+        *,
+        audit_id: str,
+        delivery_status: str,
+        report_path: str,
+        prompt_version: str,
+        template_version: str = "master-skeleton-v1",
+    ) -> int:
+        response = self.client.rpc(
+            "finalize_initial_report",
+            {
+                "p_audit_id": audit_id,
+                "p_delivery_status": delivery_status,
+                "p_report_path": report_path,
+                "p_prompt_version": prompt_version,
+                "p_template_version": template_version,
+            },
+        ).execute()
+        value = response.data[0] if isinstance(response.data, list) else response.data
+        return int(value)
+
+    def finalize_refinement_report(
+        self,
+        *,
+        audit_id: str,
+        refinement_id: str,
+        report_path: str,
+        prompt_version: str,
+        changed_section: str | None = None,
+        change_summary: str = "",
+        template_version: str = "master-skeleton-v1",
+    ) -> int:
+        response = self.client.rpc(
+            "finalize_refinement_report",
+            {
+                "p_audit_id": audit_id,
+                "p_refinement_id": refinement_id,
+                "p_report_path": report_path,
+                "p_prompt_version": prompt_version,
+                "p_template_version": template_version,
+                "p_changed_section": changed_section or "",
+                "p_change_summary": change_summary[:500],
+            },
+        ).execute()
+        value = response.data[0] if isinstance(response.data, list) else response.data
+        return int(value)
 
 
     def _upload(self, bucket: str, path: str, data: bytes, content_type: str) -> tuple[str, str]:
@@ -230,7 +301,7 @@ class SupabaseGateway:
         store.upload(
             path=path,
             file=data,
-            file_options={"content-type": content_type, "upsert": "true"},
+            file_options={"content-type": content_type, "upsert": "false"},
         )
         return path, ""
 

@@ -13,6 +13,10 @@ import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  isLiveInstagramConnection,
+  WORKSPACE_ACCOUNT_STATUSES,
+} from "@/lib/account-ownership";
+import {
   summarizeProgression,
   type ProgressionPoint,
 } from "@/lib/account-progress";
@@ -30,6 +34,7 @@ type AccountRow = {
   avatar_url: string | null;
   last_researched_at: string | null;
   cache_valid_until: string | null;
+  ownership_status: "connected" | "managed";
 };
 
 type AccountProgressionRow = ProgressionPoint & {
@@ -44,6 +49,8 @@ type AuditRow = {
   status: AuditStatus;
   report_type: string | null;
   created_at: string;
+  report_version: number | null;
+  prompt_version: string | null;
 };
 
 export default async function AccountDetailPage({
@@ -58,10 +65,11 @@ export default async function AccountDetailPage({
   const { data: account } = await (supabase as any)
     .from("accounts")
     .select(
-      "id, handle, platform, display_name, avatar_url, last_researched_at, cache_valid_until",
+      "id, handle, platform, display_name, avatar_url, last_researched_at, cache_valid_until, ownership_status",
     )
     .eq("id", id)
     .eq("user_id", profile.id)
+    .in("ownership_status", [...WORKSPACE_ACCOUNT_STATUSES])
     .maybeSingle();
 
   if (!account) notFound();
@@ -78,7 +86,7 @@ export default async function AccountDetailPage({
         .order("recorded_at", { ascending: false }),
       (supabase as any)
         .from("audits")
-        .select("id, status, report_type, created_at")
+        .select("id, status, report_type, created_at, report_version, prompt_version")
         .eq("account_id", id)
         .order("created_at", { ascending: false }),
       (supabase as any)
@@ -102,10 +110,7 @@ export default async function AccountDetailPage({
         last_refreshed_at: string | null;
       }
     | undefined;
-  const live = Boolean(
-    connection?.is_active &&
-      new Date(connection.long_lived_expires_at).getTime() > Date.now(),
-  );
+  const live = isLiveInstagramConnection(connection);
 
   return (
     <main className="alm-shell py-8 sm:py-12 animate-page-in">
@@ -137,7 +142,7 @@ export default async function AccountDetailPage({
                 {ownedAccount.display_name || `@${ownedAccount.handle}`}
               </h1>
               <Badge tone={live ? "success" : "warning"}>
-                {live ? "Live Instagram data" : "Public data"}
+                {live ? "Live Instagram data" : "Reconnect Instagram"}
               </Badge>
             </div>
             <p className="mt-1 text-sm capitalize text-muted-foreground">
@@ -288,6 +293,7 @@ export default async function AccountDetailPage({
               <tr>
                 <th className="px-4 py-3 font-medium">Date</th>
                 <th className="px-4 py-3 font-medium">Report</th>
+                <th className="px-4 py-3 font-medium">Version</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 text-right font-medium">Open</th>
               </tr>
@@ -296,7 +302,7 @@ export default async function AccountDetailPage({
               {auditList.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-4 py-8 text-center text-muted-foreground"
                   >
                     No audits linked to this account yet.
@@ -310,6 +316,10 @@ export default async function AccountDetailPage({
                     </td>
                     <td className="px-4 py-3 capitalize">
                       {audit.report_type || "standard"}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                      v{audit.report_version ?? 1}
+                      {audit.prompt_version ? ` · ${audit.prompt_version}` : ""}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={audit.status} />
