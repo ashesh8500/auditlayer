@@ -32,10 +32,10 @@ export default function PrivacyPage() {
             <strong className="text-foreground">Optional context</strong> — any niche, goals, or competitor information you provide to calibrate your report.
           </li>
           <li>
-            <strong className="text-foreground">Payment information</strong> — processed entirely by Stripe. We never see or store your credit card details.
+            <strong className="text-foreground">Payment information</strong> — processed by our secure payment provider. We never see or store your credit card details.
           </li>
           <li>
-            <strong className="text-foreground">Instagram connection data</strong> — if you choose to connect an Instagram Business or Creator account, we store the account ID, username, account type, follower and media counts, authorization token, token expiry, and refresh timestamp needed to retrieve approved report metrics.
+            <strong className="text-foreground">Instagram connection data</strong> — if you connect a Business or Creator account, we retain the connection details and approved profile and content metrics needed for your reports.
           </li>
         </ul>
       </section>
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
           <li>
             <strong className="text-foreground">To generate your audit reports.</strong>{" "}
-            Your handle and context are sent to our generation pipeline to produce a strategic analysis of your social media presence.
+            Your handle and context are used to create a strategic analysis of your social media presence.
           </li>
           <li>
             <strong className="text-foreground">To manage your account.</strong>{" "}
@@ -53,7 +53,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong className="text-foreground">To process payments.</strong>{" "}
-            Stripe handles all billing. We receive subscription status and plan information from Stripe to manage your account tier.
+            Our payment provider handles billing. We receive subscription status and plan information to manage your account tier.
           </li>
           <li>
             <strong className="text-foreground">To improve the product.</strong>{" "}
@@ -68,13 +68,13 @@ export default function PrivacyPage() {
       <section id="instagram-data" className="mt-8 scroll-mt-24 space-y-4">
         <h2 className="text-base font-semibold">3. Instagram data use</h2>
         <p className="text-muted-foreground">
-          Connecting Instagram is optional. AuditLayerMedia requests the read-only <code className="font-mono text-xs text-foreground">instagram_business_basic</code> permission through Instagram Business Login. We use approved profile and recent-content data only to provide verified metrics, account progression, and strategic audit reports for the account owner.
+          Connecting Instagram is optional. If you connect a Business or Creator account, we use the profile and recent-content data you approve only to provide verified metrics, account progression, and strategic reports for you.
         </p>
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
           <li>We cannot publish, edit, comment, follow, unfollow, send messages, or manage advertising.</li>
-          <li>Instagram access tokens are stored server-side and are never exposed to another customer or compatible AI connection.</li>
-          <li>Connection records are scoped to the authenticated AuditLayerMedia owner.</li>
-          <li>Disconnecting deletes the stored token and connection record immediately.</li>
+          <li>Your connection credentials are protected and are never exposed to another customer.</li>
+          <li>Connected Instagram data is associated only with your AuditLayerMedia account.</li>
+          <li>Disconnecting removes the saved connection immediately.</li>
         </ul>
         <p>
           See the <Link href="/data-deletion" className="text-[color:var(--accent)] hover:underline">Instagram and account data deletion instructions</Link>.
@@ -82,32 +82,14 @@ export default function PrivacyPage() {
       </section>
 
       <section className="mt-8 space-y-4">
-        <h2 className="text-base font-semibold">4. Third-party services</h2>
-        <p>
-          AuditLayerMedia relies on the following services to operate. Each has its own privacy policy:
+        <h2 className="text-base font-semibold">4. Service providers</h2>
+        <p className="text-muted-foreground">
+          We use carefully selected service providers to operate AuditLayerMedia, process payments, deliver essential account emails, protect your account, and store your reports. They may process only the information needed to provide those services and may not use it for their own advertising.
         </p>
-        <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
-          <li>
-            <strong className="text-foreground">Supabase</strong> — database, authentication, and file storage.{" "}
-            <a href="https://supabase.com/privacy" className="text-[color:var(--accent)] hover:underline" target="_blank" rel="noopener noreferrer">Privacy policy</a>
-          </li>
-          <li>
-            <strong className="text-foreground">Stripe</strong> — payment processing and subscription management.{" "}
-            <a href="https://stripe.com/privacy" className="text-[color:var(--accent)] hover:underline" target="_blank" rel="noopener noreferrer">Privacy policy</a>
-          </li>
-          <li>
-            <strong className="text-foreground">Vercel</strong> — application hosting.{" "}
-            <a href="https://vercel.com/legal/privacy-policy" className="text-[color:var(--accent)] hover:underline" target="_blank" rel="noopener noreferrer">Privacy policy</a>
-          </li>
-          <li>
-            <strong className="text-foreground">Resend</strong> — transactional email (magic links, support).{" "}
-            <a href="https://resend.com/legal/privacy-policy" className="text-[color:var(--accent)] hover:underline" target="_blank" rel="noopener noreferrer">Privacy policy</a>
-          </li>
-          <li>
-            <strong className="text-foreground">Meta / Instagram Graph API</strong> — if you connect your Instagram account, Meta processes your data per its{" "}
-            <a href="https://www.facebook.com/privacy/policy" className="text-[color:var(--accent)] hover:underline" target="_blank" rel="noopener noreferrer">Privacy policy</a>.
-          </li>
-        </ul>
+        <p className="text-muted-foreground">
+          If you connect Instagram, Instagram processes the connection and approved account data under its{" "}
+          <a href="https://privacycenter.instagram.com/policy" className="text-[color:var(--accent)] hover:underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+        </p>
       </section>
 
       <section className="mt-8 space-y-4">
@@ -117,13 +99,13 @@ export default function PrivacyPage() {
         </p>
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
           <li>
-            <strong className="text-foreground">Authentication cookies</strong> — managed by Supabase Auth to keep you signed in.
+            <strong className="text-foreground">Authentication cookies</strong> — to keep you signed in securely.
           </li>
           <li>
             <strong className="text-foreground">Share link cookies</strong> — to remember verified share link sessions (30 days).
           </li>
           <li>
-            <strong className="text-foreground">Trial token cookies</strong> — to track trial invite links during signup (7 days).
+            <strong className="text-foreground">Trial invitation cookies</strong> — to remember an invitation during signup (7 days).
           </li>
         </ul>
         <p>
@@ -138,13 +120,13 @@ export default function PrivacyPage() {
             <strong className="text-foreground">Account data</strong> — retained for the life of your account. You can request deletion at any time.
           </li>
           <li>
-            <strong className="text-foreground">Audit reports</strong> — retained while your account is active. Reports are stored in a private bucket accessible only to you and the AuditLayerMedia team.
+            <strong className="text-foreground">Audit reports</strong> — retained while your account is active. Reports are stored securely and are accessible only to you and the AuditLayerMedia team.
           </li>
           <li>
-            <strong className="text-foreground">Instagram connection data</strong> — retained until you disconnect Instagram, revoke access, request deletion, or the connection is removed after it becomes unusable. Access tokens normally expire after approximately 60 days unless refreshed through Instagram.
+            <strong className="text-foreground">Instagram connection data</strong> — retained until you disconnect Instagram, revoke access, request deletion, or the connection can no longer be used.
           </li>
           <li>
-            <strong className="text-foreground">Payment records</strong> — retained as required by Stripe and applicable financial regulations.
+            <strong className="text-foreground">Payment records</strong> — retained as required by our payment provider and applicable financial regulations.
           </li>
         </ul>
       </section>
