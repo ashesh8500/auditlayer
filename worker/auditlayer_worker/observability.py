@@ -46,8 +46,15 @@ _SENTRY_SECRET_KEYS = {
 }
 
 
+def _is_sensitive_key(key: str) -> bool:
+    normalized = key.lower().replace("-", "_")
+    return normalized in _SENTRY_SECRET_KEYS or normalized.endswith(
+        ("_api_key", "_access_token", "_refresh_token", "_password", "_secret")
+    )
+
+
 def _scrub_value(value: Any, key: str = "") -> Any:
-    if key.lower() in _SENTRY_SECRET_KEYS:
+    if _is_sensitive_key(key):
         return "[Filtered]"
     if isinstance(value, dict):
         return {k: _scrub_value(v, str(k)) for k, v in value.items()}
@@ -120,7 +127,7 @@ def scrub_sentry_event(event: dict[str, Any], _hint: dict[str, Any]) -> dict[str
             request["headers"] = {
                 key: value
                 for key, value in headers.items()
-                if str(key).lower() not in _SENTRY_SECRET_KEYS
+                if not _is_sensitive_key(str(key))
             }
         scrubbed["request"] = request
     scrubbed["extra"] = _scrub_value(scrubbed.get("extra", {}))

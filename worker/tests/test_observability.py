@@ -102,11 +102,13 @@ def test_structured_log_scrubs_user_ids_api_keys_and_tracebacks(capsys) -> None:
         "worker_failed",
         user_id="private-user",
         api_key="private-key",
+        deepseek_api_key="provider-key",
         traceback_tail="trace with creator data",
         safe_counter=2,
     )
     output = capsys.readouterr().out
     assert "private-user" not in output
     assert "private-key" not in output
+    assert "provider-key" not in output
     assert "creator data" not in output
     assert '"safe_counter": 2' in output
