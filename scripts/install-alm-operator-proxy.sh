@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_ROOT="${AUDITLAYER_REPO_DIR:-$HOME/projects/auditlayer}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="${AUDITLAYER_REPO_DIR:-$(cd -- "$SCRIPT_DIR/.." && pwd)}"
 SOURCE="$REPO_ROOT/infra/nginx/hermes-dashboard"
 TARGET="/etc/nginx/sites-available/hermes-dashboard"
 BACKUP="${TARGET}.prev-$(date +%s)"

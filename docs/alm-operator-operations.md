@@ -18,9 +18,12 @@ records `manifest.yaml`'s bundle version on audits and immutable report versions
 
 The Vercel server action calls:
 
-`https://hermes.kalanak.com/operator-api/p/alm/v1/chat/completions`
+`https://alm-operator.kalanak.com/operator-api/p/alm/v1/chat/completions`
 
-The API bearer key remains server-only. Nginx exposes only the exact `POST`
+The dedicated hostname terminates at an API-only loopback listener (`127.0.0.1:9121`)
+that never serves the Hermes dashboard. The dashboard remains on
+`hermes.kalanak.com` behind its existing Cloudflare Access policy. The API bearer
+key remains server-only. Nginx exposes only the exact `POST`
 `/operator-api/p/alm/v1/chat/completions` endpoint, rejects every other
 `/operator-api/` path, applies a 1 MiB body limit and 65-second timeouts, then proxies to
 loopback Hermes port `8642`. Report threads use deterministic
