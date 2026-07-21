@@ -502,6 +502,47 @@ def test_bounded_generator_retries_one_format_miss(sample_audit):
     assert "recovered" in result.html
 
 
+def test_format_retry_names_invalid_field_and_requires_scalar_strings(sample_audit):
+    class InvalidLedeClient:
+        def __init__(self):
+            self.calls: list[dict] = []
+
+        def collect_research(self, audit):
+            return "Verified evidence"
+
+        def chat(self, **kwargs):
+            self.calls.append(kwargs)
+            if len(self.calls) == 1:
+                payload = json.loads(_complete_standard_payload("analysis"))
+                payload["sections"][0]["lede"] = {"summary": "wrong shape"}
+                content = json.dumps(payload)
+            else:
+                content = _complete_standard_payload("recovered")
+            return ChatResult(
+                content=content,
+                usage=Usage(tokens_in=100, tokens_out=50),
+                model="deepseek-v4-flash",
+            )
+
+    client = InvalidLedeClient()
+    generator = HermesReportGenerator(
+        client=cast(Any, client),
+        model="deepseek-v4-flash",
+        toolsets=("web",),
+        max_tokens=32000,
+        temperature=0.2,
+        phase_interval=0,
+    )
+
+    result = generator.generate(sample_audit, lambda _phase, _detail: None)
+
+    correction = client.calls[1]["messages"][0]["content"]
+    assert "Invalid structured report field: lede" in correction
+    assert "heading, lede, callout, title, body, and value" in correction
+    assert "JSON scalar string" in correction
+    assert "recovered" in result.html
+
+
 def test_cached_evidence_uses_local_section_assembly(sample_audit):
     class CachedClient:
         def __init__(self):

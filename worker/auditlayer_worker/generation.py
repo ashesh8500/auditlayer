@@ -264,14 +264,17 @@ class HermesReportGenerator:
             tokens_in = result.usage.tokens_in
             tokens_out = result.usage.tokens_out
             estimated = result.usage.estimated
-        except ValueError:
+        except ValueError as exc:
             retry_result = self.client.chat(
                     messages=[
                         {
                             "role": "system",
                             "content": (
-                                "Formatting correction only. Return one valid JSON object now. "
-                                "The first character must be { and the root must contain only sections."
+                                "Formatting correction only. The previous response failed local "
+                                f"validation with: {exc}. Return one valid JSON object now. "
+                                "The first character must be { and the root must contain only sections. "
+                                "Every heading, lede, callout, title, body, and value must be a JSON "
+                                "scalar string, never an object, array, boolean, or null."
                             ),
                         },
                         {"role": "user", "content": prompt},
