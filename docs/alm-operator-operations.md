@@ -28,8 +28,16 @@ key remains server-only. Nginx exposes only the exact `POST`
 `/operator-api/` path, applies a 1 MiB body limit and 65-second timeouts, then proxies to
 loopback Hermes port `8642`. Report threads use deterministic
 `X-Hermes-Session-Id` values (`alm:report:<audit UUID>`). Free-form discussion cannot
-apply a report, code, infrastructure, or deployment change. Those remain separate typed
-jobs and operations jobs require explicit approval.
+mutate product state; typed requests are written to `operator_jobs` instead.
+The API profile receives an explicit empty toolset, so report text cannot invoke web,
+skills, memory, session search, shell, files, or other egress/persistence tools.
+
+Report generation always uses an isolated account home. Anonymous audits receive an
+audit-scoped `anonymous-<audit-id>` home rather than inheriting process-global Hermes
+state. Every run verifies canonical config, context, skills, and bundle marker content;
+drift and stale managed files are repaired atomically while sessions and account memory
+remain untouched.
+Operations jobs remain queued until approved through the Ashesh-only approval RPC.
 
 ## Profile materialization and drift
 
@@ -56,7 +64,8 @@ location and is not replaced by the operator route.
 ## Web and schema order
 
 1. Run local web, worker, profile, migration, and browser gates.
-2. Apply `20260721170127_alm_operator_control_plane.sql`.
+2. Apply `20260721170127_alm_operator_control_plane.sql`, then
+   `20260721193000_operator_security_hardening.sql`.
 3. Regenerate Supabase TypeScript types.
 4. Configure `ALM_OPERATOR_API_BASE` and `ALM_OPERATOR_API_KEY` in Vercel.
 5. Deploy web and verify unauthenticated admin access redirects.

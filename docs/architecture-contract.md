@@ -120,12 +120,16 @@ Section-scoped refinement requests against a generated report.
 refinement, engineering, and operations requests from read-only discussion; operations
 requests require explicit approval. `operator_incidents` stores scrubbed, deduplicated
 Sentry/worker incidents and never authorizes execution. All four tables use RLS with
-admin-only authenticated policies; anonymous access is revoked. The
+admin-only authenticated **read** policies; browser JWTs have no insert, update, or
+delete privileges. Mutations are service-role-only except the narrow
+`approve_operator_job(...)` RPC, which verifies Ashesh's authenticated profile and a
+legal queued operations-job transition. Anonymous access is revoked. The
 `ingest_operator_incident(...)` RPC performs atomic fingerprint upserts and is executable
 only by `service_role`.
 
-`audit_report_versions.agent_bundle_version` inherits the bundle version from its audit,
-preserving immutable report lineage.
+Initial and refinement finalization RPCs commit the report pointer and
+`agent_bundle_version` on both the audit and immutable report-version row in one
+transaction.
 
 ### `app_settings`
 Single-row (`id = 1`) admin configuration for the Hermes worker.
