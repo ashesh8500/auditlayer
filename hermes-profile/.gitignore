@@ -41,3 +41,7 @@ bin/
 !skills/ppt-production-expert/
 !skills/ppt-production-expert/narin-brand-audits/
 !skills/ppt-production-expert/narin-brand-audits/**
+
+# Generated Python artifacts are never part of the profile distribution.
+**/__pycache__/
+**/*.pyc
