@@ -83,6 +83,7 @@ One row per requested audit, owned by a profile.
 | `research_cache` | text | not null, default `''` | Added migration 0009. |
 | `claimed_at` | timestamptz | | Set atomically by RPC claim function. |
 | `claimed_by` | text | | Worker identity that claimed the audit. |
+| `agent_bundle_version` | text | | Canonical `alm-report` bundle version used for generation. |
 
 ### `audit_events`
 Append-only event trail that powers the live generation stream (via Realtime).
@@ -111,6 +112,20 @@ Section-scoped refinement requests against a generated report.
 | `error` | text | not null, default `''` |
 | `created_at` | timestamptz | default `now()` |
 | `updated_at` | timestamptz | default `now()` (auto-maintained by trigger) |
+
+### Canonical ALM operator control plane
+
+`operator_threads` provides one admin-only, report-scoped conversation per audit.
+`operator_messages` stores its bounded transcript. `operator_jobs` separates typed
+refinement, engineering, and operations requests from read-only discussion; operations
+requests require explicit approval. `operator_incidents` stores scrubbed, deduplicated
+Sentry/worker incidents and never authorizes execution. All four tables use RLS with
+admin-only authenticated policies; anonymous access is revoked. The
+`ingest_operator_incident(...)` RPC performs atomic fingerprint upserts and is executable
+only by `service_role`.
+
+`audit_report_versions.agent_bundle_version` inherits the bundle version from its audit,
+preserving immutable report lineage.
 
 ### `app_settings`
 Single-row (`id = 1`) admin configuration for the Hermes worker.

@@ -1,0 +1,38 @@
+model:
+  default: deepseek-v4-flash
+  provider: deepseek
+  base_url: https://api.deepseek.com
+fallback_providers: []
+telegram:
+  enabled: false
+agent:
+  max_turns: 15
+  disabled_toolsets:
+    - clarify
+    - terminal
+    - file
+    - code_execution
+    - computer_use
+    - delegation
+    - memory
+    - messaging
+    - cronjob
+    - skills
+    - session_search
+    - todo
+    - image_gen
+    - vision
+    - tts
+    - video
+    - video_gen
+    - discord
+    - discord_admin
+    - homeassistant
+    - spotify
+    - yuanbao
+platform_toolsets:
+  api_server:
+    - web
+memory:
+  memory_enabled: false
+  user_profile_enabled: false

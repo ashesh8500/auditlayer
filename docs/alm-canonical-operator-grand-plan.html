@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ALM Canonical Operator — Architecture and Rollout Plan</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --paper: #faf8f5;
+      --ink: #1d1d1b;
+      --muted: #64615c;
+      --line: #c9c4bb;
+      --soft: #f0ede7;
+      --accent: #0f766e;
+      --danger: #9f3a38;
+      --ok: #2f6f4e;
+      --code: #f4f1eb;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Computer Modern", "Latin Modern Roman", "CMU Serif", Georgia, "Times New Roman", serif;
+      font-size: 17px;
+      line-height: 1.58;
+      text-rendering: optimizeLegibility;
+    }
+    main { width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 72px 0 96px; }
+    header { margin-bottom: 52px; }
+    .eyebrow { margin: 0 0 14px; color: var(--accent); font-size: .78rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+    h1 { margin: 0; max-width: 820px; font-size: clamp(2.4rem, 7vw, 4.8rem); line-height: .98; letter-spacing: -.045em; font-weight: 600; }
+    .dek { max-width: 760px; margin: 26px 0 0; color: var(--muted); font-size: 1.22rem; line-height: 1.5; }
+    .meta { margin-top: 30px; padding-top: 14px; border-top: .5px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 28px; color: var(--muted); font-size: .82rem; }
+    h2 { margin: 58px 0 18px; padding-top: 18px; border-top: .5px solid var(--line); font-size: 1.7rem; line-height: 1.15; letter-spacing: -.02em; }
+    h3 { margin: 32px 0 10px; font-size: 1.18rem; line-height: 1.25; }
+    h4 { margin: 24px 0 8px; font-size: 1rem; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.25rem; }
+    li { margin: 6px 0; }
+    strong { font-weight: 700; }
+    code, pre { font-family: "Computer Modern Typewriter", "Latin Modern Mono", "CMU Typewriter", ui-monospace, SFMono-Regular, Consolas, monospace; }
+    code { padding: .08em .28em; background: var(--code); font-size: .9em; }
+    pre { margin: 14px 0; padding: 16px 18px; overflow-x: auto; background: var(--code); border: .5px solid var(--line); font-size: .78rem; line-height: 1.5; white-space: pre; }
+    a { color: var(--accent); text-decoration-thickness: .06em; text-underline-offset: .16em; }
+    table { width: 100%; margin: 18px 0 28px; border-collapse: collapse; font-size: .9rem; }
+    th, td { padding: 10px 12px; border-bottom: .5px solid var(--line); text-align: left; vertical-align: top; }
+    th { font-weight: 700; border-top: .5px solid var(--line); }
+    .decision { margin: 26px 0 36px; padding: 20px 22px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 5%, var(--paper)); }
+    .decision p:first-child { margin-top: 0; }
+    .decision p:last-child { margin-bottom: 0; }
+    .note { margin: 20px 0; padding: 14px 16px; border-left: 3px solid var(--accent); background: var(--soft); }
+    .warning { border-left-color: var(--danger); }
+    .figure { margin: 28px 0 36px; }
+    .figure svg { width: 100%; height: auto; display: block; background: var(--paper); border: .5px solid var(--line); }
+    .caption { margin: 9px 0 0; color: var(--muted); font-size: .82rem; font-style: italic; }
+    .phase { margin: 28px 0 42px; }
+    .phase-head { display: grid; grid-template-columns: 54px 1fr; gap: 14px; align-items: start; }
+    .phase-no { color: var(--accent); font-size: 1.65rem; line-height: 1; font-variant-numeric: tabular-nums; }
+    .phase h3 { margin: 0; font-size: 1.35rem; }
+    .phase-body { margin-left: 68px; }
+    .gate { color: var(--ok); font-weight: 700; }
+    .small { color: var(--muted); font-size: .84rem; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+    .plain-list { list-style: none; padding: 0; }
+    .plain-list li { padding: 8px 0; border-bottom: .5px solid var(--line); }
+    .status { font-weight: 700; }
+    .status.bad { color: var(--danger); }
+    .status.good { color: var(--ok); }
+    .status.neutral { color: var(--muted); }
+    footer { margin-top: 72px; padding-top: 18px; border-top: .5px solid var(--line); color: var(--muted); font-size: .82rem; }
+    @media (max-width: 720px) {
+      main { width: min(100% - 24px, 920px); padding-top: 42px; }
+      .two-col { grid-template-columns: 1fr; gap: 0; }
+      .phase-body { margin-left: 0; }
+      table { display: block; overflow-x: auto; font-size: .8rem; }
+      th, td { min-width: 140px; }
+    }
+    @media print {
+      body { font-size: 11pt; background: white; color: black; }
+      main { width: 100%; max-width: none; padding: 0; }
+      h2, h3 { break-after: avoid; }
+      table, pre, .figure, .decision, .phase { break-inside: avoid; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #0d1117;
+        --ink: #c9d1d9;
+        --muted: #8b949e;
+        --line: #30363d;
+        --soft: #161b22;
+        --accent: #58a6ff;
+        --danger: #ff7b72;
+        --ok: #7ee787;
+        --code: #161b22;
+      }
+      .figure svg { background: #0d1117; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">AuditLayer Media · operating architecture</p>
+    <h1>One canonical ALM operator, four bounded runtime roles.</h1>
+    <p class="dek">A plan for a small founder-led company where Narin and Ashesh share one ALM agent front door, while report generation, coding, operations, monitoring, and production changes remain isolated, auditable, and safe.</p>
+    <div class="meta">
+      <span>Prepared 21 July 2026</span>
+      <span>Repository: <code>~/projects/auditlayer</code></span>
+      <span>Planning only — no profile, bot, schema, or service changes made</span>
+    </div>
+  </header>
+
+  <section class="decision">
+    <p><strong>Recommended decision.</strong> Create a new Hermes profile named <code>alm</code> as the single human-facing company operator. Give it the new Telegram bot and expose it inside the authenticated ALM admin report workspace. Keep three hidden execution profiles: <code>alm-dev</code>, <code>alm-ops</code>, and <code>alm-report</code>.</p>
+    <p>The shared source of truth is not a mutable profile directory. It is the versioned <code>hermes-profile/</code> package in the AuditLayer repository. Profiles are installed from that package. Product report runs use isolated per-account Hermes homes seeded from the same package and remain hard-pinned to DeepSeek V4 Flash.</p>
+  </section>
+
+  <h2>1. Why one literal shared profile is unsafe</h2>
+  <p>Hermes profiles isolate configuration, API keys, memory, sessions, skills, cron jobs, and gateway state. They do <em>not</em> sandbox the filesystem. A Telegram conversation, two concurrent report jobs, a Sentry incident, and a production deployment should therefore not write into the same mutable Hermes home.</p>
+  <p>The right unification boundary is <strong>one canonical ALM identity and one versioned instruction bundle</strong>, not one shared state database.</p>
+  <div class="note warning">
+    <strong>Do not point the report worker at <code>~/.hermes/profiles/alm</code>.</strong> Concurrent jobs could mix sessions and memories, interactive changes could alter production behavior, and the broad operator toolset would leak into automated report generation. The existing account-scoped <code>HERMES_HOME</code> mechanism is a strong foundation and should be retained.
+  </div>
+
+  <h2>2. What exists now</h2>
+  <table>
+    <thead><tr><th>Area</th><th>Observed state</th><th>Implication</th></tr></thead>
+    <tbody>
+      <tr><td>Gateway</td><td><span class="status good">Running</span>; default profile has <code>gateway.multiplex_profiles: true</code>; API server is enabled on port 8642.</td><td>A new unique Telegram token can be attached to <code>alm</code> without another default gateway process.</td></tr>
+      <tr><td>Existing ALM profiles</td><td><code>alm-orchestrator</code>, <code>alm-production</code>, and <code>alm-deploy</code> already exist but are stopped.</td><td>Migrate useful content, then archive/retire these rather than layering a fourth competing ALM truth.</td></tr>
+      <tr><td>Model policy drift</td><td>Live ALM profiles currently show GPT-5.6/Codex. The repository profile says DeepSeek V4 Pro. The SOUL and architecture contract say DeepSeek V4 Flash.</td><td>Resolve to one explicit policy: product report runtime is DeepSeek V4 Flash; interactive and coding models are separately scoped.</td></tr>
+      <tr><td>Report runtime</td><td>Worker already runs direct in-process <code>AIAgent</code>, uses bounded iteration budgets, and provisions per-account Hermes homes.</td><td>Keep this path. Seed those homes from the canonical ALM bundle instead of duplicating instructions manually.</td></tr>
+      <tr><td>Frontend</td><td>Client report pages support section-scoped refinements. Admin audit detail shows metadata/actions/events but no report workspace or general operator discussion.</td><td>Add an admin-only operator panel; do not turn client refinements into unrestricted chat.</td></tr>
+      <tr><td>Sentry</td><td><span class="status bad">Not integrated</span> in the inspected Next.js tree; Hermes webhook platform is also disabled.</td><td>Add Sentry to web and worker, then route normalized alerts to the ALM operations loop.</td></tr>
+      <tr><td>Deploy instructions</td><td>The old <code>alm-deploy</code> SOUL references stale singleton worker commands and persistent SHA memories.</td><td>Replace with repo-owned deploy policy, current dual-worker topology, immutable deploy records, and verified rollback gates.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. Target architecture</h2>
+  <div class="figure">
+    <svg viewBox="0 0 920 610" role="img" aria-label="ALM operator architecture diagram">
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#0f766e"/></marker>
+        <style>
+          .b{fill:none;stroke:#777;stroke-width:1}.a{fill:none;stroke:#0f766e;stroke-width:1.5;marker-end:url(#arrow)}
+          .t{font:16px Georgia,serif;fill:currentColor}.s{font:13px Georgia,serif;fill:#666}.m{font:12px monospace;fill:#0f766e}
+        </style>
+      </defs>
+      <rect class="b" x="40" y="40" width="840" height="92"/>
+      <text class="t" x="66" y="75">Human surfaces</text>
+      <text class="s" x="66" y="103">Narin + Ashesh on Telegram · Admin report workspace · Hermes Desktop / CLI</text>
+
+      <rect class="b" x="250" y="174" width="420" height="108"/>
+      <text class="t" x="276" y="210">Canonical company operator</text>
+      <text class="m" x="276" y="238">profile: alm</text>
+      <text class="s" x="276" y="260">Identity, context, routing, approvals, report discussions</text>
+
+      <path class="a" d="M460 132 L460 174"/>
+
+      <rect class="b" x="40" y="340" width="250" height="112"/>
+      <text class="t" x="63" y="374">Engineering lane</text>
+      <text class="m" x="63" y="401">profile: alm-dev</text>
+      <text class="s" x="63" y="426">Next.js + Python + Supabase</text>
+
+      <rect class="b" x="335" y="340" width="250" height="112"/>
+      <text class="t" x="358" y="374">Operations lane</text>
+      <text class="m" x="358" y="401">profile: alm-ops</text>
+      <text class="s" x="358" y="426">Sentry, deploy, logs, rollback</text>
+
+      <rect class="b" x="630" y="340" width="250" height="112"/>
+      <text class="t" x="653" y="374">Report runtime</text>
+      <text class="m" x="653" y="401">profile template: alm-report</text>
+      <text class="s" x="653" y="426">DeepSeek V4 Flash, bounded tools</text>
+
+      <path class="a" d="M355 282 L190 340"/>
+      <path class="a" d="M460 282 L460 340"/>
+      <path class="a" d="M565 282 L730 340"/>
+
+      <rect class="b" x="40" y="506" width="840" height="66"/>
+      <text class="t" x="66" y="536">Versioned source of truth</text>
+      <text class="m" x="66" y="557">auditlayer/hermes-profile/ + repo docs + tests</text>
+      <path class="a" d="M190 506 L190 452"/>
+      <path class="a" d="M460 506 L460 452"/>
+      <path class="a" d="M730 506 L730 452"/>
+    </svg>
+    <p class="caption">Figure 1. One public operator owns company context and approvals. Hidden roles execute within narrower tools and permissions. All are generated from repository-owned instructions.</p>
+  </div>
+
+  <h2>4. The four profiles</h2>
+  <table>
+    <thead><tr><th>Profile</th><th>Audience</th><th>Model policy</th><th>Tools</th><th>Persistent state</th></tr></thead>
+    <tbody>
+      <tr><td><code>alm</code></td><td>Narin + Ashesh</td><td>DeepSeek V4 Flash default for economical conversation; Ashesh may use session-scoped <code>/model</code> for engineering analysis.</td><td>Read/report tools, Supabase admin tools, task routing, session search, memory. Direct deploy actions require approval.</td><td>Company memory, decisions, user preferences, report discussion sessions.</td></tr>
+      <tr><td><code>alm-dev</code></td><td>Hidden worker</td><td>Best coding model selected per task; never inherited by production report generation.</td><td>Repository file/terminal, GitHub, tests, browser QA. No Telegram token and no production secrets by default.</td><td>Minimal; task artifacts live in repo, commits, and handoffs, not memory.</td></tr>
+      <tr><td><code>alm-ops</code></td><td>Hidden worker</td><td>Strong diagnostic model; cheap model for periodic summaries.</td><td>Sentry read, Vercel read/deploy, Supabase probes, systemd/journal read; mutation gated.</td><td>Runbooks as skills/docs. Incidents and releases go to Supabase/Git, not profile memory.</td></tr>
+      <tr><td><code>alm-report</code></td><td>Worker only; no gateway/bot</td><td><strong>Hard-pinned DeepSeek V4 Flash.</strong> No Codex fallback.</td><td>Only bounded web research required by the current generation contract. No terminal, messaging, delegation, broad memory, or deployment.</td><td>Per-account homes retain creator-specific memory; runtime sessions remain isolated from the company operator.</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Why not separate frontend and backend profiles?</strong> In a two-founder company, that creates handoff overhead and duplicated context. Use one <code>alm-dev</code> owner for coherent full-stack outcomes. For genuinely parallel work, the operator may launch two temporary worktrees or bounded subagents labeled frontend/backend; those are execution lanes, not permanent company identities.</p>
+  <p><strong>Why Sentry is not a profile.</strong> Sentry is an event source and evidence system. <code>alm-ops</code> consumes its signals. A permanent “Sentry agent” would duplicate the operations role and create another memory/config surface.</p>
+
+  <h2>5. Canonical package in the repository</h2>
+  <p>Evolve the existing <code>hermes-profile/</code> directory from a copied production home into a profile distribution. Runtime files under <code>~/.hermes/profiles/*</code> become generated deployments and are never edited as the source of truth.</p>
+  <pre>hermes-profile/
+├── README.md
+├── manifest.yaml                 # bundle version, supported profiles, checksums
+├── shared/
+│   ├── COMPANY.md                # ALM mission, architecture, vocabulary
+│   ├── PERMISSIONS.md            # Ashesh / Narin / automation capabilities
+│   ├── MODEL_POLICY.md           # report runtime = DeepSeek V4 Flash
+│   └── RELEASE_POLICY.md         # test, approval, deploy, verify, rollback
+├── profiles/
+│   ├── operator/{SOUL.md,config.yaml}
+│   ├── dev/{SOUL.md,config.yaml}
+│   ├── ops/{SOUL.md,config.yaml}
+│   └── report/{SOUL.md,config.yaml}
+├── skills/
+│   ├── alm-company-operator/
+│   ├── alm-report-generator/
+│   ├── auditlayer-web/
+│   ├── alm-worker-operations/
+│   └── auditlayer-report-editing/
+├── scripts/
+│   ├── install-profile.py        # idempotent profile materialization
+│   ├── seed-account-home.py      # copies only safe report-runtime assets
+│   └── verify-profile-drift.py   # compares live profile against manifest
+└── tests/
+    ├── test_profile_policy.py
+    ├── test_no_secrets.py
+    └── test_report_tool_boundary.py</pre>
+  <div class="note">
+    The report worker should import prompts and policy from this bundle at a pinned bundle version, but continue using worker-owned deterministic assembly and quality gates. The agent is not allowed to redesign templates or bypass worker validation.
+  </div>
+
+  <h2>6. Human access and permissions</h2>
+  <table>
+    <thead><tr><th>Actor</th><th>May do</th><th>May not do without escalation</th></tr></thead>
+    <tbody>
+      <tr><td>Narin</td><td>Discuss any report, inspect evidence/limitations, propose and queue report refinements, update report methodology/content requirements, create product or visual-fix tasks.</td><td>Shell access, secrets, schema migration, worker restart, Vercel production deploy, or destructive database changes.</td></tr>
+      <tr><td>Ashesh</td><td>Everything above plus engineering, configuration, deployment approval, incident response, and rollback.</td><td>Nothing beyond existing dangerous-action confirmations and release gates.</td></tr>
+      <tr><td>Sentry automation</td><td>Create/update an incident, attach sanitized evidence, ask <code>alm-ops</code> for triage, notify founders according to severity.</td><td>Execute code, edit files, deploy, or reveal request payload secrets directly from an untrusted webhook.</td></tr>
+      <tr><td>Report runtime</td><td>Read supplied creator data, bounded public research, produce structured report data/HTML under worker validation.</td><td>Access company conversations, source repository, terminal, production controls, unrelated account memory, or arbitrary messaging.</td></tr>
+    </tbody>
+  </table>
+  <p>Telegram starts as <strong>DM-only</strong>, with an explicit allowlist for Ashesh and Narin’s numeric user IDs. Do not use <code>TELEGRAM_ALLOW_ALL_USERS=true</code>. Give <code>alm</code> a unique bot token; the existing multiplex gateway can route it to the profile.</p>
+
+  <h2>7. Admin report workspace</h2>
+  <p>The report page should gain an admin-only “ALM Operator” panel. This is not exposed to clients and is not a replacement for the existing section-scoped client refinement form.</p>
+  <div class="figure">
+    <svg viewBox="0 0 920 430" role="img" aria-label="Admin report workspace wireframe">
+      <style>.wb{fill:none;stroke:#777;stroke-width:1}.wt{font:16px Georgia,serif;fill:currentColor}.ws{font:13px Georgia,serif;fill:#666}.wm{font:12px monospace;fill:#0f766e}</style>
+      <rect class="wb" x="24" y="24" width="872" height="382"/>
+      <text class="wt" x="50" y="60">@creator · Report v4 · Ready</text>
+      <text class="ws" x="745" y="60">Admin only</text>
+      <rect class="wb" x="50" y="90" width="500" height="282"/>
+      <text class="wt" x="72" y="122">Report preview</text>
+      <text class="ws" x="72" y="148">Current immutable HTML artifact</text>
+      <line class="wb" x1="72" y1="176" x2="528" y2="176"/>
+      <text class="ws" x="72" y="207">Version history · evidence · limitations · events</text>
+      <rect class="wb" x="575" y="90" width="295" height="282"/>
+      <text class="wt" x="598" y="122">ALM Operator</text>
+      <text class="wm" x="598" y="148">session: report:&lt;audit_id&gt;</text>
+      <text class="ws" x="598" y="184">Discuss the report, ask why a</text>
+      <text class="ws" x="598" y="205">claim was made, or propose a fix.</text>
+      <rect class="wb" x="598" y="232" width="249" height="58"/>
+      <text class="ws" x="610" y="258">Message…</text>
+      <rect class="wb" x="598" y="308" width="112" height="38"/>
+      <text class="ws" x="616" y="333">Discuss</text>
+      <rect class="wb" x="727" y="308" width="120" height="38"/>
+      <text class="ws" x="743" y="333">Propose fix</text>
+    </svg>
+    <p class="caption">Figure 2. Discussion and evidence remain adjacent to the report. Mutating actions are explicit rather than inferred from free-form chat.</p>
+  </div>
+
+  <h3>Frontend flow</h3>
+  <ol>
+    <li>Server component re-checks <code>profiles.role = 'admin'</code>.</li>
+    <li>Create or resume a deterministic Hermes session such as <code>alm:report:&lt;audit_id&gt;</code>.</li>
+    <li>Inject a bounded report context envelope: audit metadata, current version, limitations, recent events, requested section, and signed-on-demand artifact access. Never place a long-lived signed URL in the database.</li>
+    <li>Stream the operator response into the panel and persist a product-side audit trail.</li>
+    <li>Discussion is read-only by default. “Queue refinement,” “Create engineering task,” “Apply fix,” and “Deploy” are separate typed actions with permissions and confirmations.</li>
+  </ol>
+
+  <h3>Secure connection pattern</h3>
+  <p>Do not expose the Hermes API key to the browser. The Next.js server route should call the profile-scoped endpoint <code>/p/alm/v1/chat/completions</code> through a dedicated Cloudflare Tunnel origin protected by a Cloudflare Access service token and Hermes bearer key. The VM listener remains firewall-blocked from the public internet except through the tunnel.</p>
+  <p>For long-running jobs, return an operator job ID and continue on the VM rather than keeping a Vercel stream open indefinitely. Supabase Realtime can carry progress and completion events back to the admin workspace.</p>
+
+  <h3>Product-side data model</h3>
+  <table>
+    <thead><tr><th>Table</th><th>Purpose</th><th>Important fields</th></tr></thead>
+    <tbody>
+      <tr><td><code>operator_threads</code></td><td>One discussion context per report or incident.</td><td><code>id</code>, <code>audit_id?</code>, <code>incident_id?</code>, <code>hermes_session_id</code>, <code>status</code>, <code>created_by</code>, timestamps.</td></tr>
+      <tr><td><code>operator_messages</code></td><td>Admin-visible transcript and audit trail independent of Hermes internals.</td><td><code>thread_id</code>, <code>role</code>, <code>content</code>, <code>author_id</code>, <code>run_id</code>, sanitized metadata.</td></tr>
+      <tr><td><code>operator_jobs</code></td><td>Durable execution request for report fixes, code work, or incident triage.</td><td><code>kind</code>, <code>target_id</code>, <code>requested_by</code>, <code>status</code>, <code>approval_state</code>, <code>result</code>, <code>error</code>.</td></tr>
+      <tr><td><code>operator_incidents</code></td><td>Normalized Sentry and health-check incidents.</td><td><code>fingerprint</code>, <code>source</code>, <code>severity</code>, <code>environment</code>, <code>first_seen</code>, <code>last_seen</code>, <code>status</code>, <code>external_url</code>.</td></tr>
+    </tbody>
+  </table>
+  <p>All four tables are admin-only under RLS. Service-role writes must still verify the initiating Supabase user on the server. Every mutation also writes an <code>audit_events</code> or <code>admin_actions</code> entry when it affects a report, customer, or commercial state.</p>
+
+  <h2>8. Sentry and operational signals</h2>
+  <p>Add two Sentry projects or one project with strict environment tags:</p>
+  <ul>
+    <li><strong>Web:</strong> Next.js server, edge, route handlers, and client errors; release tied to Git SHA and Vercel deployment.</li>
+    <li><strong>Worker:</strong> Python exceptions, failed audit/refinement IDs, queue phase, worker instance, prompt/template version, and release SHA. Never attach creator payloads or secrets by default.</li>
+  </ul>
+  <p>Normalize Sentry issue alerts through a signed webhook endpoint. The endpoint should deduplicate on Sentry fingerprint, scrub data, record an <code>operator_incident</code>, and trigger <code>alm-ops</code> with a fixed prompt template. Do not pass the raw webhook body to an agent as instructions.</p>
+  <table>
+    <thead><tr><th>Severity</th><th>Automation</th><th>Founder notification</th><th>Allowed action</th></tr></thead>
+    <tbody>
+      <tr><td>P0</td><td>Triage immediately; run read-only health probes; open incident job.</td><td>Telegram to Ashesh immediately; Narin only if reports/customers are affected.</td><td>No auto-deploy. Ashesh approves rollback or hotfix.</td></tr>
+      <tr><td>P1</td><td>Deduplicate, reproduce, propose fix, attach evidence.</td><td>Telegram once per incident window.</td><td>May prepare branch and tests; deploy requires approval.</td></tr>
+      <tr><td>P2/P3</td><td>Batch into daily/weekly quality queue.</td><td>No noisy immediate alert.</td><td>Create backlog task after recurrence threshold.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>9. The iterative fixing loop</h2>
+  <div class="figure">
+    <svg viewBox="0 0 920 240" role="img" aria-label="Iterative fixing state machine">
+      <style>.fb{fill:none;stroke:#777;stroke-width:1}.fa{fill:none;stroke:#0f766e;stroke-width:1.5;marker-end:url(#arrow)}.ft{font:14px Georgia,serif;fill:currentColor}.fs{font:11px monospace;fill:#666}</style>
+      <g transform="translate(20,75)"><rect class="fb" width="118" height="66"/><text class="ft" x="18" y="29">Observe</text><text class="fs" x="18" y="49">Sentry/user</text></g>
+      <g transform="translate(172,75)"><rect class="fb" width="118" height="66"/><text class="ft" x="18" y="29">Triage</text><text class="fs" x="18" y="49">alm-ops</text></g>
+      <g transform="translate(324,75)"><rect class="fb" width="118" height="66"/><text class="ft" x="18" y="29">Reproduce</text><text class="fs" x="18" y="49">failing test</text></g>
+      <g transform="translate(476,75)"><rect class="fb" width="118" height="66"/><text class="ft" x="18" y="29">Fix</text><text class="fs" x="18" y="49">alm-dev</text></g>
+      <g transform="translate(628,75)"><rect class="fb" width="118" height="66"/><text class="ft" x="18" y="29">Verify</text><text class="fs" x="18" y="49">gates + QA</text></g>
+      <g transform="translate(780,75)"><rect class="fb" width="118" height="66"/><text class="ft" x="18" y="29">Release</text><text class="fs" x="18" y="49">approval</text></g>
+      <path class="fa" d="M138 108 L172 108"/><path class="fa" d="M290 108 L324 108"/><path class="fa" d="M442 108 L476 108"/><path class="fa" d="M594 108 L628 108"/><path class="fa" d="M746 108 L780 108"/>
+      <path class="fa" d="M839 141 C839 210,535 210,535 141"/>
+      <text class="fs" x="650" y="204">regression → back to fix</text>
+    </svg>
+    <p class="caption">Figure 3. The operator owns state and approvals; specialist profiles own bounded execution. Closure requires production evidence, not a model’s assertion.</p>
+  </div>
+  <ol>
+    <li><strong>Observe:</strong> Sentry, health probes, report feedback, or founder message creates a normalized incident/task.</li>
+    <li><strong>Triage:</strong> <code>alm-ops</code> reads current evidence, identifies blast radius, and chooses report/content, frontend, backend, data, or infrastructure lane.</li>
+    <li><strong>Reproduce:</strong> <code>alm-dev</code> or <code>alm-ops</code> creates a deterministic failing test or verified runtime probe before changing code.</li>
+    <li><strong>Fix:</strong> one owner implements the coherent outcome in a branch/worktree. Parallel agents are used only for genuinely disjoint work.</li>
+    <li><strong>Verify:</strong> run targeted tests, <code>make check-v2</code>, visual/browser QA when relevant, security checks, and model-free report fixture checks.</li>
+    <li><strong>Approve:</strong> Narin approves report/product quality changes; Ashesh approves code and production changes. High-risk changes require both when they affect the report contract.</li>
+    <li><strong>Release:</strong> deploy, wait for settling, verify public endpoint and both workers, inspect Sentry/restart counters, and record the result in durable release/incident tables.</li>
+    <li><strong>Learn:</strong> update a repo skill/runbook only for reusable procedure. Do not store SHAs or completed incident logs in profile memory.</li>
+  </ol>
+
+  <h2>10. Rollout plan</h2>
+
+  <div class="phase">
+    <div class="phase-head"><div class="phase-no">0</div><h3>Freeze the contract and remove ambiguity</h3></div>
+    <div class="phase-body">
+      <p><strong>Work:</strong> approve profile names, capability matrix, product model policy, bot audience, and frontend transport. Document that “canonical” means repository bundle + generated profiles, not one shared state database.</p>
+      <p><strong>Files:</strong> <code>docs/architecture-contract.md</code>, <code>docs/agent-handoff.md</code>, new <code>docs/alm-operator-architecture.md</code>.</p>
+      <p class="gate">Gate: Ashesh approves the architecture; Narin approves her allowed actions and the report discussion workflow.</p>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-head"><div class="phase-no">1</div><h3>Build the canonical distribution and the new ALM bot</h3></div>
+    <div class="phase-body">
+      <p><strong>Work:</strong> restructure <code>hermes-profile/</code>; add manifest, policy tests, install/drift scripts; create <code>alm</code>, <code>alm-dev</code>, <code>alm-ops</code>, and <code>alm-report</code>; set explicit absolute <code>terminal.cwd</code>; install only required skills; add the unique Telegram token to <code>alm</code>; allowlist Ashesh and Narin; start under the existing multiplex gateway.</p>
+      <p><strong>Verification:</strong> profile drift test; duplicate token audit; <code>/profile</code> returns <code>alm</code>; DM from each founder works; unauthorized Telegram user is rejected; a new session reflects the new SOUL.</p>
+      <p class="gate">Gate: Telegram operator can discuss an existing audit read-only, but cannot deploy or edit production through free-form chat.</p>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-head"><div class="phase-no">2</div><h3>Make report generation consume the canonical bundle safely</h3></div>
+    <div class="phase-body">
+      <p><strong>Work:</strong> keep direct in-process <code>AIAgent</code> and per-account homes; change account-home provisioning to seed versioned safe assets from <code>hermes-profile/profiles/report</code>; record bundle version beside prompt/template version; hard-pin provider/model and deny fallback; retain bounded toolsets and deterministic local assembly/validation.</p>
+      <p><strong>Likely files:</strong> <code>worker/auditlayer_worker/account_homes.py</code>, <code>hermes_embedded.py</code>, <code>config.py</code>, report quality tests, and a Supabase migration for <code>agent_bundle_version</code> if it is not stored in report-version metadata.</p>
+      <p><strong>Verification:</strong> mock generation uses the seeded profile; live validation confirms DeepSeek V4 Flash; two concurrent jobs use different homes; Narin’s Telegram conversation never appears in report memory; reports still pass existing structural/quality gates.</p>
+      <p class="gate">Gate: production report generation is reproducible from Git + bundle version and remains below the current cost/token caps.</p>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-head"><div class="phase-no">3</div><h3>Add Sentry and a safe operations intake</h3></div>
+    <div class="phase-body">
+      <p><strong>Work:</strong> instrument Next.js and Python worker; configure source maps/releases; define scrubbing; add signed alert ingress; normalize/deduplicate incidents; route only a safe typed summary to <code>alm-ops</code>; send severity-based Telegram notifications through <code>alm</code>.</p>
+      <p><strong>Likely files:</strong> Next.js instrumentation/config files, worker Sentry initialization, deployment env examples, Supabase incident migration, operator webhook adapter, runbook tests.</p>
+      <p><strong>Verification:</strong> synthetic web and worker exceptions appear with correct environment/release; no secrets or creator payloads; repeated event deduplicates; P0 notifies once; alert cannot execute an instruction embedded in its payload.</p>
+      <p class="gate">Gate: one synthetic incident completes observe → triage → founder notification without any automatic mutation.</p>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-head"><div class="phase-no">4</div><h3>Embed the ALM operator in admin report pages</h3></div>
+    <div class="phase-body">
+      <p><strong>Work:</strong> add admin report workspace and operator panel; create admin-only API routes; use deterministic report session IDs; stream short discussions; persist threads/messages/jobs; add explicit report refinement and engineering task actions; connect long jobs to Realtime progress.</p>
+      <p><strong>Likely files:</strong> <code>web/src/app/admin/audits/[id]/page.tsx</code>, new operator components/routes/actions, Supabase migrations/RLS, gateway client, Playwright tests.</p>
+      <p><strong>Verification:</strong> clients receive 404/403; admins can resume a report thread; no API key reaches the browser; iframe remains sandboxed; signed report access stays request-scoped; chat cannot silently mutate a report.</p>
+      <p class="gate">Gate: Narin can open a report, ask “why did we score this this way?”, and queue a typed refinement without leaving the page.</p>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-head"><div class="phase-no">5</div><h3>Close the iterative fixing loop and retire legacy profiles</h3></div>
+    <div class="phase-body">
+      <p><strong>Work:</strong> implement operator job states and approval rules; connect <code>alm-dev</code>/<code>alm-ops</code> routing; enforce test/release evidence; add rollback recording; export old profile state; retire <code>alm-orchestrator</code>, <code>alm-production</code>, <code>alm-deploy</code>, and redundant generic ALM worker profiles after proving no cron, gateway, or task references remain.</p>
+      <p><strong>Verification:</strong> run one synthetic frontend bug and one failed report through the full loop; verify task ownership, tests, approval, deploy, post-deploy checks, Sentry closure, and durable evidence.</p>
+      <p class="gate">Gate: <code>hermes profile list</code> shows the four intended ALM roles, no duplicate bot tokens, no stale ALM cron/profile references, and no production path dependent on the default personal profile.</p>
+    </div>
+  </div>
+
+  <h2>11. Dependency graph</h2>
+  <pre>Phase 0  Contract approval
+   │
+   ├── Phase 1  Canonical bundle + alm Telegram bot
+   │      │
+   │      ├── Phase 2  Report runtime consumes bundle
+   │      └── Phase 4  Admin report workspace
+   │
+   └── Phase 3  Sentry + ops intake
+          │
+          └──────────────┐
+                         ▼
+                   Phase 5  Iterative fixing + retirement</pre>
+  <p>Phases 2, 3, and the backend groundwork for 4 can proceed in parallel after Phase 1, but keep one owner per coherent outcome and avoid shared-file edits across agents.</p>
+
+  <h2>12. Release gates</h2>
+  <ul class="plain-list">
+    <li><strong>Identity:</strong> only Ashesh and Narin can reach the Telegram bot; browser operator routes are admin-only.</li>
+    <li><strong>Isolation:</strong> operator, dev, ops, and report runtime have separate state; account report homes remain tenant-isolated.</li>
+    <li><strong>Model:</strong> report runtime proves <code>deepseek-v4-flash</code>/<code>deepseek</code> with no Codex fallback.</li>
+    <li><strong>Tools:</strong> report runtime cannot call terminal, messaging, file writes, delegation, deployment, or company memory.</li>
+    <li><strong>Observability:</strong> web and both worker instances emit environment/release-tagged Sentry events with PII scrubbing.</li>
+    <li><strong>Auditability:</strong> report changes, operator jobs, incidents, approvals, and releases have durable database/Git evidence.</li>
+    <li><strong>Frontend security:</strong> no Hermes, Supabase service-role, Cloudflare service, or Sentry secret reaches client JavaScript.</li>
+    <li><strong>Quality:</strong> <code>make check-v2</code>, targeted worker tests, admin Playwright coverage, visual QA, and post-deploy probes pass.</li>
+    <li><strong>Recovery:</strong> rollback is documented and exercised before legacy profile retirement.</li>
+  </ul>
+
+  <h2>13. Risks and countermeasures</h2>
+  <table>
+    <thead><tr><th>Risk</th><th>Countermeasure</th></tr></thead>
+    <tbody>
+      <tr><td>Canonical profile becomes another drifted copy.</td><td>Repository manifest, idempotent installer, checksums, CI drift test, and no hand-editing of deployed profiles.</td></tr>
+      <tr><td>Narin accidentally receives engineering or infrastructure powers.</td><td>Identity-based capability matrix and typed server actions; SOUL instructions are not treated as security controls.</td></tr>
+      <tr><td>Frontend chat exposes a production agent endpoint.</td><td>Server-only proxy, Cloudflare Access service token, Hermes bearer auth, firewall rules, rate limits, strict admin re-checks.</td></tr>
+      <tr><td>Sentry payload becomes prompt injection.</td><td>Signature validation, allowlisted fields, normalization, data scrubbing, fixed prompt templates, and read-only first response.</td></tr>
+      <tr><td>Interactive memory contaminates reports.</td><td>Never share the operator home; seed isolated per-account report homes from immutable bundle assets.</td></tr>
+      <tr><td>Too many specialist agents recreate current sprawl.</td><td>Four total ALM roles. QA is a gate, Sentry is a source, and frontend/backend are lanes under one dev owner.</td></tr>
+      <tr><td>Automated fixes degrade production.</td><td>No auto-deploy initially. Tests, founder approval, staged deployment, settling checks, and rollback evidence are mandatory.</td></tr>
+      <tr><td>Long-running frontend chat times out on Vercel.</td><td>Use synchronous streaming only for short discussion; durable <code>operator_jobs</code> run on the VM and report progress through Realtime.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>14. Decisions needed before implementation</h2>
+  <table>
+    <thead><tr><th>Decision</th><th>Recommended default</th></tr></thead>
+    <tbody>
+      <tr><td>Profile and bot name</td><td>Hermes profile <code>alm</code>; bot display name “ALM Operator”; unique BotFather username.</td></tr>
+      <tr><td>Gateway topology</td><td>Use the existing multiplex gateway for the human bot. Keep report generation in-process and independent of gateway uptime.</td></tr>
+      <tr><td>Interactive default model</td><td>DeepSeek V4 Flash for routine company conversation; task-scoped coding model only inside <code>alm-dev</code> or Ashesh’s session-scoped switch.</td></tr>
+      <tr><td>Frontend transport</td><td>Server-side profile API proxy for short chat plus durable VM jobs for execution.</td></tr>
+      <tr><td>Deployment authority</td><td>Ashesh only. Narin can approve report/product quality but not infrastructure mutations.</td></tr>
+      <tr><td>Sentry projects</td><td>Separate <code>auditlayer-web</code> and <code>auditlayer-worker</code> projects, both tagged by environment and release SHA.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>15. Definition of done</h2>
+  <p>The setup is complete when Narin can message one Telegram bot or open any report as an admin, discuss the report with ALM’s durable company context, and queue a safe explicit refinement; Ashesh can route a frontend, backend, or operations problem through one operator; Sentry creates deduplicated evidence-backed incidents; report generation consumes the same versioned ALM knowledge bundle while remaining tenant-isolated and DeepSeek V4 Flash-only; and every code/report/production change passes an approval and verification trail.</p>
+
+  <footer>
+    Grounded in the inspected AuditLayer repository, Hermes v0.18.2 profile/multiplex behavior, current ALM profile inventory, worker account-home implementation, admin report UI, and the live gateway configuration observed on 21 July 2026. This document is a plan artifact only.
+  </footer>
+</main>
+</body>
+</html>

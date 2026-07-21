@@ -39,7 +39,7 @@ Browser → Vercel (web/) → Supabase (Auth, Postgres, Storage, Realtime)
                          Hermes Gateway :8642/v1 → social-media-audit skill
 ```
 
-- **Web never calls Hermes.** Only the worker does.
+- **Web never calls Hermes for report generation.** Only the worker generates reports. The authenticated admin report workspace may call the restricted `alm` operator profile through the API-key-protected `/operator-api/p/alm/v1` server-to-server route for read-only discussion.
 - **Reports** live as private self-contained HTML artifacts; the web app serves
   them through authorized same-origin report and immersive-reader routes.
 - **Live timeline:** Realtime + 4s polling on `/api/audits/[id]/live`.

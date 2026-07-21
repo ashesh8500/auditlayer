@@ -28,6 +28,7 @@ from .core import (
 from .generation import MockReportGenerator
 from .hermes import diagnose_hermes, validate_hermes
 from .hermes_runtime import HermesRuntime
+from .observability import init_sentry
 
 from .pipeline import GenerationPipeline, PrintEventSink
 from .release_preflight import run_preflight
@@ -209,6 +210,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     settings = WorkerSettings.from_env()
+    init_sentry()
 
     if args.command == "run":
         return cmd_run(settings, once=args.once)

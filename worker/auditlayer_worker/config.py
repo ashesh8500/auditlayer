@@ -67,6 +67,7 @@ class WorkerSettings:
     hermes_agent_root: str | None
     hermes_max_iterations: int
     alm_accounts_root: str
+    alm_profile_bundle_root: str
     enabled_toolsets: tuple[str, ...]
     max_tokens: int
     temperature: float
@@ -84,6 +85,7 @@ class WorkerSettings:
     def from_env(cls) -> "WorkerSettings":
         load_env_files()
         toolsets = os.getenv("AUDITLAYER_TOOLSETS", "web,browser,x_search")
+        repo_root = Path(__file__).resolve().parents[2]
         return cls(
             supabase_url=os.getenv("SUPABASE_URL") or None,
             supabase_service_role_key=(
@@ -107,6 +109,9 @@ class WorkerSettings:
             hermes_agent_root=os.getenv("HERMES_AGENT_ROOT") or None,
             hermes_max_iterations=int(os.getenv("HERMES_MAX_ITERATIONS", "15")),
             alm_accounts_root=os.getenv("ALM_ACCOUNTS_ROOT", "/opt/alm/hermes/accounts"),
+            alm_profile_bundle_root=os.getenv(
+                "ALM_PROFILE_BUNDLE_ROOT", str(repo_root / "hermes-profile")
+            ),
             enabled_toolsets=tuple(t.strip() for t in toolsets.split(",") if t.strip()),
             max_tokens=int(os.getenv("HERMES_MAX_TOKENS", "32000")),
             temperature=float(os.getenv("HERMES_TEMPERATURE", "0.2")),

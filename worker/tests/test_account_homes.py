@@ -14,6 +14,7 @@ from auditlayer_worker.account_homes import (
     ACCOUNTS_ROOT,
     ensure_account_home,
     get_account_hermes_home,
+    get_report_bundle_version,
 )
 from auditlayer_worker.config import WorkerSettings
 from auditlayer_worker.core import AuditRecord, Plan
@@ -67,13 +68,87 @@ def test_ensure_account_home_creates_subdirs(tmp_path: Path, monkeypatch) -> Non
 
 
 def test_ensure_account_home_config_not_overwritten(tmp_path: Path, monkeypatch) -> None:
-    """Existing config.yaml is left untouched on second call."""
+    """Existing legacy config remains untouched when no canonical bundle is supplied."""
     monkeypatch.setattr("auditlayer_worker.account_homes.ACCOUNTS_ROOT", tmp_path)
     home = ensure_account_home("acct-config")
     config = home / "config.yaml"
     config.write_text("# custom config")
     ensure_account_home("acct-config")
     assert config.read_text() == "# custom config"
+
+
+def _profile_bundle(tmp_path: Path, version: str = "1.0.0") -> Path:
+    bundle = tmp_path / "bundle"
+    (bundle / "profiles" / "report").mkdir(parents=True)
+    (bundle / "shared").mkdir()
+    (bundle / "skills" / "productivity" / "alm-report-generator").mkdir(parents=True)
+    (bundle / "manifest.yaml").write_text(
+        f'bundle_version: "{version}"\nprofiles: [report]\nruntime_names: {{report: alm-report}}\n'
+    )
+    (bundle / "profiles" / "report" / "config.yaml").write_text(
+        "model:\n  default: deepseek-v4-flash\n  provider: deepseek\n"
+    )
+    (bundle / "profiles" / "report" / "SOUL.md").write_text("# Restricted report runtime\n")
+    (bundle / "shared" / "MODEL_POLICY.md").write_text("DeepSeek V4 Flash only.\n")
+    (bundle / "skills" / "productivity" / "alm-report-generator" / "SKILL.md").write_text(
+        "---\nname: alm-report-generator\n---\n# Report generation\n"
+    )
+    return bundle
+
+
+def test_ensure_account_home_seeds_canonical_report_bundle(tmp_path: Path) -> None:
+    bundle = _profile_bundle(tmp_path)
+    assert get_report_bundle_version(bundle) == "1.0.0"
+    home = ensure_account_home(
+        "acct-bundle",
+        accounts_root=tmp_path / "accounts",
+        bundle_root=bundle,
+    )
+    assert "deepseek-v4-flash" in (home / "config.yaml").read_text()
+    assert (home / "SOUL.md").read_text() == "# Restricted report runtime\n"
+    assert (home / "context" / "MODEL_POLICY.md").is_file()
+    assert (home / "skills" / "productivity" / "alm-report-generator" / "SKILL.md").is_file()
+    assert (home / ".alm-bundle-version").read_text().strip() == "1.0.0"
+
+
+def test_bundle_upgrade_updates_policy_but_preserves_account_memory(tmp_path: Path) -> None:
+    bundle = _profile_bundle(tmp_path, "1.0.0")
+    home = ensure_account_home(
+        "acct-upgrade",
+        accounts_root=tmp_path / "accounts",
+        bundle_root=bundle,
+    )
+    memory = home / "memories" / "MEMORY.md"
+    memory.write_text("creator-specific memory\n")
+    (bundle / "manifest.yaml").write_text(
+        'bundle_version: "1.1.0"\nprofiles: [report]\nruntime_names: {report: alm-report}\n'
+    )
+    (bundle / "profiles" / "report" / "SOUL.md").write_text("# Updated policy\n")
+
+    ensure_account_home(
+        "acct-upgrade",
+        accounts_root=tmp_path / "accounts",
+        bundle_root=bundle,
+    )
+
+    assert (home / "SOUL.md").read_text() == "# Updated policy\n"
+    assert memory.read_text() == "creator-specific memory\n"
+    assert (home / ".alm-bundle-version").read_text().strip() == "1.1.0"
+
+
+def test_bundle_seed_rejects_missing_report_profile(tmp_path: Path) -> None:
+    bundle = tmp_path / "broken"
+    bundle.mkdir()
+    (bundle / "manifest.yaml").write_text('bundle_version: "1.0.0"\n')
+    try:
+        ensure_account_home(
+            "acct-broken",
+            accounts_root=tmp_path / "accounts",
+            bundle_root=bundle,
+        )
+        assert False, "expected invalid bundle to fail closed"
+    except FileNotFoundError as exc:
+        assert "report profile" in str(exc)
 
 
 def test_ensure_account_home_rejects_path_traversal(tmp_path: Path) -> None:
@@ -107,6 +182,45 @@ def test_default_root_uses_env_var(monkeypatch) -> None:
 # ---------------------------------------------------------------------------
 # Pipeline wiring: ensure_account_home called somewhere in the path
 # ---------------------------------------------------------------------------
+
+
+def test_worker_settings_default_to_repository_profile_bundle() -> None:
+    settings = WorkerSettings.from_env()
+    expected = Path(__file__).resolve().parents[2] / "hermes-profile"
+    assert Path(settings.alm_profile_bundle_root).resolve() == expected.resolve()
+
+
+def test_pipeline_passes_canonical_bundle_to_account_home(tmp_path: Path, monkeypatch) -> None:
+    settings = _settings(tmp_path, tmp_path / "accounts")
+    calls: list[tuple[str, str, str]] = []
+
+    def _ensure(account_id, accounts_root, bundle_root):
+        calls.append((account_id, str(accounts_root), str(bundle_root)))
+        home = Path(accounts_root) / account_id
+        home.mkdir(parents=True, exist_ok=True)
+        return home
+
+    monkeypatch.setattr("auditlayer_worker.pipeline.ensure_account_home", _ensure)
+    audit = AuditRecord(
+        id="bundle-wire-1",
+        handle="test_user",
+        platform="instagram",
+        goal="growth",
+        context="test creator",
+        user_id="user-bundle-1",
+        plan=Plan.STARTER.value,
+    )
+    summary = GenerationPipeline(settings, MockReportGenerator()).run(
+        audit, PrintEventSink(), gateway=None
+    )
+    assert summary.status == "ready"
+    assert calls == [
+        (
+            "user-bundle-1",
+            settings.alm_accounts_root,
+            settings.alm_profile_bundle_root,
+        )
+    ]
 
 
 def test_basic_account_home_creation(tmp_path: Path, monkeypatch) -> None:

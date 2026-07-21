@@ -1,0 +1,45 @@
+model:
+  default: deepseek-v4-flash
+  provider: deepseek
+  base_url: https://api.deepseek.com
+fallback_providers: []
+terminal:
+  backend: local
+  cwd: /home/asheshkaji/projects/auditlayer
+telegram:
+  enabled: false
+  require_mention: true
+agent:
+  max_turns: 60
+  disabled_toolsets:
+    - terminal
+    - file
+    - code_execution
+    - computer_use
+    - delegation
+    - cronjob
+    - messaging
+    - discord
+    - discord_admin
+    - homeassistant
+    - image_gen
+    - rl
+    - spotify
+    - tts
+    - video
+    - video_gen
+    - yuanbao
+memory:
+  memory_enabled: true
+  user_profile_enabled: false
+platform_toolsets:
+  telegram:
+    - web
+    - skills
+    - memory
+    - session_search
+  api_server:
+    - web
+    - skills
+    - memory
+    - session_search

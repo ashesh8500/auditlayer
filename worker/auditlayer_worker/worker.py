@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 import traceback
 
+from .account_homes import get_report_bundle_version
 from .config import WorkerSettings
 from .core import PROMPT_VERSION, AuditRecord
 from .generation import HermesReportGenerator, MockReportGenerator, ReportGenerator
@@ -138,6 +139,10 @@ def _process_refinement(
         current_html = _download_report(gateway, settings, report_path)
         new_html, _t_in, _t_out = pipeline.refine(audit, current_html, section, instruction, sink)
         new_report_path, _ = gateway.upload_report(audit_id, new_html)
+        gateway.update_audit(
+            audit_id,
+            agent_bundle_version=get_report_bundle_version(settings.alm_profile_bundle_root),
+        )
         new_version = gateway.finalize_refinement_report(
             audit_id=audit_id,
             refinement_id=refinement_id,
@@ -209,7 +214,11 @@ def _prewarm_account_homes(gateway: SupabaseGateway, settings: WorkerSettings) -
             seen.add(uid)
             try:
                 from .account_homes import ensure_account_home
-                ensure_account_home(uid, settings.alm_accounts_root)
+                ensure_account_home(
+                    uid,
+                    settings.alm_accounts_root,
+                    settings.alm_profile_bundle_root,
+                )
             except Exception as exc:
                 log_event(
                     "account_home_prewarm_failed",

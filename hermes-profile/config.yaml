@@ -1,41 +1,39 @@
+# Backward-compatible report profile configuration.
+# Canonical source: profiles/report/config.yaml
 model:
-  default: deepseek-v4-pro
+  default: deepseek-v4-flash
   provider: deepseek
   base_url: https://api.deepseek.com
 fallback_providers: []
 agent:
   disabled_toolsets:
-  - clarify
-  - code_execution
-  - computer_use
-  - context_engine
-  - cronjob
-  - delegation
-  - discord
-  - discord_admin
-  - feishu_doc
-  - feishu_drive
-  - file
-  - homeassistant
-  - image_gen
-  - kanban
-  - memory
-  - messaging
-  - rl
-  - safe
-  - search
-  - session_search
-  - skills
-  - spotify
-  - terminal
-  - todo
-  - tts
-  - video
-  - video_gen
-  - vision
-  - yuanbao
+    - clarify
+    - terminal
+    - file
+    - code_execution
+    - computer_use
+    - delegation
+    - memory
+    - messaging
+    - cronjob
+    - skills
+    - session_search
+    - todo
+    - image_gen
+    - vision
+    - tts
+    - video
+    - video_gen
+    - discord
+    - discord_admin
+    - homeassistant
+    - spotify
+    - yuanbao
 platform_toolsets:
-  cli:
-  - web
-  - browser
-  - x_search
+  api_server:
+    - web
+telegram:
+  enabled: false
+memory:
+  memory_enabled: false
+  user_profile_enabled: false

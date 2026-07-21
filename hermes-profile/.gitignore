@@ -14,15 +14,30 @@ processes.json
 bin/
 .skills_prompt_snapshot.json
 
-# Export only the production config and requested skills
+# Export only canonical distribution files and requested skills
 *
 !.gitignore
 !config.yaml
+!SOUL.md
 !README.md
+!manifest.yaml
+!shared/
+!shared/**
+!profiles/
+!profiles/**
+!scripts/
+!scripts/**
+!tests/
+!tests/**
 !skills/
 !skills/productivity/
+!skills/productivity/alm-report-generator/
+!skills/productivity/alm-report-generator/**
 !skills/productivity/social-media-audit/
 !skills/productivity/social-media-audit/**
+!skills/auditlayer/
+!skills/auditlayer/auditlayer-master-template/
+!skills/auditlayer/auditlayer-master-template/**
 !skills/ppt-production-expert/
 !skills/ppt-production-expert/narin-brand-audits/
 !skills/ppt-production-expert/narin-brand-audits/**

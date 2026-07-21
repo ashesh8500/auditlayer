@@ -41,7 +41,7 @@ from .core import (
     replace_section,
 )
 from .generation import ReportGenerator
-from .account_homes import ensure_account_home
+from .account_homes import ensure_account_home, get_report_bundle_version
 from .hermes_home_scope import HERMES_HOME_LOCK
 from .observability import log_event
 from .quality import evaluate_report_quality
@@ -409,6 +409,9 @@ class GenerationPipeline:
                     milestone_label=audit.milestone_label,
                     limitations=audit.limitations,
                     research_cache="",
+                    agent_bundle_version=get_report_bundle_version(
+                        self.settings.alm_profile_bundle_root
+                    ),
                 )
                 gateway.finalize_initial_report(
                     audit_id=audit.id,
@@ -504,7 +507,13 @@ class GenerationPipeline:
     def _account_home(self, audit: AuditRecord) -> str | None:
         if not audit.user_id:
             return None
-        return str(ensure_account_home(audit.user_id, self.settings.alm_accounts_root))
+        return str(
+            ensure_account_home(
+                audit.user_id,
+                self.settings.alm_accounts_root,
+                self.settings.alm_profile_bundle_root,
+            )
+        )
 
     @staticmethod
     @contextmanager

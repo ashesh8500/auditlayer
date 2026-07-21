@@ -32,6 +32,11 @@ export function isStripeConfigured(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY);
 }
 
+/** True only when the server can reach the profile-routed canonical ALM API. */
+export function isOperatorConfigured(): boolean {
+  return Boolean(process.env.ALM_OPERATOR_API_BASE && process.env.ALM_OPERATOR_API_KEY);
+}
+
 /** Absolute site origin used for auth redirects and Stripe return URLs. */
 export function siteUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL;
