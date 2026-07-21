@@ -569,6 +569,8 @@ export type Database = {
       operator_jobs: {
         Row: {
           approval_state: string
+          approved_at: string | null
+          approved_by: string | null
           audit_id: string | null
           created_at: string
           error: string
@@ -583,6 +585,8 @@ export type Database = {
         }
         Insert: {
           approval_state?: string
+          approved_at?: string | null
+          approved_by?: string | null
           audit_id?: string | null
           created_at?: string
           error?: string
@@ -597,6 +601,8 @@ export type Database = {
         }
         Update: {
           approval_state?: string
+          approved_at?: string | null
+          approved_by?: string | null
           audit_id?: string | null
           created_at?: string
           error?: string
@@ -610,6 +616,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "operator_jobs_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "operator_jobs_audit_id_fkey"
             columns: ["audit_id"]
@@ -1059,6 +1072,10 @@ export type Database = {
         }
         Returns: Json
       }
+      approve_operator_job: {
+        Args: { p_approved: boolean; p_job_id: string }
+        Returns: undefined
+      }
       claim_next_queued: { Args: { worker_id: string }; Returns: Json }
       claim_next_refinement: { Args: { worker_id: string }; Returns: Json }
       disconnect_instagram_connection: {
@@ -1067,6 +1084,7 @@ export type Database = {
       }
       finalize_initial_report: {
         Args: {
+          p_agent_bundle_version: string
           p_audit_id: string
           p_delivery_status: string
           p_prompt_version: string
@@ -1077,6 +1095,7 @@ export type Database = {
       }
       finalize_refinement_report: {
         Args: {
+          p_agent_bundle_version: string
           p_audit_id: string
           p_change_summary: string
           p_changed_section: string
