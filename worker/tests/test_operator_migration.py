@@ -6,6 +6,7 @@ MIGRATION = (
     / "migrations"
     / "20260721170127_alm_operator_control_plane.sql"
 )
+HARDENING = MIGRATION.with_name("20260721193000_operator_security_hardening.sql")
 
 
 def sql() -> str:
@@ -22,11 +23,33 @@ def test_operator_control_plane_is_additive_and_admin_only() -> None:
     ):
         assert f"create table if not exists public.{table}" in text
         assert f"alter table public.{table} enable row level security" in text
-        assert f"{table}_admin_all" in text
-    assert text.count("using (public.is_admin())") >= 4
-    assert text.count("with check (public.is_admin())") >= 4
     assert "revoke all on public.operator_threads from anon" in text
     assert "revoke all on public.operator_incidents from anon" in text
+
+
+def test_hardening_makes_authenticated_operator_access_read_only() -> None:
+    text = HARDENING.read_text(encoding="utf-8").lower()
+    for table in (
+        "operator_threads",
+        "operator_messages",
+        "operator_jobs",
+        "operator_incidents",
+    ):
+        assert f"{table}_admin_select" in text
+    assert "revoke all on public.%i from authenticated" in text
+    assert "grant select on public.%i to authenticated" in text
+    assert "function public.approve_operator_job" in text
+    assert "lower(email) = 'ashesh@asheshkaji.com'" in text
+    assert "grant execute on function public.approve_operator_job" in text
+    assert "to authenticated" in text
+
+
+def test_finalization_hardening_commits_bundle_lineage_atomically() -> None:
+    text = HARDENING.read_text(encoding="utf-8").lower()
+    assert text.count("p_agent_bundle_version text") == 2
+    assert text.count("agent_bundle_version = p_agent_bundle_version") == 2
+    assert "agent_bundle_version, change_type" in text
+    assert "agent_bundle_version, change_type, changed_section" in text
 
 
 def test_operator_schema_has_bounded_statuses_and_content() -> None:

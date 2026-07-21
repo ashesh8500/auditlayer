@@ -248,6 +248,7 @@ class SupabaseGateway:
         delivery_status: str,
         report_path: str,
         prompt_version: str,
+        agent_bundle_version: str,
         template_version: str = "master-skeleton-v1",
     ) -> int:
         response = self.client.rpc(
@@ -258,6 +259,7 @@ class SupabaseGateway:
                 "p_report_path": report_path,
                 "p_prompt_version": prompt_version,
                 "p_template_version": template_version,
+                "p_agent_bundle_version": agent_bundle_version,
             },
         ).execute()
         value = response.data[0] if isinstance(response.data, list) else response.data
@@ -270,6 +272,7 @@ class SupabaseGateway:
         refinement_id: str,
         report_path: str,
         prompt_version: str,
+        agent_bundle_version: str,
         changed_section: str | None = None,
         change_summary: str = "",
         template_version: str = "master-skeleton-v1",
@@ -282,6 +285,7 @@ class SupabaseGateway:
                 "p_report_path": report_path,
                 "p_prompt_version": prompt_version,
                 "p_template_version": template_version,
+                "p_agent_bundle_version": agent_bundle_version,
                 "p_changed_section": changed_section or "",
                 "p_change_summary": change_summary[:500],
             },

@@ -136,6 +136,33 @@ def test_bundle_upgrade_updates_policy_but_preserves_account_memory(tmp_path: Pa
     assert (home / ".alm-bundle-version").read_text().strip() == "1.1.0"
 
 
+def test_same_version_bundle_repairs_drift_and_removes_stale_managed_files(tmp_path: Path) -> None:
+    bundle = _profile_bundle(tmp_path)
+    home = ensure_account_home(
+        "acct-drift",
+        accounts_root=tmp_path / "accounts",
+        bundle_root=bundle,
+    )
+    memory = home / "memories" / "MEMORY.md"
+    memory.write_text("keep me\n")
+    (home / "config.yaml").write_text("model: {default: unsafe}\n")
+    (home / "context" / "STALE.md").write_text("stale\n")
+    (home / "skills" / "obsolete.txt").write_text("stale\n")
+
+    ensure_account_home(
+        "acct-drift",
+        accounts_root=tmp_path / "accounts",
+        bundle_root=bundle,
+    )
+
+    assert (home / "config.yaml").read_bytes() == (
+        bundle / "profiles" / "report" / "config.yaml"
+    ).read_bytes()
+    assert not (home / "context" / "STALE.md").exists()
+    assert not (home / "skills" / "obsolete.txt").exists()
+    assert memory.read_text() == "keep me\n"
+
+
 def test_bundle_seed_rejects_missing_report_profile(tmp_path: Path) -> None:
     bundle = tmp_path / "broken"
     bundle.mkdir()
@@ -221,6 +248,30 @@ def test_pipeline_passes_canonical_bundle_to_account_home(tmp_path: Path, monkey
             settings.alm_profile_bundle_root,
         )
     ]
+
+
+def test_anonymous_audit_uses_audit_scoped_report_home(tmp_path: Path, monkeypatch) -> None:
+    settings = _settings(tmp_path, tmp_path / "accounts")
+    calls: list[str] = []
+
+    def _ensure(account_id, accounts_root, bundle_root):
+        calls.append(account_id)
+        home = Path(accounts_root) / account_id
+        home.mkdir(parents=True, exist_ok=True)
+        return home
+
+    monkeypatch.setattr("auditlayer_worker.pipeline.ensure_account_home", _ensure)
+    audit = AuditRecord(
+        id="anon-audit-1",
+        handle="public_creator",
+        platform="instagram",
+        goal="growth",
+        user_id=None,
+        plan=Plan.FREE.value,
+    )
+    home = GenerationPipeline(settings, MockReportGenerator())._account_home(audit)
+    assert calls == ["anonymous-anon-audit-1"]
+    assert home.endswith("/anonymous-anon-audit-1")
 
 
 def test_basic_account_home_creation(tmp_path: Path, monkeypatch) -> None:

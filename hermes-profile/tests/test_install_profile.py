@@ -57,3 +57,21 @@ def test_drift_detects_managed_file_change(tmp_path: Path) -> None:
     assert mod.check_drift(ROOT, home, "report") == []
     (target / "config.yaml").write_text("model: {}\n")
     assert mod.check_drift(ROOT, home, "report") == ["config.yaml"]
+
+
+def test_drift_detects_and_repairs_marker_and_managed_tree_extras(tmp_path: Path) -> None:
+    mod = load_module()
+    home = tmp_path / ".hermes"
+    target = mod.materialize(ROOT, home, "operator")
+    (target / "context" / "STALE.md").write_text("stale\n")
+    (target / "skills" / "obsolete.txt").write_text("stale\n")
+    (target / ".alm-bundle-version").write_text("wrong\n")
+    drift = mod.check_drift(ROOT, home, "operator")
+    assert "context/" in drift
+    assert "skills/" in drift
+    assert ".alm-bundle-version" in drift
+
+    mod.materialize(ROOT, home, "operator")
+    assert mod.check_drift(ROOT, home, "operator") == []
+    assert not (target / "context" / "STALE.md").exists()
+    assert not (target / "skills" / "obsolete.txt").exists()

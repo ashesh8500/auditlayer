@@ -41,6 +41,56 @@ def _atomic_copy(source: Path, target: Path) -> None:
         temp.unlink(missing_ok=True)
 
 
+def _atomic_write_text(target: Path, value: str) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent)
+    os.close(fd)
+    temp = Path(temp_name)
+    try:
+        temp.write_text(value, encoding="utf-8")
+        os.replace(temp, target)
+    finally:
+        temp.unlink(missing_ok=True)
+
+
+def _tree_files(root: Path) -> dict[Path, bytes]:
+    if not root.is_dir():
+        return {}
+    return {
+        path.relative_to(root): path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+
+
+def _replace_tree(source: Path | None, target: Path) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{target.name}.new.", dir=target.parent))
+    backup = Path(tempfile.mkdtemp(prefix=f".{target.name}.old.", dir=target.parent))
+    backup.rmdir()
+    try:
+        if source is not None:
+            if not source.is_dir():
+                raise FileNotFoundError(f"missing managed bundle tree: {source}")
+            shutil.copytree(source, staging, dirs_exist_ok=True)
+        had_target = target.exists()
+        if had_target:
+            os.replace(target, backup)
+        try:
+            os.replace(staging, target)
+        except Exception:
+            if had_target and backup.exists():
+                os.replace(backup, target)
+            raise
+        if backup.exists():
+            shutil.rmtree(backup)
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
+        if backup.exists():
+            shutil.rmtree(backup)
+
+
 def _managed_pairs(bundle_root: Path, target: Path, profile: str) -> Iterable[tuple[Path, Path]]:
     source = bundle_root / "profiles" / profile
     for name in MANAGED_FILES:
@@ -67,17 +117,17 @@ def materialize(bundle_root: Path, hermes_home: Path, profile: str) -> Path:
     target = hermes_home / "profiles" / runtime_name
     target.mkdir(parents=True, exist_ok=True)
 
-    for source, destination in _managed_pairs(bundle_root, target, profile):
+    for source, destination in list(_managed_pairs(bundle_root, target, profile))[:2]:
         if not source.is_file():
             raise FileNotFoundError(f"missing managed bundle file: {source}")
         _atomic_copy(source, destination)
-    for source, destination in _skill_pairs(bundle_root, target, profile):
-        _atomic_copy(source, destination)
+
+    _replace_tree(bundle_root / "shared", target / "context")
+    skills_source = bundle_root / "skills" if profile in {"operator", "report"} else None
+    _replace_tree(skills_source, target / "skills")
 
     manifest = _load_manifest(bundle_root)
-    (target / ".alm-bundle-version").write_text(
-        f"{manifest['bundle_version']}\n", encoding="utf-8"
-    )
+    _atomic_write_text(target / ".alm-bundle-version", f"{manifest['bundle_version']}\n")
     return target
 
 
@@ -87,14 +137,23 @@ def check_drift(bundle_root: Path, hermes_home: Path, profile: str) -> list[str]
     runtime_name = _runtime_name(bundle_root, profile)
     target = hermes_home.expanduser().resolve() / "profiles" / runtime_name
     drift: list[str] = []
-    pairs = [
-        *_managed_pairs(bundle_root, target, profile),
-        *_skill_pairs(bundle_root, target, profile),
-    ]
-    for source, destination in pairs:
+    for source, destination in list(_managed_pairs(bundle_root, target, profile))[:2]:
         relative = str(destination.relative_to(target))
         if not destination.is_file() or destination.read_bytes() != source.read_bytes():
             drift.append(relative)
+    if _tree_files(bundle_root / "shared") != _tree_files(target / "context"):
+        drift.append("context/")
+    expected_skills = (
+        _tree_files(bundle_root / "skills") if profile in {"operator", "report"} else {}
+    )
+    if expected_skills != _tree_files(target / "skills"):
+        drift.append("skills/")
+    manifest = _load_manifest(bundle_root)
+    marker = target / ".alm-bundle-version"
+    expected_version = str(manifest.get("bundle_version") or "").strip()
+    actual_version = marker.read_text(encoding="utf-8").strip() if marker.is_file() else ""
+    if actual_version != expected_version:
+        drift.append(".alm-bundle-version")
     return drift
 
 

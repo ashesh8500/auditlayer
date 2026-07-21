@@ -48,6 +48,62 @@ def _atomic_copy(source: Path, target: Path) -> None:
         temp.unlink(missing_ok=True)
 
 
+def _atomic_write_text(target: Path, value: str) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent)
+    os.close(fd)
+    temp = Path(temp_name)
+    try:
+        temp.write_text(value, encoding="utf-8")
+        os.replace(temp, target)
+    finally:
+        temp.unlink(missing_ok=True)
+
+
+def _tree_matches(source: Path, target: Path) -> bool:
+    if not source.is_dir() or not target.is_dir():
+        return False
+    source_files = {
+        path.relative_to(source): path.read_bytes()
+        for path in source.rglob("*")
+        if path.is_file()
+    }
+    target_files = {
+        path.relative_to(target): path.read_bytes()
+        for path in target.rglob("*")
+        if path.is_file()
+    }
+    return source_files == target_files
+
+
+def _atomic_replace_tree(source: Path, target: Path) -> None:
+    """Replace one managed tree exactly without touching sibling runtime state."""
+    if not source.is_dir():
+        raise FileNotFoundError(f"missing managed bundle tree: {source}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{target.name}.new.", dir=target.parent))
+    backup = Path(tempfile.mkdtemp(prefix=f".{target.name}.old.", dir=target.parent))
+    backup.rmdir()
+    try:
+        shutil.copytree(source, staging, dirs_exist_ok=True)
+        had_target = target.exists()
+        if had_target:
+            os.replace(target, backup)
+        try:
+            os.replace(staging, target)
+        except Exception:
+            if had_target and backup.exists():
+                os.replace(backup, target)
+            raise
+        if backup.exists():
+            shutil.rmtree(backup)
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
+        if backup.exists():
+            shutil.rmtree(backup)
+
+
 def get_report_bundle_version(bundle_root: str | Path) -> str:
     manifest_path = Path(bundle_root).expanduser().resolve() / "manifest.yaml"
     if not manifest_path.is_file():
@@ -84,21 +140,29 @@ def _seed_report_bundle(home: Path, bundle_root: Path) -> None:
     if config.get("fallback_providers", []) != []:
         raise ValueError("canonical report profile must not define model fallbacks")
 
+    context_source = bundle_root / "shared"
+    skills_source = bundle_root / "skills"
+    if not context_source.is_dir() or not skills_source.is_dir():
+        raise FileNotFoundError("canonical report bundle is missing context or skills")
+
     marker = home / ".alm-bundle-version"
     current_version = marker.read_text(encoding="utf-8").strip() if marker.is_file() else ""
-    required = (home / "config.yaml", home / "SOUL.md")
-    if current_version == version and all(path.is_file() for path in required):
+    content_matches = (
+        (home / "config.yaml").is_file()
+        and (home / "config.yaml").read_bytes() == config_source.read_bytes()
+        and (home / "SOUL.md").is_file()
+        and (home / "SOUL.md").read_bytes() == soul_source.read_bytes()
+        and _tree_matches(context_source, home / "context")
+        and _tree_matches(skills_source, home / "skills")
+    )
+    if current_version == version and content_matches:
         return
 
     _atomic_copy(config_source, home / "config.yaml")
     _atomic_copy(soul_source, home / "SOUL.md")
-    for source in sorted((bundle_root / "shared").glob("*.md")):
-        _atomic_copy(source, home / "context" / source.name)
-
-    skills_source = bundle_root / "skills"
-    if skills_source.is_dir():
-        shutil.copytree(skills_source, home / "skills", dirs_exist_ok=True)
-    marker.write_text(f"{version}\n", encoding="utf-8")
+    _atomic_replace_tree(context_source, home / "context")
+    _atomic_replace_tree(skills_source, home / "skills")
+    _atomic_write_text(marker, f"{version}\n")
 
 
 def ensure_account_home(

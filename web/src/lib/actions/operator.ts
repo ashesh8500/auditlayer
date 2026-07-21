@@ -79,7 +79,7 @@ export async function sendOperatorMessage(
   const admin = createAdminClient();
   const { data: audit, error: auditError } = await admin
     .from("audits")
-    .select("id,handle,goal,status,limitations,model,report_path")
+    .select("id,handle,goal,status,limitations,model,report_path,agent_bundle_version")
     .eq("id", auditId)
     .maybeSingle();
   if (auditError || !audit) return { status: "error", message: "Audit not found." };
@@ -132,7 +132,7 @@ export async function sendOperatorMessage(
       status: audit.status,
       limitations: audit.limitations,
       model: audit.model,
-      agentBundleVersion: (audit as any).agent_bundle_version ?? null,
+      agentBundleVersion: audit.agent_bundle_version ?? null,
     },
     html,
   );

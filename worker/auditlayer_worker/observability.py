@@ -31,6 +31,13 @@ _SENTRY_SECRET_KEYS = {
     "instruction",
     "context",
     "email",
+    "user_id",
+    "userid",
+    "api_key",
+    "apikey",
+    "service_role_key",
+    "traceback",
+    "traceback_tail",
     "session",
     "session_id",
     "token",
@@ -157,7 +164,8 @@ def log_event(event: str, *, level: str = "info", **fields: Any) -> None:
         "event": event,
         **fields,
     }
-    print(json.dumps(payload, ensure_ascii=False, default=str), flush=True)
+    safe_payload = _scrub_value(payload)
+    print(json.dumps(safe_payload, ensure_ascii=False, default=str), flush=True)
     if level.lower() in {"error", "critical", "fatal"}:
         try:
             import sentry_sdk

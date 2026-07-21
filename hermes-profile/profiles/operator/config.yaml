@@ -39,7 +39,4 @@ platform_toolsets:
     - memory
     - session_search
   api_server:
-    - web
-    - skills
-    - memory
-    - session_search
+    []

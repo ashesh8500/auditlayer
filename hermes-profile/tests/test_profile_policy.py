@@ -68,6 +68,7 @@ def test_operator_profile_has_no_direct_shell_or_deployment_surface() -> None:
     assert config["telegram"]["enabled"] is False
     assert config["memory"]["memory_enabled"] is True
     assert config["memory"]["user_profile_enabled"] is False
+    assert config["platform_toolsets"]["api_server"] == []
 
 
 def test_configs_and_manifest_contain_no_secrets() -> None:

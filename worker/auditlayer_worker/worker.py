@@ -139,15 +139,12 @@ def _process_refinement(
         current_html = _download_report(gateway, settings, report_path)
         new_html, _t_in, _t_out = pipeline.refine(audit, current_html, section, instruction, sink)
         new_report_path, _ = gateway.upload_report(audit_id, new_html)
-        gateway.update_audit(
-            audit_id,
-            agent_bundle_version=get_report_bundle_version(settings.alm_profile_bundle_root),
-        )
         new_version = gateway.finalize_refinement_report(
             audit_id=audit_id,
             refinement_id=refinement_id,
             report_path=new_report_path,
             prompt_version=PROMPT_VERSION,
+            agent_bundle_version=get_report_bundle_version(settings.alm_profile_bundle_root),
             changed_section=section,
             change_summary=instruction,
         )

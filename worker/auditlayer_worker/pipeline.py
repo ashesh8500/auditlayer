@@ -395,11 +395,12 @@ class GenerationPipeline:
         report_path = report_url = None
         if gateway is not None:
             report_path, _ = gateway.upload_report(audit.id, final_html, version=1)
+            bundle_version = get_report_bundle_version(
+                self.settings.alm_profile_bundle_root
+            )
             try:
                 gateway.update_audit(
                     audit.id,
-                    status=AuditStatus.RUNNING.value,
-                    report_path=report_path,
                     admin_notes=(quality.summary[:500] if not quality.passed else ""),
                     tokens_in=result.tokens_in,
                     tokens_out=result.tokens_out,
@@ -409,9 +410,6 @@ class GenerationPipeline:
                     milestone_label=audit.milestone_label,
                     limitations=audit.limitations,
                     research_cache="",
-                    agent_bundle_version=get_report_bundle_version(
-                        self.settings.alm_profile_bundle_root
-                    ),
                 )
                 gateway.finalize_initial_report(
                     audit_id=audit.id,
@@ -419,8 +417,17 @@ class GenerationPipeline:
                     report_path=report_path,
                     prompt_version=PROMPT_VERSION,
                     template_version="master-skeleton-v1",
+                    agent_bundle_version=bundle_version,
                 )
             except Exception as exc:
+                try:
+                    gateway.update_audit(
+                        audit.id,
+                        status=AuditStatus.FAILED.value,
+                        admin_notes="Report finalization failed after private artifact upload.",
+                    )
+                except Exception:
+                    pass
                 log_event(
                     "audit_finalization_failed",
                     level="error",
@@ -504,12 +511,11 @@ class GenerationPipeline:
 
     # -- helpers -----------------------------------------------------------
 
-    def _account_home(self, audit: AuditRecord) -> str | None:
-        if not audit.user_id:
-            return None
+    def _account_home(self, audit: AuditRecord) -> str:
+        account_key = audit.user_id or f"anonymous-{audit.id}"
         return str(
             ensure_account_home(
-                audit.user_id,
+                account_key,
                 self.settings.alm_accounts_root,
                 self.settings.alm_profile_bundle_root,
             )
@@ -517,11 +523,12 @@ class GenerationPipeline:
 
     @staticmethod
     @contextmanager
-    def _scoped_home(home: str | None):
+    def _scoped_home(home: str):
+        if not home:
+            raise ValueError("report generation requires an isolated HERMES_HOME")
         with HERMES_HOME_LOCK:
             previous = os.environ.get("HERMES_HOME")
-            if home:
-                os.environ["HERMES_HOME"] = home
+            os.environ["HERMES_HOME"] = home
             try:
                 yield
             finally:

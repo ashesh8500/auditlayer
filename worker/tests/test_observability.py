@@ -90,5 +90,23 @@ def test_error_log_captures_only_controlled_event_name(monkeypatch, capsys) -> N
         creator_handle="private_creator",
         access_token="secret",
     )
-    capsys.readouterr()
+    output = capsys.readouterr().out
     assert captured == [("audit_finalization_failed", "error")]
+    assert "private_creator" not in output
+    assert "secret" not in output
+    assert "[Filtered]" in output
+
+
+def test_structured_log_scrubs_user_ids_api_keys_and_tracebacks(capsys) -> None:
+    log_event(
+        "worker_failed",
+        user_id="private-user",
+        api_key="private-key",
+        traceback_tail="trace with creator data",
+        safe_counter=2,
+    )
+    output = capsys.readouterr().out
+    assert "private-user" not in output
+    assert "private-key" not in output
+    assert "creator data" not in output
+    assert '"safe_counter": 2' in output

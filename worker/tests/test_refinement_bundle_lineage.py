@@ -94,6 +94,6 @@ def test_refinement_stamps_current_bundle_before_version_finalization(
     )
 
     names = [name for name, _payload in gateway.calls]
-    assert names.index("update_audit") < names.index("finalize")
-    update = next(payload for name, payload in gateway.calls if name == "update_audit")
-    assert update == ("audit-1", {"agent_bundle_version": "1.0.0"})
+    assert "update_audit" not in names
+    finalize = cast(dict[str, Any], next(payload for name, payload in gateway.calls if name == "finalize"))
+    assert finalize["agent_bundle_version"] == "1.0.0"
