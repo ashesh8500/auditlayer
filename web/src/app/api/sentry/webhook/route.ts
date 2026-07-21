@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   if (!incident) return NextResponse.json({ accepted: false }, { status: 202 });
 
   const admin = createAdminClient();
-  const { error } = await (admin as any).rpc("ingest_operator_incident", {
+  const { error } = await admin.rpc("ingest_operator_incident", {
     p_fingerprint: incident.fingerprint,
     p_source: incident.source,
     p_severity: incident.severity,

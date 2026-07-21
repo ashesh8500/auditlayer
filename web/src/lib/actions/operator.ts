@@ -33,7 +33,7 @@ async function operatorThread(
   auditId: string,
   profileId: string,
 ) {
-  const table = (admin as any).from("operator_threads");
+  const table = admin.from("operator_threads");
   const { data: existing, error: existingError } = await table
     .select("id,hermes_session_id")
     .eq("audit_id", auditId)
@@ -92,8 +92,8 @@ export async function sendOperatorMessage(
   }
 
   const runId = randomUUID();
-  const messageTable = (admin as any).from("operator_messages");
-  const jobTable = (admin as any).from("operator_jobs");
+  const messageTable = admin.from("operator_messages");
+  const jobTable = admin.from("operator_jobs");
   const { data: history, error: historyError } = await messageTable
     .select("role,content")
     .eq("thread_id", thread.id)
@@ -210,7 +210,7 @@ export async function createOperatorJob(
     const instruction = validateOperatorMessage(String(formData.get("instruction") ?? ""));
     const admin = createAdminClient();
     const thread = await operatorThread(admin, auditId, profile.id);
-    const { error } = await (admin as any).from("operator_jobs").insert({
+    const { error } = await admin.from("operator_jobs").insert({
       thread_id: thread.id,
       audit_id: auditId,
       kind,

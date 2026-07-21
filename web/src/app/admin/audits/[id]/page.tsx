@@ -49,14 +49,13 @@ export default async function AdminAuditDetail({
       .order("created_at", { ascending: true }),
   ]);
 
-  const operatorTable = admin as any;
   const [{ data: thread }, { data: jobs }] = await Promise.all([
-    operatorTable
+    admin
       .from("operator_threads")
       .select("id")
       .eq("audit_id", id)
       .maybeSingle(),
-    operatorTable
+    admin
       .from("operator_jobs")
       .select("id,kind,status,approval_state,instruction,created_at")
       .eq("audit_id", id)
@@ -64,7 +63,7 @@ export default async function AdminAuditDetail({
       .limit(10),
   ]);
   const { data: operatorMessages } = thread
-    ? await operatorTable
+    ? await admin
         .from("operator_messages")
         .select("id,role,content,created_at")
         .eq("thread_id", thread.id)
@@ -98,7 +97,7 @@ export default async function AdminAuditDetail({
         <div className="text-right">
           <StatusBadge status={audit.status as AuditStatus} />
           <p className="mt-2 font-mono text-[0.65rem] text-muted-foreground">
-            Report v{(audit as any).report_version ?? 1} · Method {(audit as any).prompt_version || "—"}
+            Report v{audit.report_version ?? 1} · Method {audit.prompt_version || "—"}
           </p>
         </div>
       </header>
@@ -139,8 +138,8 @@ export default async function AdminAuditDetail({
           <OperatorPanel
             auditId={id}
             configured={isOperatorConfigured()}
-            messages={(operatorMessages ?? []) as any}
-            jobs={(jobs ?? []) as any}
+            messages={operatorMessages ?? []}
+            jobs={jobs ?? []}
           />
         </div>
       </section>
