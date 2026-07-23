@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0",
+  "task_id": "t_7b61b86e",
+  "status": "complete",
+  "timestamp": "2026-07-23T02:25:00Z",
+  "changed_files": [
+    "supabase/migrations/20260723020611_alm_intelligence_kernel.sql",
+    "supabase/tests/alm_intelligence_kernel_test.sql"
+  ],
+  "tests": {
+    "total": 20,
+    "passed": 20,
+    "failed": 0,
+    "run_via": "psql -h 127.0.0.1 -p 54322 -U postgres -d postgres",
+    "results": "ALL KERNEL TESTS PASSED"
+  },
+  "tables_created": [
+    "subjects",
+    "subject_channels",
+    "living_brief_versions",
+    "context_update_proposals",
+    "audit_batches",
+    "batch_audits",
+    "intelligence_runs",
+    "evidence_snapshots",
+    "evidence",
+    "scores",
+    "findings",
+    "recommendations",
+    "decisions"
+  ],
+  "rpc_functions": [
+    "owns_subject (helper)",
+    "create_subject",
+    "link_subject_channel",
+    "record_living_brief_version",
+    "create_context_update_proposals",
+    "resolve_context_update_proposal",
+    "create_audit_batch",
+    "add_audit_to_batch",
+    "start_intelligence_run",
+    "finalize_intelligence_run",
+    "create_evidence_snapshot",
+    "upsert_evidence",
+    "record_scores",
+    "record_findings",
+    "record_recommendations",
+    "record_decision"
+  ],
+  "rls_policies": "select-own + admin-all on all 13 tables; anon revoked from all; authenticated granted select via ownership chain",
+  "decisions": [
+    "Subjects table is the longitudinal parent; channels are children; accounts table preserved with ownership_status column intact",
+    "Living Brief versions are immutable with confirmed flag — model proposals have confirmed=false",
+    "Intelligence runs pin subject_id, brief_version, evidence_snapshot_id, methodology_version, expertise_pack_version, prompt_version, model_config_hash, and output_schema_version",
+    "Evidence has unique (subject_id, content_hash) for idempotent upsert with snapshot_id grouping",
+    "Scores support null value for Data-needed dimensions per contract",
+    "Audit batches use (user_id, idempotency_key) unique constraint for atomic idempotency",
+    "All 15 RPCs are SECURITY DEFINER, service_role-only, with revoked public/anon/authenticated execute",
+    "RLS policed through owns_subject() helper (SECURITY DEFINER) to avoid recursion",
+    "context_update_proposals follow the JSON contract: path, operation (add/replace/remove), status (proposed/accepted/rejected/superseded)",
+    "Backfill strategy documented in migration comments — existing accounts with ownership_status may be promoted later via future RPC"
+  ],
+  "deviations": [],
+  "risks": [
+    "The fk_intelligence_runs_evidence_snapshot constraint uses ON DELETE RESTRICT — deleting an evidence_snapshot will fail if referenced by an intelligence_run. This matches the contract requirement that run evidence is immutable.",
+    "The subject_channels.account_id FK to accounts is nullable and ON DELETE SET NULL — if an account is deleted, the channel remains but loses the backlink. Acceptable for additive migration.",
+    "The integration tests require an existing auth.users row for the test user. In CI, a seed step must create this user before running integration tests."
+  ],
+  "remaining_work": [
+    "Backfill RPC to promote existing connected/managed accounts into subjects and channels",
+    "Supabase Realtime configuration for intelligence run progress events",
+    "pgTAP-compatible test suite for CI integration",
+    "TypeScript type regeneration (release gate ownership)"
+  ],
+  "acceptance_check": {
+    "one_subject_owns_instagram_and_website": "PASS — subject_channels unique (subject_id, channel_type, locator) allows multiple channel types per subject",
+    "observed_targets_remain_outside_workspace": "PASS — accounts and audits tables unchanged; ownership_status check preserved",
+    "living_brief_edits_create_immutable_versions": "PASS — living_brief_versions has unique (subject_id, version) and confirmed flag",
+    "model_proposals_cannot_overwrite_confirmed_context": "PASS — context_update_proposals table with proposed/accepted/rejected/superseded workflow",
+    "audit_batches_atomic_and_idempotent": "PASS — unique (user_id, idempotency_key) on audit_batches",
+    "intelligence_runs_pin_all_contract_versions": "PASS — methodology_version, expertise_pack_version, prompt_version, model_config_hash, output_schema_version all required",
+    "rls_and_service_role_boundaries_pass_tests": "PASS — 20/20 tests including RLS policy existence, RPC permission checks, and integration smoke"
+  }
+}
