@@ -80,7 +80,7 @@ def evaluate_report_quality(
         else:
             warnings.append(message)
 
-    if not re.search(r"https?://|href=[\"']https?://", report_html, flags=re.I):
+    if not re.search(r"https?://", report_html, flags=re.I) and "data-source-kind=" not in report_html:
         warnings.append("no external source citation")
 
     score = max(0, 100 - 25 * len(blockers) - 5 * len(warnings))

@@ -107,7 +107,7 @@ class WorkerSettings:
                 os.getenv("HERMES_GATEWAY_STARTUP_TIMEOUT", "60")
             ),
             hermes_agent_root=os.getenv("HERMES_AGENT_ROOT") or None,
-            hermes_max_iterations=int(os.getenv("HERMES_MAX_ITERATIONS", "15")),
+            hermes_max_iterations=int(os.getenv("HERMES_MAX_ITERATIONS", "3")),
             alm_accounts_root=os.getenv("ALM_ACCOUNTS_ROOT", "/opt/alm/hermes/accounts"),
             alm_profile_bundle_root=os.getenv(
                 "ALM_PROFILE_BUNDLE_ROOT", str(repo_root / "hermes-profile")

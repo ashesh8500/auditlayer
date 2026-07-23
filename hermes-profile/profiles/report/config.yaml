@@ -3,10 +3,15 @@ model:
   provider: deepseek
   base_url: https://api.deepseek.com
 fallback_providers: []
+providers:
+  deepseek:
+    request_timeout_seconds: 150
+    stale_timeout_seconds: 120
 telegram:
   enabled: false
 agent:
-  max_turns: 15
+  max_turns: 3
+  api_max_retries: 1
   disabled_toolsets:
     - clarify
     - terminal
@@ -20,6 +25,8 @@ agent:
     - skills
     - session_search
     - todo
+    - web
+    - browser
     - image_gen
     - vision
     - tts
@@ -31,8 +38,7 @@ agent:
     - spotify
     - yuanbao
 platform_toolsets:
-  api_server:
-    - web
+  api_server: []
 memory:
   memory_enabled: false
   user_profile_enabled: false

@@ -174,7 +174,7 @@ class SupabaseGateway:
                 "sweep_retryable_audits",
                 {
                     "p_max_retries": MAX_RETRIES,
-                    "p_transient_delay_seconds": 300,
+                    "p_transient_delay_seconds": 60,
                     "p_base_delay_seconds": RETRY_BACKOFF_BASE_SECONDS,
                 },
             ).execute()
@@ -231,6 +231,97 @@ class SupabaseGateway:
                 "created_at": _utcnow(),
             }
         ).execute()
+
+    # -- private report runtime metrics -----------------------------------
+
+    def start_report_generation_run(
+        self,
+        *,
+        audit_id: str | None,
+        worker_id: str,
+        report_type: str,
+        model: str,
+        prompt_version: str,
+        bundle_version: str | None,
+        cache_mode: str,
+        run_kind: str = "production",
+    ) -> str:
+        """Persist a crash-detectable attempt before expensive work starts."""
+        run_id = str(uuid4())
+        self.client.table("report_generation_runs").insert(
+            {
+                "id": run_id,
+                "audit_id": audit_id,
+                "run_kind": run_kind,
+                "worker_id": worker_id[:120],
+                "report_type": report_type[:40],
+                "account_mode": "unknown",
+                "cache_mode": cache_mode,
+                "status": "running",
+                "model": model[:120],
+                "prompt_version": prompt_version[:80],
+                "bundle_version": bundle_version[:120] if bundle_version else None,
+            }
+        ).execute()
+        return run_id
+
+    def finish_report_generation_run(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        total_seconds: float,
+        stage_timings: dict[str, float] | None = None,
+        tokens_in: int = 0,
+        tokens_out: int = 0,
+        cost_usd: float = 0.0,
+        evidence_items: int = 0,
+        quality_score: int | None = None,
+        format_retry_used: bool = False,
+        research_cache_used: bool = False,
+        account_mode: str = "unknown",
+        error_code: str | None = None,
+    ) -> None:
+        """Finish an attempt with aggregate, non-customer telemetry only."""
+        allowed_stages = {
+            "research",
+            "connected_metrics",
+            "analysis",
+            "validation",
+            "format_correction",
+            "postprocess",
+        }
+        safe_timings = {
+            key: round(max(0.0, float(value)), 3)
+            for key, value in (stage_timings or {}).items()
+            if key in allowed_stages
+        }
+        fields = {
+            "status": status,
+            "finished_at": _utcnow(),
+            "total_seconds": round(max(0.0, float(total_seconds)), 3),
+            "stage_timings": safe_timings,
+            "tokens_in": max(0, int(tokens_in)),
+            "tokens_out": max(0, int(tokens_out)),
+            "cost_usd": round(max(0.0, float(cost_usd)), 6),
+            "evidence_items": max(0, int(evidence_items)),
+            "quality_score": quality_score,
+            "format_retry_used": bool(format_retry_used),
+            "research_cache_used": bool(research_cache_used),
+            "account_mode": account_mode,
+            "error_code": error_code[:120] if error_code else None,
+            "updated_at": _utcnow(),
+        }
+        self.client.table("report_generation_runs").update(fields).eq("id", run_id).execute()
+
+    def sweep_stale_report_generation_runs(self, cutoff_minutes: int = 10) -> int:
+        """Mark attempts abandoned by a killed/restarted worker as crashed."""
+        response = self.client.rpc(
+            "reap_stale_report_generation_runs",
+            {"p_cutoff_minutes": cutoff_minutes},
+        ).execute()
+        value = response.data[0] if isinstance(response.data, list) else response.data
+        return int(value or 0)
 
     # -- storage -----------------------------------------------------------
 

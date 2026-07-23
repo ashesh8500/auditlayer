@@ -64,6 +64,9 @@ def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
                 reaped = gateway.sweep_stale_running()
                 if reaped:
                     log_event("stale_audits_reaped", count=reaped)
+                crashed_runs = gateway.sweep_stale_report_generation_runs()
+                if crashed_runs:
+                    log_event("stale_generation_runs_reaped", count=crashed_runs)
                 runtime.tick_idle(worked)
                 health.heartbeat(worked=worked)
             except Exception as exc:
@@ -101,6 +104,10 @@ def _drain_once(
             tokens_in=summary.tokens_in,
             tokens_out=summary.tokens_out,
             cost_usd=summary.cost_usd,
+            quality_score=summary.quality_score,
+            account_mode=summary.account_mode,
+            cache_mode=summary.cache_mode,
+            stage_timings=summary.stage_timings,
         )
         return True
 

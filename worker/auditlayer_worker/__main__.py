@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import replace
 import json
+from pathlib import Path
 import sys
 import time
 from uuid import uuid4
@@ -34,6 +35,7 @@ from .pipeline import GenerationPipeline, PrintEventSink
 from .release_preflight import run_preflight
 
 from .worker import build_generator, run_worker_loop
+from .benchmark import run_live_benchmark
 
 
 def _runtime_from_settings(settings: WorkerSettings) -> HermesRuntime:
@@ -52,7 +54,7 @@ def cmd_diagnose(settings: WorkerSettings) -> int:
             print("ok                 : True (in-process AIAgent import path verified)")
             return 0
         except FileNotFoundError as exc:
-            print(f"ok                 : False")
+            print("ok                 : False")
             print(f"error              : {exc}")
             print(
                 "recommendation     : Install Hermes Agent or set HERMES_AGENT_ROOT to the "
@@ -97,6 +99,25 @@ def cmd_run(settings: WorkerSettings, once: bool) -> int:
         return 2
     run_worker_loop(settings, once=once)
     return 0
+
+
+def cmd_benchmark(settings: WorkerSettings, args: argparse.Namespace) -> int:
+    report, passed = run_live_benchmark(
+        settings,
+        repeats=args.repeats,
+        include_connected=args.include_connected,
+        include_extended=args.include_extended,
+        output_json=Path(args.output_json) if args.output_json else None,
+    )
+    print("\n== Benchmark aggregate ==")
+    print(json.dumps(report["aggregate"], indent=2, sort_keys=True))
+    print(f"passed      : {passed}")
+    print(f"output_json : {report['output_json']}")
+    if report["violations"]:
+        print("violations:")
+        for violation in report["violations"]:
+            print(f"  - {violation}")
+    return 0 if passed else 1
 
 
 
@@ -190,6 +211,15 @@ def build_parser() -> argparse.ArgumentParser:
     run_p = sub.add_parser("run", help="Run the Supabase-backed queue worker loop")
     run_p.add_argument("--once", action="store_true", help="Drain one item and exit")
 
+    benchmark_p = sub.add_parser(
+        "benchmark",
+        help="Run disposable multi-account production-path reports and write aggregate metrics",
+    )
+    benchmark_p.add_argument("--repeats", type=int, default=1, choices=range(1, 6))
+    benchmark_p.add_argument("--include-connected", action="store_true")
+    benchmark_p.add_argument("--include-extended", action="store_true")
+    benchmark_p.add_argument("--output-json", default="")
+
 
     demo_p = sub.add_parser("demo", help="Run a standalone generation (no Supabase)")
     demo_p.add_argument("--handle", required=True, help="Handle or profile URL")
@@ -217,6 +247,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "demo":
         return cmd_demo(settings, args)
+    if args.command == "benchmark":
+        return cmd_benchmark(settings, args)
 
     if args.command == "diagnose-hermes":
         return cmd_diagnose(settings)

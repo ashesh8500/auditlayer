@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ALM Longitudinal Intelligence — Targeted Product & Architecture Plan</title>
+<style>
+  :root{--paper:#faf8f5;--ink:#1b1b1b;--muted:#66615b;--line:#cfc9c1;--soft:#f1ede7;--accent:#2563eb;--danger:#9f2d20;--ok:#216e49;--code:#eee9e2}
+  *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:var(--paper);color:var(--ink);font-family:"Computer Modern","Latin Modern","CMU Serif",Georgia,"Times New Roman",serif;line-height:1.55}
+  main{width:min(900px,calc(100% - 34px));margin:0 auto;padding:54px 0 90px}
+  h1,h2,h3{line-height:1.14;text-wrap:balance} h1{font-size:clamp(2.25rem,6vw,4.5rem);font-weight:600;letter-spacing:-.045em;margin:10px 0 18px;max-width:850px} h2{font-size:1.75rem;border-top:.5px solid var(--line);padding-top:24px;margin:58px 0 18px} h3{font-size:1.15rem;margin:28px 0 9px} p{margin:9px 0} a{color:var(--accent)}
+  .kicker,.mono,code,th,.phase{font-family:"Computer Modern Typewriter","Latin Modern Mono","CMU Typewriter",monospace}.kicker{font-size:.76rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  .lead{font-size:1.21rem;line-height:1.55;max-width:780px}.muted{color:var(--muted)} .small{font-size:.88rem}.strong{font-weight:700}.no{color:var(--danger)}.yes{color:var(--ok)}
+  .rule{height:.5px;background:var(--line);margin:30px 0}.summary{display:grid;grid-template-columns:1fr 1fr;gap:0;border:.5px solid var(--line);margin:32px 0}.summary>div{padding:22px}.summary>div+div{border-left:.5px solid var(--line)}
+  table{width:100%;border-collapse:collapse;margin:18px 0 28px;font-size:.93rem} th,td{text-align:left;vertical-align:top;border-bottom:.5px solid var(--line);padding:11px 9px} th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  code{font-size:.88em;background:var(--code);padding:.12rem .32rem}.figure{margin:28px 0}.figure svg{width:100%;height:auto;display:block;border:.5px solid var(--line);background:var(--paper)}figcaption{font-size:.85rem;color:var(--muted);font-style:italic;margin-top:8px}
+  .invariant{border-left:3px solid var(--accent);padding:2px 0 2px 18px;margin:22px 0}.warning{border-left-color:var(--danger)}
+  ul,ol{padding-left:1.35rem}li{margin:6px 0}.deliverable{display:grid;grid-template-columns:115px 1fr;border-top:.5px solid var(--line);padding:20px 0;gap:20px}.phase{font-size:.77rem;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}.deliverable h3{margin:0 0 8px}.deliverable p{margin:4px 0}
+  .criteria{columns:2;column-gap:34px}.criteria li{break-inside:avoid}.files{font-family:"Computer Modern Typewriter","Latin Modern Mono",monospace;font-size:.82rem;background:var(--soft);padding:16px 18px;overflow:auto;white-space:pre-wrap;border:.5px solid var(--line)}
+  .decision{display:grid;grid-template-columns:180px 1fr;gap:20px;border-bottom:.5px solid var(--line);padding:14px 0}.decision b{font-weight:600}
+  footer{margin-top:64px;padding-top:20px;border-top:.5px solid var(--line);color:var(--muted);font-size:.83rem}
+  @media(max-width:680px){main{padding-top:34px}.summary{grid-template-columns:1fr}.summary>div+div{border-left:0;border-top:.5px solid var(--line)}.deliverable,.decision{grid-template-columns:1fr;gap:5px}.criteria{columns:1}table{display:block;overflow-x:auto;white-space:normal}}
+  @media(prefers-color-scheme:dark){:root{--paper:#0d1117;--ink:#c9d1d9;--muted:#8b949e;--line:#30363d;--soft:#161b22;--accent:#58a6ff;--danger:#ff7b72;--ok:#56d364;--code:#21262d}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="kicker">AuditLayerMedia · Product reset · 22 July 2026</div>
+    <h1>From one-off audits to longitudinal intelligence.</h1>
+    <p class="lead">A targeted plan to repair submission and waiting first, then give every brand, creator, person, or organization a durable identity, evidence history, score lineage, and recommendation memory—without turning report generation into an open-ended agent loop.</p>
+    <div class="summary">
+      <div><div class="kicker">Diagnosis</div><p><strong>The report is currently the product’s center of gravity.</strong> It should be an output of a durable subject state, not the only place where the system “remembers.”</p></div>
+      <div><div class="kicker">Proposed center</div><p><strong>Subject → Living Brief → Channels → Evidence → Decisions → Audits.</strong> Reports become time-stamped, evidence-backed views over that system.</p></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>1. The five problems are one system problem</h2>
+    <table>
+      <thead><tr><th>Observed problem</th><th>Current implementation</th><th>Underlying failure</th></tr></thead>
+      <tbody>
+        <tr><td>New Audit starts with a handle and forgets prior work.</td><td>The route loads plan entitlements only. The action accepts one <code>handle</code>.</td><td>No subject chooser, channel model, previous-context adapter, or batch transaction.</td></tr>
+        <tr><td>The waiting page is long, noisy, and sometimes spins indefinitely.</td><td>Customers see eleven worker phases, cache messages, realtime state, event timestamps, and a full event log.</td><td>Internal telemetry is being used as the customer state machine.</td></tr>
+        <tr><td>“Accounts” cannot represent a person or brand with multiple presences.</td><td><code>accounts</code> is effectively one platform handle with optional connection/cache fields.</td><td>The ontology confuses a subject with one distribution channel.</td></tr>
+        <tr><td>Scores and advice can drift between runs.</td><td>Eight scores are model-authored; the overall score is computed locally, rendered, then scraped from HTML for progression.</td><td>No evidence-linked score rows, brief version, recommendation state, or contradiction protocol.</td></tr>
+        <tr><td>Hermes is slower without delivering meaningful learning.</td><td>A fixed web sweep is followed by one no-tools composition call, wrapped in an embedded runtime. Its home is keyed by user ID.</td><td>Agent machinery is on the critical path, while canonical continuity remains unstructured and may cross-contaminate targets.</td></tr>
+      </tbody>
+    </table>
+    <div class="invariant"><strong>Do not solve these independently.</strong> A prettier handle field, a shorter spinner, and a larger memory prompt would preserve the same broken model.</div>
+  </section>
+
+  <section>
+    <h2>2. Target product model</h2>
+    <p>Use <strong>Subject</strong> as the neutral internal/product object. A subject may be a brand, person, creator, organization, or project. A subject owns zero or more channels. A one-off public target may remain “observed” and must not appear as managed workspace property until connected or explicitly promoted.</p>
+    <figure class="figure">
+      <svg viewBox="0 0 900 470" role="img" aria-label="Target AuditLayer longitudinal architecture">
+        <defs><marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="currentColor"/></marker></defs>
+        <g fill="none" stroke="currentColor" stroke-width="1">
+          <rect x="35" y="45" width="190" height="86"/><rect x="355" y="35" width="190" height="106"/><rect x="675" y="45" width="190" height="86"/>
+          <rect x="35" y="215" width="190" height="86"/><rect x="355" y="205" width="190" height="106"/><rect x="675" y="215" width="190" height="86"/>
+          <rect x="355" y="375" width="190" height="60"/>
+          <path d="M225 88 H347" marker-end="url(#a)"/><path d="M545 88 H667" marker-end="url(#a)"/><path d="M450 141 V197" marker-end="url(#a)"/><path d="M225 258 H347" marker-end="url(#a)"/><path d="M545 258 H667" marker-end="url(#a)"/><path d="M450 311 V367" marker-end="url(#a)"/>
+        </g>
+        <g fill="currentColor" font-family="Georgia,serif" text-anchor="middle">
+          <text x="130" y="78" font-size="20">Subject</text><text x="130" y="104" font-size="13">person · brand · org · project</text>
+          <text x="450" y="72" font-size="20">Living Brief</text><text x="450" y="98" font-size="13">identity · vision · goals · voice</text><text x="450" y="118" font-size="13">constraints · experiments · decisions</text>
+          <text x="770" y="78" font-size="20">Channels</text><text x="770" y="104" font-size="13">Instagram · web · TikTok · YouTube</text>
+          <text x="130" y="248" font-size="20">Evidence ledger</text><text x="130" y="274" font-size="13">source · observed_at · confidence · TTL</text>
+          <text x="450" y="242" font-size="20">Audit run</text><text x="450" y="268" font-size="13">brief version + evidence snapshot</text><text x="450" y="288" font-size="13">methodology + research plan</text>
+          <text x="770" y="248" font-size="20">Score & action ledger</text><text x="770" y="274" font-size="13">scores · findings · recommendations</text>
+          <text x="450" y="410" font-size="19">Immutable report version</text>
+        </g>
+      </svg>
+      <figcaption>Figure 1. The report is the final immutable view; it is not the canonical memory store.</figcaption>
+    </figure>
+
+    <h3>The visible continuity artifact</h3>
+    <p><strong>Working name: Living Brief.</strong> It is more inclusive than “Brand Identity” and less technical than “memory.” Internally it may export as <code>LIVING_BRIEF.md</code>, but the source of truth is validated, versioned structured data.</p>
+    <p>The current brief contains:</p>
+    <ul class="criteria">
+      <li>Subject type and confirmed identity</li><li>Vision and intent</li><li>Audience and offers</li><li>Voice and positioning</li><li>Current goals and success criteria</li><li>Constraints and non-goals</li><li>Active experiments and planned changes</li><li>User-confirmed strategic decisions</li>
+    </ul>
+    <div class="invariant"><strong>Editing rule:</strong> every user edit creates a version. The agent may propose a diff, but it may not silently rewrite vision, identity, or goals.</div>
+  </section>
+
+  <section>
+    <h2>3. The redesigned user journeys</h2>
+    <h3>New audit</h3>
+    <ol>
+      <li><strong>Choose a subject.</strong> Show recent managed subjects, connected channels, prior observed targets, and “Create a new subject.”</li>
+      <li><strong>Choose channels.</strong> Multi-select existing Instagram/web/etc. channels or paste URLs. Platform selection is explicit when detection is uncertain.</li>
+      <li><strong>Confirm the lens.</strong> Choose a strategic goal and show the current Living Brief summary. Ask “What has changed since the last audit?” rather than a generic context box.</li>
+      <li><strong>Build a batch.</strong> “Add another” creates multiple audit requests. Before submission, show count, entitlement/credit effect, duplicates, estimated duration, and selected report types.</li>
+      <li><strong>Submit atomically.</strong> One idempotent transaction creates the batch and its audits or creates none.</li>
+    </ol>
+
+    <h3>Waiting</h3>
+    <p>Replace eleven developer phases with three customer states:</p>
+    <table><thead><tr><th>Customer state</th><th>Meaning</th><th>Customer copy</th></tr></thead><tbody>
+      <tr><td>Preparing</td><td>Accepted, entitlement checked, evidence plan built.</td><td>“Preparing your evidence run.”</td></tr>
+      <tr><td>Analyzing</td><td>Required sources are being refreshed and analysis is running.</td><td>“Checking current signals and comparing them with your previous state.”</td></tr>
+      <tr><td>Finalizing</td><td>Validation, deterministic scoring, rendering, and storage.</td><td>“Verifying evidence links and assembling your report.”</td></tr>
+    </tbody></table>
+    <ul>
+      <li>No cache hit, event type, actor, heartbeat, realtime status, worker name, retry number, or raw event detail is client-visible.</li>
+      <li>The customer may leave immediately. The page says this explicitly and offers in-app/email completion notification.</li>
+      <li>A server-owned terminal status—not missing timeline events—stops animation.</li>
+      <li>A watchdog turns stale work into <em>Delayed</em> with a calm recovery message and an operator incident. No infinite spinner.</li>
+      <li>Founder diagnostics move to admin-only incident/event surfaces.</li>
+    </ul>
+    <div class="invariant warning"><strong>Security boundary:</strong> customer progress is an allowlisted projection, never a filtered copy of internal logs.</div>
+  </section>
+
+  <section>
+    <h2>4. Evidence, citations, scores, and continuity</h2>
+    <h3>Evidence records</h3>
+    <p>Stop caching one research paragraph. Store addressable evidence items with stable IDs such as <code>IG#profile-20260722</code>, <code>WEB#official-about-7f1a</code>, <code>CTX#brief-v4</code>, and <code>METH#score-v2</code>.</p>
+    <table><thead><tr><th>Field</th><th>Purpose</th></tr></thead><tbody>
+      <tr><td><code>source_type / source_url</code></td><td>Authority and citation target.</td></tr>
+      <tr><td><code>observed_at / expires_at</code></td><td>Truthful freshness; reuse never renews observation time.</td></tr>
+      <tr><td><code>content_hash</code></td><td>Detect change without reinterpreting unchanged sources.</td></tr>
+      <tr><td><code>confidence / coverage</code></td><td>Support cautious claims and absence checks.</td></tr>
+      <tr><td><code>subject_id / channel_id / audit_id</code></td><td>Prevent cross-subject contamination.</td></tr>
+    </tbody></table>
+
+    <h3>Score contract</h3>
+    <p>Keep observable dimension scores separate from the audit’s perspective. A Living Brief should alter <strong>weights, thresholds, and action priority</strong>, not allow the model to freely invent different facts.</p>
+    <ul>
+      <li>Each dimension score stores its method version, evidence IDs, rationale, confidence, and observation date.</li>
+      <li>The overall score is computed locally from versioned weights.</li>
+      <li>Every score is clickable. An evidence drawer shows what raised or lowered it.</li>
+      <li>Unavailable evidence renders “Data needed,” never a punitive zero.</li>
+      <li>A material score change requires one classified reason: evidence changed, brief/lens changed, methodology changed, or prior error corrected.</li>
+      <li>Cross-method comparisons display a comparability warning rather than implying progress.</li>
+    </ul>
+
+    <h3>Recommendation ledger</h3>
+    <p>Recommendations become stable objects with states: <code>proposed</code>, <code>accepted</code>, <code>rejected</code>, <code>in_progress</code>, <code>implemented</code>, <code>deferred</code>, <code>superseded</code>, or <code>invalidated</code>. Each links to findings and evidence.</p>
+    <p>Every repeat audit must answer:</p>
+    <ol><li>What changed?</li><li>What stayed true?</li><li>What advice was acted on?</li><li>Why did any recommendation or score change?</li></ol>
+  </section>
+
+  <section>
+    <h2>5. Give Hermes a bounded, useful job</h2>
+    <p>The critical path should be a deterministic state machine. Hermes should provide constrained judgment inside it, not control the process.</p>
+    <figure class="figure">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Locked audit generation pipeline">
+        <defs><marker id="b" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="currentColor"/></marker></defs>
+        <g fill="none" stroke="currentColor" stroke-width="1">
+          <rect x="25" y="80" width="135" height="76"/><rect x="205" y="80" width="135" height="76"/><rect x="385" y="80" width="135" height="76"/><rect x="565" y="80" width="135" height="76"/><rect x="745" y="80" width="130" height="76"/>
+          <path d="M160 118 H197" marker-end="url(#b)"/><path d="M340 118 H377" marker-end="url(#b)"/><path d="M520 118 H557" marker-end="url(#b)"/><path d="M700 118 H737" marker-end="url(#b)"/>
+        </g>
+        <g fill="currentColor" text-anchor="middle" font-family="Georgia,serif"><text x="92" y="106" font-size="17">Compile</text><text x="92" y="130" font-size="12">continuity packet</text><text x="272" y="106" font-size="17">Plan delta</text><text x="272" y="130" font-size="12">bounded Hermes JSON</text><text x="452" y="106" font-size="17">Refresh</text><text x="452" y="130" font-size="12">parallel tool executor</text><text x="632" y="106" font-size="17">Analyze</text><text x="632" y="130" font-size="12">one typed model call</text><text x="810" y="106" font-size="17">Validate + commit</text><text x="810" y="130" font-size="12">local deterministic code</text></g>
+        <text x="450" y="220" text-anchor="middle" fill="currentColor" font-family="Georgia,serif" font-size="15">No stage may be skipped, invented, reordered, or written directly by the model.</text>
+      </svg>
+      <figcaption>Figure 2. Agency is used for deciding what changed and what deserves fresh research; authority remains local and schema-bound.</figcaption>
+    </figure>
+    <ol>
+      <li><strong>Continuity compiler:</strong> load latest Living Brief, accepted decisions, active recommendations, previous scorecard, and source freshness.</li>
+      <li><strong>Hermes delta planner:</strong> return a small JSON research plan. It may add at most a bounded number of optional queries; deterministic freshness rules may require sources regardless.</li>
+      <li><strong>Tool executor:</strong> run required searches/fetches in parallel outside the agent. Fresh connected metrics are mandatory.</li>
+      <li><strong>Typed analyst:</strong> one DeepSeek V4 Flash call produces findings, score inputs, actions, and change explanations referencing only valid evidence IDs.</li>
+      <li><strong>Local gate:</strong> resolve citations, compute scores, reject contradictions/unsupported claims, render deterministically, and atomically persist the snapshot and ledgers.</li>
+      <li><strong>Learning proposal:</strong> after success, Hermes may propose a Living Brief or recommendation-state diff. The client confirms identity/vision changes.</li>
+    </ol>
+    <div class="invariant"><strong>Memory rule:</strong> canonical state lives in the database. A subject-scoped <code>HERMES_HOME</code> is rebuildable working state, keyed by subject UUID—not user UUID—and never outranks the ledger.</div>
+  </section>
+
+  <section>
+    <h2>6. Targeted deliverables</h2>
+
+    <div class="deliverable"><div class="phase">P0 · Review gate</div><div><h3>Repair submission and waiting</h3><p><strong>Scope:</strong> existing/connected subject suggestions, explicit platform cards, previous-target autofill, multi-audit batch review, customer-safe three-state progress, no event log, terminal-state spinner fix, stale-run watchdog.</p><p><strong>Why first:</strong> this is what an external reviewer and a second-time customer touch immediately.</p><p><strong>Acceptance:</strong> an incognito reviewer can create one or several audits without retyping known handles; leave the page; return to accurate terminal state; and never see an internal event detail.</p></div></div>
+
+    <div class="deliverable"><div class="phase">P1 · Ontology</div><div><h3>Introduce Subject, Channels, and Living Brief</h3><p><strong>Scope:</strong> migrate managed/connected accounts into subject/channel relationships; preserve one-off report targets as observed; add versioned Living Brief and a subject home; link every new audit to a subject and pinned brief version.</p><p><strong>Acceptance:</strong> one brand or creator can hold Instagram plus website without duplication; observed celebrity targets do not appear as managed properties; historical reports remain accessible.</p></div></div>
+
+    <div class="deliverable"><div class="phase">P2 · Truth layer</div><div><h3>Ship evidence-linked score and recommendation ledgers</h3><p><strong>Scope:</strong> immutable evidence snapshots, evidence items, dimension score rows, findings, recommendations, decisions, citations, evidence drawer, “since last audit,” and contradiction validation.</p><p><strong>Acceptance:</strong> every factual score rationale resolves to evidence; rejected advice does not reappear without new evidence; implemented advice is acknowledged; score movement has an explicit cause.</p></div></div>
+
+    <div class="deliverable"><div class="phase">P3 · Runtime</div><div><h3>Replace open-ended in-process generation with the locked delta pipeline</h3><p><strong>Scope:</strong> subject-scoped state, deterministic continuity compiler, bounded Hermes research planner, external parallel tool execution, one typed analysis call, deterministic scoring/rendering/commit, per-source freshness.</p><p><strong>Acceptance:</strong> repeat audits skip unchanged exploration, refresh required volatile data, remain more coherent than first audits, and beat the current p50/p95 latency without quality regression.</p></div></div>
+
+    <div class="deliverable"><div class="phase">P4 · Feedback</div><div><h3>Close the self-learning loop safely</h3><p><strong>Scope:</strong> client/founder recommendation states, Living Brief change proposals, correction scope (subject/niche/global), policy promotion review, and retention surfaces.</p><p><strong>Acceptance:</strong> the system learns from explicit decisions without silently mutating identity or leaking one subject’s corrections into another.</p></div></div>
+  </section>
+
+  <section>
+    <h2>7. Suggested data boundary</h2>
+    <div class="files">subjects
+subject_channels
+subject_brief_versions
+subject_brief_proposals
+
+audit_batches
+audits.subject_id
+audits.brief_version_id
+audits.evidence_snapshot_id
+audits.methodology_version
+
+evidence_snapshots
+evidence_items
+audit_scores
+audit_findings
+subject_recommendations
+recommendation_evidence
+subject_decisions
+
+client_audit_status   -- allowlisted public projection
+operator/audit_events -- private diagnostics only</div>
+    <p class="small muted">Use additive migrations and backfill before readers switch. Existing report artifacts and report-version rows remain immutable. Retire <code>accounts.research_snapshot</code> only after evidence-item reads are live.</p>
+  </section>
+
+  <section>
+    <h2>8. Tests that define “resolved”</h2>
+    <ul class="criteria">
+      <li>Previous subjects and channels appear in New Audit.</li>
+      <li>Platform ambiguity requires explicit confirmation.</li>
+      <li>A batch is atomic and idempotent.</li>
+      <li>Duplicate active audits are intercepted.</li>
+      <li>Customer API never returns internal event details.</li>
+      <li>Ready/failed/delayed always stops animation.</li>
+      <li>Stale heartbeat creates an operator incident.</li>
+      <li>One person owns multiple channels under one subject.</li>
+      <li>Observed target is excluded from managed workspace.</li>
+      <li>Living Brief edits create immutable versions.</li>
+      <li>Every score evidence ID resolves.</li>
+      <li>Unavailable dimensions do not become zero.</li>
+      <li>Method changes prevent false score comparison.</li>
+      <li>Rejected recommendation is not repeated.</li>
+      <li>Implemented recommendation appears as progress.</li>
+      <li>Fresh connected metric failure fails closed.</li>
+      <li>Cache reuse preserves original observation time.</li>
+      <li>Unchanged low-volatility source is not re-explored.</li>
+      <li>Subject A never enters Subject B’s context.</li>
+      <li>Old report versions remain retrievable.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>9. Decisions and non-decisions</h2>
+    <div class="decision"><b>Decide now</b><span>Subject is the parent; channels are children; reports are outputs.</span></div>
+    <div class="decision"><b>Decide now</b><span>Living Brief is editable and versioned; agent changes are proposed diffs.</span></div>
+    <div class="decision"><b>Decide now</b><span>Customer progress is a separate allowlisted surface, not audit logs.</span></div>
+    <div class="decision"><b>Decide now</b><span>Evidence freshness is per item/source, not one sliding blob TTL.</span></div>
+    <div class="decision"><b>Decide now</b><span>Hermes plans bounded deltas; deterministic code controls execution and writes.</span></div>
+    <div class="decision"><b>Can wait</b><span>Final feature name. “Living Brief” is the strongest working name; alternatives can be tested in product copy after the object exists.</span></div>
+    <div class="decision"><b>Do not do</b><span>Do not build a graph database, self-hosted crawler fleet, vector memory layer, or multi-agent report swarm for this release.</span></div>
+  </section>
+
+  <section>
+    <h2>10. Recommended implementation order</h2>
+    <p><strong>Approve P0–P3 as one product direction, but release them as four independently reversible vertical slices.</strong> P0 should precede Meta review. P1 creates the durable product foundation. P2 makes the analysis defensible. P3 then removes the latency and amnesia caused by giving the agent responsibility before giving it structured state.</p>
+    <div class="invariant"><strong>Smallest coherent first move:</strong> P0 plus the additive <code>audit_batches</code> and customer-safe progress projection. Do not start by renaming Accounts or adding more memory fields.</div>
+  </section>
+
+  <footer>
+    Prepared from the current AuditLayer web/worker/schema implementation, the July 20 temporal-continuity report, prior ALM sessions, and the deployed report-generation contract. This document is a plan only; no product implementation is included.
+  </footer>
+</main>
+</body>
+</html>

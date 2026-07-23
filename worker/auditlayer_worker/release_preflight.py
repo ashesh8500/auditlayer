@@ -14,6 +14,7 @@ _REQUIRED_RPCS = {
     "claim_next_refinement",
     "sweep_retryable_audits",
     "reap_stale_running",
+    "reap_stale_report_generation_runs",
     "get_benchmarks",
     "redeem_trial_link",
     "submit_entitled_audit",
@@ -26,6 +27,7 @@ _REQUIRED_SELECTS = {
     "admin_actions": "id,actor_id,target_user_id,action,detail",
     "wellness_benchmarks": "id,niche,followers_bracket,avg_engagement",
     "peer_graph": "id,handle,niche,benchmarks_id",
+    "report_generation_runs": "id,audit_id,run_kind,report_type,account_mode,cache_mode,status,total_seconds,stage_timings,tokens_in,tokens_out,cost_usd,quality_score,error_code",
 }
 
 
@@ -61,6 +63,8 @@ def run_preflight(settings: WorkerSettings) -> PreflightResult:
         errors.append("HERMES_MODEL must be deepseek-v4-flash")
     if settings.hermes_provider != "deepseek":
         errors.append("HERMES_PROVIDER must be deepseek")
+    if settings.hermes_max_iterations > 3:
+        errors.append("HERMES_MAX_ITERATIONS must be at most 3")
     if not settings.has_supabase:
         errors.append("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required")
 

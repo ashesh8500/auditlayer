@@ -170,12 +170,70 @@ class TestMockedClaimRPC:
         mock_client.rpc.assert_called_once_with(
             "sweep_retryable_audits",
             {
-                "p_max_retries": 3,
-                "p_transient_delay_seconds": 300,
+                "p_max_retries": 1,
+                "p_transient_delay_seconds": 60,
                 "p_base_delay_seconds": 60,
             },
         )
         mock_client.table.assert_not_called()
+
+    def test_report_runtime_start_contains_only_aggregate_metadata(self):
+        settings = _settings()
+        gw, mock_client = _make_gateway(settings)
+
+        run_id = gw.start_report_generation_run(
+            audit_id="00000000-0000-0000-0000-000000000001",
+            worker_id="worker-1",
+            report_type="standard",
+            model="deepseek-v4-flash",
+            prompt_version="1.0",
+            bundle_version="bundle-1",
+            cache_mode="fresh",
+        )
+
+        assert run_id
+        mock_client.table.assert_called_once_with("report_generation_runs")
+        payload = mock_client.table.return_value.insert.call_args.args[0]
+        assert payload["status"] == "running"
+        assert payload["model"] == "deepseek-v4-flash"
+        assert "handle" not in payload
+        assert "context" not in payload
+        assert "report" not in payload
+
+    def test_report_runtime_finish_whitelists_stage_names_and_error_length(self):
+        settings = _settings()
+        gw, mock_client = _make_gateway(settings)
+
+        gw.finish_report_generation_run(
+            "run-1",
+            status="failed",
+            total_seconds=12.34567,
+            stage_timings={"research": 1.23456, "secret_customer_stage": 99},
+            tokens_in=-5,
+            tokens_out=10,
+            cost_usd=0.01234567,
+            error_code="x" * 300,
+        )
+
+        fields = mock_client.table.return_value.update.call_args.args[0]
+        assert fields["stage_timings"] == {"research": 1.235}
+        assert fields["tokens_in"] == 0
+        assert fields["tokens_out"] == 10
+        assert fields["cost_usd"] == 0.012346
+        assert len(fields["error_code"]) == 120
+
+    def test_stale_report_runtime_reaper_is_database_owned(self):
+        settings = _settings()
+        gw, mock_client = _make_gateway(settings)
+        response = MagicMock()
+        response.data = 2
+        mock_client.rpc.return_value.execute.return_value = response
+
+        assert gw.sweep_stale_report_generation_runs(12) == 2
+        mock_client.rpc.assert_called_once_with(
+            "reap_stale_report_generation_runs",
+            {"p_cutoff_minutes": 12},
+        )
 
 
 # ── MOA race-condition model ────────────────────────────────────────────────
