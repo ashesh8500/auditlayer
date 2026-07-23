@@ -208,7 +208,9 @@ class WebsiteCollector:
             if elapsed >= self.deadline_seconds:
                 raise WebsiteCollectionError("website collection deadline exceeded")
             target, approved_addresses = self._validate_target(current)
-            remaining = self.deadline_seconds - elapsed
+            remaining = self.deadline_seconds - (self._clock() - started)
+            if remaining <= 0:
+                raise WebsiteCollectionError("website collection deadline exceeded")
             response = self._fetch(
                 target,
                 timeout_seconds=min(self.per_request_timeout_seconds, remaining),
@@ -217,6 +219,12 @@ class WebsiteCollector:
             )
             if self._clock() - started >= self.deadline_seconds:
                 raise WebsiteCollectionError("website collection deadline exceeded")
+            try:
+                response_target = _canonical_target(response.url)
+            except WebsiteCollectionError as exc:
+                raise WebsiteCollectionError("website fetcher target mismatch") from exc
+            if response_target != target:
+                raise WebsiteCollectionError("website fetcher target mismatch")
             if len(response.body) > self.max_bytes:
                 raise WebsiteCollectionError("response exceeds size limit")
             if response.status_code in {301, 302, 303, 307, 308}:
@@ -232,6 +240,13 @@ class WebsiteCollector:
             if response.status_code < 200 or response.status_code >= 300:
                 raise WebsiteCollectionError("website returned a non-success status")
             content_type = str(response.headers.get("content-type") or response.headers.get("Content-Type") or "").lower()
+            content_encoding = str(
+                response.headers.get("content-encoding")
+                or response.headers.get("Content-Encoding")
+                or "identity"
+            ).lower().strip()
+            if content_encoding not in {"", "identity"}:
+                raise WebsiteCollectionError("website response content encoding is not allowed")
             if not (
                 content_type.startswith("text/html")
                 or content_type.startswith("application/xhtml+xml")

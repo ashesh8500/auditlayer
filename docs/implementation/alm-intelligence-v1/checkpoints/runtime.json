@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "workstream": "runtime",
   "status": "implemented_amended_for_review",
   "branch": "feat/alm-intelligence-v1-runtime",
@@ -16,16 +16,16 @@
     "forbidden_paths_modified": []
   },
   "implemented": [
-    "canonical content-addressed evidence-v1 normalization with runtime-boundary identity, nested-secret and expiry revalidation",
+    "canonical content-addressed evidence-v1 normalization with runtime-boundary identity, nested-secret and expiry revalidation, finite-number checks, bounded payload/coverage documents and valid freshness intervals",
     "allowlisted and byte-bounded subject-context projection whose canonical content hash participates in reuse identity",
-    "website collection with credential, scheme, port, DNS/IP, redirect, response-size, content-type and absolute wall-clock deadline controls",
+    "website collection with credential, scheme, port, DNS/IP, redirect, fetch-target, response-size, content-type, content-encoding and absolute wall-clock deadline controls, including DNS time",
     "DNS-rebinding-resistant HTTP and HTTPS connections pinned to pre-approved public addresses",
     "DeepSeek V4 Flash-only stateless inference transport with explicit empty enabled_toolsets, no session header, no fallback, provider/model drift failure and at most 150-second timeout",
     "single-channel one-call fast path and bounded runs of up to eight channels with provider concurrency capped at three",
     "one bounded cross-channel synthesis and at most one formatting/schema correction across malformed JSON and typed validation paths",
     "attempt telemetry counted before initial and correction calls, including failed attempts",
     "exact channel and synthesis cache keys covering projected context, evidence identity/freshness, prior state and pinned model contract versions",
-    "atomic private JSON stage/cache implementations plus injectable persistence protocols",
+    "atomic private JSON stage/cache implementations with bounded reads/writes plus injectable persistence protocols",
     "successful stage and cache loads revalidated before reuse, successful siblings persisted, and synthesis retry resumed",
     "typed finding, recommendation, context-proposal and synthesis validation with evidence-reference integrity",
     "additive deterministic synthesis assembly, stable recommendation fingerprints, rejected-advice suppression and typed proposal handoff",
@@ -50,20 +50,16 @@
   },
   "verification": [
     {
-      "command": "cd worker && uv run pytest tests/test_intelligence_*.py -q",
-      "result": "33 passed in 0.36s"
+      "command": "cd worker && uv run pytest tests/test_intelligence_contracts.py tests/test_intelligence_inference.py tests/test_intelligence_runtime.py tests/test_intelligence_website.py -q",
+      "result": "37 passed in 0.50s"
     },
     {
-      "command": "cd worker && uv run pytest -q",
-      "result": "293 passed, 12 skipped in 4.57s"
+      "command": "cd worker && uv run pytest --ignore=tests/test_intelligence_adversarial.py -q",
+      "result": "297 passed, 12 skipped in 5.76s; ignored the concurrent QA child's uncommitted adversarial suite pending integration"
     },
     {
-      "command": "cd worker && git diff --check && uv run python -m compileall -q auditlayer_worker",
-      "result": "exit 0"
-    },
-    {
-      "command": "cd worker && uvx ruff check auditlayer_worker/intelligence tests/test_intelligence_*.py",
-      "result": "All checks passed!"
+      "command": "cd worker && uvx ruff check auditlayer_worker/intelligence tests/test_intelligence_contracts.py tests/test_intelligence_inference.py tests/test_intelligence_runtime.py tests/test_intelligence_website.py && uv run python -m compileall -q auditlayer_worker && git diff --check",
+      "result": "All checks passed!; compileall and git diff --check exited 0"
     }
   ],
   "release_handoff": {

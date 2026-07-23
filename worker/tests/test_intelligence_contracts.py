@@ -73,6 +73,39 @@ def test_evidence_rejects_untyped_or_secret_bearing_payloads() -> None:
         )
 
 
+def test_evidence_normalization_enforces_document_bounds_and_valid_freshness() -> None:
+    with pytest.raises(EvidenceValidationError, match="payload exceeds"):
+        normalize_evidence(
+            subject_id=SUBJECT_ID,
+            channel_id=CHANNEL_ID,
+            source_type="official_web",
+            observed_at="2026-07-23T01:02:03Z",
+            confidence="high",
+            payload={"text": "x" * 600_000},
+        )
+
+    with pytest.raises(EvidenceValidationError, match="expires_at must be after observed_at"):
+        normalize_evidence(
+            subject_id=SUBJECT_ID,
+            channel_id=CHANNEL_ID,
+            source_type="official_web",
+            observed_at="2026-07-23T01:02:03Z",
+            expires_at="2026-07-23T01:02:03Z",
+            confidence="high",
+            payload={},
+        )
+
+    with pytest.raises(EvidenceValidationError, match="finite"):
+        normalize_evidence(
+            subject_id=SUBJECT_ID,
+            channel_id=CHANNEL_ID,
+            source_type="official_web",
+            observed_at="2026-07-23T01:02:03Z",
+            confidence="high",
+            payload={"ratio": float("nan")},
+        )
+
+
 def test_context_projection_is_allowlisted_bounded_and_does_not_mutate_input() -> None:
     context = {
         "schema_version": "1.0",

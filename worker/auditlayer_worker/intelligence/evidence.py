@@ -6,6 +6,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 import re
 from typing import Any, Mapping
 from urllib.parse import urlsplit, urlunsplit
@@ -18,6 +19,8 @@ SOURCE_TYPES = frozenset(
     {"connected_api", "official_web", "public_web", "user_context", "methodology"}
 )
 CONFIDENCE_LEVELS = frozenset({"low", "medium", "high", "authoritative"})
+MAX_EVIDENCE_PAYLOAD_BYTES = 512_000
+MAX_EVIDENCE_COVERAGE_BYTES = 16_000
 _SENSITIVE_KEY = re.compile(
     r"(?:^|_)(?:access_?token|refresh_?token|api_?key|authorization|credential|password|secret|cookie)(?:$|_)",
     re.IGNORECASE,
@@ -78,6 +81,8 @@ def _normalize_json(value: Any, *, key: str = "payload") -> Any:
         return [_normalize_json(item, key=key) for item in value]
     if isinstance(value, str):
         return " ".join(value.split())
+    if isinstance(value, float) and not math.isfinite(value):
+        raise EvidenceValidationError(f"{key} numbers must be finite")
     if value is None or isinstance(value, (bool, int, float)):
         return value
     raise EvidenceValidationError(f"{key} contains unsupported value type {type(value).__name__}")
@@ -114,11 +119,24 @@ def normalize_evidence(
 
     normalized_payload = _normalize_json(deepcopy(payload))
     normalized_coverage = _normalize_json(deepcopy(coverage or {}), key="coverage")
+    if len(canonical_json(normalized_payload).encode("utf-8")) > MAX_EVIDENCE_PAYLOAD_BYTES:
+        raise EvidenceValidationError(
+            f"payload exceeds {MAX_EVIDENCE_PAYLOAD_BYTES} bytes"
+        )
+    if len(canonical_json(normalized_coverage).encode("utf-8")) > MAX_EVIDENCE_COVERAGE_BYTES:
+        raise EvidenceValidationError(
+            f"coverage exceeds {MAX_EVIDENCE_COVERAGE_BYTES} bytes"
+        )
     normalized_subject_id = _uuid(subject_id, "subject_id")
     normalized_channel_id = _uuid(channel_id, "channel_id") if channel_id else None
     normalized_observed_at = _timestamp(observed_at)
     normalized_source_url = _canonical_url(source_url)
     normalized_expires_at = _timestamp(expires_at) if expires_at is not None else None
+    if normalized_expires_at is not None:
+        observed = datetime.fromisoformat(normalized_observed_at.replace("Z", "+00:00"))
+        expires = datetime.fromisoformat(normalized_expires_at.replace("Z", "+00:00"))
+        if expires <= observed:
+            raise EvidenceValidationError("expires_at must be after observed_at")
 
     content_document = {
         "subject_id": normalized_subject_id,

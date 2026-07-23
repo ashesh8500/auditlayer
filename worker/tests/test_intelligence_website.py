@@ -148,3 +148,50 @@ def test_website_collector_rejects_a_slow_drip_that_finishes_after_deadline() ->
     )
     with pytest.raises(WebsiteCollectionError, match="deadline"):
         collector.collect("https://example.com")
+
+
+def test_website_collector_does_not_fetch_after_dns_exhausts_deadline() -> None:
+    now = [0.0]
+    fetched: list[str] = []
+
+    def slow_resolver(host: str, port: int, **kwargs):
+        now[0] = 1.1
+        return _resolver(host, port, **kwargs)
+
+    def fetch(url: str, **_kwargs) -> WebsiteResponse:
+        fetched.append(url)
+        return WebsiteResponse(200, {"content-type": "text/html"}, b"ok", url)
+
+    collector = WebsiteCollector(
+        fetch=fetch,
+        resolver=slow_resolver,
+        deadline_seconds=1.0,
+        clock=lambda: now[0],
+    )
+
+    with pytest.raises(WebsiteCollectionError, match="deadline"):
+        collector.collect("https://example.com")
+    assert fetched == []
+
+
+def test_website_collector_rejects_fetcher_target_drift_and_content_encoding() -> None:
+    drifted = WebsiteCollector(
+        fetch=lambda url, **_kwargs: WebsiteResponse(
+            200, {"content-type": "text/html"}, b"ok", "http://127.0.0.1/private"
+        ),
+        resolver=_resolver,
+    )
+    with pytest.raises(WebsiteCollectionError, match="target mismatch"):
+        drifted.collect("https://example.com")
+
+    compressed = WebsiteCollector(
+        fetch=lambda url, **_kwargs: WebsiteResponse(
+            200,
+            {"content-type": "text/html", "content-encoding": "gzip"},
+            b"not-decoded",
+            url,
+        ),
+        resolver=_resolver,
+    )
+    with pytest.raises(WebsiteCollectionError, match="content encoding"):
+        compressed.collect("https://example.com")

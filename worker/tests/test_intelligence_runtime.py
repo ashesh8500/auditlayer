@@ -546,3 +546,17 @@ def test_json_stage_and_analysis_stores_survive_process_recreation(tmp_path) -> 
     assert model.channel_calls == initial_calls
     assert resumed.telemetry.cache_mode == "resume"
     assert all(path.stat().st_mode & 0o077 == 0 for path in stage_root.rglob("*.json"))
+
+
+def test_json_persistence_rejects_oversized_writes_and_existing_documents(tmp_path) -> None:
+    root = tmp_path / "bounded-cache"
+    bounded = JsonAnalysisCache(root, max_document_bytes=64)
+
+    with pytest.raises(RuntimeError, match="size limit"):
+        bounded.put("a" * 64, {"payload": "x" * 100})
+    assert list(root.rglob("*.json")) == []
+
+    generous = JsonAnalysisCache(root, max_document_bytes=1_000)
+    generous.put("a" * 64, {"payload": "x" * 100})
+    with pytest.raises(RuntimeError, match="size limit"):
+        bounded.get("a" * 64)

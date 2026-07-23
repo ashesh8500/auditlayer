@@ -14,26 +14,42 @@ from .evidence import canonical_json
 from .runtime import ChannelStage, SynthesisStage
 
 
+DEFAULT_MAX_DOCUMENT_BYTES = 1_000_000
+HARD_MAX_DOCUMENT_BYTES = 10_000_000
+
+
 def _digest(*parts: str) -> str:
     return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()
 
 
 class _AtomicJsonStore:
-    def __init__(self, root: str | Path) -> None:
+    def __init__(
+        self,
+        root: str | Path,
+        *,
+        max_document_bytes: int = DEFAULT_MAX_DOCUMENT_BYTES,
+    ) -> None:
+        if max_document_bytes <= 0 or max_document_bytes > HARD_MAX_DOCUMENT_BYTES:
+            raise ValueError(
+                f"max_document_bytes must be in (0, {HARD_MAX_DOCUMENT_BYTES}]"
+            )
         self.root = Path(root)
+        self.max_document_bytes = max_document_bytes
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(self.root, 0o700)
         self._lock = threading.Lock()
 
-    @staticmethod
-    def _read(path: Path) -> dict[str, Any] | None:
+    def _read(self, path: Path) -> dict[str, Any] | None:
         try:
-            raw = path.read_text(encoding="utf-8")
+            with path.open("rb") as handle:
+                data = handle.read(self.max_document_bytes + 1)
         except FileNotFoundError:
             return None
+        if len(data) > self.max_document_bytes:
+            raise RuntimeError("intelligence checkpoint exceeds size limit")
         try:
-            value = json.loads(raw)
-        except json.JSONDecodeError as exc:
+            value = json.loads(data.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise RuntimeError("intelligence checkpoint is corrupt") from exc
         if not isinstance(value, dict):
             raise RuntimeError("intelligence checkpoint must be a JSON object")
@@ -44,6 +60,8 @@ class _AtomicJsonStore:
         os.chmod(path.parent, 0o700)
         temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
         data = canonical_json(value).encode("utf-8")
+        if len(data) > self.max_document_bytes:
+            raise RuntimeError("intelligence checkpoint exceeds size limit")
         with self._lock:
             descriptor = os.open(
                 temporary,
