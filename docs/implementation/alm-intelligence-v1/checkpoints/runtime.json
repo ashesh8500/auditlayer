@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "workstream": "runtime",
+  "status": "implemented",
+  "branch": "feat/alm-intelligence-v1-runtime",
+  "contract_commit": "81d0a6a",
+  "scope": {
+    "owned_runtime": "worker/auditlayer_worker/intelligence/",
+    "tests": [
+      "worker/tests/test_intelligence_contracts.py",
+      "worker/tests/test_intelligence_inference.py",
+      "worker/tests/test_intelligence_runtime.py",
+      "worker/tests/test_intelligence_website.py"
+    ],
+    "integration_files_modified": [],
+    "forbidden_paths_modified": []
+  },
+  "implemented": [
+    "canonical content-addressed evidence-v1 normalization with immutable observation time",
+    "allowlisted and byte-bounded subject-context projection",
+    "website collection with credential, scheme, port, DNS/IP, redirect, response-size, content-type and total-deadline controls",
+    "DNS-rebinding-resistant HTTP and HTTPS connections pinned to pre-approved public addresses",
+    "DeepSeek V4 Flash-only stateless typed inference adapter with no tools, sessions, memory, delegation or fallback",
+    "single-channel one-call fast path and concurrent multi-channel fan-out capped at three",
+    "one bounded cross-channel synthesis and one formatting/schema correction boundary",
+    "exact channel and synthesis cache keys covering pinned context, evidence and model contract versions",
+    "atomic private JSON stage/cache implementations plus injectable persistence protocols",
+    "successful sibling channel persistence, synthesis resume and validated cache reuse",
+    "evidence-reference validation, deterministic score inputs, unavailable-data null scores and rejected-recommendation suppression",
+    "allowlisted latency, token, cost, cache, call-count and normalized-failure telemetry"
+  ],
+  "acceptance": {
+    "website_collector_rejects_unsafe_targets": true,
+    "single_and_multi_channel_routing_deterministic": true,
+    "channel_concurrency_max_three": true,
+    "synthesis_retry_reuses_channel_outputs": true,
+    "cache_requires_every_canonical_component": true,
+    "findings_and_score_rationales_resolve_evidence_ids": true,
+    "deepseek_v4_flash_no_tools_no_fallback": true,
+    "runtime_telemetry_is_allowlisted": true,
+    "existing_report_security_and_section_gates_pass": true
+  },
+  "verification": [
+    {
+      "command": "cd worker && uv run pytest tests/test_intelligence_*.py -q",
+      "result": "25 passed in 1.29s"
+    },
+    {
+      "command": "cd worker && uv run pytest -q",
+      "result": "285 passed, 12 skipped in 7.67s"
+    },
+    {
+      "command": "cd worker && git diff --check && uv run python -m compileall -q auditlayer_worker",
+      "result": "exit 0"
+    },
+    {
+      "command": "cd worker && uvx ruff check auditlayer_worker/intelligence tests/test_intelligence_*.py",
+      "result": "All checks passed!"
+    }
+  ],
+  "release_handoff": {
+    "live_models_called": false,
+    "live_customer_data_used": false,
+    "deployed": false,
+    "pushed": false,
+    "migration_or_web_changes": false,
+    "integration_note": "The new runtime is isolated behind model, stage-store, analysis-cache and telemetry protocols so the release workstream can bind kernel persistence without changing legacy report behavior.",
+    "risks": [
+      "The kernel branch must provide the canonical Supabase-backed StageStore/AnalysisCache/telemetry bindings before production routing switches to this runtime; the included JSON stores are private durable local implementations, not the canonical ledger.",
+      "No live provider or public-network benchmark was run in this implementation worktree by contract; release must perform controlled benchmark and canary gates.",
+      "Website collection intentionally uses one pre-approved address and does not fail over across DNS answers, favoring SSRF determinism over availability."
+    ]
+  }
+}
