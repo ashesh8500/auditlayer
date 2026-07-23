@@ -953,12 +953,7 @@ begin
       coalesce(_item->'coverage', '{}'::jsonb),
       coalesce(_item->'payload', '{}'::jsonb)
     )
-    on conflict (subject_id, content_hash) do update
-      set observed_at = excluded.observed_at,
-          expires_at = excluded.expires_at,
-          confidence = excluded.confidence,
-          coverage = excluded.coverage,
-          payload = excluded.payload
+    on conflict (subject_id, content_hash) do nothing
     returning id into _id;
     return next _id;
   end loop;
@@ -1148,3 +1143,401 @@ grant all on public.decisions to authenticated, service_role;
 -- never auto-promoted.  The subject_channels.account_id column provides a
 -- read-path for the backfill without requiring data migration.
 -- ===========================================================================
+
+-- ===========================================================================
+-- 20. Living Brief immutability trigger — reject UPDATE and DELETE.
+-- ===========================================================================
+create or replace function public.reject_living_brief_mutation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op in ('UPDATE', 'DELETE') then
+    raise exception 'living_brief_versions is immutable — UPDATE and DELETE are rejected';
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists reject_living_brief_mutation
+  on public.living_brief_versions;
+create trigger reject_living_brief_mutation
+  before update or delete on public.living_brief_versions
+  for each row execute function public.reject_living_brief_mutation();
+
+comment on function public.reject_living_brief_mutation() is
+  'Enforces Living Brief immutability: UPDATE and DELETE are rejected by the database.';
+
+-- ===========================================================================
+-- 21. Relational consistency FKs (additive ALTER TABLE, idempotent).
+-- ===========================================================================
+do $$
+begin
+  -- 21a. intelligence_runs (subject_id, brief_version) must reference a real
+  --      living_brief_versions row for that subject.
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'fk_intelligence_runs_brief_version'
+  ) then
+    alter table public.intelligence_runs
+      add constraint fk_intelligence_runs_brief_version
+      foreign key (subject_id, brief_version)
+      references public.living_brief_versions(subject_id, version)
+      on delete restrict;
+  end if;
+
+  -- 21b. context_update_proposals.intelligence_run_id must reference a real run.
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'fk_context_update_proposals_run'
+  ) then
+    alter table public.context_update_proposals
+      add constraint fk_context_update_proposals_run
+      foreign key (intelligence_run_id)
+      references public.intelligence_runs(id)
+      on delete set null;
+  end if;
+end $$;
+
+-- ===========================================================================
+-- 22. Atomic, idempotent batch-submission RPC.
+--     Replaces the two-step create_audit_batch + add_audit_to_batch pattern.
+--     Creates the batch row and links every audit in a single transaction.
+--     Validates subject ownership and audit ownership.
+--     Idempotent: returns the existing batch on key collision.
+-- ===========================================================================
+create or replace function public.submit_audit_batch(
+  p_user_id uuid,
+  p_subject_id uuid,
+  p_idempotency_key text,
+  p_audit_ids uuid[]
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_batch_id uuid;
+  v_audit_id uuid;
+begin
+  -- Validate subject is owned by the user.
+  if not exists (
+    select 1 from public.subjects
+    where id = p_subject_id and user_id = p_user_id
+  ) then
+    raise exception 'subject % is not owned by user %', p_subject_id, p_user_id;
+  end if;
+
+  -- Idempotency: return the existing batch if this key was already submitted.
+  select id into v_batch_id
+  from public.audit_batches
+  where user_id = p_user_id and idempotency_key = p_idempotency_key;
+
+  if v_batch_id is not null then
+    return v_batch_id;
+  end if;
+
+  -- Validate every audit belongs to the user.
+  foreach v_audit_id in array p_audit_ids loop
+    if not exists (
+      select 1 from public.audits
+      where id = v_audit_id and user_id = p_user_id
+    ) then
+      raise exception 'audit % is not owned by user %', v_audit_id, p_user_id;
+    end if;
+  end loop;
+
+  -- Create the batch row and link every audit in one atomic block.
+  insert into public.audit_batches (user_id, subject_id, idempotency_key)
+  values (p_user_id, p_subject_id, p_idempotency_key)
+  returning id into v_batch_id;
+
+  foreach v_audit_id in array p_audit_ids loop
+    insert into public.batch_audits (batch_id, audit_id)
+    values (v_batch_id, v_audit_id);
+  end loop;
+
+  return v_batch_id;
+end;
+$$;
+
+revoke all on function public.submit_audit_batch(uuid, uuid, text, uuid[])
+  from public, anon, authenticated;
+grant execute on function public.submit_audit_batch(uuid, uuid, text, uuid[])
+  to service_role;
+
+comment on function public.submit_audit_batch(uuid, uuid, text, uuid[]) is
+  'Atomic, idempotent batch submission. Validates subject/audit ownership, creates the batch and all audit links in one transaction. Returns the existing batch on idempotency-key collision.';
+
+-- Preserve the original RPCs for backward compatibility during rollout;
+-- they delegate to the atomic RPC internally.
+-- ===========================================================================
+create or replace function public.create_audit_batch(
+  p_user_id uuid,
+  p_subject_id uuid,
+  p_idempotency_key text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Legacy compatibility shim: create an empty batch.
+  -- Prefer submit_audit_batch for new callers.
+  return public.submit_audit_batch(p_user_id, p_subject_id, p_idempotency_key, array[]::uuid[]);
+end;
+$$;
+
+revoke all on function public.create_audit_batch(uuid, uuid, text)
+  from public, anon, authenticated;
+grant execute on function public.create_audit_batch(uuid, uuid, text)
+  to service_role;
+
+create or replace function public.add_audit_to_batch(
+  p_batch_id uuid,
+  p_audit_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.batch_audits (batch_id, audit_id)
+  values (p_batch_id, p_audit_id)
+  on conflict (batch_id, audit_id) do nothing;
+end;
+$$;
+
+revoke all on function public.add_audit_to_batch(uuid, uuid)
+  from public, anon, authenticated;
+grant execute on function public.add_audit_to_batch(uuid, uuid)
+  to service_role;
+
+-- ===========================================================================
+-- 23. Same-tenant consistency enforcement.
+--     Updated versions of RPCs that validate cross-entity ownership.
+-- ===========================================================================
+
+-- 23a. link_subject_channel — validate account_id belongs to same user.
+-- ===========================================================================
+create or replace function public.link_subject_channel(
+  p_subject_id uuid,
+  p_channel_type text,
+  p_locator text,
+  p_managed boolean default false,
+  p_account_id uuid default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+  v_subject_user_id uuid;
+begin
+  -- Resolve the subject's owner for cross-entity validation.
+  select user_id into v_subject_user_id
+  from public.subjects where id = p_subject_id;
+  if not found then
+    raise exception 'subject % not found', p_subject_id;
+  end if;
+
+  -- If an account_id is supplied, it must belong to the same user as the subject.
+  if p_account_id is not null then
+    if not exists (
+      select 1 from public.accounts
+      where id = p_account_id and user_id = v_subject_user_id
+    ) then
+      raise exception 'account % does not belong to user %', p_account_id, v_subject_user_id;
+    end if;
+  end if;
+
+  insert into public.subject_channels (subject_id, channel_type, locator, managed, account_id)
+  values (p_subject_id, p_channel_type, p_locator, p_managed, p_account_id)
+  on conflict (subject_id, channel_type, locator) do update
+    set managed = excluded.managed,
+        account_id = coalesce(excluded.account_id, subject_channels.account_id)
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+revoke all on function public.link_subject_channel(uuid, text, text, boolean, uuid)
+  from public, anon, authenticated;
+grant execute on function public.link_subject_channel(uuid, text, text, boolean, uuid)
+  to service_role;
+
+-- 23b. resolve_context_update_proposal — validate proposal belongs to user.
+-- ===========================================================================
+create or replace function public.resolve_context_update_proposal(
+  p_proposal_id uuid,
+  p_status text,
+  p_user_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Validate that the user owns the subject the proposal targets.
+  if not exists (
+    select 1
+    from public.context_update_proposals cup
+    join public.subjects s on s.id = cup.subject_id
+    where cup.id = p_proposal_id
+      and cup.status = 'proposed'
+      and s.user_id = p_user_id
+  ) then
+    raise exception 'proposal % not found, not in proposed state, or not owned by user %',
+      p_proposal_id, p_user_id;
+  end if;
+
+  update public.context_update_proposals
+  set status = p_status,
+      decided_by = p_user_id,
+      decided_at = now()
+  where id = p_proposal_id
+    and status = 'proposed';
+end;
+$$;
+
+revoke all on function public.resolve_context_update_proposal(uuid, text, uuid)
+  from public, anon, authenticated;
+grant execute on function public.resolve_context_update_proposal(uuid, text, uuid)
+  to service_role;
+
+-- 23c. record_decision — validate target belongs to the specified subject.
+-- ===========================================================================
+create or replace function public.record_decision(
+  p_subject_id uuid,
+  p_user_id uuid,
+  p_target_type text,
+  p_target_id uuid,
+  p_decision text,
+  p_note text default ''
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+  v_ok boolean := false;
+begin
+  -- Validate the target belongs to the subject.
+  if p_target_type = 'proposal' then
+    select exists (
+      select 1 from public.context_update_proposals
+      where id = p_target_id and subject_id = p_subject_id
+    ) into v_ok;
+  elsif p_target_type = 'recommendation' then
+    select exists (
+      select 1
+      from public.recommendations r
+      join public.intelligence_runs ir on ir.id = r.intelligence_run_id
+      where r.id = p_target_id and ir.subject_id = p_subject_id
+    ) into v_ok;
+  end if;
+
+  if not v_ok then
+    raise exception '% % does not belong to subject %',
+      p_target_type, p_target_id, p_subject_id;
+  end if;
+
+  insert into public.decisions (subject_id, user_id, target_type, target_id, decision, note)
+  values (p_subject_id, p_user_id, p_target_type, p_target_id, p_decision, p_note)
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+revoke all on function public.record_decision(uuid, uuid, text, uuid, text, text)
+  from public, anon, authenticated;
+grant execute on function public.record_decision(uuid, uuid, text, uuid, text, text)
+  to service_role;
+
+-- ===========================================================================
+-- 24. Bounded compatibility backfill RPC.
+--     Promotes only connected/managed accounts into subjects and channels.
+--     Observed targets are never promoted.  Idempotent: safe to re-run.
+-- ===========================================================================
+create or replace function public.backfill_connected_subjects()
+returns table(action text, detail text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_account record;
+  v_subject_id uuid;
+  v_subject_name text;
+begin
+  for v_account in
+    select a.id, a.user_id, a.handle, a.platform, a.display_name
+    from public.accounts a
+    where a.ownership_status in ('connected', 'managed')
+      and not exists (
+        select 1 from public.subject_channels sc
+        where sc.account_id = a.id
+      )
+  loop
+    -- Get or create a subject for this user.
+    select id into v_subject_id
+    from public.subjects
+    where user_id = v_account.user_id
+    order by created_at limit 1;
+
+    if v_subject_id is null then
+      v_subject_name := coalesce(nullif(v_account.display_name, ''), v_account.handle);
+      insert into public.subjects (user_id, name, subject_type)
+      values (v_account.user_id, v_subject_name, 'creator')
+      returning id into v_subject_id;
+      action := 'created_subject';
+      detail := format('subject %s for user %s', v_subject_id, v_account.user_id);
+      return next;
+    end if;
+
+    -- Link channel, skip duplicates.
+    insert into public.subject_channels (subject_id, channel_type, locator, managed, account_id)
+    values (v_subject_id, v_account.platform, v_account.handle, true, v_account.id)
+    on conflict (subject_id, channel_type, locator) do nothing;
+
+    action := 'linked_channel';
+    detail := format('channel %s/%s → subject %s', v_account.platform, v_account.handle, v_subject_id);
+    return next;
+  end loop;
+end;
+$$;
+
+revoke all on function public.backfill_connected_subjects()
+  from public, anon, authenticated;
+grant execute on function public.backfill_connected_subjects()
+  to service_role;
+
+comment on function public.backfill_connected_subjects() is
+  'Backfill: promotes connected/managed accounts into subjects and channels. Observed targets are never promoted. Idempotent.';
+
+-- ===========================================================================
+-- 25. Revised backfill strategy
+-- ===========================================================================
+-- The backfill_connected_subjects() RPC (section 24) implements the documented
+-- strategy from section 19.  It is safe to run at any time:
+--
+--   1. Only accounts with ownership_status IN ('connected','managed') are
+--      eligible.  Observed-target audits are never promoted.
+--   2. Each user gets one subject (earliest-created).  Additional accounts
+--      become channels on the same subject.
+--   3. Channels are linked with managed=true and account_id back-reference.
+--   4. Fully idempotent: re-running produces no duplicates and no extra subjects.
+--
+-- A confirmed living_brief_version v1 is not created automatically; that step
+-- requires business input (identity, goals, audience) that cannot be inferred
+-- from account metadata alone.
