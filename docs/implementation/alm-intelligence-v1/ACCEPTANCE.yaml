@@ -1,0 +1,37 @@
+version: 1
+kernel:
+  - one subject can own Instagram and website channels without duplication
+  - observed targets remain outside the managed workspace
+  - Living Brief edits create immutable versions
+  - model proposals cannot overwrite confirmed context
+  - audit batches are atomic and idempotent
+  - intelligence runs pin all contract versions and stage state
+  - RLS and service-role boundaries pass tests
+runtime:
+  - website collector rejects private, loopback, link-local, credentialed, and oversized targets
+  - single-channel and multi-channel routing are deterministic
+  - no more than three channel calls run concurrently
+  - synthesis retry reuses completed channel outputs
+  - cache reuse requires every canonical key component
+  - all findings and score rationales reference valid evidence IDs
+  - DeepSeek V4 Flash is enforced with no tools or fallback
+  - latency, tokens, cost, stage timing, cache mode, and normalized failures are recorded
+  - existing report security and exact-section gates continue to pass
+product:
+  - previous subjects and channels appear in New Audit
+  - uncertain platform selection requires explicit confirmation
+  - users can add website and Instagram channels to one subject
+  - batch submission is atomic, idempotent, and duplicate-aware
+  - waiting exposes only customer-safe states and always stops on terminal status
+  - stale work becomes Delayed rather than spinning indefinitely
+  - Living Brief versions and proposals are visibly distinct
+  - evidence, score changes, and recommendation state are understandable
+  - desktop and 390px mobile browser tests pass
+release:
+  - full worker tests, static/security checks, web typecheck/lint/build, and browser suite pass once on integrated code
+  - linked migration validation and RLS probes pass
+  - preview is manually smoke-tested
+  - one worker canary remains healthy before second-worker rollout
+  - controlled sparse, typical, large, multi-channel, and cached cohorts report p50/p95/max latency, tokens, cost, failures, and quality
+  - rollback handles are recorded
+  - production promotion occurs only after explicit Ashesh approval

@@ -1,0 +1,49 @@
+version: 1
+shared_read_only:
+  - docs/implementation/alm-intelligence-v1/**
+  - AGENTS.md
+  - docs/agent-handoff.md
+  - docs/architecture-contract.md
+kernel:
+  owns:
+    - supabase/migrations/*alm_intelligence*
+    - supabase/tests/**
+    - docs/implementation/alm-intelligence-v1/checkpoints/kernel.json
+  may_read:
+    - web/src/lib/supabase/types.ts
+    - worker/auditlayer_worker/supabase_client.py
+  must_not_modify:
+    - worker/**
+    - web/**
+runtime:
+  owns:
+    - worker/auditlayer_worker/intelligence/**
+    - worker/tests/test_intelligence_*.py
+    - worker/tests/fixtures/intelligence/**
+    - docs/implementation/alm-intelligence-v1/checkpoints/runtime.json
+  integration_files_allowed:
+    - worker/auditlayer_worker/pipeline.py
+    - worker/auditlayer_worker/generation.py
+    - worker/auditlayer_worker/supabase_client.py
+    - worker/auditlayer_worker/config.py
+  must_not_modify:
+    - supabase/migrations/**
+    - web/**
+product:
+  owns:
+    - web/src/app/(app)/**
+    - web/src/components/intelligence/**
+    - web/src/lib/intelligence/**
+    - web/tests/intelligence/**
+    - docs/implementation/alm-intelligence-v1/checkpoints/product.json
+  must_not_modify:
+    - worker/**
+    - supabase/migrations/**
+release:
+  owns:
+    - integration conflict resolution
+    - web/src/lib/supabase/types.ts
+    - full verification logs
+    - preview and deployment artifacts
+    - docs/implementation/alm-intelligence-v1/checkpoints/release.json
+  production_rule: explicit Ashesh approval required before promotion

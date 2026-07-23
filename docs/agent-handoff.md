@@ -7,6 +7,12 @@ context.
 **Also read:** `AGENTS.md` (repo-wide rules), `docs/architecture-contract.md`
 (schema/enums — **code must match this**), `docs/deployment.md` (env + hosting).
 
+> **Active canonical mission:** The durable plan for the longitudinal-intelligence,
+> bounded-runtime, and customer UI/UX implementation is
+> [`docs/implementation/alm-intelligence-v1/README.md`](implementation/alm-intelligence-v1/README.md).
+> Future implementation sessions and Kanban workers must begin with that packet;
+> the runtime-hardening branch is only one prerequisite slice, not the complete mission.
+
 ---
 
 ## What exists today (June 2026)
