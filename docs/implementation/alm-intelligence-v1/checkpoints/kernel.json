@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "task_id": "t_7b61b86e",
-  "status": "complete",
-  "timestamp": "2026-07-23T03:30:00Z",
+  "status": "verified-clean-reset",
+  "timestamp": "2026-07-23T03:33:00Z",
   "changed_files": [
     "supabase/migrations/20260723020611_alm_intelligence_kernel.sql",
     "supabase/tests/alm_intelligence_kernel_test.sql"
