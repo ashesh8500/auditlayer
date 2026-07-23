@@ -22,6 +22,9 @@ class CacheKeyParts:
     model_config_hash: str
     output_schema_version: str
     projection_version: str
+    projected_context_hash: str
+    evidence_freshness: tuple[str, ...]
+    prior_state_hash: str
 
 
 def build_analysis_cache_key(parts: CacheKeyParts) -> str:
@@ -29,4 +32,5 @@ def build_analysis_cache_key(parts: CacheKeyParts) -> str:
 
     document = asdict(parts)
     document["evidence_hashes"] = sorted(set(parts.evidence_hashes))
+    document["evidence_freshness"] = sorted(parts.evidence_freshness)
     return hashlib.sha256(canonical_json(document).encode("utf-8")).hexdigest()

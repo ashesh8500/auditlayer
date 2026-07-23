@@ -1,7 +1,7 @@
 {
-  "version": 1,
+  "version": 2,
   "workstream": "runtime",
-  "status": "implemented",
+  "status": "implemented_amended_for_review",
   "branch": "feat/alm-intelligence-v1-runtime",
   "contract_commit": "81d0a6a",
   "scope": {
@@ -16,38 +16,46 @@
     "forbidden_paths_modified": []
   },
   "implemented": [
-    "canonical content-addressed evidence-v1 normalization with immutable observation time",
-    "allowlisted and byte-bounded subject-context projection",
-    "website collection with credential, scheme, port, DNS/IP, redirect, response-size, content-type and total-deadline controls",
+    "canonical content-addressed evidence-v1 normalization with runtime-boundary identity, nested-secret and expiry revalidation",
+    "allowlisted and byte-bounded subject-context projection whose canonical content hash participates in reuse identity",
+    "website collection with credential, scheme, port, DNS/IP, redirect, response-size, content-type and absolute wall-clock deadline controls",
     "DNS-rebinding-resistant HTTP and HTTPS connections pinned to pre-approved public addresses",
-    "DeepSeek V4 Flash-only stateless typed inference adapter with no tools, sessions, memory, delegation or fallback",
-    "single-channel one-call fast path and concurrent multi-channel fan-out capped at three",
-    "one bounded cross-channel synthesis and one formatting/schema correction boundary",
-    "exact channel and synthesis cache keys covering pinned context, evidence and model contract versions",
+    "DeepSeek V4 Flash-only stateless inference transport with explicit empty enabled_toolsets, no session header, no fallback, provider/model drift failure and at most 150-second timeout",
+    "single-channel one-call fast path and bounded runs of up to eight channels with provider concurrency capped at three",
+    "one bounded cross-channel synthesis and at most one formatting/schema correction across malformed JSON and typed validation paths",
+    "attempt telemetry counted before initial and correction calls, including failed attempts",
+    "exact channel and synthesis cache keys covering projected context, evidence identity/freshness, prior state and pinned model contract versions",
     "atomic private JSON stage/cache implementations plus injectable persistence protocols",
-    "successful sibling channel persistence, synthesis resume and validated cache reuse",
-    "evidence-reference validation, deterministic score inputs, unavailable-data null scores and rejected-recommendation suppression",
-    "allowlisted latency, token, cost, cache, call-count and normalized-failure telemetry"
+    "successful stage and cache loads revalidated before reuse, successful siblings persisted, and synthesis retry resumed",
+    "typed finding, recommendation, context-proposal and synthesis validation with evidence-reference integrity",
+    "additive deterministic synthesis assembly, stable recommendation fingerprints, rejected-advice suppression and typed proposal handoff",
+    "optional pinned prior scores/result, deterministic score deltas and named evidence, brief/lens, methodology or correction causes",
+    "allowlisted latency, token, cost, cache, attempted-call and normalized-failure telemetry"
   ],
   "acceptance": {
     "website_collector_rejects_unsafe_targets": true,
+    "website_collector_enforces_absolute_deadline": true,
     "single_and_multi_channel_routing_deterministic": true,
     "channel_concurrency_max_three": true,
+    "bounded_channel_count_max_eight": true,
     "synthesis_retry_reuses_channel_outputs": true,
     "cache_requires_every_canonical_component": true,
+    "stage_and_cache_reuse_revalidated": true,
     "findings_and_score_rationales_resolve_evidence_ids": true,
-    "deepseek_v4_flash_no_tools_no_fallback": true,
+    "deepseek_v4_flash_no_tools_no_sessions_no_fallback": true,
+    "one_correction_maximum": true,
+    "longitudinal_deltas_and_recommendation_suppression": true,
     "runtime_telemetry_is_allowlisted": true,
     "existing_report_security_and_section_gates_pass": true
   },
   "verification": [
     {
       "command": "cd worker && uv run pytest tests/test_intelligence_*.py -q",
-      "result": "25 passed in 1.29s"
+      "result": "33 passed in 0.36s"
     },
     {
       "command": "cd worker && uv run pytest -q",
-      "result": "285 passed, 12 skipped in 7.67s"
+      "result": "293 passed, 12 skipped in 4.57s"
     },
     {
       "command": "cd worker && git diff --check && uv run python -m compileall -q auditlayer_worker",
@@ -64,11 +72,12 @@
     "deployed": false,
     "pushed": false,
     "migration_or_web_changes": false,
-    "integration_note": "The new runtime is isolated behind model, stage-store, analysis-cache and telemetry protocols so the release workstream can bind kernel persistence without changing legacy report behavior.",
+    "integration_note": "The runtime remains isolated behind model, stage-store, analysis-cache and telemetry protocols. Release integration must bind the kernel's canonical Supabase persistence and telemetry implementations.",
     "risks": [
-      "The kernel branch must provide the canonical Supabase-backed StageStore/AnalysisCache/telemetry bindings before production routing switches to this runtime; the included JSON stores are private durable local implementations, not the canonical ledger.",
+      "The kernel branch must provide canonical Supabase-backed StageStore, AnalysisCache and telemetry bindings before production routing switches to this runtime; included JSON stores are private durable local implementations, not the canonical ledger.",
       "No live provider or public-network benchmark was run in this implementation worktree by contract; release must perform controlled benchmark and canary gates.",
-      "Website collection intentionally uses one pre-approved address and does not fail over across DNS answers, favoring SSRF determinism over availability."
+      "Website collection intentionally uses one pre-approved DNS address and does not fail over across answers, favoring SSRF determinism over availability.",
+      "The strict intelligence adapter owns a dedicated non-streaming Hermes wire path so empty toolsets and stateless headers are explicit without changing the legacy report client's behavior."
     ]
   }
 }

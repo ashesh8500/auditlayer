@@ -129,6 +129,9 @@ def test_cache_key_changes_when_any_canonical_component_changes() -> None:
         model_config_hash="c" * 64,
         output_schema_version="1.0",
         projection_version="1.0",
+        projected_context_hash="e" * 64,
+        evidence_freshness=("2026-07-23T01:02:03Z|",),
+        prior_state_hash="f" * 64,
     )
     expected = build_analysis_cache_key(base)
 
@@ -145,6 +148,9 @@ def test_cache_key_changes_when_any_canonical_component_changes() -> None:
         "model_config_hash": "d" * 64,
         "output_schema_version": "2.0",
         "projection_version": "2.0",
+        "projected_context_hash": "0" * 64,
+        "evidence_freshness": ("2026-07-23T01:02:03Z|2026-07-24T00:00:00Z",),
+        "prior_state_hash": "1" * 64,
     }.items():
         values = dict(base.__dict__)
         values[field] = replacement

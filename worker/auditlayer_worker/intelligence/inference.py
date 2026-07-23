@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Mapping
+from typing import Any, Mapping, Protocol
 
-from ..hermes import HermesClient
+import httpx
+
+from ..hermes import ChatResult, HermesClient
 from .evidence import canonical_json
 from .runtime import InferencePolicy, ModelResponse, RuntimePolicyError
 
@@ -30,12 +32,16 @@ Return exactly one strict JSON object matching the requested schema. Use only
 supplied evidence IDs."""
 
 
+class _ChatClient(Protocol):
+    def chat(self, **kwargs: Any) -> ChatResult: ...
+
+
 class HermesStructuredAnalysisModel:
     """Translate runtime projections into tool-free Hermes completion calls."""
 
     def __init__(
         self,
-        client: HermesClient,
+        client: HermesClient | _ChatClient,
         *,
         price_in_per_mtok: float = 0.14,
         price_out_per_mtok: float = 0.28,
@@ -66,18 +72,44 @@ class HermesStructuredAnalysisModel:
         max_tokens: int,
     ) -> ModelResponse:
         # The policy object validates provider/model/tool/state/fallback invariants.
-        result = self.client.chat(
-            messages=[
+        messages = [
                 {"role": "system", "content": system},
                 {"role": "user", "content": canonical_json(payload)},
-            ],
-            model=policy.model,
-            toolsets=(),
-            max_tokens=max_tokens,
-            temperature=policy.temperature,
-            stream=False,
-            session_id="",
-        )
+            ]
+        if isinstance(self.client, HermesClient):
+            wire_payload = {
+                "model": policy.model,
+                "messages": messages,
+                "temperature": policy.temperature,
+                "max_tokens": max_tokens,
+                "enabled_toolsets": [],
+            }
+            response = httpx.post(
+                f"{self.client.api_base}/chat/completions",
+                headers=self.client._headers(),
+                json=wire_payload,
+                timeout=min(policy.timeout_seconds, 150.0),
+            )
+            response.raise_for_status()
+            data = response.json()
+            content = data["choices"][0]["message"]["content"]
+            result = ChatResult(
+                content=content,
+                usage=self.client._usage_from_block(
+                    data.get("usage"), sum(len(row["content"]) for row in messages), content
+                ),
+                model=str(data.get("model") or ""),
+            )
+        else:
+            result = self.client.chat(
+                messages=messages,
+                model=policy.model,
+                toolsets=(),
+                max_tokens=max_tokens,
+                temperature=policy.temperature,
+                stream=False,
+                session_id="",
+            )
         if result.model != policy.model:
             raise RuntimePolicyError("inference provider model drift detected")
         cost = (
@@ -94,42 +126,22 @@ class HermesStructuredAnalysisModel:
     def analyze_channel(
         self, payload: dict[str, Any], *, policy: InferencePolicy
     ) -> ModelResponse:
-        try:
-            return self._call(
-                system=_ANALYSIS_SYSTEM,
-                payload=payload,
-                policy=policy,
-                max_tokens=policy.channel_max_tokens,
-            )
-        except RuntimePolicyError:
-            raise
-        except ValueError as exc:
-            return self.correct_channel(
-                payload,
-                invalid_payload={},
-                error=str(exc),
-                policy=policy,
-            )
+        return self._call(
+            system=_ANALYSIS_SYSTEM,
+            payload=payload,
+            policy=policy,
+            max_tokens=policy.channel_max_tokens,
+        )
 
     def synthesize(
         self, payload: dict[str, Any], *, policy: InferencePolicy
     ) -> ModelResponse:
-        try:
-            return self._call(
-                system=_SYNTHESIS_SYSTEM,
-                payload=payload,
-                policy=policy,
-                max_tokens=policy.synthesis_max_tokens,
-            )
-        except RuntimePolicyError:
-            raise
-        except ValueError as exc:
-            return self.correct_synthesis(
-                payload,
-                invalid_payload={},
-                error=str(exc),
-                policy=policy,
-            )
+        return self._call(
+            system=_SYNTHESIS_SYSTEM,
+            payload=payload,
+            policy=policy,
+            max_tokens=policy.synthesis_max_tokens,
+        )
 
     def correct_channel(
         self,

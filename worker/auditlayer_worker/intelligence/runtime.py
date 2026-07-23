@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 import hashlib
 import threading
 import time
@@ -12,9 +13,14 @@ from typing import Any, Callable, Mapping, Protocol
 from uuid import UUID
 
 from .cache import CacheKeyParts, build_analysis_cache_key
-from .evidence import EvidenceValidationError, canonical_json
+from .evidence import EvidenceValidationError, canonical_json, normalize_evidence
 from .projection import PROJECTION_VERSION, project_subject_context
-from .validation import CHANNEL_TYPES, validate_channel_analysis
+from .validation import (
+    CHANNEL_TYPES,
+    validate_channel_analysis,
+    validate_findings,
+    validate_recommendations,
+)
 
 
 class RuntimePolicyError(ValueError):
@@ -88,6 +94,9 @@ class IntelligenceRunRequest:
     output_schema_version: str = "1.0"
     score_dimensions: tuple[str, ...] = ()
     rejected_recommendation_ids: frozenset[str] = frozenset()
+    rejected_recommendation_fingerprints: frozenset[str] = frozenset()
+    prior_scores: Mapping[str, float | None] = field(default_factory=dict)
+    prior_result: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -176,8 +185,6 @@ class RuntimeTelemetry:
         self.tokens_in += max(0, int(response.tokens_in))
         self.tokens_out += max(0, int(response.tokens_out))
         self.cost_usd = round(self.cost_usd + max(0.0, float(response.cost_usd)), 6)
-        if response.correction_used:
-            self.correction_calls += 1
 
     def to_dict(self) -> dict[str, Any]:
         """Return an operational allowlist with no subject/customer payload fields."""
@@ -207,6 +214,7 @@ class RuntimeTelemetry:
 class CompletedIntelligenceRun:
     result: Mapping[str, Any]
     telemetry: RuntimeTelemetry
+    context_update_proposals: tuple[Mapping[str, Any], ...] = ()
 
 
 def _normalized_failure(exc: BaseException) -> str:
@@ -226,7 +234,12 @@ def _validate_uuid(value: str, field_name: str) -> None:
         raise RuntimePolicyError(f"{field_name} must be a UUID") from exc
 
 
-def _validate_channel_input(channel: ChannelInput, request: IntelligenceRunRequest) -> None:
+def _validate_channel_input(
+    channel: ChannelInput,
+    request: IntelligenceRunRequest,
+    *,
+    now: datetime,
+) -> ChannelInput:
     _validate_uuid(channel.channel_id, "channel_id")
     if channel.channel_type not in CHANNEL_TYPES:
         raise RuntimePolicyError(f"unsupported channel type: {channel.channel_type}")
@@ -235,25 +248,48 @@ def _validate_channel_input(channel: ChannelInput, request: IntelligenceRunReque
     if len(channel.evidence) > 100:
         raise RuntimePolicyError("a channel may contain at most 100 evidence items")
     seen: set[str] = set()
+    canonical_items: list[Mapping[str, Any]] = []
     for item in channel.evidence:
         evidence_id = item.get("evidence_id")
+        try:
+            normalized = normalize_evidence(
+                subject_id=str(item.get("subject_id")),
+                channel_id=str(item.get("channel_id")) if item.get("channel_id") else None,
+                source_type=str(item.get("source_type")),
+                source_url=item.get("source_url"),
+                observed_at=item.get("observed_at"),
+                expires_at=item.get("expires_at"),
+                confidence=str(item.get("confidence")),
+                coverage=item.get("coverage"),
+                payload=item.get("payload"),
+            )
+        except (EvidenceValidationError, TypeError) as exc:
+            raise RuntimePolicyError("channel contains invalid canonical evidence") from exc
         if (
-            item.get("schema_version") != "1.0"
-            or item.get("subject_id") != request.subject_id
-            or item.get("channel_id") != channel.channel_id
+            dict(item) != normalized
+            or normalized["subject_id"] != request.subject_id
+            or normalized["channel_id"] != channel.channel_id
             or not isinstance(evidence_id, str)
             or evidence_id in seen
-            or not isinstance(item.get("content_hash"), str)
-            or len(item["content_hash"]) < 16
         ):
-            raise RuntimePolicyError("channel evidence does not match the run contract")
+            raise RuntimePolicyError("channel contains invalid canonical evidence for the run contract")
+        expires_at = normalized.get("expires_at")
+        if expires_at is not None:
+            expiry = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+            if expiry <= now:
+                raise RuntimePolicyError("channel evidence is expired")
         seen.add(evidence_id)
+        canonical_items.append(normalized)
+    return ChannelInput(channel.channel_id, channel.channel_type, tuple(canonical_items))
 
 
 def _cache_parts(
     request: IntelligenceRunRequest,
     channel: ChannelInput,
     policy: InferencePolicy,
+    *,
+    projected_context_hash: str,
+    prior_state_hash: str,
 ) -> CacheKeyParts:
     return CacheKeyParts(
         subject_id=request.subject_id,
@@ -268,6 +304,11 @@ def _cache_parts(
         model_config_hash=request.model_config_hash,
         output_schema_version=request.output_schema_version,
         projection_version=PROJECTION_VERSION,
+        projected_context_hash=projected_context_hash,
+        evidence_freshness=tuple(
+            f"{item['observed_at']}|{item.get('expires_at') or ''}" for item in channel.evidence
+        ),
+        prior_state_hash=prior_state_hash,
     )
 
 
@@ -281,15 +322,26 @@ def _validate_synthesis(value: Mapping[str, Any], evidence_ids: set[str]) -> dic
         if not isinstance(rows, list):
             raise EvidenceValidationError(f"synthesis {key} must be an array")
         result[key] = deepcopy(rows)
-    for finding in result["findings"]:
-        if not isinstance(finding, Mapping):
-            raise EvidenceValidationError("synthesis findings must be objects")
-        refs = finding.get("evidence_ids")
-        if not isinstance(refs, list) or not refs or not all(isinstance(item, str) for item in refs):
-            raise EvidenceValidationError("synthesis findings require evidence IDs")
-        unknown = set(refs) - evidence_ids
-        if unknown:
-            raise EvidenceValidationError("synthesis references unknown evidence ID")
+    result["findings"] = validate_findings(
+        result["findings"], evidence_ids=evidence_ids, field="synthesis.findings"
+    )
+    result["recommendations"] = validate_recommendations(
+        result["recommendations"],
+        evidence_ids=evidence_ids,
+        field="synthesis.recommendations",
+    )
+    for index, explanation in enumerate(result["change_explanations"]):
+        if (
+            not isinstance(explanation, Mapping)
+            or explanation.get("cause")
+            not in {"evidence", "brief_lens", "methodology", "prior_correction"}
+            or not isinstance(explanation.get("detail"), str)
+        ):
+            raise EvidenceValidationError(
+                f"synthesis change_explanations[{index}] is invalid"
+            )
+    if not all(isinstance(item, str) for item in result["limitations"]):
+        raise EvidenceValidationError("synthesis limitations must be strings")
     return result
 
 
@@ -298,9 +350,12 @@ def _scores(
     *,
     dimensions: tuple[str, ...],
     methodology_version: str,
+    prior_scores: Mapping[str, float | None],
+    change_cause: str,
 ) -> list[dict[str, Any]]:
     scores: list[dict[str, Any]] = []
     for dimension in dimensions:
+        previous_value = prior_scores.get(dimension)
         impacts: list[float] = []
         refs: set[str] = set()
         for channel in channel_results:
@@ -318,9 +373,42 @@ def _scores(
                 "value": value,
                 "evidence_ids": sorted(refs),
                 "methodology_version": methodology_version,
+                "previous_value": previous_value,
+                "delta": (
+                    round(value - previous_value, 1)
+                    if value is not None
+                    and isinstance(previous_value, (int, float))
+                    and not isinstance(previous_value, bool)
+                    else None
+                ),
+                "change_cause": change_cause,
             }
         )
     return scores
+
+
+def _deduplicate(rows: list[dict[str, Any]], key: Callable[[dict[str, Any]], str]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in rows:
+        identity = key(row)
+        if identity not in seen:
+            seen.add(identity)
+            result.append(row)
+    return result
+
+
+def _change_cause(request: IntelligenceRunRequest) -> str:
+    prior = request.prior_result
+    if not isinstance(prior, Mapping):
+        return "evidence"
+    if prior.get("prior_correction") is True:
+        return "prior_correction"
+    if prior.get("methodology_version") not in {None, request.methodology_version}:
+        return "methodology"
+    if prior.get("brief_version") not in {None, request.brief_version}:
+        return "brief_lens"
+    return "evidence"
 
 
 class BoundedIntelligenceRuntime:
@@ -336,6 +424,7 @@ class BoundedIntelligenceRuntime:
         max_channel_workers: int = 3,
         telemetry_sink: Callable[[Mapping[str, Any]], None] | None = None,
         clock: Callable[[], float] = time.monotonic,
+        now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     ) -> None:
         if max_channel_workers < 1 or max_channel_workers > 3:
             raise RuntimePolicyError("channel concurrency must be between one and three")
@@ -346,6 +435,7 @@ class BoundedIntelligenceRuntime:
         self.max_channel_workers = max_channel_workers
         self.telemetry_sink = telemetry_sink
         self.clock = clock
+        self.now = now
 
     def run(self, request: IntelligenceRunRequest) -> CompletedIntelligenceRun:
         telemetry = RuntimeTelemetry(model=self.policy.model, provider=self.policy.provider)
@@ -378,15 +468,20 @@ class BoundedIntelligenceRuntime:
         _validate_uuid(request.evidence_snapshot_id, "evidence_snapshot_id")
         if request.brief_version < 1:
             raise RuntimePolicyError("brief_version must be positive")
-        if not request.channels or len(request.channels) > 3:
-            raise RuntimePolicyError("a run supports at most three channels and at least one")
+        if not request.channels or len(request.channels) > 8:
+            raise RuntimePolicyError("a run supports at most eight channels and at least one")
         if request.output_schema_version != "1.0":
             raise RuntimePolicyError("unsupported intelligence result schema version")
         channel_ids = [channel.channel_id for channel in request.channels]
         if len(set(channel_ids)) != len(channel_ids):
             raise RuntimePolicyError("channel IDs must be unique")
-        for channel in request.channels:
-            _validate_channel_input(channel, request)
+        current_time = self.now()
+        if current_time.tzinfo is None:
+            raise RuntimePolicyError("runtime current time must include a timezone")
+        channels = tuple(
+            _validate_channel_input(channel, request, now=current_time)
+            for channel in request.channels
+        )
 
         started = self.clock()
         projection = project_subject_context(
@@ -408,18 +503,42 @@ class BoundedIntelligenceRuntime:
         if projected_channels != expected_channels:
             raise RuntimePolicyError("subject context channels do not match run channels")
         telemetry.stage_timings["projection"] = self.clock() - started
+        projected_context_hash = hashlib.sha256(
+            canonical_json(projection).encode("utf-8")
+        ).hexdigest()
+        prior_state = {
+            "prior_scores": request.prior_scores,
+            "prior_result": request.prior_result,
+        }
+        prior_state_hash = hashlib.sha256(
+            canonical_json(prior_state).encode("utf-8")
+        ).hexdigest()
 
         loaded_from_stage = False
         loaded_from_cache = False
         results: dict[str, Mapping[str, Any]] = {}
         channel_cache_keys: dict[str, str] = {}
         pending: list[tuple[ChannelInput, str]] = []
-        for channel in request.channels:
-            cache_key = build_analysis_cache_key(_cache_parts(request, channel, self.policy))
+        for channel in channels:
+            cache_key = build_analysis_cache_key(
+                _cache_parts(
+                    request,
+                    channel,
+                    self.policy,
+                    projected_context_hash=projected_context_hash,
+                    prior_state_hash=prior_state_hash,
+                )
+            )
             channel_cache_keys[channel.channel_id] = cache_key
             stage = self.stage_store.load_channel(request.run_id, channel.channel_id)
             if stage is not None and stage.cache_key == cache_key:
-                results[channel.channel_id] = stage.analysis
+                results[channel.channel_id] = validate_channel_analysis(
+                    stage.analysis,
+                    evidence_ids={str(item["evidence_id"]) for item in channel.evidence},
+                    expected_channel_type=channel.channel_type,
+                    subject_id=request.subject_id,
+                    brief_version=request.brief_version,
+                )
                 loaded_from_stage = True
                 continue
             cached = self.analysis_cache.get(cache_key)
@@ -428,6 +547,8 @@ class BoundedIntelligenceRuntime:
                     cached,
                     evidence_ids={str(item["evidence_id"]) for item in channel.evidence},
                     expected_channel_type=channel.channel_type,
+                    subject_id=request.subject_id,
+                    brief_version=request.brief_version,
                 )
                 results[channel.channel_id] = validated
                 self.stage_store.save_channel(
@@ -457,6 +578,7 @@ class BoundedIntelligenceRuntime:
                         "subject_context": projection,
                         "methodology_version": request.methodology_version,
                         "expertise_pack_version": request.expertise_pack_version,
+                        "prior_state": deepcopy(prior_state),
                         "channel": {
                             "channel_id": channel.channel_id,
                             "channel_type": channel.channel_type,
@@ -468,29 +590,35 @@ class BoundedIntelligenceRuntime:
                     futures[pool.submit(
                         self.model.analyze_channel, payload, policy=self.policy
                     )] = (channel, cache_key, payload)
+                    telemetry.channel_calls += 1
                 failures: list[Exception] = []
                 for future in as_completed(futures):
                     channel, cache_key, original_payload = futures[future]
                     try:
-                        response = future.result()
-                        telemetry.channel_calls += 1
-                        telemetry.add(response)
                         evidence_ids = {
                             str(item["evidence_id"]) for item in channel.evidence
                         }
+                        response: ModelResponse | None = None
                         try:
+                            response = future.result()
+                            telemetry.add(response)
                             validated = validate_channel_analysis(
                                 response.payload,
                                 evidence_ids=evidence_ids,
                                 expected_channel_type=channel.channel_type,
+                                subject_id=request.subject_id,
+                                brief_version=request.brief_version,
                             )
-                        except EvidenceValidationError as exc:
+                        except (EvidenceValidationError, ValueError) as exc:
+                            if isinstance(exc, RuntimePolicyError):
+                                raise
                             correct = getattr(self.model, "correct_channel", None)
                             if not callable(correct):
                                 raise
+                            telemetry.correction_calls += 1
                             correction = correct(
                                 original_payload,
-                                invalid_payload=response.payload,
+                                invalid_payload=response.payload if response is not None else {},
                                 error=str(exc),
                                 policy=self.policy,
                             )
@@ -499,6 +627,8 @@ class BoundedIntelligenceRuntime:
                                 correction.payload,
                                 evidence_ids=evidence_ids,
                                 expected_channel_type=channel.channel_type,
+                                subject_id=request.subject_id,
+                                brief_version=request.brief_version,
                             )
                         stage = ChannelStage(cache_key=cache_key, analysis=validated)
                         # Persist every independently successful channel before
@@ -514,10 +644,10 @@ class BoundedIntelligenceRuntime:
                     raise failures[0]
         telemetry.stage_timings["channel_analysis"] = self.clock() - analysis_started
 
-        ordered = [results[channel.channel_id] for channel in request.channels]
+        ordered = [results[channel.channel_id] for channel in channels]
         all_evidence_ids = {
             str(item["evidence_id"])
-            for channel in request.channels
+            for channel in channels
             for item in channel.evidence
         }
         synthesis: Mapping[str, Any] | None = None
@@ -528,7 +658,7 @@ class BoundedIntelligenceRuntime:
                     {
                         "channel_cache_keys": [
                             channel_cache_keys[channel.channel_id]
-                            for channel in request.channels
+                            for channel in channels
                         ],
                         "output_schema_version": request.output_schema_version,
                         "model": self.policy.model,
@@ -550,20 +680,24 @@ class BoundedIntelligenceRuntime:
                     "channel_results": deepcopy(ordered),
                     "instruction": "Synthesize cross-channel deltas only; do not rescore facts.",
                 }
-                response = self.model.synthesize(
-                    synthesis_payload, policy=self.policy
-                )
                 telemetry.synthesis_calls += 1
-                telemetry.add(response)
+                response: ModelResponse | None = None
                 try:
+                    response = self.model.synthesize(
+                        synthesis_payload, policy=self.policy
+                    )
+                    telemetry.add(response)
                     synthesis = _validate_synthesis(response.payload, all_evidence_ids)
-                except EvidenceValidationError as exc:
+                except (EvidenceValidationError, ValueError) as exc:
+                    if isinstance(exc, RuntimePolicyError):
+                        raise
                     correct = getattr(self.model, "correct_synthesis", None)
                     if not callable(correct):
                         raise
+                    telemetry.correction_calls += 1
                     correction = correct(
                         synthesis_payload,
-                        invalid_payload=response.payload,
+                        invalid_payload=response.payload if response is not None else {},
                         error=str(exc),
                         policy=self.policy,
                     )
@@ -590,22 +724,48 @@ class BoundedIntelligenceRuntime:
             for channel in ordered
             for recommendation in channel.get("recommendations", [])
         ]
-        findings = (
-            deepcopy(synthesis["findings"])
-            if synthesis is not None and synthesis.get("findings")
-            else channel_findings
+        findings = _deduplicate(
+            channel_findings
+            + (deepcopy(synthesis["findings"]) if synthesis is not None else []),
+            lambda item: str(item["id"]),
         )
-        recommendations = (
-            deepcopy(synthesis["recommendations"])
-            if synthesis is not None and synthesis.get("recommendations")
-            else channel_recommendations
+        evidence_hashes = {
+            str(item["evidence_id"]): str(item["content_hash"])
+            for channel in channels
+            for item in channel.evidence
+        }
+        recommendations = channel_recommendations + (
+            deepcopy(synthesis["recommendations"]) if synthesis is not None else []
+        )
+        for recommendation in recommendations:
+            recommendation["fingerprint"] = hashlib.sha256(
+                canonical_json(
+                    {
+                        "action": " ".join(str(recommendation["action"]).lower().split()),
+                        "evidence_hashes": sorted(
+                            evidence_hashes[reference]
+                            for reference in recommendation["evidence_ids"]
+                        ),
+                    }
+                ).encode("utf-8")
+            ).hexdigest()
+        recommendations = _deduplicate(
+            recommendations, lambda item: str(item["fingerprint"])
         )
         recommendations = [
             item
             for item in recommendations
-            if not isinstance(item, Mapping)
-            or item.get("id") not in request.rejected_recommendation_ids
+            if item.get("id") not in request.rejected_recommendation_ids
+            and item["fingerprint"] not in request.rejected_recommendation_fingerprints
         ]
+        context_update_proposals = _deduplicate(
+            [
+                deepcopy(proposal)
+                for channel in ordered
+                for proposal in channel.get("context_update_proposals", [])
+            ],
+            lambda item: str(item["proposal_id"]),
+        )
         limitations = sorted(
             {
                 str(item)
@@ -632,6 +792,8 @@ class BoundedIntelligenceRuntime:
                 ordered,
                 dimensions=request.score_dimensions,
                 methodology_version=request.methodology_version,
+                prior_scores=request.prior_scores,
+                change_cause=_change_cause(request),
             ),
             "findings": findings,
             "recommendations": recommendations,
@@ -641,4 +803,8 @@ class BoundedIntelligenceRuntime:
         telemetry.stage_timings["assembly"] = self.clock() - assembly_started
         if self.telemetry_sink is not None:
             self.telemetry_sink(telemetry.to_dict())
-        return CompletedIntelligenceRun(result=result, telemetry=telemetry)
+        return CompletedIntelligenceRun(
+            result=result,
+            telemetry=telemetry,
+            context_update_proposals=tuple(context_update_proposals),
+        )

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import replace
+from datetime import datetime, timezone
 import threading
 import time
 from typing import Any
@@ -19,6 +20,7 @@ from auditlayer_worker.intelligence import (
     MemoryStageStore,
     ModelResponse,
     RuntimePolicyError,
+    normalize_evidence,
 )
 
 
@@ -33,20 +35,15 @@ CHANNEL_IDS = (
 
 
 def _evidence(channel_id: str, suffix: str) -> dict[str, Any]:
-    return {
-        "schema_version": "1.0",
-        "evidence_id": f"ev-{suffix}",
-        "subject_id": SUBJECT_ID,
-        "channel_id": channel_id,
-        "source_type": "official_web",
-        "source_url": f"https://example.com/{suffix}",
-        "observed_at": "2026-07-23T01:02:03Z",
-        "expires_at": None,
-        "content_hash": suffix * 64,
-        "confidence": "high",
-        "coverage": {},
-        "payload": {"text": suffix},
-    }
+    return normalize_evidence(
+        subject_id=SUBJECT_ID,
+        channel_id=channel_id,
+        source_type="official_web",
+        source_url=f"https://example.com/{suffix}",
+        observed_at="2026-07-23T01:02:03Z",
+        confidence="high",
+        payload={"text": suffix},
+    )
 
 
 def _request(run_id: str, count: int = 1, *, prompt_version: str = "1.0") -> IntelligenceRunRequest:
@@ -111,8 +108,12 @@ def _analysis(channel_type: str, evidence_id: str) -> dict[str, Any]:
             }
         ],
         "recommendations": [
-            {"id": "old-rec", "action": "Do not repeat"},
-            {"id": f"rec-{channel_type}", "action": "Run a bounded experiment"},
+            {"id": "old-rec", "action": "Do not repeat", "evidence_ids": [evidence_id]},
+            {
+                "id": f"rec-{channel_type}",
+                "action": "Run a bounded experiment",
+                "evidence_ids": [evidence_id],
+            },
         ],
         "context_update_proposals": [],
         "limitations": ["Data needed: private analytics"],
@@ -172,36 +173,40 @@ def test_single_channel_uses_one_call_and_skips_synthesis() -> None:
     assert model.synthesis_calls == 0
     assert completed.telemetry.channel_calls == 1
     assert completed.telemetry.synthesis_calls == 0
+    evidence_id = _request("unused").channels[0].evidence[0]["evidence_id"]
     assert completed.result["scores"] == [
         {
             "dimension": "profile_clarity",
             "value": 70.0,
-            "evidence_ids": ["ev-a"],
+            "evidence_ids": [evidence_id],
             "methodology_version": "moat-1",
+            "previous_value": None,
+            "delta": None,
+            "change_cause": "evidence",
         },
         {
             "dimension": "audience_fit",
             "value": None,
             "evidence_ids": [],
             "methodology_version": "moat-1",
+            "previous_value": None,
+            "delta": None,
+            "change_cause": "evidence",
         },
     ]
     assert {item["id"] for item in completed.result["recommendations"]} == {"rec-instagram"}
 
 
-def test_multi_channel_fanout_is_concurrent_and_capped_at_three() -> None:
+def test_multi_channel_fanout_batches_more_than_three_and_caps_concurrency() -> None:
     model = RecordingModel(pause=0.03)
     runtime = BoundedIntelligenceRuntime(model=model, max_channel_workers=3)
 
-    completed = runtime.run(_request("run-multi", 3))
+    completed = runtime.run(_request("run-multi", 4))
 
-    assert sum(model.channel_calls.values()) == 3
+    assert sum(model.channel_calls.values()) == 4
     assert model.max_active == 3
     assert model.synthesis_calls == 1
-    assert completed.telemetry.channel_calls == 3
-
-    with pytest.raises(RuntimePolicyError, match="at most three channels"):
-        runtime.run(_request("run-too-many", 4))
+    assert completed.telemetry.channel_calls == 4
 
 
 def test_synthesis_retry_reuses_completed_channel_stages() -> None:
@@ -274,6 +279,49 @@ def test_exact_cache_reuse_requires_all_key_components() -> None:
     assert sum(model.channel_calls.values()) == 2
 
 
+def test_runtime_revalidates_evidence_identity_secrets_and_expiry_before_calls() -> None:
+    base = _request("run-evidence-boundary")
+    model = RecordingModel()
+    runtime = BoundedIntelligenceRuntime(
+        model=model,
+        now=lambda: datetime(2026, 7, 23, 2, tzinfo=timezone.utc),
+    )
+    tampered = dict(base.channels[0].evidence[0])
+    tampered["content_hash"] = "0" * 64
+    with pytest.raises(RuntimePolicyError, match="canonical evidence"):
+        runtime.run(replace(base, channels=(replace(base.channels[0], evidence=(tampered,)),)))
+
+    secret = dict(base.channels[0].evidence[0])
+    secret["payload"] = {"nested": {"api_key": "secret-value"}}
+    with pytest.raises(RuntimePolicyError, match="canonical evidence"):
+        runtime.run(replace(base, channels=(replace(base.channels[0], evidence=(secret,)),)))
+
+    expired = normalize_evidence(
+        subject_id=SUBJECT_ID,
+        channel_id=CHANNEL_IDS[0],
+        source_type="official_web",
+        observed_at="2026-07-23T01:00:00Z",
+        expires_at="2026-07-23T01:30:00Z",
+        confidence="high",
+        payload={"text": "expired"},
+    )
+    with pytest.raises(RuntimePolicyError, match="expired"):
+        runtime.run(replace(base, channels=(replace(base.channels[0], evidence=(expired,)),)))
+    assert not model.channel_calls
+
+
+def test_projection_content_is_part_of_cache_identity() -> None:
+    cache = MemoryAnalysisCache()
+    model = RecordingModel()
+    runtime = BoundedIntelligenceRuntime(model=model, analysis_cache=cache)
+    base = _request("projection-key")
+    runtime.run(base)
+    changed_context = dict(base.subject_context)
+    changed_context["goals"] = ["retention"]
+    runtime.run(replace(base, run_id="projection-key-2", subject_context=changed_context))
+    assert sum(model.channel_calls.values()) == 2
+
+
 def test_synthesis_checkpoint_is_invalidated_when_pinned_inputs_change() -> None:
     model = RecordingModel()
     stages = MemoryStageStore()
@@ -296,6 +344,21 @@ def test_invalid_model_evidence_reference_fails_before_stage_persistence() -> No
     with pytest.raises(ValueError, match="unknown evidence ID"):
         runtime.run(_request("run-invalid"))
     assert stages.load_channel("run-invalid", CHANNEL_IDS[0]) is None
+
+
+def test_tampered_successful_stage_is_revalidated_and_rejected() -> None:
+    model = RecordingModel()
+    stages = MemoryStageStore()
+    runtime = BoundedIntelligenceRuntime(model=model, stage_store=stages)
+    request = _request("tampered-stage")
+    runtime.run(request)
+    saved = stages.load_channel(request.run_id, CHANNEL_IDS[0])
+    assert saved is not None
+    bad = dict(saved.analysis)
+    bad["findings"] = [{**bad["findings"][0], "evidence_ids": ["missing"]}]
+    stages.save_channel(request.run_id, CHANNEL_IDS[0], replace(saved, analysis=bad))
+    with pytest.raises(ValueError, match="unknown evidence ID"):
+        runtime.run(request)
 
 
 def test_inference_policy_is_deepseek_stateless_tool_free_and_has_no_fallback() -> None:
@@ -367,6 +430,96 @@ def test_failure_telemetry_uses_normalized_codes_without_exception_text() -> Non
     assert "channel_analysis" in recorded[0]["stage_timings"]
     assert "Ada" not in repr(recorded[0])
     assert "ev-a" not in repr(recorded[0])
+
+
+def test_one_correction_maximum_and_attempts_are_counted_on_failure() -> None:
+    class MalformedThenInvalid(RecordingModel):
+        def analyze_channel(self, payload, *, policy):
+            raise ValueError("not json")
+
+        def correct_channel(self, payload, *, invalid_payload, error, policy):
+            return ModelResponse({"schema_version": "1.0"}, correction_used=True)
+
+    recorded: list[dict[str, Any]] = []
+    runtime = BoundedIntelligenceRuntime(
+        model=MalformedThenInvalid(), telemetry_sink=recorded.append
+    )
+    with pytest.raises(ValueError):
+        runtime.run(_request("one-correction"))
+    assert recorded[0]["channel_calls"] == 1
+    assert recorded[0]["correction_calls"] == 1
+
+
+def test_longitudinal_scores_and_recommendation_fingerprints_are_deterministic() -> None:
+    request = replace(
+        _request("longitudinal"),
+        prior_scores={"profile_clarity": 60.0},
+        prior_result={"brief_version": 1, "methodology_version": "moat-1"},
+    )
+    first = BoundedIntelligenceRuntime(model=RecordingModel()).run(request)
+    score = first.result["scores"][0]
+    assert score["previous_value"] == 60.0
+    assert score["delta"] == 10.0
+    assert score["change_cause"] == "brief_lens"
+    recommendation = first.result["recommendations"][0]
+    assert recommendation["fingerprint"]
+
+    rerun = BoundedIntelligenceRuntime(model=RecordingModel()).run(
+        replace(
+            request,
+            run_id="longitudinal-2",
+            rejected_recommendation_fingerprints=frozenset({recommendation["fingerprint"]}),
+        )
+    )
+    assert rerun.result["recommendations"] == []
+
+
+def test_synthesis_is_additive_and_context_proposals_are_handed_off() -> None:
+    proposal_id = "99999999-9999-4999-8999-999999999999"
+
+    class AdditiveModel(RecordingModel):
+        def analyze_channel(self, payload, *, policy):
+            response = super().analyze_channel(payload, policy=policy)
+            value = dict(response.payload)
+            value["context_update_proposals"] = [{
+                "schema_version": "1.0",
+                "proposal_id": proposal_id,
+                "subject_id": SUBJECT_ID,
+                "base_version": 2,
+                "path": "/goals/0",
+                "operation": "replace",
+                "proposed_value": "retention",
+                "evidence_ids": [payload["channel"]["evidence"][0]["evidence_id"]],
+                "reason": "Observed positioning",
+                "status": "proposed",
+            }]
+            return replace(response, payload=value)
+
+        def synthesize(self, payload, *, policy):
+            evidence_id = payload["channel_results"][0]["findings"][0]["evidence_ids"][0]
+            return ModelResponse({
+                "findings": [{
+                    "id": "cross-finding",
+                    "claim": "Cross-channel consistency",
+                    "evidence_ids": [evidence_id],
+                    "confidence": "high",
+                    "dimension_impacts": {},
+                }],
+                "recommendations": [{
+                    "id": "cross-rec",
+                    "action": "Align channels",
+                    "evidence_ids": [evidence_id],
+                }],
+                "change_explanations": [],
+                "limitations": [],
+            })
+
+    completed = BoundedIntelligenceRuntime(model=AdditiveModel()).run(
+        _request("additive", 2)
+    )
+    assert len(completed.result["findings"]) == 3
+    assert len(completed.result["recommendations"]) == 3
+    assert len(completed.context_update_proposals) == 1
 
 
 def test_json_stage_and_analysis_stores_survive_process_recreation(tmp_path) -> None:

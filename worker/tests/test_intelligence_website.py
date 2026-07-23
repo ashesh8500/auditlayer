@@ -131,3 +131,20 @@ def test_website_collector_returns_bounded_normalized_evidence_input() -> None:
         "text": "<html> <body>Hello world</body",
         "truncated": True,
     }
+
+
+def test_website_collector_rejects_a_slow_drip_that_finishes_after_deadline() -> None:
+    now = [0.0]
+
+    def slow_fetch(url: str, **_kwargs) -> WebsiteResponse:
+        now[0] = 1.1
+        return WebsiteResponse(200, {"content-type": "text/html"}, b"ok", url)
+
+    collector = WebsiteCollector(
+        fetch=slow_fetch,
+        resolver=_resolver,
+        deadline_seconds=1.0,
+        clock=lambda: now[0],
+    )
+    with pytest.raises(WebsiteCollectionError, match="deadline"):
+        collector.collect("https://example.com")

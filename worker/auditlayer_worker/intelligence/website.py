@@ -72,6 +72,15 @@ def fetch_website_response(
 ) -> WebsiteResponse:
     """Fetch through a pre-approved IP, eliminating DNS-rebinding TOCTOU."""
 
+    started = time.monotonic()
+    deadline = started + timeout_seconds
+
+    def remaining() -> float:
+        value = deadline - time.monotonic()
+        if value <= 0:
+            raise WebsiteCollectionError("website collection deadline exceeded")
+        return value
+
     if not approved_addresses:
         raise WebsiteCollectionError("blocked target: no approved address")
     parsed = urlsplit(url)
@@ -82,13 +91,13 @@ def fetch_website_response(
     class PinnedHTTPConnection(http.client.HTTPConnection):
         def connect(self) -> None:
             self.sock = socket.create_connection(
-                (address, port), self.timeout, self.source_address
+                (address, port), remaining(), getattr(self, "source_address", None)
             )
 
     class PinnedHTTPSConnection(http.client.HTTPSConnection):
         def connect(self) -> None:
             raw = socket.create_connection(
-                (address, port), self.timeout, self.source_address
+                (address, port), remaining(), getattr(self, "source_address", None)
             )
             self.sock = self._context.wrap_socket(raw, server_hostname=hostname)
 
@@ -104,6 +113,7 @@ def fetch_website_response(
         connection = PinnedHTTPConnection(hostname, port, timeout=timeout_seconds)
     path = urlunsplit(("", "", parsed.path or "/", parsed.query, ""))
     try:
+        connection.timeout = remaining()
         connection.request(
             "GET",
             path,
@@ -114,6 +124,8 @@ def fetch_website_response(
                 "Connection": "close",
             },
         )
+        if connection.sock is not None:
+            connection.sock.settimeout(remaining())
         response = connection.getresponse()
         headers = {key.lower(): value for key, value in response.getheaders()}
         declared = headers.get("content-length")
@@ -125,6 +137,8 @@ def fetch_website_response(
                 pass
         body = bytearray()
         while True:
+            if connection.sock is not None:
+                connection.sock.settimeout(remaining())
             chunk = response.read(min(64 * 1024, max_bytes + 1 - len(body)))
             if not chunk:
                 break
@@ -201,6 +215,8 @@ class WebsiteCollector:
                 max_bytes=self.max_bytes,
                 approved_addresses=approved_addresses,
             )
+            if self._clock() - started >= self.deadline_seconds:
+                raise WebsiteCollectionError("website collection deadline exceeded")
             if len(response.body) > self.max_bytes:
                 raise WebsiteCollectionError("response exceeds size limit")
             if response.status_code in {301, 302, 303, 307, 308}:
