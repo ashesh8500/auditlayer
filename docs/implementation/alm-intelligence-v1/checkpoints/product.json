@@ -1,0 +1,60 @@
+{
+  "created_at": "2026-07-23T02:30:00Z",
+  "commit": null,
+  "worker": "alm-product-eng",
+  "branch": "feat/alm-intelligence-v1-product",
+  "verification": {
+    "typecheck": "pass",
+    "lint": "pass",
+    "tests": {
+      "files": 2,
+      "passed": 33,
+      "failed": 0
+    }
+  },
+  "deliverables": {
+    "lib": [
+      "web/src/lib/intelligence/types.ts",
+      "web/src/lib/intelligence/fixtures.ts",
+      "web/src/lib/intelligence/client-status.ts",
+      "web/src/lib/intelligence/batch.ts",
+      "web/src/lib/intelligence/index.ts"
+    ],
+    "components": [
+      "web/src/components/intelligence/customer-wait-state.tsx",
+      "web/src/components/intelligence/intelligence-wizard.tsx",
+      "web/src/components/intelligence/subject-home.tsx"
+    ],
+    "routes_updated": [
+      "web/src/app/(app)/audits/new/page.tsx",
+      "web/src/app/(app)/audits/[id]/page.tsx"
+    ],
+    "tests": [
+      "web/src/lib/intelligence/client-status.test.ts",
+      "web/src/lib/intelligence/batch.test.ts"
+    ]
+  },
+  "decisions": [
+    "Used fixture data as compatibility adapters until kernel types (subject/brief/evidence) are available",
+    "Customer-safe waiting replaces 11-phase developer timeline with 3 customer phases (Preparing/Analyzing/Finalizing) plus Delayed",
+    "New audit wizard uses 4-step flow: Subject → Channels → Lens/Brief → Batch Review & Submit",
+    "Observed targets explicitly shown as not-managed-workspace in channel selection",
+    "Living Brief versions and model proposals are visibly distinct",
+    "Evidence IDs and score change reasons are surfaced in the subject home",
+    "Recommendation states (proposed/accepted/rejected/etc.) shown in recommendation ledger",
+    "All Date.now calls moved out of render to avoid impure function lint errors",
+    "audit/[id] page no longer queries audit_events for customer view — CustomerWaitState polls internally"
+  ],
+  "pending_integration": [
+    "Real subject/channel/evidence queries (fixture data is placeholder)",
+    "Server-side batch submission RPC (simulated in wizard)",
+    "Living Brief edit UI (version display only)",
+    "Connected Instagram channel live data flow",
+    "390px mobile browser smoke test (requires running Next.js dev server)"
+  ],
+  "risks": [
+    "CustomerWaitState polls /api/audits/[id]/live which still returns full audit_events — needs server-side allowlisted projection for full customer safety",
+    "Subject/channel data uses fixtures — real flow requires kernel worker to populate subjects/channels tables",
+    "Wizard submission is simulated — needs real submit_batch RPC from kernel"
+  ]
+}
