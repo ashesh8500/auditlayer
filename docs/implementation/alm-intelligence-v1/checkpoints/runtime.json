@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "workstream": "runtime",
   "status": "implemented_amended_for_review",
   "branch": "feat/alm-intelligence-v1-runtime",
@@ -10,7 +10,8 @@
       "worker/tests/test_intelligence_contracts.py",
       "worker/tests/test_intelligence_inference.py",
       "worker/tests/test_intelligence_runtime.py",
-      "worker/tests/test_intelligence_website.py"
+      "worker/tests/test_intelligence_website.py",
+      "worker/tests/test_intelligence_adversarial.py"
     ],
     "integration_files_modified": [],
     "forbidden_paths_modified": []
@@ -50,15 +51,15 @@
   },
   "verification": [
     {
-      "command": "cd worker && uv run pytest tests/test_intelligence_contracts.py tests/test_intelligence_inference.py tests/test_intelligence_runtime.py tests/test_intelligence_website.py -q",
-      "result": "37 passed in 0.50s"
+      "command": "cd worker && uv run pytest tests/test_intelligence_contracts.py tests/test_intelligence_inference.py tests/test_intelligence_runtime.py tests/test_intelligence_website.py tests/test_intelligence_adversarial.py -q",
+      "result": "101 passed in 0.58s"
     },
     {
-      "command": "cd worker && uv run pytest --ignore=tests/test_intelligence_adversarial.py -q",
-      "result": "297 passed, 12 skipped in 5.76s; ignored the concurrent QA child's uncommitted adversarial suite pending integration"
+      "command": "cd worker && uv run pytest -q",
+      "result": "361 passed, 12 skipped in 4.34s"
     },
     {
-      "command": "cd worker && uvx ruff check auditlayer_worker/intelligence tests/test_intelligence_contracts.py tests/test_intelligence_inference.py tests/test_intelligence_runtime.py tests/test_intelligence_website.py && uv run python -m compileall -q auditlayer_worker && git diff --check",
+      "command": "cd worker && uvx ruff check auditlayer_worker/intelligence tests/test_intelligence_contracts.py tests/test_intelligence_inference.py tests/test_intelligence_runtime.py tests/test_intelligence_website.py tests/test_intelligence_adversarial.py && uv run python -m compileall -q auditlayer_worker && git diff --check",
       "result": "All checks passed!; compileall and git diff --check exited 0"
     }
   ],
