@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "board": "default",
+  "project_id": "p_7d70fb30",
+  "project_slug": "auditlayer-intelligence-runtime",
+  "canonical_plan_commit": "81d0a6a",
+  "implementation_wave": [
+    {
+      "task_id": "t_7b61b86e",
+      "profile": "alm-kernel-eng",
+      "branch": "feat/alm-intelligence-v1-kernel",
+      "workspace": ".worktrees/t_7b61b86e",
+      "packet": "packets/kernel.md"
+    },
+    {
+      "task_id": "t_38841ca0",
+      "profile": "alm-runtime-eng",
+      "branch": "feat/alm-intelligence-v1-runtime",
+      "workspace": ".worktrees/t_38841ca0",
+      "packet": "packets/runtime.md"
+    },
+    {
+      "task_id": "t_4281cf7f",
+      "profile": "alm-product-eng",
+      "branch": "feat/alm-intelligence-v1-product",
+      "workspace": ".worktrees/t_4281cf7f",
+      "packet": "packets/product.md"
+    }
+  ],
+  "release_gate": {
+    "task_id": "t_ff68cf53",
+    "profile": "alm-deploy",
+    "branch": "feat/alm-intelligence-v1-release",
+    "packet": "packets/release.md",
+    "depends_on": ["t_7b61b86e", "t_38841ca0", "t_4281cf7f"],
+    "production_promotion_requires_explicit_approval": true
+  },
+  "operating_limits": {
+    "max_parallel_implementation_workers": 3,
+    "max_in_progress_per_profile": 1,
+    "failure_limit": 1,
+    "heavy_release_gates_in_parallel": 1
+  }
+}
