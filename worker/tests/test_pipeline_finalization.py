@@ -203,3 +203,37 @@ def test_benchmark_mode_writes_local_artifact_and_never_mutates_customer_rows(
     assert gateway.started[0]["audit_id"] is None
     assert gateway.started[0]["run_kind"] == "benchmark"
     assert gateway.finished[0][1]["status"] == "ready"
+
+
+def test_benchmark_setup_failure_never_updates_a_customer_audit(monkeypatch, tmp_path) -> None:
+    settings = replace(
+        WorkerSettings.from_env(),
+        output_dir=tmp_path,
+        alm_accounts_root=str(tmp_path / "accounts"),
+    )
+    audit = AuditRecord(
+        id="00000000-0000-0000-0000-000000000099",
+        handle="business",
+        platform="instagram",
+        goal="growth",
+        plan=Plan.ENTERPRISE.value,
+        force_refresh=True,
+    )
+
+    class Gateway:
+        def update_audit(self, *_args, **_kwargs):
+            raise AssertionError("benchmark must not update an audit on setup failure")
+
+    pipeline = GenerationPipeline(settings, MockReportGenerator())
+    monkeypatch.setattr(pipeline, "_account_home", lambda _audit: (_ for _ in ()).throw(PermissionError()))
+
+    summary = pipeline.run(
+        audit,
+        PrintEventSink(),
+        gateway=Gateway(),
+        persist_report=False,
+        run_kind="benchmark",
+    )
+
+    assert summary.status == "failed"
+    assert "Account home setup failed" in summary.note

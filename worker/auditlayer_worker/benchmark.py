@@ -125,6 +125,11 @@ def run_live_benchmark(
     if settings.generator != "hermes":
         settings = replace(settings, generator="hermes")
 
+    settings = replace(
+        settings,
+        alm_accounts_root=str(settings.output_dir / "benchmark-accounts"),
+    )
+
     gateway = SupabaseGateway(settings)
     app_settings = gateway.get_app_settings()
     runtime = HermesRuntime(settings)
@@ -149,7 +154,7 @@ def run_live_benchmark(
         for repeat in range(1, repeats + 1):
             for case in cases:
                 audit = AuditRecord(
-                    id=f"benchmark-{case.label}-{uuid4().hex[:10]}",
+                    id=str(uuid4()),
                     handle=case.handle,
                     platform="instagram",
                     goal=Goal.GROWTH.value,

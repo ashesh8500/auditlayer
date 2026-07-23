@@ -229,7 +229,7 @@ class GenerationPipeline:
         except Exception as exc:  # noqa: BLE001 - persist a terminal operator-visible failure
             note = f"Account home setup failed: {exc}"
             sink.emit("failed", "Account memory setup failed. Founder review is required.")
-            if gateway is not None:
+            if gateway is not None and persist_report:
                 gateway.update_audit(
                     audit.id,
                     status=AuditStatus.FAILED.value,
@@ -256,7 +256,7 @@ class GenerationPipeline:
             if gate == AuditStatus.BLOCKED:
                 note = "Hard-blocked by intake calibration"
                 sink.emit("failed", note)
-                if gateway is not None:
+                if gateway is not None and persist_report:
                     gateway.update_audit(
                         audit.id,
                         status=gate.value,
