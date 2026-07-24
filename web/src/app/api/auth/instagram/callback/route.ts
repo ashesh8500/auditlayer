@@ -8,6 +8,7 @@ import {
   instagramOAuthServerConfig,
 } from "@/lib/instagram-oauth-config";
 import { instagramOAuthStateMatches } from "@/lib/instagram-oauth-url";
+import { isSupabaseConfigured } from "@/lib/env";
 
 const STATE_COOKIE_PATH = "/api/auth/instagram/callback";
 
@@ -33,6 +34,14 @@ function dashboardRedirect(
   return response;
 }
 
+function unauthenticatedRedirect(request: NextRequest) {
+  const response = NextResponse.redirect(
+    new URL("/login?next=/dashboard&instagram_error=not_authenticated", request.url),
+  );
+  clearStateCookie(response);
+  return response;
+}
+
 /**
  * Direct Instagram Business Login callback.
  * Validates user-bound CSRF state, exchanges the code server-side, and stores
@@ -44,17 +53,17 @@ export async function GET(request: NextRequest) {
   const returnedState = searchParams.get("state");
   const stateCookie = request.cookies.get(INSTAGRAM_OAUTH_STATE_COOKIE)?.value;
 
+  if (!isSupabaseConfigured()) {
+    return unauthenticatedRedirect(request);
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
   if (authError || !user) {
-    const response = NextResponse.redirect(
-      new URL("/login?next=/dashboard&instagram_error=not_authenticated", request.url),
-    );
-    clearStateCookie(response);
-    return response;
+    return unauthenticatedRedirect(request);
   }
 
   const userBoundState = returnedState ? `${user.id}:${returnedState}` : null;
