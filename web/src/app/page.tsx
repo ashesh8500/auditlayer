@@ -5,8 +5,11 @@ import {
   BarChart3,
   Check,
   ChevronRight,
+  Compass,
   FileSearch,
+  Layers3,
   LockKeyhole,
+  Rocket,
   Route,
   ShieldCheck,
   UserRoundCheck,
@@ -144,6 +147,80 @@ export default async function Home() {
                 <ul className="mt-8 flex-1 space-y-3">{tier.features.map(feature => <li key={feature} className={`flex gap-2 text-sm ${tier.featured ? "text-white/80" : "text-muted-foreground"}`}><Check className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />{feature}</li>)}</ul>
                 <Button asChild variant={tier.featured ? "secondary" : "outline"} className="mt-8 min-h-11 w-full"><Link href="/login">{tier.cta}</Link></Button>
               </article>)}
+            </div>
+          </div>
+        </section>
+
+        <section id="blueprint" className="scroll-mt-16 border-b border-border py-20 sm:py-28">
+          <div className="alm-shell">
+            <div className="grid gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:items-end lg:gap-20">
+              <div>
+                <p className="alm-kicker">Blueprint Audit · Pre-launch strategy</p>
+                <h2 className="mt-4 text-4xl font-semibold leading-[1.04] tracking-[-0.05em] sm:text-5xl">
+                  Build the account before you try to grow it.
+                </h2>
+              </div>
+              <div className="border-l-2 border-[color:var(--accent)] pl-5 sm:pl-7">
+                <p className="text-base leading-7 text-muted-foreground">
+                  For new, early-stage, or repositioning brands. The Blueprint turns a loose idea into a clear niche, a repeatable content system, and a practical first 90 days.
+                </p>
+                <p className="mt-4 font-mono text-xs uppercase tracking-[0.1em] text-foreground">
+                  Best for pre-launches · Rebrands · Early-stage accounts
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-12 grid border-l border-t border-border lg:grid-cols-3">
+              {[
+                [Compass, "01", "Position", "Define the niche, audience, competitive whitespace, and profile direction."],
+                [Layers3, "02", "Build", "Shape the content pillars, visual identity, brand voice, and format mix."],
+                [Rocket, "03", "Launch", "Follow a month-one calendar, Stories plan, engagement playbook, and 90-day growth path."],
+              ].map(([Icon, number, title, body]) => {
+                const PhaseIcon = Icon as typeof Compass;
+                return (
+                  <article key={number as string} className="border-b border-r border-border bg-card p-6 sm:p-8">
+                    <div className="flex items-center justify-between">
+                      <PhaseIcon className="size-5 text-[color:var(--accent)]" />
+                      <span className="font-mono text-xs text-muted-foreground">{number as string}</span>
+                    </div>
+                    <h3 className="mt-10 text-xl font-semibold">{title as string}</h3>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{body as string}</p>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="grid border-x border-b border-border bg-[color:var(--forest)] text-white lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="p-6 sm:p-8 lg:p-10">
+                <p className="font-mono text-xs uppercase tracking-[0.12em] text-[color:var(--teal-on-forest)]">Your 15-section launch foundation</p>
+                <div className="mt-7 grid gap-x-10 gap-y-4 sm:grid-cols-2">
+                  {[
+                    "Niche and positioning audit",
+                    "Competitive landscape",
+                    "Content pillar architecture",
+                    "Profile optimization checklist",
+                    "Visual identity framework",
+                    "Brand voice and format mix",
+                    "Month-one content calendar",
+                    "Launch readiness and blind spots",
+                  ].map((item) => (
+                    <div key={item} className="flex gap-3 text-sm text-white/75">
+                      <Check className="mt-0.5 size-4 shrink-0 text-[color:var(--teal-on-forest)]" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col justify-between border-t border-white/15 p-6 sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
+                <div>
+                  <p className="text-sm text-white/60">One-time strategy</p>
+                  <p className="mt-3 font-mono text-5xl font-semibold tracking-[-0.05em]">$79</p>
+                  <p className="mt-4 text-sm leading-6 text-white/65">A complete pre-launch foundation and 90-day roadmap. No subscription.</p>
+                </div>
+                <Button asChild variant="secondary" className="mt-8 min-h-11 w-full">
+                  <Link href="/support?topic=blueprint">Get the Blueprint <ArrowRight className="size-4" /></Link>
+                </Button>
+              </div>
             </div>
           </div>
         </section>
