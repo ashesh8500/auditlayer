@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createMcpService, type McpRepository } from "../service";
 
@@ -68,6 +68,15 @@ function repository(): McpRepository {
 }
 
 describe("AuditLayerMedia MCP service", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-17T12:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("lists only accounts owned by the authenticated user", async () => {
     const service = createMcpService("user-one", repository());
 
