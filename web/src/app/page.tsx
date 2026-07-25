@@ -148,6 +148,22 @@ export default async function Home() {
                 <Button asChild variant={tier.featured ? "secondary" : "outline"} className="mt-8 min-h-11 w-full"><Link href="/login">{tier.cta}</Link></Button>
               </article>)}
             </div>
+
+            <article className="mt-4 grid gap-6 border border-border bg-card p-6 shadow-[var(--shadow)] sm:p-8 lg:grid-cols-[0.7fr_1.3fr_auto] lg:items-center lg:gap-10">
+              <div>
+                <p className="alm-kicker">Enterprise</p>
+                <h3 className="mt-3 text-2xl font-semibold tracking-[-0.035em]">Customized to what you need.</h3>
+              </div>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Enterprise audits are tailored to your company or marketing agency. Tell us what you need, and we’ll customize the audit, scope, and deliverables around your goals and priorities.
+              </p>
+              <div className="lg:text-right">
+                <p className="mb-4 max-w-xs text-xs leading-5 text-muted-foreground lg:max-w-[13rem]">Pricing is provided based on your specific needs.</p>
+                <Button asChild variant="outline" className="min-h-11 w-full px-5 lg:w-auto">
+                  <Link href="/support?topic=enterprise">Talk to Us <ArrowRight className="size-4" /></Link>
+                </Button>
+              </div>
+            </article>
           </div>
         </section>
 
