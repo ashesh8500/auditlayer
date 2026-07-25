@@ -15,6 +15,8 @@ test.describe("public smoke (no Supabase creds required)", () => {
     await expect(page.getByRole("heading", { name: "Pro" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /loved by our community/i })).toBeVisible();
     await expect(page.getByText("Kas di Kos Team")).toBeVisible();
+    const communityHeight = await page.locator("#community").evaluate((element) => element.getBoundingClientRect().height);
+    expect(communityHeight).toBeLessThan(500);
     await expect(
       page.getByRole("link", { name: /run a free pulse audit/i }).first(),
     ).toBeVisible();
@@ -39,6 +41,8 @@ test.describe("public smoke (no Supabase creds required)", () => {
     await page.goto("/");
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
+    const mobileCommunityHeight = await page.locator("#community").evaluate((element) => element.getBoundingClientRect().height);
+    expect(mobileCommunityHeight).toBeLessThan(800);
     await page.keyboard.press("Tab");
     await expect(page.locator(":focus")).toBeVisible();
 

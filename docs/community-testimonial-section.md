@@ -10,13 +10,16 @@ After `Inside every report` and before Pricing. This lets the proof reinforce re
 
 ## Composition
 
-- Dark-forest editorial introduction panel:
-  - Heading: `Loved by our community.`
-  - Supporting line explaining that the section contains words from teams using the work to make decisions.
-- Warm report-like quote panel:
-  - Large, readable blockquote broken into three paragraphs for rhythm.
-  - Restrained accent rule and quote mark.
+- Compact editorial proof note rather than a full promotional grid.
+- One restrained accent rule anchors the section without using a card, shadow, dark feature panel, or oversized quote icon.
+- Left metadata column:
+  - Label: `Audit feedback`.
+  - Heading: `Loved by our community.` at supporting-section scale.
   - Attribution: `Kas di Kos Team`.
+- Right quote column:
+  - Complete approved message in one continuous, readable passage.
+  - Standard body scale and a deliberately narrow measure.
+- Reduced vertical spacing keeps the proof subordinate to the report and pricing sections.
 
 ## Approved quote
 
