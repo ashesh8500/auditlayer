@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import {
   ArrowRight,
   BarChart3,
+  Building2,
   Check,
   ChevronRight,
   Compass,
@@ -12,6 +13,7 @@ import {
   Rocket,
   Route,
   ShieldCheck,
+  SlidersHorizontal,
   UserRoundCheck,
 } from "lucide-react";
 
@@ -148,22 +150,73 @@ export default async function Home() {
                 <Button asChild variant={tier.featured ? "secondary" : "outline"} className="mt-8 min-h-11 w-full"><Link href="/login">{tier.cta}</Link></Button>
               </article>)}
             </div>
+          </div>
+        </section>
 
-            <article className="mt-4 grid gap-6 border border-border bg-card p-6 shadow-[var(--shadow)] sm:p-8 lg:grid-cols-[0.7fr_1.3fr_auto] lg:items-center lg:gap-10">
+        <section id="enterprise" className="scroll-mt-16 border-b border-border bg-[color:var(--forest)] py-20 text-white sm:py-28">
+          <div className="alm-shell">
+            <div className="grid gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:items-end lg:gap-20">
               <div>
-                <p className="alm-kicker">Enterprise</p>
-                <h3 className="mt-3 text-2xl font-semibold tracking-[-0.035em]">Customized to what you need.</h3>
+                <p className="alm-kicker text-[color:var(--teal-on-forest)]">Enterprise · Custom intelligence engagements</p>
+                <h2 className="mt-4 text-4xl font-semibold leading-[1.04] tracking-[-0.05em] sm:text-5xl">
+                  Customized to what you need.
+                </h2>
               </div>
-              <p className="text-sm leading-6 text-muted-foreground">
-                Enterprise audits are tailored to your company or marketing agency. Tell us what you need, and we’ll customize the audit, scope, and deliverables around your goals and priorities.
-              </p>
-              <div className="lg:text-right">
-                <p className="mb-4 max-w-xs text-xs leading-5 text-muted-foreground lg:max-w-[13rem]">Pricing is provided based on your specific needs.</p>
-                <Button asChild variant="outline" className="min-h-11 w-full px-5 lg:w-auto">
+              <div className="border-l-2 border-[color:var(--accent)] pl-5 sm:pl-7">
+                <p className="text-base leading-7 text-white/75">
+                  Enterprise audits are tailored to your company or marketing agency. Tell us what you need, and we’ll customize the audit, scope, and deliverables around your goals and priorities.
+                </p>
+                <p className="mt-4 font-mono text-xs uppercase tracking-[0.1em] text-[color:var(--teal-on-forest)]">
+                  For companies · Marketing agencies
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-12 grid border-l border-t border-white/15 lg:grid-cols-3">
+              {[
+                [Building2, "01", "Define the brief", "We begin with the decision your company or client needs to make."],
+                [SlidersHorizontal, "02", "Shape the scope", "Accounts, markets, research depth, and deliverables are set around that brief."],
+                [Route, "03", "Deliver for action", "The engagement is structured for the people who need to use the work."],
+              ].map(([Icon, number, title, body]) => {
+                const ProcessIcon = Icon as typeof Building2;
+                return (
+                  <article key={number as string} className="border-b border-r border-white/15 bg-white/[0.035] p-6 sm:p-8">
+                    <div className="flex items-center justify-between">
+                      <span className="grid size-10 place-items-center border border-white/15 bg-white/5">
+                        <ProcessIcon className="size-5 text-[color:var(--teal-on-forest)]" />
+                      </span>
+                      <span className="font-mono text-xs text-white/45">{number as string}</span>
+                    </div>
+                    <h3 className="mt-10 text-xl font-semibold">{title as string}</h3>
+                    <p className="mt-3 text-sm leading-6 text-white/60">{body as string}</p>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="grid border-x border-b border-white/15 bg-[color:var(--surface)] text-[color:var(--forest)] lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="p-6 sm:p-8 lg:p-10">
+                <p className="font-mono text-xs uppercase tracking-[0.12em] text-[color:var(--accent)]">A scope built around your brief</p>
+                <h3 className="mt-4 max-w-xl text-3xl font-semibold tracking-[-0.04em]">The engagement adjusts where the decision demands it.</h3>
+                <div className="mt-8 grid gap-x-10 gap-y-4 sm:grid-cols-2">
+                  {["Goals and priorities", "Accounts and markets", "Research depth", "Deliverable format"].map((item) => (
+                    <div key={item} className="flex items-center gap-3 border-t border-border pt-4 text-sm font-medium">
+                      <Check className="size-4 shrink-0 text-[color:var(--accent)]" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col justify-between border-t border-border bg-[color:var(--accent)] p-6 text-white sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
+                <div>
+                  <p className="font-mono text-xs uppercase tracking-[0.12em] text-white/65">Custom engagement</p>
+                  <p className="mt-6 max-w-sm text-2xl font-semibold leading-tight tracking-[-0.035em]">Pricing is provided based on your specific needs.</p>
+                </div>
+                <Button asChild variant="secondary" className="mt-10 min-h-11 w-full">
                   <Link href="/support?topic=enterprise">Talk to Us <ArrowRight className="size-4" /></Link>
                 </Button>
               </div>
-            </article>
+            </div>
           </div>
         </section>
 
