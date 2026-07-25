@@ -13,9 +13,25 @@ test.describe("public smoke (no Supabase creds required)", () => {
       page.getByRole("heading", { name: "Starter" }),
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: "Pro" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /loved by our community/i })).toBeVisible();
+    await expect(page.getByText("Kas di Kos Team")).toBeVisible();
     await expect(
       page.getByRole("link", { name: /run a free pulse audit/i }).first(),
     ).toBeVisible();
+  });
+
+  test("homepage sample report scrolls as one continuous document", async ({ page }) => {
+    await page.goto("/");
+    const reader = page.getByLabel("Scrollable fictional sample report");
+    const initialScroll = await reader.evaluate((element) => element.scrollTop);
+
+    await reader.hover();
+    await page.mouse.wheel(0, 2400);
+    await expect.poll(() => reader.evaluate((element) => element.scrollTop)).toBeGreaterThan(initialScroll);
+    await expect(page.getByRole("button", { name: "Action plan" })).toHaveAttribute("aria-current", "true");
+
+    await page.getByRole("button", { name: "Diagnosis" }).click();
+    await expect.poll(() => reader.evaluate((element) => element.scrollTop)).toBeLessThan(20);
   });
 
   test("public surfaces fit a 390px viewport and preserve keyboard focus", async ({ page }) => {
@@ -59,10 +75,10 @@ test.describe("public smoke (no Supabase creds required)", () => {
     await page.goto("/sample");
     await expect(page.getByText(/fictional sample intelligence brief/i)).toBeVisible();
     await expect(page.getByText(/no client data/i)).toBeVisible();
-    await page.getByRole("tab", { name: "Benchmark" }).click();
-    await expect(page.getByRole("heading", { name: /distribution discipline/i })).toBeVisible();
-    await page.getByRole("tab", { name: "Action plan" }).click();
-    await expect(page.getByText(/ranked next actions/i)).toBeVisible();
+    await page.getByRole("button", { name: "Benchmark" }).click();
+    await expect(page.getByRole("heading", { name: /distribution discipline/i })).toBeInViewport();
+    await page.getByRole("button", { name: "Action plan" }).click();
+    await expect(page.getByRole("heading", { name: /what to do next/i })).toBeInViewport();
   });
 
   test("Instagram approval surfaces fail closed and stay public", async ({ request, page }) => {

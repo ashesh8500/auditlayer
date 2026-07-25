@@ -160,6 +160,41 @@ export default async function Home() {
           </div>
         </section>
 
+        <section id="community" className="scroll-mt-16 border-y border-border bg-background py-20 sm:py-28">
+          <div className="alm-shell">
+            <div className="grid border border-border shadow-[var(--shadow)] lg:grid-cols-[0.62fr_1.38fr]">
+              <div className="flex flex-col justify-between bg-[color:var(--forest)] p-7 text-white sm:p-9 lg:p-10">
+                <div>
+                  <p className="alm-kicker text-[color:var(--teal-on-forest)]">Community notes</p>
+                  <h2 className="mt-4 text-3xl font-semibold leading-[1.08] tracking-[-0.045em] sm:text-4xl">
+                    Loved by our community.
+                  </h2>
+                </div>
+                <p className="mt-12 max-w-xs text-sm leading-6 text-white/65">
+                  Words from teams using the work to make clearer creative and commercial decisions.
+                </p>
+              </div>
+
+              <figure className="relative bg-card p-7 sm:p-10 lg:p-12">
+                <span className="pointer-events-none absolute right-7 top-4 font-serif text-7xl leading-none text-[color:var(--accent)]/15 sm:right-10 sm:top-7" aria-hidden="true">“</span>
+                <blockquote className="relative max-w-3xl border-l-2 border-[color:var(--accent)] pl-5 sm:pl-7">
+                  <div className="space-y-5 text-lg font-medium leading-8 tracking-[-0.018em] text-foreground sm:text-xl sm:leading-9">
+                    <p>The information you provided is incredibly insightful and offers actionable steps that align with our direction.</p>
+                    <p>We fully agree with your recommendation to showcase products in real lived-in spaces that are attainable because we believe that curation exists at every level.</p>
+                    <p>Your analysis confirms that we are making the right decisions with this pivot, and we cannot thank you enough.</p>
+                  </div>
+                </blockquote>
+                <figcaption className="mt-9 border-t border-border pt-5">
+                  <cite className="not-italic">
+                    <span className="block text-sm font-semibold">Kas di Kos Team</span>
+                    <span className="mt-1 block font-mono text-[0.68rem] uppercase tracking-[0.1em] text-muted-foreground">Audit feedback</span>
+                  </cite>
+                </figcaption>
+              </figure>
+            </div>
+          </div>
+        </section>
+
         <section id="pricing" className="scroll-mt-16 border-y border-border bg-[color:var(--panel)] py-20">
           <div className="alm-shell">
             <div className="max-w-2xl"><p className="alm-kicker">Pricing</p><h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">Start with a Pulse. Upgrade for depth.</h2><p className="mt-4 text-muted-foreground">The free Pulse identifies the decision. Paid plans add complete evidence, peer context, execution detail, and refinements.</p></div>
