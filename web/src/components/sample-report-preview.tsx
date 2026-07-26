@@ -128,9 +128,10 @@ export function SampleReportPreview({ full = false }: { full?: boolean }) {
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Comparable fictional accounts are not winning through a different niche. They repeat recognisable formats and guide first-time profile visitors more deliberately.</p>
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               {[["@peakmethod", "72", "Repeatable series"], ["@formdaily", "61", "Faster replies"], ["@buildclub", "53", "Clearer profile path"]].map(([handle, score, reason]) => (
-                <div key={handle} className="border border-border bg-muted/30 p-4">
-                  <div className="flex items-center justify-between gap-3"><p className="font-semibold">{handle}</p><b className="font-mono text-lg text-[color:var(--accent)]">{score}</b></div>
-                  <p className="mt-5 text-xs leading-5 text-muted-foreground">{reason}</p>
+                <div key={handle} data-testid="benchmark-peer-card" className="min-w-0 border border-border bg-muted/30 p-4">
+                  <b className="block font-mono text-2xl leading-none text-[color:var(--accent)]">{score}</b>
+                  <p data-testid="benchmark-peer-handle" className="mt-4 break-words text-sm font-semibold leading-5">{handle}</p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">{reason}</p>
                 </div>
               ))}
             </div>
