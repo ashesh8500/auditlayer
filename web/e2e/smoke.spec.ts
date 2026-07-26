@@ -36,6 +36,19 @@ test.describe("public smoke (no Supabase creds required)", () => {
     await expect.poll(() => reader.evaluate((element) => element.scrollTop)).toBeLessThan(20);
   });
 
+  test("homepage benchmark cards keep peer labels inside their grid", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Benchmark" }).click();
+
+    const cards = page.getByTestId("benchmark-peer-card");
+    await expect(cards).toHaveCount(3);
+
+    for (const card of await cards.all()) {
+      const fits = await card.evaluate((element) => element.scrollWidth <= element.clientWidth + 1);
+      expect(fits).toBe(true);
+    }
+  });
+
   test("public surfaces fit a 390px viewport and preserve keyboard focus", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
