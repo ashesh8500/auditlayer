@@ -9,12 +9,10 @@ import {
   Compass,
   FileSearch,
   Layers3,
-  LockKeyhole,
   Rocket,
   Route,
   ShieldCheck,
   SlidersHorizontal,
-  UserRoundCheck,
 } from "lucide-react";
 
 import { PublicShell } from "@/components/public-shell";
@@ -95,33 +93,56 @@ export default async function Home() {
           </div>
         </section>
 
-        <section aria-label="Product trust" className="border-y border-border bg-card/60">
-          <div className="alm-shell grid gap-px bg-border sm:grid-cols-3">
-            {[
-              [LockKeyhole, "Private reports", "Owner-scoped access and controlled share links."],
-              [ShieldCheck, "Evidence with limits", "Collection limits stay visible instead of being hidden."],
-              [UserRoundCheck, "Human calibration", "Media strategy shapes the diagnosis, not a generic analytics template."],
-            ].map(([Icon, title, body]) => {
-              const TrustIcon = Icon as typeof LockKeyhole;
-              return <div key={title as string} className="bg-card px-5 py-6"><TrustIcon className="size-5 text-[color:var(--accent)]" /><h2 className="mt-4 text-sm font-semibold">{title as string}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{body as string}</p></div>;
-            })}
-          </div>
-        </section>
-
-        <section id="method" className="scroll-mt-16 border-y border-border bg-[color:var(--forest)] py-20 text-white">
+        <section id="method" className="scroll-mt-16 border-y border-border bg-[color:var(--panel)] py-20 sm:py-28">
           <div className="alm-shell">
-            <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
-              <div><p className="alm-kicker text-[color:var(--teal-on-forest)]">Evidence → diagnosis → decision</p><h2 className="mt-4 text-4xl font-semibold leading-tight tracking-[-0.045em] sm:text-5xl">Research that ends in a decision.</h2><p className="mt-5 max-w-lg text-sm leading-6 text-white/70">The report is the product. Every layer moves from observable signal to strategic implication to an action someone can own.</p></div>
-              <div className="grid gap-px bg-white/15 sm:grid-cols-3">
+            <div className="grid gap-12 lg:grid-cols-[0.78fr_1.22fr] lg:items-start lg:gap-20">
+              <div className="max-w-lg">
+                <p className="alm-kicker">The method</p>
+                <h2 className="mt-4 text-4xl font-semibold leading-[1.08] tracking-[-0.05em] sm:text-5xl">
+                  From signal to a decision you can use.
+                </h2>
+                <p className="mt-6 text-base leading-7 text-muted-foreground">
+                  We separate what can be observed from what must be interpreted. Then we rank the actions most likely to change the account.
+                </p>
+                <p className="mt-8 font-mono text-xs uppercase tracking-[0.1em] text-[color:var(--accent)]">
+                  Evidence → diagnosis → decision
+                </p>
+              </div>
+
+              <div className="border-l border-t border-border bg-card">
                 {[
-                  [FileSearch, "Observe", "Public content, approved account metrics, and format patterns."],
-                  [BarChart3, "Calibrate", "Scores and same-tier comparisons with limitations attached."],
-                  [Route, "Act", "A ranked next-week plan and measurable trajectory."],
-                ].map(([Icon, title, body]) => {
+                  [FileSearch, "01", "Observe", "We collect public content, approved account metrics, and repeatable format signals."],
+                  [BarChart3, "02", "Diagnose", "We separate evidence from interpretation, compare like with like, and state where the data stops."],
+                  [Route, "03", "Decide", "We rank the next actions by impact, effort, and the account’s current stage."],
+                ].map(([Icon, number, title, body]) => {
                   const MethodIcon = Icon as typeof FileSearch;
-                  return <article key={title as string} className="bg-[color:var(--forest)] p-6"><MethodIcon className="size-5 text-[color:var(--teal-on-forest)]" /><h3 className="mt-8 text-lg font-semibold">{title as string}</h3><p className="mt-2 text-sm leading-6 text-white/65">{body as string}</p></article>;
+                  return (
+                    <article key={number as string} className="grid gap-5 border-b border-r border-border p-6 sm:grid-cols-[3rem_1fr] sm:gap-7 sm:p-8">
+                      <div>
+                        <span className="font-mono text-xs text-[color:var(--accent)]">{number as string}</span>
+                        <MethodIcon className="mt-5 size-5 text-[color:var(--accent)]" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold tracking-[-0.02em]">{title as string}</h3>
+                        <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">{body as string}</p>
+                      </div>
+                    </article>
+                  );
                 })}
               </div>
+            </div>
+
+            <div aria-label="Operating standards" className="mt-14 grid border-y border-border md:grid-cols-3">
+              {[
+                ["Private by default", "Reports stay owner-scoped, with controlled sharing when you choose it."],
+                ["Limits stay visible", "Unknowns remain unknown instead of being filled with invented certainty."],
+                ["Calibrated by media strategy", "Interpretation reflects account maturity, audience behavior, and format context."],
+              ].map(([title, body], index) => (
+                <div key={title} className={`py-5 md:px-6 ${index > 0 ? "border-t border-border md:border-l md:border-t-0" : ""}`}>
+                  <p className="text-sm font-semibold">{title}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{body}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -136,6 +157,28 @@ export default async function Home() {
           <div className="mt-12 flex flex-col items-start justify-between gap-5 border-y border-border py-6 sm:flex-row sm:items-center">
             <div><p className="text-sm font-semibold">Start with the focused diagnosis.</p><p className="mt-1 text-xs text-muted-foreground">No credit card. Upgrade only when the reports earn their keep.</p></div>
             <Button asChild className="min-h-11 px-5"><Link href="/login">Run a Free Pulse Audit <ArrowRight className="size-4" /></Link></Button>
+          </div>
+        </section>
+
+        <section id="community" className="scroll-mt-16 border-y border-border bg-background py-10 sm:py-14">
+          <div className="alm-shell">
+            <figure className="mx-auto grid max-w-5xl gap-7 border-l-2 border-[color:var(--accent)] pl-5 sm:pl-7 lg:grid-cols-[13rem_1fr] lg:gap-10">
+              <figcaption>
+                <p className="alm-kicker">Audit feedback</p>
+                <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-[-0.04em]">
+                  Loved by our community.
+                </h2>
+                <cite className="mt-5 block not-italic">
+                  <span className="block text-sm font-semibold">Kas di Kos Team</span>
+                </cite>
+              </figcaption>
+
+              <blockquote className="max-w-3xl text-base font-medium leading-7 tracking-[-0.012em] text-foreground/85">
+                <p>
+                  The information you provided is incredibly insightful and offers actionable steps that align with our direction. We fully agree with your recommendation to showcase products in real lived-in spaces that are attainable because we believe that curation exists at every level. Your analysis confirms that we are making the right decisions with this pivot, and we cannot thank you enough.
+                </p>
+              </blockquote>
+            </figure>
           </div>
         </section>
 
