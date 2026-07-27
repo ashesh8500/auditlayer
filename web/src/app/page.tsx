@@ -228,7 +228,7 @@ export default async function Home() {
                       <span className="grid size-10 place-items-center border border-white/15 bg-white/5">
                         <ProcessIcon className="size-5 text-[color:var(--teal-on-forest)]" />
                       </span>
-                      <span className="font-mono text-xs text-white/45">{number as string}</span>
+                      <span className="font-mono text-xs text-white/50">{number as string}</span>
                     </div>
                     <h3 className="mt-10 text-xl font-semibold">{title as string}</h3>
                     <p className="mt-3 text-sm leading-6 text-white/60">{body as string}</p>
@@ -252,7 +252,7 @@ export default async function Home() {
               </div>
               <div className="flex flex-col justify-between border-t border-border bg-[color:var(--accent)] p-6 text-white sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
                 <div>
-                  <p className="font-mono text-xs uppercase tracking-[0.12em] text-white/65">Custom engagement</p>
+                  <p className="font-mono text-xs uppercase tracking-[0.12em] text-black/80">Custom engagement</p>
                   <p className="mt-6 max-w-sm text-2xl font-semibold leading-tight tracking-[-0.035em]">Pricing is provided based on your specific needs.</p>
                 </div>
                 <Button asChild variant="secondary" className="mt-10 min-h-11 w-full">
