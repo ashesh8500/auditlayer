@@ -15,6 +15,7 @@ import {
 
 import { PublicShell } from "@/components/public-shell";
 import { SampleReportPreview } from "@/components/sample-report-preview";
+import { TestimonialCarousel } from "@/components/testimonial-carousel";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
 
@@ -158,25 +159,9 @@ export default async function Home() {
           </div>
         </section>
 
-        <section id="community" className="scroll-mt-16 border-y border-border bg-background py-10 sm:py-14">
+        <section id="community" className="scroll-mt-16 border-y border-border bg-background py-14 sm:py-20">
           <div className="alm-shell">
-            <figure className="mx-auto grid max-w-5xl gap-7 border-l-2 border-[color:var(--accent)] pl-5 sm:pl-7 lg:grid-cols-[13rem_1fr] lg:gap-10">
-              <figcaption>
-                <p className="alm-kicker">Audit feedback</p>
-                <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-[-0.04em]">
-                  Loved by our community.
-                </h2>
-                <cite className="mt-5 block not-italic">
-                  <span className="block text-sm font-semibold">Kas di Kos Team</span>
-                </cite>
-              </figcaption>
-
-              <blockquote className="max-w-3xl text-base font-medium leading-7 tracking-[-0.012em] text-foreground/85">
-                <p>
-                  The information you provided is incredibly insightful and offers actionable steps that align with our direction. We fully agree with your recommendation to showcase products in real lived-in spaces that are attainable because we believe that curation exists at every level. Your analysis confirms that we are making the right decisions with this pivot, and we cannot thank you enough.
-                </p>
-              </blockquote>
-            </figure>
+            <TestimonialCarousel />
           </div>
         </section>
 
