@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { ArrowRight, Building2, MessageSquareText, Route, SlidersHorizontal, UserRoundCheck } from "lucide-react";
+import { Building2, MessageSquareText, Route, SlidersHorizontal, UserRoundCheck } from "lucide-react";
 
 import { PublicShell } from "@/components/public-shell";
-import { Button } from "@/components/ui/button";
+import { SupportForm } from "@/app/support/support-form";
 
 export default function EnterprisePage() {
   return (
@@ -22,11 +21,6 @@ export default function EnterprisePage() {
                 Enterprise engagements are built around your organization&rsquo;s decisions, accounts, and operating cadence.
                 We start with a conversation to understand what you need — then shape the scope, depth, and deliverables around that.
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Button asChild size="lg" variant="secondary" className="min-h-11 px-5">
-                  <Link href="/support?topic=enterprise">Start a Conversation <ArrowRight className="size-4" /></Link>
-                </Button>
-              </div>
             </div>
           </div>
         </section>
@@ -120,19 +114,25 @@ export default function EnterprisePage() {
           </div>
         </section>
 
-        {/* CTA */}
-        <section className="border-y border-border bg-[color:var(--forest)] py-20 text-white sm:py-24">
-          <div className="alm-shell max-w-2xl text-center">
-            <p className="alm-kicker text-[color:var(--teal-on-forest)]">Start a conversation</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">
-              Tell us what you need. We&rsquo;ll tell you what we can deliver.
-            </h2>
-            <p className="mt-5 text-base leading-7 text-white/70">
-              Every Enterprise engagement is discovery-led. There&rsquo;s no fixed menu and no preset scope — we meet first, then decide together.
-            </p>
-            <Button asChild size="lg" className="mt-8 min-h-11 px-5">
-              <Link href="/support?topic=enterprise">Talk to Us <ArrowRight className="size-4" /></Link>
-            </Button>
+        {/* Contact */}
+        <section id="contact" className="border-y border-border bg-[color:var(--panel)] py-20 sm:py-24">
+          <div className="alm-shell grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+            <div>
+              <p className="alm-kicker">Start a conversation</p>
+              <h2 className="mt-4 text-4xl font-semibold leading-tight tracking-[-0.045em]">
+                Tell us what you need.
+              </h2>
+              <p className="mt-5 max-w-md text-base leading-7 text-muted-foreground">
+                Every Enterprise engagement is discovery-led. Share a little about your company, the decisions you&rsquo;re trying to make, and where you need support. We&rsquo;ll reply within one business day.
+              </p>
+            </div>
+            <div className="alm-panel p-6 sm:p-8">
+              <SupportForm
+                defaultSubject="Enterprise inquiry"
+                messagePlaceholder="Tell us about your company, accounts, goals, and where you need support."
+                submitLabel="Send Enterprise inquiry"
+              />
+            </div>
           </div>
         </section>
       </main>

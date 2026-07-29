@@ -9,7 +9,17 @@ import { submitSupportRequest, type SupportState } from "./actions";
 
 const initial: SupportState = { status: "idle" };
 
-export function SupportForm() {
+interface SupportFormProps {
+  defaultSubject?: string;
+  messagePlaceholder?: string;
+  submitLabel?: string;
+}
+
+export function SupportForm({
+  defaultSubject,
+  messagePlaceholder = "Describe what's happening. Include your handle if it's about a report.",
+  submitLabel = "Send message",
+}: SupportFormProps = {}) {
   const [state, action, pending] = useActionState(submitSupportRequest, initial);
 
   if (state.status === "ok") {
@@ -49,6 +59,7 @@ export function SupportForm() {
           id="subject"
           name="subject"
           required
+          defaultValue={defaultSubject}
           placeholder="Billing question, report issue, etc."
         />
       </div>
@@ -60,7 +71,7 @@ export function SupportForm() {
           name="message"
           required
           rows={4}
-          placeholder="Describe what's happening. Include your handle if it's about a report."
+          placeholder={messagePlaceholder}
           className="w-full rounded-[var(--radius)] border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]/20"
         />
       </div>
@@ -71,7 +82,7 @@ export function SupportForm() {
 
       <Button type="submit" disabled={pending} className="font-medium">
         {pending && <Loader2 className="size-4 animate-spin" />}
-        Send message
+        {submitLabel}
       </Button>
     </form>
   );
