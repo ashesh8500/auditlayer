@@ -8,6 +8,7 @@ const publicLinks = [
   ["Sample", "/#sample"],
   ["Method", "/#method"],
   ["Pricing", "/#pricing"],
+  ["Enterprise", "/enterprise"],
 ] as const;
 
 export function PublicHeader() {
@@ -62,6 +63,7 @@ export function PublicFooter() {
           <Link className="inline-flex min-h-10 items-center" href="/#sample">Sample</Link>
           <Link className="inline-flex min-h-10 items-center" href="/#method">Method</Link>
           <Link className="inline-flex min-h-10 items-center" href="/#pricing">Pricing</Link>
+          <Link className="inline-flex min-h-10 items-center" href="/enterprise">Enterprise</Link>
           <Link className="inline-flex min-h-10 items-center" href="/support">Support</Link>
           <Link className="inline-flex min-h-10 items-center" href="/privacy">Privacy</Link>
           <Link className="inline-flex min-h-10 items-center" href="/data-deletion">Data deletion</Link>
