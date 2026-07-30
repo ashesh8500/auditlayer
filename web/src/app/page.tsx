@@ -159,7 +159,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section id="community" className="scroll-mt-16 border-y border-border bg-background py-14 sm:py-20">
+        <section id="community" className="scroll-mt-16 border-y border-border bg-background py-12 sm:py-14">
           <div className="alm-shell">
             <TestimonialCarousel />
           </div>
