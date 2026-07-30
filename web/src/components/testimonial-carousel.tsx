@@ -4,34 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 
 const TESTIMONIALS = [
-  {
-    quote:
-      "The information you provided is incredibly insightful and offers actionable steps that align with our direction.",
-    name: "Kas di Kos Team",
-    label: "Client feedback · excerpt 1 of 5",
-  },
-  {
-    quote:
-      "We fully agree with your recommendation to showcase products in real lived-in spaces that are attainable…",
-    name: "Kas di Kos Team",
-    label: "Client feedback · excerpt 2 of 5",
-  },
-  {
-    quote: "…because we believe that curation exists at every level.",
-    name: "Kas di Kos Team",
-    label: "Client feedback · excerpt 3 of 5",
-  },
-  {
-    quote:
-      "Your analysis confirms that we are making the right decisions with this pivot.",
-    name: "Kas di Kos Team",
-    label: "Client feedback · excerpt 4 of 5",
-  },
-  {
-    quote: "We cannot thank you enough.",
-    name: "Kas di Kos Team",
-    label: "Client feedback · excerpt 5 of 5",
-  },
+  "The information you provided is incredibly insightful and offers actionable steps that align with our direction.",
+  "We fully agree with your recommendation to showcase products in real lived-in spaces that are attainable…",
+  "…because we believe that curation exists at every level.",
+  "Your analysis confirms that we are making the right decisions with this pivot.",
+  "We cannot thank you enough.",
 ] as const;
 
 const AUTOPLAY_MS = 4200;
@@ -106,18 +83,12 @@ export function TestimonialCarousel() {
       >
         {TESTIMONIALS.map((testimonial) => (
           <figure
-            key={testimonial.label}
+            key={testimonial}
             className="min-w-[min(82vw,340px)] max-w-[420px] shrink-0 snap-start border border-border bg-card p-5 sm:min-w-[380px] sm:p-6"
           >
-            <p className="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-[color:var(--accent)]">
-              {testimonial.label}
-            </p>
-            <blockquote className="mt-5 text-sm leading-6 text-foreground/80 sm:text-base sm:leading-7">
-              &ldquo;{testimonial.quote}&rdquo;
+            <blockquote className="text-sm leading-6 text-foreground/80 sm:text-base sm:leading-7">
+              &ldquo;{testimonial}&rdquo;
             </blockquote>
-            <figcaption className="mt-6 flex items-center gap-3 border-t border-border pt-4">
-              <cite className="block text-sm font-semibold not-italic">{testimonial.name}</cite>
-            </figcaption>
           </figure>
         ))}
       </div>
@@ -127,7 +98,7 @@ export function TestimonialCarousel() {
         <div className="flex gap-2" aria-label={`Testimonial ${activeIndex + 1} of ${TESTIMONIALS.length}`}>
           {TESTIMONIALS.map((testimonial, index) => (
             <button
-              key={testimonial.label}
+              key={testimonial}
               type="button"
               aria-label={`Show testimonial ${index + 1}`}
               aria-current={activeIndex === index ? "true" : undefined}
