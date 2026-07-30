@@ -1,25 +1,70 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 
 const TESTIMONIALS = [
   {
     quote:
-      "The information you provided is incredibly insightful and offers actionable steps that align with our direction. We fully agree with your recommendation to showcase products in real lived-in spaces that are attainable because we believe that curation exists at every level. Your analysis confirms that we are making the right decisions with this pivot, and we cannot thank you enough.",
+      "The information you provided is incredibly insightful and offers actionable steps that align with our direction.",
     name: "Kas di Kos Team",
+    label: "Client feedback · excerpt 1 of 5",
   },
-];
+  {
+    quote:
+      "We fully agree with your recommendation to showcase products in real lived-in spaces that are attainable…",
+    name: "Kas di Kos Team",
+    label: "Client feedback · excerpt 2 of 5",
+  },
+  {
+    quote: "…because we believe that curation exists at every level.",
+    name: "Kas di Kos Team",
+    label: "Client feedback · excerpt 3 of 5",
+  },
+  {
+    quote:
+      "Your analysis confirms that we are making the right decisions with this pivot.",
+    name: "Kas di Kos Team",
+    label: "Client feedback · excerpt 4 of 5",
+  },
+  {
+    quote: "We cannot thank you enough.",
+    name: "Kas di Kos Team",
+    label: "Client feedback · excerpt 5 of 5",
+  },
+] as const;
+
+const AUTOPLAY_MS = 4200;
 
 export function TestimonialCarousel() {
   const trackRef = useRef<HTMLDivElement>(null);
+  const indexRef = useRef(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
 
-  const scroll = (dir: "left" | "right") => {
-    trackRef.current?.scrollBy({
-      left: dir === "left" ? -400 : 400,
-      behavior: "smooth",
-    });
-  };
+  const moveTo = useCallback((index: number, behavior: ScrollBehavior = "smooth") => {
+    const track = trackRef.current;
+    const item = track?.children.item(index) as HTMLElement | null;
+    if (!track || !item) return;
+
+    indexRef.current = index;
+    setActiveIndex(index);
+    track.scrollTo({ left: item.offsetLeft - track.offsetLeft, behavior });
+  }, []);
+
+  const move = useCallback((dir: "left" | "right") => {
+    const delta = dir === "right" ? 1 : -1;
+    const next = (indexRef.current + delta + TESTIMONIALS.length) % TESTIMONIALS.length;
+    moveTo(next);
+  }, [moveTo]);
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (paused || reduceMotion.matches) return;
+
+    const timer = window.setInterval(() => move("right"), AUTOPLAY_MS);
+    return () => window.clearInterval(timer);
+  }, [move, paused]);
 
   return (
     <>
@@ -33,16 +78,16 @@ export function TestimonialCarousel() {
         <div className="hidden gap-2 sm:flex">
           <button
             type="button"
-            aria-label="Scroll testimonials left"
-            onClick={() => scroll("left")}
+            aria-label="Show previous testimonial"
+            onClick={() => move("left")}
             className="alm-focus grid size-10 place-items-center border border-border bg-card text-foreground hover:bg-muted"
           >
             <ArrowRight className="size-4 rotate-180" />
           </button>
           <button
             type="button"
-            aria-label="Scroll testimonials right"
-            onClick={() => scroll("right")}
+            aria-label="Show next testimonial"
+            onClick={() => move("right")}
             className="alm-focus grid size-10 place-items-center border border-border bg-card text-foreground hover:bg-muted"
           >
             <ArrowRight className="size-4" />
@@ -52,21 +97,47 @@ export function TestimonialCarousel() {
 
       <div
         ref={trackRef}
-        className="mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Community testimonials"
+        onPointerEnter={() => setPaused(true)}
+        onPointerLeave={() => setPaused(false)}
+        onFocusCapture={() => setPaused(true)}
+        onBlurCapture={() => setPaused(false)}
+        className="mt-8 flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {TESTIMONIALS.map((t) => (
+        {TESTIMONIALS.map((testimonial) => (
           <figure
-            key={t.name}
-            className="min-w-[300px] max-w-[420px] shrink-0 snap-start border border-border bg-card p-6 sm:p-7"
+            key={testimonial.label}
+            className="min-w-[min(82vw,340px)] max-w-[420px] shrink-0 snap-start border border-border bg-card p-5 sm:min-w-[380px] sm:p-6"
           >
-            <blockquote className="text-sm leading-6 text-foreground/80 sm:text-base sm:leading-7">
-              &ldquo;{t.quote}&rdquo;
+            <p className="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-[color:var(--accent)]">
+              {testimonial.label}
+            </p>
+            <blockquote className="mt-5 text-sm leading-6 text-foreground/80 sm:text-base sm:leading-7">
+              &ldquo;{testimonial.quote}&rdquo;
             </blockquote>
             <figcaption className="mt-6 flex items-center gap-3 border-t border-border pt-4">
-              <cite className="block text-sm font-semibold not-italic">{t.name}</cite>
+              <cite className="block text-sm font-semibold not-italic">{testimonial.name}</cite>
             </figcaption>
           </figure>
         ))}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-4">
+        <p className="text-xs text-muted-foreground">Moves automatically. Hover or focus to pause.</p>
+        <div className="flex gap-2" aria-label={`Testimonial ${activeIndex + 1} of ${TESTIMONIALS.length}`}>
+          {TESTIMONIALS.map((testimonial, index) => (
+            <button
+              key={testimonial.label}
+              type="button"
+              aria-label={`Show testimonial ${index + 1}`}
+              aria-current={activeIndex === index ? "true" : undefined}
+              onClick={() => moveTo(index)}
+              className={`alm-focus h-2.5 transition-[width,background-color] ${
+                activeIndex === index ? "w-7 bg-[color:var(--accent)]" : "w-2.5 bg-border"
+              }`}
+            />
+          ))}
+        </div>
       </div>
     </>
   );
