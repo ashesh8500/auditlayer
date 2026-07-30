@@ -14,7 +14,7 @@ test.describe("public smoke (no Supabase creds required)", () => {
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: "Pro" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /loved by our community/i })).toBeVisible();
-    await expect(page.getByText("Kas di Kos Team")).toBeVisible();
+    await expect(page.getByText("Kas di Kos Team").first()).toBeVisible();
     const communityHeight = await page.locator("#community").evaluate((element) => element.getBoundingClientRect().height);
     expect(communityHeight).toBeLessThan(500);
     await expect(

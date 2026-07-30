@@ -6,38 +6,31 @@ import { ArrowRight } from "lucide-react";
 const TESTIMONIALS = [
   {
     quote:
-      "Your analysis confirms that we are making the right decisions with this pivot, and we cannot thank you enough.",
+      "The information you provided is incredibly insightful and offers actionable steps that align with our direction.",
     name: "Kas di Kos Team",
-    label: "Client feedback · excerpt",
-    placeholder: false,
+    label: "Client feedback · excerpt 1 of 5",
   },
   {
     quote:
-      "Sample copy for layout preview only. Replace this card with an approved client note about the clarity and usefulness of their report.",
-    name: "Sample card 02",
-    label: "Layout preview — not client feedback",
-    placeholder: true,
+      "We fully agree with your recommendation to showcase products in real lived-in spaces that are attainable…",
+    name: "Kas di Kos Team",
+    label: "Client feedback · excerpt 2 of 5",
+  },
+  {
+    quote: "…because we believe that curation exists at every level.",
+    name: "Kas di Kos Team",
+    label: "Client feedback · excerpt 3 of 5",
   },
   {
     quote:
-      "Sample copy for layout preview only. Replace this card with approved feedback about the diagnosis, peer comparison, or next steps.",
-    name: "Sample card 03",
-    label: "Layout preview — not client feedback",
-    placeholder: true,
+      "Your analysis confirms that we are making the right decisions with this pivot.",
+    name: "Kas di Kos Team",
+    label: "Client feedback · excerpt 4 of 5",
   },
   {
-    quote:
-      "Sample copy for layout preview only. Replace this card with an approved client note about what felt specific, useful, or actionable.",
-    name: "Sample card 04",
-    label: "Layout preview — not client feedback",
-    placeholder: true,
-  },
-  {
-    quote:
-      "Sample copy for layout preview only. Replace this final card with real feedback before the carousel is presented as complete.",
-    name: "Sample card 05",
-    label: "Layout preview — not client feedback",
-    placeholder: true,
+    quote: "We cannot thank you enough.",
+    name: "Kas di Kos Team",
+    label: "Client feedback · excerpt 5 of 5",
   },
 ] as const;
 
@@ -113,22 +106,14 @@ export function TestimonialCarousel() {
       >
         {TESTIMONIALS.map((testimonial) => (
           <figure
-            key={testimonial.name}
-            className={`min-w-[min(82vw,340px)] max-w-[420px] shrink-0 snap-start border p-5 sm:min-w-[380px] sm:p-6 ${
-              testimonial.placeholder
-                ? "border-dashed border-border bg-[color:var(--panel)]"
-                : "border-border bg-card"
-            }`}
+            key={testimonial.label}
+            className="min-w-[min(82vw,340px)] max-w-[420px] shrink-0 snap-start border border-border bg-card p-5 sm:min-w-[380px] sm:p-6"
           >
             <p className="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-[color:var(--accent)]">
               {testimonial.label}
             </p>
-            <blockquote
-              className={`mt-5 text-sm leading-6 sm:text-base sm:leading-7 ${
-                testimonial.placeholder ? "text-muted-foreground" : "text-foreground/80"
-              }`}
-            >
-              {testimonial.placeholder ? testimonial.quote : <>&ldquo;{testimonial.quote}&rdquo;</>}
+            <blockquote className="mt-5 text-sm leading-6 text-foreground/80 sm:text-base sm:leading-7">
+              &ldquo;{testimonial.quote}&rdquo;
             </blockquote>
             <figcaption className="mt-6 flex items-center gap-3 border-t border-border pt-4">
               <cite className="block text-sm font-semibold not-italic">{testimonial.name}</cite>
@@ -142,7 +127,7 @@ export function TestimonialCarousel() {
         <div className="flex gap-2" aria-label={`Testimonial ${activeIndex + 1} of ${TESTIMONIALS.length}`}>
           {TESTIMONIALS.map((testimonial, index) => (
             <button
-              key={testimonial.name}
+              key={testimonial.label}
               type="button"
               aria-label={`Show testimonial ${index + 1}`}
               aria-current={activeIndex === index ? "true" : undefined}
