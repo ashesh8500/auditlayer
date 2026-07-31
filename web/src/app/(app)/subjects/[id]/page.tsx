@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { requireProfile } from "@/lib/auth";
 import { SubjectHome } from "@/components/intelligence/subject-home";
+import { listSubjectsForUser } from "@/lib/intelligence/subjects";
 import { fixtureSubjects } from "@/lib/intelligence/fixtures";
 
 export const metadata = { title: "Subject — AuditLayerMedia" };
@@ -15,8 +16,13 @@ export default async function SubjectDetailPage({
   const { id } = await params;
   await requireProfile();
 
-  const known = fixtureSubjects().some((s) => s.id === id);
-  const subjectId = known ? id : fixtureSubjects()[0]?.id ?? id;
+  const { subjects, source } = await listSubjectsForUser();
+  const liveMatch = subjects.find((s) => s.id === id);
+  const fixtureMatch = fixtureSubjects().some((s) => s.id === id);
+  const subjectId =
+    liveMatch?.id ??
+    (fixtureMatch ? id : subjects[0]?.id ?? fixtureSubjects()[0]?.id ?? id);
+  const fixtureMode = source === "fixture" || !liveMatch;
 
   return (
     <main className="alm-shell py-8 sm:py-12 animate-page-in">
@@ -28,7 +34,7 @@ export default async function SubjectDetailPage({
         All subjects
       </Link>
       <div className="mt-5">
-        <SubjectHome subjectId={subjectId} fixtureMode />
+        <SubjectHome subjectId={subjectId} fixtureMode={fixtureMode} />
       </div>
     </main>
   );

@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     p_severity: incident.severity,
     p_environment: incident.environment,
     p_title: incident.title,
-    p_external_url: incident.externalUrl,
+    p_external_url: incident.externalUrl ?? "",
     p_metadata: incident.metadata,
   });
   if (error) return NextResponse.json({ error: "Incident write failed" }, { status: 500 });

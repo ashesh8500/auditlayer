@@ -8,6 +8,7 @@ the private ``reports`` Storage bucket, and account progression data.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -431,3 +432,119 @@ class SupabaseGateway:
                 peers_by_benchmark[bid].append(p)
 
         return [{**b, "peers": peers_by_benchmark.get(b["id"], [])} for b in benchmarks]
+
+    # -- ALM intelligence ledger RPCs --------------------------------------
+
+    def create_evidence_snapshot(self, subject_id: str) -> str:
+        res = self.client.rpc(
+            "create_evidence_snapshot", {"p_subject_id": subject_id}
+        ).execute()
+        return _rpc_scalar_uuid(res.data, "create_evidence_snapshot")
+
+    def start_intelligence_run(self, **kwargs: Any) -> str:
+        """Start a pinned intelligence run. Keyword args match kernel RPC names."""
+        payload = {
+            "p_subject_id": kwargs["subject_id"],
+            "p_brief_version": kwargs["brief_version"],
+            "p_evidence_snapshot_id": kwargs["evidence_snapshot_id"],
+            "p_methodology_version": kwargs["methodology_version"],
+            "p_expertise_pack_version": kwargs["expertise_pack_version"],
+            "p_prompt_version": kwargs["prompt_version"],
+            "p_model_config_hash": kwargs["model_config_hash"],
+            "p_output_schema_version": kwargs.get("output_schema_version", "1.0"),
+            "p_batch_id": kwargs.get("batch_id"),
+        }
+        res = self.client.rpc("start_intelligence_run", payload).execute()
+        return _rpc_scalar_uuid(res.data, "start_intelligence_run")
+
+    def set_intelligence_run_progress(
+        self,
+        run_id: str,
+        customer_state: str,
+        detail: str | None = None,
+    ) -> None:
+        self.client.rpc(
+            "set_intelligence_run_progress",
+            {
+                "p_run_id": run_id,
+                "p_customer_state": customer_state,
+                "p_detail": detail,
+            },
+        ).execute()
+
+    def intelligence_ledger_writer(self) -> "SupabaseLedgerWriter":
+        """Return a LedgerWriter bound to this service-role gateway."""
+        return SupabaseLedgerWriter(self)
+
+
+def _rpc_scalar_uuid(data: Any, rpc_name: str) -> str:
+    value = data[0] if isinstance(data, list) and data else data
+    if value is None or value == "":
+        raise RuntimeError(f"{rpc_name} returned no id")
+    return str(value)
+
+
+class SupabaseLedgerWriter:
+    """Service-role LedgerWriter matching kernel RPC names and JSONB shapes."""
+
+    def __init__(self, gateway: SupabaseGateway):
+        self._gateway = gateway
+
+    def upsert_evidence(self, items: Sequence[Mapping[str, Any]]) -> Sequence[str]:
+        res = self._gateway.client.rpc(
+            "upsert_evidence", {"p_items": [dict(item) for item in items]}
+        ).execute()
+        data = res.data or []
+        if isinstance(data, list):
+            return [str(item) for item in data if item is not None]
+        return [str(data)] if data is not None else []
+
+    def record_scores(self, scores: Sequence[Mapping[str, Any]]) -> None:
+        self._gateway.client.rpc(
+            "record_scores", {"p_scores": [dict(row) for row in scores]}
+        ).execute()
+
+    def record_findings(self, findings: Sequence[Mapping[str, Any]]) -> None:
+        self._gateway.client.rpc(
+            "record_findings", {"p_findings": [dict(row) for row in findings]}
+        ).execute()
+
+    def record_recommendations(
+        self, recommendations: Sequence[Mapping[str, Any]]
+    ) -> None:
+        self._gateway.client.rpc(
+            "record_recommendations",
+            {"p_recommendations": [dict(row) for row in recommendations]},
+        ).execute()
+
+    def create_context_update_proposals(
+        self, proposals: Sequence[Mapping[str, Any]]
+    ) -> Sequence[str]:
+        # Kernel RPC ignores proposal_id; strip client-only keys.
+        cleaned = []
+        for proposal in proposals:
+            row = dict(proposal)
+            row.pop("proposal_id", None)
+            cleaned.append(row)
+        res = self._gateway.client.rpc(
+            "create_context_update_proposals", {"p_proposals": cleaned}
+        ).execute()
+        data = res.data or []
+        if isinstance(data, list):
+            return [str(item) for item in data if item is not None]
+        return [str(data)] if data is not None else []
+
+    def finalize_intelligence_run(self, payload: Mapping[str, Any]) -> None:
+        self._gateway.client.rpc(
+            "finalize_intelligence_run",
+            {
+                "p_run_id": payload["p_run_id"],
+                "p_status": payload["p_status"],
+                "p_latency_ms": payload.get("p_latency_ms"),
+                "p_tokens_in": payload.get("p_tokens_in"),
+                "p_tokens_out": payload.get("p_tokens_out"),
+                "p_cost_usd": payload.get("p_cost_usd"),
+                "p_cache_mode": payload.get("p_cache_mode"),
+            },
+        ).execute()
+

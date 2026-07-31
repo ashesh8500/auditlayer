@@ -1,33 +1,28 @@
 /**
- * Assumed kernel API contracts for the product layer.
+ * Kernel API contracts for the product layer.
  *
- * Kernel owns the migrations/RPCs (service-role). Until types regenerate and
- * migrations land on this branch, product code talks through these typed
- * adapters. Callers may pass a real Supabase RPC client or use the fixture
- * stub mode for UI/typecheck without live schema.
+ * Kernel owns migrations/RPCs (service-role). Types are regenerated from local
+ * migrations on the release branch (`web/src/lib/supabase/types.ts`).
  *
- * Assumed tables (kernel):
- *   subjects, subject_channels, living_brief_versions,
- *   context_update_proposals, audit_batches, batch_audits,
- *   intelligence_runs, evidence, evidence_snapshots, scores,
- *   findings, recommendations, decisions
+ * Tables: subjects, subject_channels, living_brief_versions,
+ * context_update_proposals, audit_batches, batch_audits, intelligence_runs,
+ * evidence, evidence_snapshots, scores, findings, recommendations, decisions
  *
- * Assumed service-role RPCs (kernel):
+ * Service-role RPCs (shipped names):
  *   create_subject(p_user_id, p_name, p_subject_type) → uuid
  *   link_subject_channel(p_subject_id, p_channel_type, p_locator, p_managed, p_account_id) → uuid
  *   record_living_brief_version(...) → uuid
- *   resolve_context_update_proposal(p_proposal_id, p_status, p_decided_by) → void
+ *   resolve_context_update_proposal(p_proposal_id, p_status, p_user_id) → void
  *   submit_audit_batch(p_user_id, p_subject_id, p_idempotency_key, p_audit_ids) → uuid
  *
- * Product-facing submit path (assumed app RPC / server action):
- *   prepare_and_submit_batch — creates audits for selected channels, then
- *   calls submit_audit_batch atomically. Returns { batchId, auditIds }.
- *
- * Customer progress (assumed allowlisted read model / API):
- *   GET /api/audits/:id/progress → CustomerAuditStatus only
- *   (today CustomerWaitState polls /live and projects client-side)
+ * Customer progress: CustomerWaitState polls /live and projects
+ * Preparing/Analyzing/Finalizing/Delayed client-side until an allowlisted
+ * progress API ships.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import type { Database } from "@/lib/supabase/types";
 import type {
   BatchSubmission,
   ChannelPlatform,
@@ -40,6 +35,8 @@ export type KernelRpcName =
   | "record_living_brief_version"
   | "resolve_context_update_proposal"
   | "submit_audit_batch";
+
+export type AdminClient = SupabaseClient<Database>;
 
 export interface CreateSubjectInput {
   userId: string;
@@ -58,14 +55,14 @@ export interface LinkChannelInput {
 export interface ResolveProposalInput {
   proposalId: string;
   status: "accepted" | "rejected";
-  decidedBy: string;
+  /** Kernel arg name is p_user_id (maps to decided_by column). */
+  userId: string;
 }
 
 export interface SubmitBatchInput {
   userId: string;
   subjectId: string;
   idempotencyKey: string;
-  /** Existing audit row IDs to link; product server action creates these first. */
   auditIds: string[];
 }
 
@@ -155,8 +152,8 @@ function hashShort(input: string): string {
   return h.toString(16).padStart(8, "0");
 }
 
-/** Documented RPC argument shapes for release-gate type wiring. */
-export const ASSUMED_RPC_SHAPES = {
+/** Kernel RPC argument shapes (aligned to shipped SQL). */
+export const KERNEL_RPC_SHAPES = {
   create_subject: {
     args: ["p_user_id", "p_name", "p_subject_type"],
     returns: "uuid",
@@ -179,8 +176,73 @@ export const ASSUMED_RPC_SHAPES = {
     grant: "service_role",
   },
   resolve_context_update_proposal: {
-    args: ["p_proposal_id", "p_status", "p_decided_by"],
+    args: ["p_proposal_id", "p_status", "p_user_id"],
     returns: "void",
     grant: "service_role",
   },
 } as const;
+
+/** @deprecated Use KERNEL_RPC_SHAPES — kept for existing product tests. */
+export const ASSUMED_RPC_SHAPES = KERNEL_RPC_SHAPES;
+
+export async function rpcCreateSubject(
+  admin: AdminClient,
+  input: CreateSubjectInput,
+): Promise<string> {
+  const { data, error } = await admin.rpc("create_subject", {
+    p_user_id: input.userId,
+    p_name: input.name,
+    p_subject_type: input.subjectType,
+  });
+  if (error || !data) {
+    throw new Error(error?.message ?? "create_subject failed");
+  }
+  return String(data);
+}
+
+export async function rpcLinkSubjectChannel(
+  admin: AdminClient,
+  input: LinkChannelInput,
+): Promise<string> {
+  const { data, error } = await admin.rpc("link_subject_channel", {
+    p_subject_id: input.subjectId,
+    p_channel_type: input.channelType,
+    p_locator: input.locator,
+    p_managed: input.managed ?? false,
+    p_account_id: input.accountId ?? undefined,
+  });
+  if (error || !data) {
+    throw new Error(error?.message ?? "link_subject_channel failed");
+  }
+  return String(data);
+}
+
+export async function rpcSubmitAuditBatch(
+  admin: AdminClient,
+  input: SubmitBatchInput,
+): Promise<string> {
+  const { data, error } = await admin.rpc("submit_audit_batch", {
+    p_user_id: input.userId,
+    p_subject_id: input.subjectId,
+    p_idempotency_key: input.idempotencyKey,
+    p_audit_ids: input.auditIds,
+  });
+  if (error || !data) {
+    throw new Error(error?.message ?? "submit_audit_batch failed");
+  }
+  return String(data);
+}
+
+export async function rpcResolveContextUpdateProposal(
+  admin: AdminClient,
+  input: ResolveProposalInput,
+): Promise<void> {
+  const { error } = await admin.rpc("resolve_context_update_proposal", {
+    p_proposal_id: input.proposalId,
+    p_status: input.status,
+    p_user_id: input.userId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}

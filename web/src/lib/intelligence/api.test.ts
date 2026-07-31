@@ -72,12 +72,17 @@ describe("stubPrepareAndSubmitBatch", () => {
   });
 });
 
-describe("ASSUMED_RPC_SHAPES", () => {
-  it("documents service-role batch and subject RPCs", () => {
+describe("KERNEL_RPC_SHAPES", () => {
+  it("documents service-role batch and subject RPCs with kernel arg names", () => {
     expect(ASSUMED_RPC_SHAPES.submit_audit_batch.grant).toBe("service_role");
     expect(ASSUMED_RPC_SHAPES.create_subject.args).toContain("p_user_id");
     expect(ASSUMED_RPC_SHAPES.link_subject_channel.args).toContain(
       "p_channel_type",
     );
+    expect(ASSUMED_RPC_SHAPES.resolve_context_update_proposal.args).toEqual([
+      "p_proposal_id",
+      "p_status",
+      "p_user_id",
+    ]);
   });
 });

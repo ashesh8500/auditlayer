@@ -1,0 +1,226 @@
+{
+  "schema_version": "1.0",
+  "task_id": "release-gate",
+  "branch": "feat/alm-intelligence-v1-release",
+  "worktree": "/home/asheshkaji/projects/auditlayer/.worktrees/alm-intelligence-v1-release",
+  "status": "integration-complete-awaiting-ashesh-promotion",
+  "timestamp": "2026-07-31T01:26:00Z",
+  "integration_base": {
+    "origin_master": "c80750e952050cb31c2c40b4cfc112bf7cf2699d"
+  },
+  "merged_slices": {
+    "kernel": {
+      "branch": "feat/alm-intelligence-v1-kernel",
+      "sha": "605df8187a3715f8d684a8f88aa131f128364371",
+      "merge_commit": "d391c13"
+    },
+    "runtime": {
+      "branch": "feat/alm-intelligence-v1-runtime",
+      "sha": "b30cb949523a11237fc22bedfba9343ff3725ba7",
+      "merge_commit": "06868ec"
+    },
+    "product": {
+      "branch": "feat/alm-intelligence-v1-product",
+      "sha": "ff42b212ba0938d84f8d4e9f5966e45a045c9867",
+      "merge_commit": "0321df2"
+    }
+  },
+  "merge_order": ["kernel", "runtime", "product"],
+  "conflicts": [],
+  "name_alignments": [
+    {
+      "area": "tables",
+      "resolution": "kernel shipped names retained",
+      "names": [
+        "living_brief_versions",
+        "context_update_proposals",
+        "evidence",
+        "scores",
+        "findings",
+        "recommendations",
+        "decisions"
+      ]
+    },
+    {
+      "area": "runtime_ledger_rpcs",
+      "resolution": "runtime assumed names already matched kernel; wired SupabaseLedgerWriter",
+      "rpcs": [
+        "create_evidence_snapshot",
+        "upsert_evidence",
+        "start_intelligence_run",
+        "record_scores",
+        "record_findings",
+        "record_recommendations",
+        "create_context_update_proposals",
+        "finalize_intelligence_run",
+        "set_intelligence_run_progress"
+      ]
+    },
+    {
+      "area": "product_resolve_proposal",
+      "from": "p_decided_by (product assumption)",
+      "to": "p_user_id (kernel shipped)",
+      "fixed_in": "web/src/lib/intelligence/api.ts"
+    },
+    {
+      "area": "record_scores_continuity",
+      "issue": "kernel RPC ignored previous_value/change_kind emitted by runtime",
+      "fix": "supabase/migrations/20260731010000_alm_record_scores_change_fields.sql"
+    }
+  ],
+  "types": {
+    "source": "npx supabase gen types typescript --local",
+    "path": "web/src/lib/supabase/types.ts",
+    "note": "Regenerated from local Postgres after applying ALM migrations; AuditEventPhase preamble preserved. NOT from --linked production. Re-run make supabase-types after linked db push.",
+    "hand_aligned": false,
+    "local_only": true
+  },
+  "integration_deliverables": [
+    "worker/auditlayer_worker/supabase_client.py — SupabaseLedgerWriter + start/progress/snapshot helpers",
+    "worker/tests/test_intelligence_ledger_writer.py",
+    "web/src/lib/actions/intelligence.ts — live prepareAndSubmit + resolveBriefProposal with stub fallback",
+    "web/src/lib/intelligence/api.ts — KERNEL_RPC_SHAPES + typed rpc* helpers",
+    "web/src/lib/intelligence/subjects.ts — RLS-backed subject list with fixture fallback",
+    "web/src/lib/supabase/types.ts — local regen including ALM tables/RPCs",
+    "supabase/migrations/20260731010000_alm_record_scores_change_fields.sql"
+  ],
+  "tests": {
+    "worker_intelligence": {
+      "command": "cd worker && uv run pytest tests/test_intelligence_*.py -q",
+      "result": "110 passed (includes ledger writer wiring)"
+    },
+    "web_intelligence_unit": {
+      "command": "cd web && npx vitest run src/lib/intelligence",
+      "result": "39 passed (3 files)"
+    },
+    "web_typecheck": {
+      "command": "cd web && npx tsc --noEmit",
+      "result": "pass"
+    },
+    "web_eslint_intelligence": {
+      "command": "cd web && npx eslint src/lib/intelligence src/lib/actions/intelligence.ts src/components/intelligence src/app/(app)/subjects --max-warnings=0",
+      "result": "pass"
+    },
+    "ontology": {
+      "command": "python3 docs/implementation/alm-intelligence-v1/ontology/validate_ontology.py",
+      "result": "ALL ONTOLOGY CHECKS PASSED"
+    },
+    "kernel_sql": {
+      "command": "PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/alm_intelligence_kernel_test.sql",
+      "result": "ALL KERNEL TESTS PASSED (includes cross-tenant RLS denial)"
+    },
+    "ai_storage_sql": {
+      "command": "PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/alm_intelligence_ai_storage_test.sql",
+      "result": "ALL AI STORAGE / BUGFIX TESTS PASSED"
+    },
+    "record_scores_change_fields": {
+      "command": "local psql smoke for previous_value/change_kind",
+      "result": "PASS"
+    },
+    "not_run": [
+      "make check-v2 (full suite deferred; focused matrix above passed)",
+      "playwright e2e / browser suite",
+      "live Hermes / DeepSeek provider calls",
+      "Vercel preview deploy",
+      "linked production supabase db push",
+      "Hetzner worker canary",
+      "make deploy-prod"
+    ]
+  },
+  "promotion_checklist_for_ashesh": [
+    {
+      "step": 1,
+      "action": "Review this release branch + checkpoint",
+      "auto": false
+    },
+    {
+      "step": 2,
+      "action": "Apply migrations to linked Supabase (production project)",
+      "commands": [
+        "cd /home/asheshkaji/projects/auditlayer/.worktrees/alm-intelligence-v1-release",
+        "npx supabase@latest db push --linked",
+        "# OR: make supabase-push from repo root with linked CLI"
+      ],
+      "migrations_pending_on_prod": [
+        "20260723020611_alm_intelligence_kernel.sql",
+        "20260730200000_alm_schema_bugfixes.sql",
+        "20260730201000_alm_intelligence_ai_storage.sql",
+        "20260731010000_alm_record_scores_change_fields.sql",
+        "(plus any earlier operator/runtime migrations already on this branch but not yet live)"
+      ],
+      "do_not": "Release gate did NOT run linked db push"
+    },
+    {
+      "step": 3,
+      "action": "Regenerate types from linked schema after push",
+      "commands": [
+        "make supabase-types",
+        "git add web/src/lib/supabase/types.ts && commit if drift"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Optional backfill connected/managed accounts",
+      "commands": [
+        "select public.backfill_connected_subjects();"
+      ]
+    },
+    {
+      "step": 5,
+      "action": "Push release branch → Vercel preview → QA smoke",
+      "checks": [
+        "Landing loads",
+        "Login / Google OAuth",
+        "/subjects list",
+        "New audit wizard → batch submit",
+        "Customer wait Preparing/Analyzing/Finalizing/Delayed only",
+        "Existing report viewer still works"
+      ]
+    },
+    {
+      "step": 6,
+      "action": "Worker canary on Hetzner after master merge",
+      "commands": [
+        "sudo systemctl restart auditlayer-worker",
+        "cd worker && uv run python -m auditlayer_worker diagnose-hermes"
+      ]
+    },
+    {
+      "step": 7,
+      "action": "Explicit Ashesh approval required before production web promotion",
+      "commands": [
+        "merge feat/alm-intelligence-v1-release → master (after preview QA)",
+        "make deploy-prod   # ONLY after explicit approval — not run by release gate"
+      ]
+    }
+  ],
+  "states": {
+    "local": "complete (migrations applied to local 54322; tests green)",
+    "committed": "pending_this_commit",
+    "origin": "not_pushed_by_release_gate",
+    "preview": "not_created",
+    "schema_live": "NOT applied to linked production",
+    "worker_canary": "not_started",
+    "production": "blocked_pending_ashesh_approval"
+  },
+  "remaining_blockers": [
+    "Linked production migration apply requires Ashesh approval",
+    "Subject home still uses fixture Mode for ledger tabs until live subject rows + scores/recs queries land in a follow-up",
+    "Customer progress still derived from /live events; dedicated allowlisted /progress API not shipped",
+    "BoundedIntelligenceRuntime not yet bound into pipeline.py generation path (LedgerWriter ready; orchestration follow-up)",
+    "No Vercel preview or browser e2e in this gate run",
+    "make check-v2 full matrix not executed (focused ALM matrix passed)"
+  ],
+  "rollback": {
+    "git": "revert merge commits on feat/alm-intelligence-v1-release or reset branch before merge to master",
+    "schema": "ALM migrations are additive; rollback is forward-fix or leave tables unused — do not drop without a dedicated down plan",
+    "web": "vercel rollback after any accidental prod deploy",
+    "worker": "systemd restart prior revision; intelligence path is additive and injectable"
+  },
+  "do_not_claim": [
+    "production promoted",
+    "linked db push done",
+    "Ashesh approval obtained",
+    "preview QA complete"
+  ]
+}

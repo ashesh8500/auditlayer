@@ -23,11 +23,6 @@ export type AuditEventPhase =
   | "refinement"
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -120,6 +115,7 @@ export type Database = {
           ownership_status: string
           platform: string
           research_snapshot: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -135,6 +131,7 @@ export type Database = {
           ownership_status?: string
           platform?: string
           research_snapshot?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -150,6 +147,7 @@ export type Database = {
           ownership_status?: string
           platform?: string
           research_snapshot?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -240,6 +238,51 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      audit_batches: {
+        Row: {
+          created_at: string
+          id: string
+          idempotency_key: string
+          status: string
+          subject_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          status?: string
+          subject_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          status?: string
+          subject_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_batches_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_batches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       audit_events: {
         Row: {
@@ -456,6 +499,419 @@ export type Database = {
           },
         ]
       }
+      batch_audits: {
+        Row: {
+          audit_id: string
+          batch_id: string
+        }
+        Insert: {
+          audit_id: string
+          batch_id: string
+        }
+        Update: {
+          audit_id?: string
+          batch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_audits_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_audits_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "audit_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      context_update_proposals: {
+        Row: {
+          base_version: number
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          evidence_ids: Json
+          id: string
+          intelligence_run_id: string | null
+          operation: string
+          path: string
+          proposed_value: Json
+          reason: string
+          status: string
+          subject_id: string
+        }
+        Insert: {
+          base_version: number
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          evidence_ids?: Json
+          id?: string
+          intelligence_run_id?: string | null
+          operation: string
+          path: string
+          proposed_value: Json
+          reason?: string
+          status?: string
+          subject_id: string
+        }
+        Update: {
+          base_version?: number
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          evidence_ids?: Json
+          id?: string
+          intelligence_run_id?: string | null
+          operation?: string
+          path?: string
+          proposed_value?: Json
+          reason?: string
+          status?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "context_update_proposals_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "context_update_proposals_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_context_update_proposals_run"
+            columns: ["intelligence_run_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decisions: {
+        Row: {
+          created_at: string
+          decision: string
+          id: string
+          note: string
+          subject_id: string
+          target_id: string
+          target_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decision: string
+          id?: string
+          note?: string
+          subject_id: string
+          target_id: string
+          target_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decision?: string
+          id?: string
+          note?: string
+          subject_id?: string
+          target_id?: string
+          target_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decisions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decisions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      embedding_models: {
+        Row: {
+          created_at: string
+          dims: number
+          distance_metric: string
+          id: string
+          notes: string
+          provider: string
+        }
+        Insert: {
+          created_at?: string
+          dims: number
+          distance_metric?: string
+          id: string
+          notes?: string
+          provider?: string
+        }
+        Update: {
+          created_at?: string
+          dims?: number
+          distance_metric?: string
+          id?: string
+          notes?: string
+          provider?: string
+        }
+        Relationships: []
+      }
+      evidence: {
+        Row: {
+          channel_id: string | null
+          confidence: string
+          content_hash: string
+          coverage: Json
+          created_at: string
+          expires_at: string | null
+          id: string
+          observed_at: string
+          payload: Json
+          snapshot_id: string | null
+          source_type: string
+          source_url: string | null
+          subject_id: string
+        }
+        Insert: {
+          channel_id?: string | null
+          confidence: string
+          content_hash: string
+          coverage?: Json
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          observed_at: string
+          payload?: Json
+          snapshot_id?: string | null
+          source_type: string
+          source_url?: string | null
+          subject_id: string
+        }
+        Update: {
+          channel_id?: string | null
+          confidence?: string
+          content_hash?: string
+          coverage?: Json
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          observed_at?: string
+          payload?: Json
+          snapshot_id?: string | null
+          source_type?: string
+          source_url?: string | null
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "subject_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "evidence_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_embeddings: {
+        Row: {
+          content_hash: string
+          created_at: string
+          dims: number
+          embedding: string | null
+          evidence_id: string
+          id: string
+          model_id: string
+          subject_id: string
+          user_id: string
+        }
+        Insert: {
+          content_hash: string
+          created_at?: string
+          dims: number
+          embedding?: string | null
+          evidence_id: string
+          id?: string
+          model_id: string
+          subject_id: string
+          user_id: string
+        }
+        Update: {
+          content_hash?: string
+          created_at?: string
+          dims?: number
+          embedding?: string | null
+          evidence_id?: string
+          id?: string
+          model_id?: string
+          subject_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_embeddings_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_embeddings_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "embedding_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_embeddings_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_embeddings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_snapshot_members: {
+        Row: {
+          added_at: string
+          evidence_id: string
+          snapshot_id: string
+        }
+        Insert: {
+          added_at?: string
+          evidence_id: string
+          snapshot_id: string
+        }
+        Update: {
+          added_at?: string
+          evidence_id?: string
+          snapshot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_snapshot_members_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_snapshot_members_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "evidence_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          subject_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_snapshots_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      findings: {
+        Row: {
+          channel_type: string | null
+          claim: string
+          confidence: string
+          created_at: string
+          dimension_impacts: Json
+          evidence_ids: Json
+          finding_ref: string
+          id: string
+          intelligence_run_id: string
+        }
+        Insert: {
+          channel_type?: string | null
+          claim: string
+          confidence: string
+          created_at?: string
+          dimension_impacts?: Json
+          evidence_ids?: Json
+          finding_ref: string
+          id?: string
+          intelligence_run_id: string
+        }
+        Update: {
+          channel_type?: string | null
+          claim?: string
+          confidence?: string
+          created_at?: string
+          dimension_impacts?: Json
+          evidence_ids?: Json
+          finding_ref?: string
+          id?: string
+          intelligence_run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "findings_intelligence_run_id_fkey"
+            columns: ["intelligence_run_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instagram_connections: {
         Row: {
           access_token: string | null
@@ -511,6 +967,222 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      intelligence_run_progress: {
+        Row: {
+          created_at: string
+          customer_state: string
+          detail: string
+          intelligence_run_id: string
+          subject_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_state?: string
+          detail?: string
+          intelligence_run_id: string
+          subject_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_state?: string
+          detail?: string
+          intelligence_run_id?: string
+          subject_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intelligence_run_progress_intelligence_run_id_fkey"
+            columns: ["intelligence_run_id"]
+            isOneToOne: true
+            referencedRelation: "intelligence_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intelligence_run_progress_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intelligence_run_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      intelligence_runs: {
+        Row: {
+          batch_id: string | null
+          brief_version: number
+          cache_mode: string | null
+          cost_usd: number
+          created_at: string
+          evidence_snapshot_id: string
+          expertise_pack_version: string
+          id: string
+          latency_ms: number | null
+          methodology_version: string
+          model_config_hash: string
+          output_schema_version: string
+          prompt_version: string
+          stage_state: Json
+          status: string
+          subject_id: string
+          tokens_in: number
+          tokens_out: number
+          updated_at: string
+        }
+        Insert: {
+          batch_id?: string | null
+          brief_version: number
+          cache_mode?: string | null
+          cost_usd?: number
+          created_at?: string
+          evidence_snapshot_id: string
+          expertise_pack_version: string
+          id?: string
+          latency_ms?: number | null
+          methodology_version: string
+          model_config_hash: string
+          output_schema_version?: string
+          prompt_version: string
+          stage_state?: Json
+          status?: string
+          subject_id: string
+          tokens_in?: number
+          tokens_out?: number
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string | null
+          brief_version?: number
+          cache_mode?: string | null
+          cost_usd?: number
+          created_at?: string
+          evidence_snapshot_id?: string
+          expertise_pack_version?: string
+          id?: string
+          latency_ms?: number | null
+          methodology_version?: string
+          model_config_hash?: string
+          output_schema_version?: string
+          prompt_version?: string
+          stage_state?: Json
+          status?: string
+          subject_id?: string
+          tokens_in?: number
+          tokens_out?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_intelligence_runs_brief_version"
+            columns: ["subject_id", "brief_version"]
+            isOneToOne: false
+            referencedRelation: "living_brief_versions"
+            referencedColumns: ["subject_id", "version"]
+          },
+          {
+            foreignKeyName: "fk_intelligence_runs_evidence_snapshot"
+            columns: ["evidence_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "evidence_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intelligence_runs_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "audit_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intelligence_runs_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      living_brief_versions: {
+        Row: {
+          audience: Json
+          confirmed: boolean
+          constraints: Json
+          created_at: string
+          created_by: string | null
+          decisions: Json
+          experiments: Json
+          goals: Json
+          id: string
+          identity: Json
+          offers: Json
+          positioning: Json
+          schema_version: string
+          subject_id: string
+          version: number
+        }
+        Insert: {
+          audience?: Json
+          confirmed?: boolean
+          constraints?: Json
+          created_at?: string
+          created_by?: string | null
+          decisions?: Json
+          experiments?: Json
+          goals?: Json
+          id?: string
+          identity?: Json
+          offers?: Json
+          positioning?: Json
+          schema_version?: string
+          subject_id: string
+          version: number
+        }
+        Update: {
+          audience?: Json
+          confirmed?: boolean
+          constraints?: Json
+          created_at?: string
+          created_by?: string | null
+          decisions?: Json
+          experiments?: Json
+          goals?: Json
+          id?: string
+          identity?: Json
+          offers?: Json
+          positioning?: Json
+          schema_version?: string
+          subject_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "living_brief_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "living_brief_versions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
         ]
@@ -854,6 +1526,47 @@ export type Database = {
           },
         ]
       }
+      recommendations: {
+        Row: {
+          channel_type: string | null
+          content: Json
+          created_at: string
+          evidence_ids: Json
+          id: string
+          intelligence_run_id: string
+          recommendation_ref: string
+          status: string
+        }
+        Insert: {
+          channel_type?: string | null
+          content?: Json
+          created_at?: string
+          evidence_ids?: Json
+          id?: string
+          intelligence_run_id: string
+          recommendation_ref: string
+          status?: string
+        }
+        Update: {
+          channel_type?: string | null
+          content?: Json
+          created_at?: string
+          evidence_ids?: Json
+          id?: string
+          intelligence_run_id?: string
+          recommendation_ref?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendations_intelligence_run_id_fkey"
+            columns: ["intelligence_run_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       refinements: {
         Row: {
           audit_id: string
@@ -904,6 +1617,142 @@ export type Database = {
           },
         ]
       }
+      report_generation_runs: {
+        Row: {
+          account_mode: string
+          audit_id: string | null
+          bundle_version: string | null
+          cache_mode: string
+          cost_usd: number
+          created_at: string
+          error_code: string | null
+          evidence_items: number
+          finished_at: string | null
+          format_retry_used: boolean
+          id: string
+          model: string
+          prompt_version: string
+          quality_score: number | null
+          report_type: string
+          research_cache_used: boolean
+          run_kind: string
+          stage_timings: Json
+          started_at: string
+          status: string
+          tokens_in: number
+          tokens_out: number
+          total_seconds: number | null
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          account_mode?: string
+          audit_id?: string | null
+          bundle_version?: string | null
+          cache_mode?: string
+          cost_usd?: number
+          created_at?: string
+          error_code?: string | null
+          evidence_items?: number
+          finished_at?: string | null
+          format_retry_used?: boolean
+          id?: string
+          model: string
+          prompt_version: string
+          quality_score?: number | null
+          report_type: string
+          research_cache_used?: boolean
+          run_kind?: string
+          stage_timings?: Json
+          started_at?: string
+          status?: string
+          tokens_in?: number
+          tokens_out?: number
+          total_seconds?: number | null
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          account_mode?: string
+          audit_id?: string | null
+          bundle_version?: string | null
+          cache_mode?: string
+          cost_usd?: number
+          created_at?: string
+          error_code?: string | null
+          evidence_items?: number
+          finished_at?: string | null
+          format_retry_used?: boolean
+          id?: string
+          model?: string
+          prompt_version?: string
+          quality_score?: number | null
+          report_type?: string
+          research_cache_used?: boolean
+          run_kind?: string
+          stage_timings?: Json
+          started_at?: string
+          status?: string
+          tokens_in?: number
+          tokens_out?: number
+          total_seconds?: number | null
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_generation_runs_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scores: {
+        Row: {
+          change_kind: string | null
+          created_at: string
+          dimension: string
+          evidence_ids: Json
+          id: string
+          intelligence_run_id: string
+          methodology_version: string
+          previous_value: number | null
+          value: number | null
+        }
+        Insert: {
+          change_kind?: string | null
+          created_at?: string
+          dimension: string
+          evidence_ids?: Json
+          id?: string
+          intelligence_run_id: string
+          methodology_version: string
+          previous_value?: number | null
+          value?: number | null
+        }
+        Update: {
+          change_kind?: string | null
+          created_at?: string
+          dimension?: string
+          evidence_ids?: Json
+          id?: string
+          intelligence_run_id?: string
+          methodology_version?: string
+          previous_value?: number | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scores_intelligence_run_id_fkey"
+            columns: ["intelligence_run_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       share_links: {
         Row: {
           audit_id: string
@@ -915,6 +1764,7 @@ export type Database = {
           mode: string
           revoked_at: string | null
           token: string
+          updated_at: string
           verification_code: string | null
           verification_code_expires: string | null
           verified_at: string | null
@@ -930,6 +1780,7 @@ export type Database = {
           mode: string
           revoked_at?: string | null
           token: string
+          updated_at?: string
           verification_code?: string | null
           verification_code_expires?: string | null
           verified_at?: string | null
@@ -945,6 +1796,7 @@ export type Database = {
           mode?: string
           revoked_at?: string | null
           token?: string
+          updated_at?: string
           verification_code?: string | null
           verification_code_expires?: string | null
           verified_at?: string | null
@@ -961,6 +1813,86 @@ export type Database = {
           {
             foreignKeyName: "share_links_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subject_channels: {
+        Row: {
+          account_id: string | null
+          channel_type: string
+          created_at: string
+          id: string
+          locator: string
+          managed: boolean
+          subject_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          channel_type: string
+          created_at?: string
+          id?: string
+          locator: string
+          managed?: boolean
+          subject_id: string
+        }
+        Update: {
+          account_id?: string | null
+          channel_type?: string
+          created_at?: string
+          id?: string
+          locator?: string
+          managed?: boolean
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_channels_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subject_channels_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subjects: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          subject_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          subject_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          subject_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subjects_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1061,6 +1993,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_audit_to_batch: {
+        Args: { p_audit_id: string; p_batch_id: string }
+        Returns: undefined
+      }
       admin_set_access: {
         Args: {
           p_account_type: string
@@ -1076,8 +2012,44 @@ export type Database = {
         Args: { p_approved: boolean; p_job_id: string }
         Returns: undefined
       }
+      attach_evidence_embedding: {
+        Args: {
+          p_content_hash: string
+          p_embedding: string
+          p_evidence_id: string
+          p_model_id: string
+        }
+        Returns: string
+      }
+      backfill_connected_subjects: {
+        Args: never
+        Returns: {
+          action: string
+          detail: string
+        }[]
+      }
       claim_next_queued: { Args: { worker_id: string }; Returns: Json }
       claim_next_refinement: { Args: { worker_id: string }; Returns: Json }
+      create_audit_batch: {
+        Args: {
+          p_idempotency_key: string
+          p_subject_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      create_context_update_proposals: {
+        Args: { p_proposals: Json }
+        Returns: string[]
+      }
+      create_evidence_snapshot: {
+        Args: { p_subject_id: string }
+        Returns: string
+      }
+      create_subject: {
+        Args: { p_name: string; p_subject_type?: string; p_user_id: string }
+        Returns: string
+      }
       disconnect_instagram_connection: {
         Args: { p_connection_id: string; p_user_id: string }
         Returns: undefined
@@ -1092,6 +2064,18 @@ export type Database = {
           p_template_version: string
         }
         Returns: number
+      }
+      finalize_intelligence_run: {
+        Args: {
+          p_cache_mode?: string
+          p_cost_usd: number
+          p_latency_ms: number
+          p_run_id: string
+          p_status: string
+          p_tokens_in: number
+          p_tokens_out: number
+        }
+        Returns: undefined
       }
       finalize_refinement_report: {
         Args: {
@@ -1114,7 +2098,7 @@ export type Database = {
       ingest_operator_incident: {
         Args: {
           p_environment: string
-          p_external_url: string | null
+          p_external_url: string
           p_fingerprint: string
           p_metadata: Json
           p_severity: string
@@ -1125,7 +2109,18 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_share_link_valid: { Args: { p_token: string }; Returns: string }
+      link_subject_channel: {
+        Args: {
+          p_account_id?: string
+          p_channel_type: string
+          p_locator: string
+          p_managed?: boolean
+          p_subject_id: string
+        }
+        Returns: string
+      }
       owns_audit: { Args: { target_audit_id: string }; Returns: boolean }
+      owns_subject: { Args: { target_subject_id: string }; Returns: boolean }
       persist_instagram_connection: {
         Args: {
           p_account_type: string
@@ -1142,10 +2137,94 @@ export type Database = {
           connection_id: string
         }[]
       }
+      pin_evidence_to_snapshot: {
+        Args: { p_evidence_ids: string[]; p_snapshot_id: string }
+        Returns: number
+      }
+      reap_stale_report_generation_runs: {
+        Args: { p_cutoff_minutes?: number }
+        Returns: number
+      }
       reap_stale_running: { Args: { cutoff_minutes?: number }; Returns: number }
+      record_decision: {
+        Args: {
+          p_decision: string
+          p_note?: string
+          p_subject_id: string
+          p_target_id: string
+          p_target_type: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      record_findings: { Args: { p_findings: Json }; Returns: undefined }
+      record_living_brief_version: {
+        Args: {
+          p_audience: Json
+          p_confirmed?: boolean
+          p_constraints: Json
+          p_created_by?: string
+          p_decisions: Json
+          p_experiments: Json
+          p_goals: Json
+          p_identity: Json
+          p_offers: Json
+          p_positioning: Json
+          p_schema_version: string
+          p_subject_id: string
+          p_version: number
+        }
+        Returns: string
+      }
+      record_recommendations: {
+        Args: { p_recommendations: Json }
+        Returns: undefined
+      }
+      record_scores: { Args: { p_scores: Json }; Returns: undefined }
       redeem_trial_link: {
         Args: { p_token: string; p_user_id: string }
         Returns: Json
+      }
+      register_embedding_model: {
+        Args: {
+          p_dims: number
+          p_distance_metric?: string
+          p_id: string
+          p_notes?: string
+          p_provider?: string
+        }
+        Returns: string
+      }
+      resolve_context_update_proposal: {
+        Args: { p_proposal_id: string; p_status: string; p_user_id: string }
+        Returns: undefined
+      }
+      set_intelligence_run_progress: {
+        Args: { p_customer_state: string; p_detail?: string; p_run_id: string }
+        Returns: undefined
+      }
+      start_intelligence_run: {
+        Args: {
+          p_batch_id?: string
+          p_brief_version: number
+          p_evidence_snapshot_id: string
+          p_expertise_pack_version: string
+          p_methodology_version: string
+          p_model_config_hash: string
+          p_output_schema_version?: string
+          p_prompt_version: string
+          p_subject_id: string
+        }
+        Returns: string
+      }
+      submit_audit_batch: {
+        Args: {
+          p_audit_ids: string[]
+          p_idempotency_key: string
+          p_subject_id: string
+          p_user_id: string
+        }
+        Returns: string
       }
       submit_entitled_audit: {
         Args: {
@@ -1169,6 +2248,7 @@ export type Database = {
         }
         Returns: Json
       }
+      upsert_evidence: { Args: { p_items: Json }; Returns: string[] }
     }
     Enums: {
       [_ in never]: never
@@ -1304,3 +2384,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

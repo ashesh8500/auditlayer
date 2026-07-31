@@ -39,7 +39,7 @@ import {
   estimateBatchDuration,
   validateBatch,
 } from "@/lib/intelligence/batch";
-import { stubPrepareAndSubmitBatch } from "@/lib/intelligence/api";
+import { prepareAndSubmitIntelligenceBatch } from "@/lib/actions/intelligence";
 import type { Plan } from "@/lib/domain";
 
 type BatchReportType = "pulse" | "standard" | "extended" | "blueprint";
@@ -192,14 +192,24 @@ export function IntelligenceWizard({ plan }: { plan: Plan }) {
       return;
     }
 
-    const locators = state.batchRequests.map((req) => {
+    const channelMeta = state.batchRequests.map((req) => {
       const ch = effectiveChannels.find((c) => c.id === req.channelId);
-      return ch?.url || (ch?.handle ? `@${ch.handle}` : req.channelId);
+      const locator = ch?.url || (ch?.handle ? `@${ch.handle}` : req.channelId);
+      return {
+        locator,
+        channelType: (ch?.platform ?? "instagram") as ChannelPlatform,
+        channelId: req.channelId,
+      };
     });
+    const locators = channelMeta.map((c) => c.locator);
 
-    // Kernel RPCs are service-role; until release-gate wires live prepare_and_submit,
-    // product uses the documented stub so UI stays honest (no fake scanning).
-    const outcome = stubPrepareAndSubmitBatch(submission, locators);
+    const outcome = await prepareAndSubmitIntelligenceBatch({
+      submission,
+      channelLocators: locators,
+      channelMeta,
+      newSubjectName: state.newSubjectName || undefined,
+      newSubjectType: state.newSubjectType,
+    });
     setSubmitting(false);
 
     if (!outcome.ok) {
@@ -209,10 +219,10 @@ export function IntelligenceWizard({ plan }: { plan: Plan }) {
 
     setSubmitNotice(
       outcome.mode === "stub"
-        ? `Batch prepared (${outcome.batchId}). Live submit_audit_batch lands with kernel types.`
+        ? `Batch prepared (${outcome.batchId}) in stub mode — admin Supabase not configured.`
         : `Batch ${outcome.batchId} submitted.`,
     );
-    router.push(`/subjects/${state.subjectId}`);
+    router.push(`/subjects/${outcome.subjectId}`);
   };
 
   return (

@@ -3,13 +3,13 @@ import { ArrowRight, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { requireProfile } from "@/lib/auth";
-import { fixtureSubjects } from "@/lib/intelligence/fixtures";
+import { listSubjectsForUser } from "@/lib/intelligence/subjects";
 
 export const metadata = { title: "Subjects — AuditLayerMedia" };
 
 export default async function SubjectsPage() {
   await requireProfile();
-  const subjects = fixtureSubjects();
+  const { subjects, source } = await listSubjectsForUser();
 
   return (
     <main className="alm-shell py-8 sm:py-12 animate-page-in">
@@ -33,31 +33,41 @@ export default async function SubjectsPage() {
       </div>
 
       <p className="mt-4 text-xs text-muted-foreground">
-        Fixture subjects until kernel tables are readable on this environment.
+        {source === "live"
+          ? "Subjects loaded from your workspace."
+          : "Fixture subjects until kernel tables are readable on this environment."}
       </p>
 
-      <ul className="mt-6 divide-y divide-border border-y border-border">
-        {subjects.map((subject) => (
-          <li key={subject.id}>
-            <Link
-              href={`/subjects/${subject.id}`}
-              className="flex items-center justify-between gap-4 py-4 transition-colors hover:bg-[var(--surface-muted)]"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-base font-semibold">{subject.name}</p>
-                <p className="mt-0.5 text-xs capitalize text-muted-foreground">
-                  {subject.type} · {subject.channelCount} channel
-                  {subject.channelCount === 1 ? "" : "s"}
-                  {subject.lastAuditAt
-                    ? ` · last audit ${new Date(subject.lastAuditAt).toLocaleDateString()}`
-                    : ""}
-                </p>
-              </div>
-              <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {subjects.length === 0 ? (
+        <p className="mt-10 text-sm text-muted-foreground">
+          No subjects yet. Start a new audit to create one.
+        </p>
+      ) : (
+        <ul className="mt-6 divide-y divide-border border-y border-border">
+          {subjects.map((subject) => (
+            <li key={subject.id}>
+              <Link
+                href={`/subjects/${subject.id}`}
+                className="flex items-center justify-between gap-4 py-4 transition-colors hover:bg-[var(--surface-muted)]"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-base font-semibold">
+                    {subject.name}
+                  </p>
+                  <p className="mt-0.5 text-xs capitalize text-muted-foreground">
+                    {subject.type} · {subject.channelCount} channel
+                    {subject.channelCount === 1 ? "" : "s"}
+                    {subject.lastAuditAt
+                      ? ` · last audit ${new Date(subject.lastAuditAt).toLocaleDateString()}`
+                      : ""}
+                  </p>
+                </div>
+                <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </main>
   );
 }
