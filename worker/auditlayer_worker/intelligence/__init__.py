@@ -1,5 +1,6 @@
 """Deterministic AuditLayer longitudinal-intelligence runtime."""
 
+from .bridge import maybe_commit_subject_ledger, resolve_subject_context
 from .cache import CacheKeyParts, build_analysis_cache_key
 from .continuity import (
     ContinuityError,
@@ -49,6 +50,8 @@ from .website import WebsiteCollectionError, WebsiteCollector, WebsiteResponse
 __all__ = [
     "BoundedIntelligenceRuntime",
     "CacheKeyParts",
+    "maybe_commit_subject_ledger",
+    "resolve_subject_context",
     "ChannelInput",
     "CompletedIntelligenceRun",
     "ContinuityError",

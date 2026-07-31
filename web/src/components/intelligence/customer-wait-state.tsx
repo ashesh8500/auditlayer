@@ -18,12 +18,11 @@ interface WaitStateProps {
   startedAt: string | null;
 }
 
-interface InternalAuditEvent {
-  id: string;
-  phase: string | null;
-  event_type: string;
-  detail: string | null;
-  created_at: string;
+interface ProgressPayload {
+  phase: CustomerAuditPhase;
+  terminal: CustomerAuditTerminal | null;
+  message: string | null;
+  startedAt: string | null;
 }
 
 // ---- Phase icon and animation ----
@@ -43,11 +42,25 @@ const DELAYED_TERMINAL_THRESHOLD_MS = 20 * 60 * 1000; // 20 min → terminal del
 
 export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitStateProps) {
   const router = useRouter();
-  const [events, setEvents] = useState<InternalAuditEvent[]>([]);
+  const [progress, setProgress] = useState<ProgressPayload | null>(null);
   const [pollCount, setPollCount] = useState(0);
   const pollRef = useRef(false);
 
-  const customerStatus = projectCustomerStatus(internalStatus, events, startedAt);
+  const customerStatus = progress
+    ? {
+        phase: progress.phase,
+        terminal: progress.terminal,
+        message:
+          progress.message ||
+          projectCustomerStatus(
+            (progress.terminal as AuditStatus) || internalStatus,
+            [],
+            progress.startedAt ?? startedAt,
+          ).message,
+        startedAt: progress.startedAt ?? startedAt,
+        estimatedCompletion: null,
+      }
+    : projectCustomerStatus(internalStatus, [], startedAt);
   const isTerminal = customerStatus.terminal !== null;
 
   // Compute delayed state in a stable way (Date.now is impure during render)
@@ -73,15 +86,14 @@ export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitSt
     if (pollRef.current) return;
     pollRef.current = true;
     try {
-      const res = await fetch(`/api/audits/${auditId}/live`, { cache: "no-store" });
+      const res = await fetch(`/api/audits/${auditId}/progress`, {
+        cache: "no-store",
+      });
       if (!res.ok) return;
-      const body = (await res.json()) as {
-        status: AuditStatus;
-        events: InternalAuditEvent[];
-      };
-      setEvents(body.events ?? []);
+      const body = (await res.json()) as ProgressPayload;
+      setProgress(body);
       setPollCount((c) => c + 1);
-      if (body.status === "ready") {
+      if (body.terminal === "ready") {
         router.refresh();
       }
     } finally {

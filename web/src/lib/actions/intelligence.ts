@@ -23,6 +23,7 @@ import {
   buildBatchIdempotencyKey,
   rpcCreateSubject,
   rpcLinkSubjectChannel,
+  rpcRecordLivingBriefVersion,
   rpcResolveContextUpdateProposal,
   rpcSubmitAuditBatch,
   stubPrepareAndSubmitBatch,
@@ -80,6 +81,16 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
         userId: profile.id,
         name,
         subjectType: input.newSubjectType ?? "creator",
+      });
+      await rpcRecordLivingBriefVersion(admin, {
+        subjectId,
+        version: 1,
+        createdBy: profile.id,
+        identity: { name, subject_type: input.newSubjectType ?? "creator" },
+        goals: input.submission.changeNotes
+          ? [input.submission.changeNotes.trim()]
+          : [],
+        confirmed: true,
       });
     }
 

@@ -47,20 +47,44 @@ const TABS = [
 
 interface SubjectHomeProps {
   subjectId: string;
-  /** When true, show fixture banner so customers know data is illustrative until kernel lands */
+  /** When true, show fixture banner so customers know data is illustrative */
   fixtureMode?: boolean;
+  /** Live bundle from server; when provided, fixtures are not used. */
+  data?: {
+    subject: SubjectSummary;
+    channels: ChannelSummary[];
+    briefVersions: LivingBriefVersion[];
+    proposals: LivingBriefProposal[];
+    scores: ScoreEvidence[];
+    recommendations: RecommendationSummary[];
+    sinceLast: SinceLastAuditItem[];
+    reports: ReportArchiveItem[];
+  };
 }
 
-export function SubjectHome({ subjectId, fixtureMode = true }: SubjectHomeProps) {
-  const subjects = fixtureSubjects();
-  const subject = subjects.find((s) => s.id === subjectId) ?? subjects[0];
-  const channels = fixtureChannels(subject.id);
-  const briefVersions = fixtureBriefVersions(subject.id);
-  const proposals = fixtureBriefProposals(subject.id);
-  const scores = fixtureScores();
-  const recommendations = fixtureRecommendations(subject.id);
-  const sinceLast = fixtureSinceLastAudit();
-  const reports = fixtureReportArchive(subject.id);
+export function SubjectHome({
+  subjectId,
+  fixtureMode = true,
+  data,
+}: SubjectHomeProps) {
+  const subjects = data ? [data.subject] : fixtureSubjects();
+  const subject =
+    subjects.find((s) => s.id === subjectId) ?? subjects[0] ?? {
+      id: subjectId,
+      name: "Subject",
+      type: "creator" as const,
+      avatarUrl: null,
+      channelCount: 0,
+      lastAuditAt: null,
+    };
+  const channels = data?.channels ?? fixtureChannels(subject.id);
+  const briefVersions = data?.briefVersions ?? fixtureBriefVersions(subject.id);
+  const proposals = data?.proposals ?? fixtureBriefProposals(subject.id);
+  const scores = data?.scores ?? fixtureScores();
+  const recommendations =
+    data?.recommendations ?? fixtureRecommendations(subject.id);
+  const sinceLast = data?.sinceLast ?? fixtureSinceLastAudit();
+  const reports = data?.reports ?? fixtureReportArchive(subject.id);
 
   const [activeTab, setActiveTab] = useState<
     "overview" | "brief" | "scores" | "recommendations"

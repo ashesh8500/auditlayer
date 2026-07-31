@@ -168,3 +168,77 @@ jobs:
       - name: Syntax check worker source
         run: |
           uv run python -m compileall -q auditlayer_worker/ -f
+
+  alm-intelligence:
+    name: ALM intelligence
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Restore uv cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('worker/uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+
+      - name: Validate ALM ontology (TTL/SHACL fixtures)
+        run: python3 docs/implementation/alm-intelligence-v1/ontology/validate_ontology.py
+
+      - name: Sync worker dependencies
+        working-directory: worker
+        run: uv sync --extra dev --extra embedded
+
+      - name: Worker intelligence + bridge tests
+        working-directory: worker
+        run: uv run pytest tests/test_intelligence_*.py -q
+
+      - name: Install web dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      - name: Web intelligence unit + user-story tests
+        working-directory: web
+        run: pnpm exec vitest run src/lib/intelligence
+
+      - name: Setup local Supabase for kernel SQL (when CLI available)
+        id: supabase
+        continue-on-error: true
+        run: |
+          npx supabase@latest start -x studio,edge-runtime,logflare,vector,imgproxy,pgmeta || true
+          if pg_isready -h 127.0.0.1 -p 54322 >/dev/null 2>&1; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply migrations and run kernel SQL tests
+        if: steps.supabase.outputs.ready == 'true'
+        run: |
+          npx supabase@latest db reset --yes
+          PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f supabase/tests/alm_intelligence_kernel_test.sql
+          PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f supabase/tests/alm_intelligence_ai_storage_test.sql
+
+      - name: Note when local Supabase SQL suite was skipped
+        if: steps.supabase.outputs.ready != 'true'
+        run: echo "Local Supabase not ready — ontology + unit suites still gate the PR."

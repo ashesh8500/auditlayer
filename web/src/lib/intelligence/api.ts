@@ -246,3 +246,39 @@ export async function rpcResolveContextUpdateProposal(
     throw new Error(error.message);
   }
 }
+
+export async function rpcRecordLivingBriefVersion(
+  admin: AdminClient,
+  input: {
+    subjectId: string;
+    version: number;
+    createdBy: string;
+    identity?: Record<string, string>;
+    goals?: string[];
+    constraints?: string[];
+    confirmed?: boolean;
+  },
+): Promise<string> {
+  const identity = (input.identity ?? {}) as {
+    [key: string]: string;
+  };
+  const { data, error } = await admin.rpc("record_living_brief_version", {
+    p_subject_id: input.subjectId,
+    p_version: input.version,
+    p_schema_version: "1.0",
+    p_identity: identity,
+    p_audience: {},
+    p_positioning: {},
+    p_offers: [] as string[],
+    p_goals: input.goals ?? [],
+    p_constraints: input.constraints ?? [],
+    p_experiments: [] as string[],
+    p_decisions: [] as string[],
+    p_created_by: input.createdBy,
+    p_confirmed: input.confirmed ?? true,
+  });
+  if (error || !data) {
+    throw new Error(error?.message ?? "record_living_brief_version failed");
+  }
+  return String(data);
+}

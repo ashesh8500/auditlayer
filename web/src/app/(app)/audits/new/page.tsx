@@ -9,6 +9,11 @@ import {
   type AuditStatus,
 } from "@/lib/domain";
 import { IntelligenceWizard } from "@/components/intelligence/intelligence-wizard";
+import {
+  listSubjectsForUser,
+  listChannelsForSubject,
+} from "@/lib/intelligence/subjects";
+import type { ChannelSummary } from "@/lib/intelligence/types";
 
 export const metadata = { title: "New audit — AuditLayerMedia" };
 
@@ -26,6 +31,15 @@ export default async function NewAuditPage() {
   if (usage >= limit) redirect("/dashboard?billing=unconfigured");
 
   const plan = effectivePlanForProfile(profile as never);
+  const { subjects, source } = await listSubjectsForUser();
+  const channelsBySubject: Record<string, ChannelSummary[]> = {};
+  if (source === "live") {
+    await Promise.all(
+      subjects.map(async (subject) => {
+        channelsBySubject[subject.id] = await listChannelsForSubject(subject.id);
+      }),
+    );
+  }
 
   return (
     <main className="alm-shell py-8 sm:py-12">
@@ -39,7 +53,13 @@ export default async function NewAuditPage() {
           all in one atomic batch.
         </p>
       </div>
-      <IntelligenceWizard plan={plan} />
+      <IntelligenceWizard
+        plan={plan}
+        initialSubjects={source === "live" ? subjects : undefined}
+        initialChannelsBySubject={
+          source === "live" ? channelsBySubject : undefined
+        }
+      />
     </main>
   );
 }

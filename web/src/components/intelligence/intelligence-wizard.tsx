@@ -93,7 +93,15 @@ const EMPTY_STATE: NewAuditState = {
   reportType: "standard",
 };
 
-export function IntelligenceWizard({ plan }: { plan: Plan }) {
+export function IntelligenceWizard({
+  plan,
+  initialSubjects = [],
+  initialChannelsBySubject = {},
+}: {
+  plan: Plan;
+  initialSubjects?: SubjectSummary[];
+  initialChannelsBySubject?: Record<string, ChannelSummary[]>;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [state, setState] = useState<NewAuditState>(EMPTY_STATE);
@@ -101,7 +109,10 @@ export function IntelligenceWizard({ plan }: { plan: Plan }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
 
-  const baseSubjects = useMemo(() => fixtureSubjects(), []);
+  const baseSubjects = useMemo(() => {
+    if (initialSubjects.length > 0) return initialSubjects;
+    return fixtureSubjects();
+  }, [initialSubjects]);
   const subjects = useMemo(() => {
     if (state.subjectId.startsWith("new-") && state.newSubjectName) {
       return [
@@ -121,13 +132,21 @@ export function IntelligenceWizard({ plan }: { plan: Plan }) {
 
   const channels = useMemo(() => {
     if (!state.subjectId || state.subjectId.startsWith("new-")) return [];
+    if (initialChannelsBySubject[state.subjectId]?.length) {
+      return initialChannelsBySubject[state.subjectId]!;
+    }
+    if (initialSubjects.length > 0) return [];
     return fixtureChannels(state.subjectId);
-  }, [state.subjectId]);
+  }, [state.subjectId, initialChannelsBySubject, initialSubjects.length]);
 
   const briefVersions = useMemo(() => {
     if (!state.subjectId || state.subjectId.startsWith("new-")) return [];
+    if (initialSubjects.length > 0) {
+      // Live mode: brief is confirmed at submit; empty list is valid for new subjects.
+      return [] as LivingBriefVersion[];
+    }
     return fixtureBriefVersions(state.subjectId);
-  }, [state.subjectId]);
+  }, [state.subjectId, initialSubjects.length]);
   const currentBrief = briefVersions[0] ?? null;
 
   const effectiveChannels = useMemo(() => {

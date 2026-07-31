@@ -1,4 +1,4 @@
-.PHONY: test e2e check diagnose-hermes smoke web-check worker-check check-v2 \
+.PHONY: test e2e check diagnose-hermes smoke web-check worker-check check-v2 alm-check \
 	dev-web worker-run worker-once deploy-prod dns-vercel supabase-push supabase-types vercel-logs \
 	hermes-vm-sync hermes-vm-ssh hermes-vm-status hermes-vm-worker test-intake-parity
 
@@ -35,6 +35,11 @@ test-intake-parity:
 	cd worker && uv run pytest tests/test_intake_parity_crosslang.py tests/test_intake_parity.py -v
 
 check-v2: web-check worker-check
+
+alm-check:
+	python3 docs/implementation/alm-intelligence-v1/ontology/validate_ontology.py
+	cd worker && uv run pytest tests/test_intelligence_*.py -q
+	cd web && pnpm exec vitest run src/lib/intelligence
 
 dev-web:
 	cd web && pnpm dev
