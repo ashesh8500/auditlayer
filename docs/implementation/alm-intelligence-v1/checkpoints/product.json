@@ -1,15 +1,22 @@
 {
-  "created_at": "2026-07-23T02:30:00Z",
+  "created_at": "2026-07-31T01:15:00Z",
   "commit": null,
   "worker": "alm-product-eng",
   "branch": "feat/alm-intelligence-v1-product",
+  "worktree": ".worktrees/t_4281cf7f",
   "verification": {
     "typecheck": "pass",
-    "lint": "pass",
-    "tests": {
-      "files": 2,
-      "passed": 33,
-      "failed": 0
+    "lint": "pass (0 errors; intelligence paths clean)",
+    "unit_tests": {
+      "files": 3,
+      "passed": 39,
+      "failed": 0,
+      "command": "./node_modules/.bin/vitest run src/lib/intelligence"
+    },
+    "e2e": {
+      "intelligence_spec": "pass (2/2)",
+      "smoke_spec": "8/9 pass; Instagram callback expects 307 but returned 500 without Supabase env (pre-existing env gap, not product regression)",
+      "command": "PATH=/tmp/alm-bin:$PATH PLAYWRIGHT_PORT=3017 playwright test e2e/intelligence.spec.ts e2e/smoke.spec.ts"
     }
   },
   "deliverables": {
@@ -18,43 +25,89 @@
       "web/src/lib/intelligence/fixtures.ts",
       "web/src/lib/intelligence/client-status.ts",
       "web/src/lib/intelligence/batch.ts",
-      "web/src/lib/intelligence/index.ts"
+      "web/src/lib/intelligence/api.ts",
+      "web/src/lib/intelligence/index.ts",
+      "web/src/lib/actions/intelligence.ts"
     ],
     "components": [
       "web/src/components/intelligence/customer-wait-state.tsx",
       "web/src/components/intelligence/intelligence-wizard.tsx",
-      "web/src/components/intelligence/subject-home.tsx"
+      "web/src/components/intelligence/subject-home.tsx",
+      "web/src/components/app-header.tsx"
     ],
-    "routes_updated": [
+    "routes": [
       "web/src/app/(app)/audits/new/page.tsx",
-      "web/src/app/(app)/audits/[id]/page.tsx"
+      "web/src/app/(app)/audits/[id]/page.tsx",
+      "web/src/app/(app)/subjects/page.tsx",
+      "web/src/app/(app)/subjects/[id]/page.tsx"
     ],
     "tests": [
       "web/src/lib/intelligence/client-status.test.ts",
-      "web/src/lib/intelligence/batch.test.ts"
+      "web/src/lib/intelligence/batch.test.ts",
+      "web/src/lib/intelligence/api.test.ts",
+      "web/e2e/intelligence.spec.ts"
     ]
   },
+  "assumed_apis": {
+    "tables": [
+      "subjects",
+      "subject_channels",
+      "living_brief_versions",
+      "context_update_proposals",
+      "audit_batches",
+      "batch_audits",
+      "intelligence_runs",
+      "evidence",
+      "evidence_snapshots",
+      "scores",
+      "findings",
+      "recommendations",
+      "decisions"
+    ],
+    "service_role_rpcs": {
+      "create_subject": "(p_user_id, p_name, p_subject_type) → uuid",
+      "link_subject_channel": "(p_subject_id, p_channel_type, p_locator, p_managed, p_account_id) → uuid",
+      "record_living_brief_version": "immutable version insert",
+      "resolve_context_update_proposal": "(p_proposal_id, p_status, p_decided_by)",
+      "submit_audit_batch": "(p_user_id, p_subject_id, p_idempotency_key, p_audit_ids[]) → uuid"
+    },
+    "product_server_actions": {
+      "prepareAndSubmitIntelligenceBatch": "create audits then submit_audit_batch; stubbed until types land",
+      "resolveBriefProposalAction": "wraps resolve_context_update_proposal; stubbed"
+    },
+    "customer_progress": {
+      "desired": "GET /api/audits/:id/progress → CustomerAuditStatus allowlist only",
+      "current": "CustomerWaitState polls /api/audits/:id/live and projects Preparing/Analyzing/Finalizing/Delayed client-side"
+    }
+  },
   "decisions": [
-    "Used fixture data as compatibility adapters until kernel types (subject/brief/evidence) are available",
-    "Customer-safe waiting replaces 11-phase developer timeline with 3 customer phases (Preparing/Analyzing/Finalizing) plus Delayed",
-    "New audit wizard uses 4-step flow: Subject → Channels → Lens/Brief → Batch Review & Submit",
-    "Observed targets explicitly shown as not-managed-workspace in channel selection",
-    "Living Brief versions and model proposals are visibly distinct",
-    "Evidence IDs and score change reasons are surfaced in the subject home",
-    "Recommendation states (proposed/accepted/rejected/etc.) shown in recommendation ledger",
-    "All Date.now calls moved out of render to avoid impure function lint errors",
-    "audit/[id] page no longer queries audit_events for customer view — CustomerWaitState polls internally"
+    "Fixtures remain compatibility adapters until kernel types merge; UI labels fixture mode honestly",
+    "Customer wait exposes only Preparing/Analyzing/Finalizing/Delayed — never raw 11 phases",
+    "New Audit wizard: Subject → Channels → Lens/Brief → atomic Batch review/submit",
+    "Batch submit uses validateBatch + stubPrepareAndSubmitBatch (deterministic, no fake scanning)",
+    "Subject home surfaces: channel map, Living Brief versions vs proposals, since-last-audit, score change causes, recommendation lifecycle, report archive",
+    "Nav brand + Subjects entry point at /subjects; middleware protects /subjects",
+    "Proposal confirm/reject is local UI state until resolve_context_update_proposal is wired"
+  ],
+  "acceptance_product": {
+    "previous_subjects_and_channels_in_new_audit": "PASS (fixtures)",
+    "website_and_instagram_channels": "PASS (wizard)",
+    "batch_atomic_idempotent_duplicate_aware": "PASS (validateBatch + idempotency key stub)",
+    "customer_safe_waiting_and_delayed": "PASS (client-status + CustomerWaitState)",
+    "brief_versions_vs_proposals_distinct": "PASS (SubjectHome Brief tab)",
+    "evidence_score_rec_understandable": "PASS (Scores + Recommendations tabs)",
+    "390px_browser_tests": "PASS (intelligence + smoke viewport checks)"
+  },
+  "blockers": [
+    "Kernel migrations/types not on this branch — live create_subject / submit_audit_batch cannot run",
+    "Customer progress still derived from /live events client-side; allowlisted progress API not shipped",
+    "Proposal resolve and batch prepare are stub server actions pending release-gate type regen",
+    "Subject list/home read fixtures, not RLS-backed subjects rows"
   ],
   "pending_integration": [
-    "Real subject/channel/evidence queries (fixture data is placeholder)",
-    "Server-side batch submission RPC (simulated in wizard)",
-    "Living Brief edit UI (version display only)",
-    "Connected Instagram channel live data flow",
-    "390px mobile browser smoke test (requires running Next.js dev server)"
-  ],
-  "risks": [
-    "CustomerWaitState polls /api/audits/[id]/live which still returns full audit_events — needs server-side allowlisted projection for full customer safety",
-    "Subject/channel data uses fixtures — real flow requires kernel worker to populate subjects/channels tables",
-    "Wizard submission is simulated — needs real submit_batch RPC from kernel"
+    "Wire prepareAndSubmitIntelligenceBatch to service-role after types regenerate",
+    "Replace fixtures with subject/channel/brief queries",
+    "Ship /api/audits/[id]/progress allowlisted projection",
+    "Persist proposal confirm/reject via resolve_context_update_proposal"
   ]
 }

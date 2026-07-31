@@ -10,6 +10,7 @@
 
 export type SubjectType =
   | "person"
+  | "creator"
   | "brand"
   | "organization"
   | "project";
@@ -79,11 +80,36 @@ export interface LivingBriefVersion {
 export interface LivingBriefProposal {
   id: string;
   subjectId: string;
+  /** Base Living Brief version the proposal diffs against */
   parentVersionId: string;
-  proposedContent: Partial<LivingBriefContent>;
+  baseVersion: number;
+  path: string;
+  operation: "add" | "replace" | "remove";
+  proposedValue: string;
+  evidenceIds: string[];
   changeExplanation: string;
-  status: "pending" | "accepted" | "rejected";
+  status: "proposed" | "accepted" | "rejected" | "superseded" | "pending";
   createdAt: string;
+}
+
+/** Chronology of evidence + decisions since the prior intelligence run */
+export interface SinceLastAuditItem {
+  id: string;
+  kind: "evidence" | "decision" | "recommendation" | "brief";
+  title: string;
+  detail: string;
+  at: string;
+}
+
+/** Immutable report outputs linked to a pinned run */
+export interface ReportArchiveItem {
+  id: string;
+  auditId: string;
+  channelLabel: string;
+  reportVersion: number;
+  promptVersion: string | null;
+  createdAt: string;
+  href: string;
 }
 
 // ---- Evidence ----

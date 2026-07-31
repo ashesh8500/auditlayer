@@ -11,10 +11,13 @@ import type {
   ChannelSummary,
   LivingBriefContent,
   LivingBriefVersion,
+  LivingBriefProposal,
   EvidenceItemSummary,
   ScoreEvidence,
   RecommendationSummary,
   BatchReview,
+  SinceLastAuditItem,
+  ReportArchiveItem,
 } from "./types";
 
 // ---- Subjects ----
@@ -344,4 +347,104 @@ export function fixtureBatchReview(): BatchReview {
     duplicateChannelNames: [],
     entitlementWarnings: [],
   };
+}
+
+// ---- Proposals (distinct from confirmed versions) ----
+
+export function fixtureBriefProposals(
+  subjectId: string,
+): LivingBriefProposal[] {
+  return [
+    {
+      id: "prop-001",
+      subjectId,
+      parentVersionId: "bv-003",
+      baseVersion: 3,
+      path: "/goals",
+      operation: "replace",
+      proposedValue:
+        "Grow Instagram to 30K by Q1 2027. Keep Metabolic Reset at 40 seats.",
+      evidenceIds: ["IG#profile-bio-20260720"],
+      changeExplanation:
+        "Recent growth velocity supports a higher follower target without changing offer constraints.",
+      status: "proposed",
+      createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    },
+    {
+      id: "prop-002",
+      subjectId,
+      parentVersionId: "bv-003",
+      baseVersion: 3,
+      path: "/positioning",
+      operation: "replace",
+      proposedValue:
+        "Clinical longevity for busy professionals — less anti-bro framing, more protocol clarity.",
+      evidenceIds: ["WEB#official-about-7f1a"],
+      changeExplanation:
+        "Perceived positioning on the website emphasizes protocols more than anti-hype contrast.",
+      status: "proposed",
+      createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    },
+  ];
+}
+
+// ---- Since last audit ----
+
+export function fixtureSinceLastAudit(): SinceLastAuditItem[] {
+  const now = Date.now();
+  return [
+    {
+      id: "sla-1",
+      kind: "brief",
+      title: "Living Brief updated to v3",
+      detail: "Goals raised to 25K; YouTube launch added to planned changes.",
+      at: new Date(now - 86400000).toISOString(),
+    },
+    {
+      id: "sla-2",
+      kind: "decision",
+      title: "Rejected: cut Stories volume",
+      detail: "Client kept higher Stories cadence; recommendation stays rejected.",
+      at: new Date(now - 14 * 86400000).toISOString(),
+    },
+    {
+      id: "sla-3",
+      kind: "evidence",
+      title: "Instagram profile re-observed",
+      detail: "Bio and follower signals refreshed; original observed_at preserved on reuse.",
+      at: new Date(now - 3 * 86400000).toISOString(),
+    },
+    {
+      id: "sla-4",
+      kind: "recommendation",
+      title: "Accepted: Tuesday carousel cadence",
+      detail: "Now in progress — tracking saves vs prior baseline.",
+      at: new Date(now - 14 * 86400000).toISOString(),
+    },
+  ];
+}
+
+// ---- Report archive ----
+
+export function fixtureReportArchive(subjectId: string): ReportArchiveItem[] {
+  return [
+    {
+      id: "rpt-001",
+      auditId: "audit-002",
+      channelLabel: "@narinkaji",
+      reportVersion: 1,
+      promptVersion: "alm-report-v4",
+      createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+      href: "/audits/audit-002/read",
+    },
+    {
+      id: "rpt-002",
+      auditId: "audit-001",
+      channelLabel: "@narinkaji",
+      reportVersion: 1,
+      promptVersion: "alm-report-v3",
+      createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
+      href: "/audits/audit-001/read",
+    },
+  ].map((row) => ({ ...row, id: `${subjectId}-${row.id}` }));
 }

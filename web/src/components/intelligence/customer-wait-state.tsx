@@ -69,8 +69,6 @@ export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitSt
     ? "delayed"
     : customerStatus.phase;
 
-  const isUpdating = !isTerminal;
-
   const poll = useCallback(async () => {
     if (pollRef.current) return;
     pollRef.current = true;

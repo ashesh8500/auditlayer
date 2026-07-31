@@ -13,14 +13,14 @@ export async function AppHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-xl">
       <div className="alm-shell flex min-h-16 items-center justify-between gap-3 py-2">
-        <Brand href="/accounts" nameClassName="hidden sm:block" />
+        <Brand href="/subjects" nameClassName="hidden sm:block" />
 
         <nav aria-label="Account navigation" className="flex min-w-0 items-center gap-0.5 text-sm sm:gap-1">
           <Button asChild variant="ghost" size="sm">
-            <Link href="/accounts">
+            <Link href="/subjects">
               <Building2 className="size-4 sm:hidden" />
-              <span className="hidden sm:inline">Accounts</span>
-              <span className="sr-only sm:hidden">Accounts</span>
+              <span className="hidden sm:inline">Subjects</span>
+              <span className="sr-only sm:hidden">Subjects</span>
             </Link>
           </Button>
           <Button asChild variant="ghost" size="sm">
