@@ -8,7 +8,7 @@ import {
   supabaseUrl,
 } from "@/lib/env";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/audits", "/admin"];
+const PROTECTED_PREFIXES = ["/dashboard", "/audits", "/admin", "/subjects", "/accounts", "/settings"];
 
 function isProtected(pathname: string): boolean {
   // /s/ routes are public share links — skip auth

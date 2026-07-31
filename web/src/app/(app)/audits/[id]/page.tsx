@@ -10,7 +10,7 @@ import {
   type AuditStatus,
   type Platform,
 } from "@/lib/domain";
-import { LiveTimeline, type TimelineEvent } from "@/components/live-timeline";
+import { CustomerWaitState } from "@/components/intelligence/customer-wait-state";
 import {
   ReportViewer,
   type RefinementRow,
@@ -38,13 +38,6 @@ export default async function AuditDetailPage({
 
   if (!audit) notFound();
 
-  const { data: eventRows } = await supabase
-    .from("audit_events")
-    .select("id, phase, event_type, detail, actor, created_at")
-    .eq("audit_id", id)
-    .order("created_at", { ascending: true });
-
-  const events = (eventRows ?? []) as TimelineEvent[];
   const limitations = Array.isArray(audit.limitations)
     ? (audit.limitations as string[])
     : [];
@@ -106,11 +99,10 @@ export default async function AuditDetailPage({
         {status === "ready" ? (
           <ReadyReport auditId={id} audit={audit} supabase={supabase} />
         ) : (
-          <LiveTimeline
+          <CustomerWaitState
             auditId={id}
-            initialEvents={events}
-            status={status}
-            retryCount={audit.retry_count ?? 0}
+            internalStatus={status}
+            startedAt={audit.created_at}
           />
         )}
       </div>
