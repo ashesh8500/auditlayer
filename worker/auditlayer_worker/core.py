@@ -119,7 +119,7 @@ PLAN_LIMITS = {
 }
 
 # Retry configuration for failed audits.
-MAX_RETRIES = 3
+MAX_RETRIES = 1
 RETRY_BACKOFF_BASE_SECONDS = 60  # 1min, 2min, 4min exponential
 
 INSTAGRAM_LIMITATION = (
@@ -1125,7 +1125,7 @@ def build_worker_prompt(
         )
     elif report_type == "blueprint":
         preamble = (
-            f"Generate a BLUEPRINT pre-launch foundation audit. The creator has 0-1K followers "
+            "Generate a BLUEPRINT pre-launch foundation audit. The creator has 0-1K followers "
             "and needs a solid base before scaling. Focus on niche positioning, profile architecture, "
             "content strategy, and launch readiness. Every recommendation must be actionable "
             "for someone starting from scratch — no assumptions about existing audience or momentum."

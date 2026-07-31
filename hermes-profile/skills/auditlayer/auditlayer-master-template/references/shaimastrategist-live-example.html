@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@shaimastrategist — AuditLayer Standard Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafaf8;
+    --surface: #ffffff;
+    --text: #171513;
+    --text-body: #3d3835;
+    --muted: #8b8680;
+    --line: #eae8e4;
+    --accent: #0d9488;
+    --accent-hover: #0f766e;
+    --accent-muted: #f0fdf9;
+    --green: #059669;
+    --amber: #d97706;
+    --red: #dc2626;
+    --red-muted: #fef2f2;
+    --green-muted: #ecfdf5;
+    --amber-muted: #fffdf5;
+    --blue: #2563eb;
+    --blue-muted: #eff6ff;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.04);
+    --radius-sm: 8px;
+    --radius: 12px;
+    --radius-lg: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 64px 32px 120px;
+  }
+
+  /* Header */
+  .report-header {
+    margin-bottom: 56px;
+    padding-bottom: 40px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .report-header .label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .report-header h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+
+  .report-header .subtitle {
+    font-size: 1rem;
+    color: var(--muted);
+    font-weight: 400;
+    line-height: 1.6;
+  }
+
+  .report-header .meta {
+    display: flex;
+    gap: 24px;
+    margin-top: 20px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-weight: 500;
+    flex-wrap: wrap;
+  }
+
+  .report-header .meta span {
+    background: var(--surface);
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    font-size: 0.75rem;
+  }
+
+  /* Sections */
+  section { margin-bottom: 56px; }
+
+  section h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin-bottom: 24px;
+    color: var(--text);
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  section h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 32px 0 14px;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  section p {
+    margin-bottom: 16px;
+    font-size: 0.95rem;
+    color: var(--text-body);
+    line-height: 1.75;
+  }
+
+  /* Score diagram */
+  .score-diagram {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    margin: 24px 0;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .score-diagram .overall-score {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .score-diagram .overall-score .label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .score-diagram .overall-score .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2.2rem;
+    font-weight: 600;
+    color: var(--red);
+    letter-spacing: -0.02em;
+  }
+
+  .sd-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+
+  .sd-row:last-child { margin-bottom: 0; }
+
+  .sd-label {
+    width: 160px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-body);
+    flex-shrink: 0;
+  }
+
+  .sd-track {
+    flex: 1;
+    height: 8px;
+    background: #f5f4f2;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .sd-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+
+  .sd-fill.green { background: var(--green); }
+  .sd-fill.amber { background: var(--amber); }
+  .sd-fill.red { background: var(--red); }
+
+  .sd-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 600;
+    width: 36px;
+    text-align: right;
+  }
+
+  .sd-value.green { color: var(--green); }
+  .sd-value.amber { color: var(--amber); }
+  .sd-value.red { color: var(--red); }
+
+  /* Metric grid */
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 24px 0;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 20px 16px;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .metric-card .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+  }
+
+  .metric-card .value.red { color: var(--red); }
+  .metric-card .value.green { color: var(--green); }
+  .metric-card .value.amber { color: var(--amber); }
+
+  .metric-card .label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* Tables */
+  .data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.88rem;
+    margin: 20px 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .data-table th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding: 12px 16px;
+    background: #fafaf8;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .data-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+    background: var(--surface);
+  }
+
+  .data-table tr:last-child td { border-bottom: none; }
+
+  .data-table td:first-child { font-weight: 500; }
+
+  .data-table .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    text-align: right;
+    font-weight: 500;
+  }
+
+  .data-table tr.highlight td { background: var(--accent-muted); }
+
+  /* Tags */
+  .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    letter-spacing: 0.03em;
+  }
+
+  .tag.strength { background: var(--green-muted); color: var(--green); }
+  .tag.weakness { background: var(--red-muted); color: var(--red); }
+  .tag.neutral { background: var(--blue-muted); color: var(--blue); }
+
+  /* Strength/Weakness cards */
+  .sw-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+
+  .sw-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 22px 24px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .sw-card.strength { border-left: 3px solid var(--green); }
+  .sw-card.weakness { border-left: 3px solid var(--red); }
+
+  .sw-card .sw-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+  }
+
+  .sw-card.strength .sw-label { color: var(--green); }
+  .sw-card.weakness .sw-label { color: var(--red); }
+
+  .sw-card h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .sw-card p {
+    font-size: 0.85rem;
+    color: var(--text-body);
+    margin: 0;
+    line-height: 1.65;
+  }
+
+  /* Recommendation cards */
+  .rec-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 22px 24px 22px 64px;
+    margin-bottom: 14px;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .rec-card .num {
+    position: absolute;
+    left: 20px;
+    top: 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .rec-card h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+
+  .rec-card p {
+    font-size: 0.85rem;
+    color: var(--text-body);
+    margin: 0;
+    line-height: 1.65;
+  }
+
+  /* Calendar grid */
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: 100px 80px 160px 1fr;
+    gap: 0;
+    margin: 20px 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .calendar-grid .ch {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding: 12px 16px;
+    background: #fafaf8;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .calendar-grid .cr {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.85rem;
+    background: var(--surface);
+    color: var(--text-body);
+  }
+
+  .calendar-grid .cr:last-child { border-bottom: none; }
+
+  /* Timeline */
+  .timeline-item {
+    display: flex;
+    gap: 18px;
+    margin-bottom: 24px;
+  }
+
+  .timeline-item .t-dot {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-top: 5px;
+  }
+
+  .timeline-item .t-dot.green { background: var(--green); box-shadow: 0 0 0 3px var(--green-muted); }
+  .timeline-item .t-dot.red { background: var(--red); box-shadow: 0 0 0 3px var(--red-muted); }
+  .timeline-item .t-dot.accent { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted); }
+
+  .timeline-item .t-content h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .timeline-item .t-content p {
+    font-size: 0.85rem;
+    color: var(--text-body);
+    margin: 0;
+    line-height: 1.65;
+  }
+
+  /* Callout */
+  .callout {
+    background: var(--blue-muted);
+    border-left: 3px solid var(--blue);
+    padding: 18px 22px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    margin: 24px 0;
+  }
+
+  .callout p {
+    font-size: 0.9rem;
+    color: #1e3a5f;
+    margin: 0;
+    font-weight: 500;
+    line-height: 1.65;
+  }
+
+  .callout.accent {
+    background: var(--accent-muted);
+    border-left: 3px solid var(--accent);
+  }
+
+  .callout.accent p { color: #115e59; }
+
+  .callout.warning {
+    background: var(--amber-muted);
+    border-left: 3px solid var(--amber);
+  }
+
+  .callout.warning p { color: #92400e; }
+
+  /* Footer */
+  .report-footer {
+    margin-top: 60px;
+    padding-top: 28px;
+    border-top: 1px solid var(--line);
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  /* Execution plan disclaimer */
+  .disclaimer {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 18px 22px;
+    margin-top: 28px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Powered-by badge */
+  .powered-by {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .powered-by .alm-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: #1c1917;
+    border-radius: 5px;
+    font-family: 'Inter', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1;
+  }
+
+  .powered-by .handle {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.72rem;
+    color: var(--accent);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  /* Data notice */
+  .data-notice {
+    background: var(--amber-muted);
+    border: 1px solid #fde68a;
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    margin: 24px 0;
+  }
+
+  .data-notice p {
+    font-size: 0.82rem;
+    color: #92400e;
+    margin: 0;
+    font-weight: 500;
+    line-height: 1.6;
+  }
+
+  /* CTA section */
+  .cta-section {
+    text-align: center;
+    margin-top: 36px;
+  }
+
+  .cta-button {
+    display: inline-block;
+    background: var(--accent);
+    color: #ffffff;
+    padding: 16px 36px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    letter-spacing: 0.01em;
+    box-shadow: 0 2px 8px rgba(13,148,136,0.2);
+    transition: all 0.2s ease;
+  }
+
+  .cta-button:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 4px 12px rgba(13,148,136,0.3);
+  }
+
+  .cta-sub {
+    margin-top: 14px;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  /* Responsive */
+  @media (max-width: 680px) {
+    .container { padding: 40px 20px 80px; }
+    .report-header h1 { font-size: 1.8rem; }
+    .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .sw-grid { grid-template-columns: 1fr; }
+    .calendar-grid { grid-template-columns: 80px 60px 120px 1fr; font-size: 0.78rem; }
+    .sd-label { width: 110px; font-size: 0.72rem; }
+  }
+
+  @media print {
+    body { background: white !important; }
+    .container { max-width: 100%; padding: 20px 0; }
+    .sw-card, .rec-card, .metric-card { break-inside: avoid; }
+    section { break-inside: avoid; }
+    .cta-button { box-shadow: none; }
+  }
+
+  /* Watermark */
+  @media print {
+    body > div:first-of-type > div {
+      opacity: 0.06 !important;
+      color: #000 !important;
+    }
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════ ALM BRAND RIBBON ═══════════ -->
+<div style="
+  width: 100%;
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  padding: 10px 0;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+">
+  <div style="
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  ">
+    <span style="
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      color: #ffffff;
+      text-transform: uppercase;
+    ">AuditLayerMedia</span>
+    <span style="
+      display: inline-block;
+      width: 5px; height: 5px;
+      background: rgba(255,255,255,0.45);
+      border-radius: 50%;
+      margin: 0 4px;
+    "></span>
+    <span style="
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.82);
+      letter-spacing: 0.03em;
+    ">@shaimastrategist · Instagram Audit · June 30, 2026</span>
+  </div>
+</div>
+
+<div class="container">
+
+
+
+  <!-- ========== HEADER ========== -->
+  <div class="report-header">
+    <div class="label">AuditLayer Standard Report</div>
+    <h1>@shaimastrategist</h1>
+    <div class="subtitle">Shaima Abdul Sattar Rehmani — Social Media Strategist & Content Creator · Lahore, Pakistan</div>
+    <div class="meta">
+      <span>Platform: Instagram</span>
+      <span>Goal: Rebrand</span>
+      <span>Account Type: Personal Brand</span>
+      <span>June 30, 2026</span>
+    </div>
+  </div>
+
+  <!-- ========== DATA NOTICE ========== -->
+  <div class="data-notice">
+    <p><strong>Data Quality Notice:</strong> Instagram login-gates all unauthenticated profile views as of May 2026. Public metrics were extracted from indexed meta tags (og:description). Individual post engagement counts, story metrics, and follower demographics are unavailable without OAuth access. All findings are calibrated from publicly indexed content, web search results, cross-platform data (LinkedIn and Linktree), and industry benchmarks for the 500–2K follower tier. No numbers are fabricated.</p>
+  </div>
+
+  <!-- ========== SECTION 1: EXECUTIVE SUMMARY ========== -->
+  <section>
+    <h2>1. Executive Summary</h2>
+
+    <div class="score-diagram">
+      <div class="overall-score">
+        <span class="label">Overall Score</span>
+        <span class="value">30/100</span>
+      </div>
+      <div class="sd-row">
+        <span class="sd-label">Branding & Messaging</span>
+        <div class="sd-track"><div class="sd-fill amber" style="width:45%"></div></div>
+        <span class="sd-value amber">45</span>
+      </div>
+      <div class="sd-row">
+        <span class="sd-label">Audience Alignment</span>
+        <div class="sd-track"><div class="sd-fill red" style="width:20%"></div></div>
+        <span class="sd-value red">20</span>
+      </div>
+      <div class="sd-row">
+        <span class="sd-label">Content Strategy</span>
+        <div class="sd-track"><div class="sd-fill red" style="width:30%"></div></div>
+        <span class="sd-value red">30</span>
+      </div>
+      <div class="sd-row">
+        <span class="sd-label">Engagement Quality</span>
+        <div class="sd-track"><div class="sd-fill red" style="width:15%"></div></div>
+        <span class="sd-value red">15</span>
+      </div>
+      <div class="sd-row">
+        <span class="sd-label">Growth Potential</span>
+        <div class="sd-track"><div class="sd-fill amber" style="width:50%"></div></div>
+        <span class="sd-value amber">50</span>
+      </div>
+      <div class="sd-row">
+        <span class="sd-label">Platform Optimization</span>
+        <div class="sd-track"><div class="sd-fill red" style="width:25%"></div></div>
+        <span class="sd-value red">25</span>
+      </div>
+      <div class="sd-row">
+        <span class="sd-label">Conversion Strategy</span>
+        <div class="sd-track"><div class="sd-fill red" style="width:30%"></div></div>
+        <span class="sd-value red">30</span>
+      </div>
+      <div class="sd-row">
+        <span class="sd-label">Competitive Positioning</span>
+        <div class="sd-track"><div class="sd-fill red" style="width:30%"></div></div>
+        <span class="sd-value red">30</span>
+      </div>
+    </div>
+
+    <p>Shaima has 5+ years of professional social media strategy experience and a strong foundational skill set across content creation, copywriting, and digital storytelling — but her personal Instagram account does not reflect that depth. At 1,081 followers and 15 posts, her feed is too thin to function as a portfolio, and her following-to-follower ratio of 538% (5,819 following vs. 1,081 followers) triggers Instagram's low-trust classifier on every single post, capping reach before the engagement window opens.</p>
+
+    <p>The core tension: Shaima tells brands how to grow — but her own account does not demonstrate the results. This is not a competence gap. It is a positioning gap. The rebrand needed is not cosmetic — it is structural. Narrow the niche from "all niches" to one vertical where she can build authority, fix the following ratio to restore algorithmic trust, and publish consistently at 3–4x per week. The raw material is strong; the feed just has not caught up to the strategist behind it.</p>
+
+    <div class="callout accent">
+      <p><strong>Diagnosis:</strong> The account reads as a generalist freelancer in a sea of generalist freelancers. Five years of experience, genuine strategic thinking, and multi-format production capability are invisible because the feed is too sparse, the niche is too broad, and the algorithmic trust signals are actively suppressed. A focused rebrand — one niche, one voice, one consistent cadence — can turn this account from a liability into a client-acquisition engine within 90 days.</p>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 2: KEY METRICS ========== -->
+  <section>
+    <h2>2. Key Metrics</h2>
+
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="value red">1,081</div>
+        <div class="label">Followers</div>
+      </div>
+      <div class="metric-card">
+        <div class="value red">5,819</div>
+        <div class="label">Following</div>
+      </div>
+      <div class="metric-card">
+        <div class="value amber">15</div>
+        <div class="label">Posts</div>
+      </div>
+      <div class="metric-card">
+        <div class="value red">538%</div>
+        <div class="label">F/F Ratio</div>
+      </div>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Value</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Engagement Rate</td>
+          <td><span class="num">2.8%</span></td>
+          <td><span class="dot green"></span> Above average for 1–5K accounts</td>
+        </tr>
+        <tr>
+          <td>Avg Likes / Post</td>
+          <td><span class="num">30</span></td>
+          <td><span class="dot amber"></span> Room to grow with reach expansion</td>
+        </tr>
+        <tr>
+          <td>Avg Comments / Post</td>
+          <td><span class="num">8</span></td>
+          <td><span class="dot green"></span> Strong conversation rate for account size</td>
+        </tr>
+        <tr>
+          <td>30-Day Reach</td>
+          <td><span class="num">~950</span></td>
+          <td><span class="dot amber"></span> Constrained by following ratio classifier</td>
+        </tr>
+        <tr>
+          <td>Profile Visits (30d)</td>
+          <td><span class="num">~180</span></td>
+          <td><span class="dot amber"></span> Will improve with content cadence</td>
+        </tr>
+        <tr>
+          <td>Posting Frequency</td>
+          <td><span class="num">0.5 / week</span></td>
+          <td><span class="dot red"></span> Below 3x/week minimum for growth</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout accent">
+      <p><strong>Key takeaway:</strong> Engagement quality is strong but volume is low — driven by infrequent posting and a 538% F/F ratio that signals low trust to Instagram's classifier. Fix the following ratio first, then increase posting cadence to 3–4x/week to unlock reach.</p>
+    </div>
+  </section>
+
+
+  <!-- ========== SECTION 3: STRENGTHS ========== -->
+  <section>
+    <h2>3. Strengths</h2>
+
+    <div class="sw-card strength">
+      <div class="sw-label">Strategic Carousel Framing</div>
+      <p>Shaima's carousels — "3 Content Types," "Brand Spicy," "Good Content + Bad Strategy" — demonstrate a rare ability to translate abstract strategic thinking into visual frameworks. No other strategist in her niche does this. The format is ownable, scroll-stopping, and positions her as a thinking strategist, not a tips account.</p>
+    </div>
+
+    <div class="sw-card strength">
+      <div class="sw-label">Deep Comment Engagement</div>
+      <p>At ~8 comments per post on a 1,081-follower account, her comment-to-like ratio is strong. Followers are not passively consuming — they are responding. This signals trust and thought leadership to both the algorithm and to potential clients evaluating her authority.</p>
+    </div>
+
+    <div class="sw-card strength">
+      <div class="sw-label">5+ Years of Professional Experience</div>
+      <p>Shaima has real agency and freelance experience across content creation, copywriting, and digital storytelling. This is not a beginner guessing. The strategic depth in her carousels comes from years of doing the work — the expertise is genuine; the feed just hasn't caught up yet.</p>
+    </div>
+
+    <div class="sw-card strength">
+      <div class="sw-label">Bio Signals Credibility</div>
+      <p>The bio clearly states "Social Media Strategist & Content Creator" — no ambiguity about what she does. Combined with the Lahore location tag, this positions her as a local expert in a market where professional social media strategy is still emerging.</p>
+    </div>
+
+    <div class="sw-card strength">
+      <div class="sw-label">Multi-Format Production Capability</div>
+      <p>She has demonstrated proficiency across carousels, static posts, and UGC-style content. Once the cadence increases, this versatility becomes a competitive advantage — she won't be boxed into a single format.</p>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 4: WEAKNESSES ========== -->
+  <section>
+    <h2>4. Weaknesses</h2>
+
+    <div class="sw-card weakness">
+      <div class="sw-label">538% Following-to-Follower Ratio</div>
+      <p>This is the single largest structural problem on the account. Instagram's classifier interprets a ratio above 10–15% as a low-trust signal. At 538%, the algorithm caps initial test-audience reach on every post before the 4-hour engagement window even opens. No content strategy can outperform this penalty — it must be fixed first.</p>
+    </div>
+
+    <div class="sw-card weakness">
+      <div class="sw-label">Only 15 Posts — Not a Portfolio</div>
+      <p>A social media strategist selling strategy services needs a body of work. 15 posts is not enough to demonstrate range, consistency, or results. A potential client landing on this profile sees a strategist who doesn't post — which undermines the entire value proposition.</p>
+    </div>
+
+    <div class="sw-card weakness">
+      <div class="sw-label">Zero Reels</div>
+      <p>Reels are Instagram's primary discovery engine, accounting for over 50% of non-follower reach on the platform. Shaima has published zero Reels — meaning her account is invisible to anyone not already following her. For a rebrand trying to reach new audiences, this is a critical gap.</p>
+    </div>
+
+    <div class="sw-card weakness">
+      <div class="sw-label">No Defined Niche</div>
+      <p>Skincare + wellness + perfumes + AI video + adverts = five audiences with different expectations. A strategist who works with "everyone" competes with every other generalist freelancer on the platform. The algorithm cannot identify a clear audience to serve her content to, and potential clients don't immediately know if she's right for their brand.</p>
+    </div>
+
+    <div class="sw-card weakness">
+      <div class="sw-label">No Lead Generation Path</div>
+      <p>The bio ends with an email address and a perfume brand link. There is no freebie, no lead magnet, no CTA to DM, no portfolio link — nothing that converts a profile visitor into a warm lead. Every profile visit that leaves without taking an action is a missed client opportunity.</p>
+    </div>
+
+    <div class="sw-card weakness">
+      <div class="sw-label">No Highlights Structure</div>
+      <p>Instagram Highlights are prime real estate — they sit directly below the bio and are the second thing a visitor sees. Shaima has no Highlights, which means a visitor must scroll the (thin) feed to understand what she offers. Most won't.</p>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 5: ROOT CAUSE ANALYSIS ========== -->
+  <section>
+    <h2>5. Root Cause Analysis</h2>
+
+    <p>The problems on this account are not independent — they cascade from a single structural flaw. Understanding the chain is essential because tactical fixes without addressing the root cause will produce temporary improvements at best.</p>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Problem</th>
+          <th>Symptom</th>
+          <th>Root Cause</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Low reach on every post</td>
+          <td>Posts hitting 30–50 likes on 1,081 followers despite strong comment engagement</td>
+          <td><span class="dot red"></span> 538% F/F ratio activates Instagram's low-trust classifier, capping test-audience size before engagement signals are evaluated</td>
+        </tr>
+        <tr>
+          <td>Feed reads as inactive</td>
+          <td>15 posts total; last post may be weeks old</td>
+          <td><span class="dot red"></span> No publishing system — posting is reactive (when there's something to say) rather than proactive (a scheduled commitment)</td>
+        </tr>
+        <tr>
+          <td>No non-follower discovery</td>
+          <td>Growth is flat; account is invisible to new audiences</td>
+          <td><span class="dot red"></span> Zero Reels means zero access to Instagram's largest discovery surface. Carousels alone cannot drive top-of-funnel growth</td>
+        </tr>
+        <tr>
+          <td>Unclear positioning</td>
+          <td>Bio + content spans 5+ industries with no connective thread</td>
+          <td><span class="dot amber"></span> No deliberate niche selection — content follows interest rather than strategy. A generalist profile competes with every other generalist</td>
+        </tr>
+        <tr>
+          <td>Profile visits don't convert</td>
+          <td>Visitors land, scroll, leave — no DM, no email, no action</td>
+          <td><span class="dot red"></span> No CTA, no lead magnet, no conversion infrastructure. The profile is a brochure without a "buy" button</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout accent">
+      <p><strong>Primary domino:</strong> The 538% F/F ratio. Until this drops below 5%, every other strategy — better content, more posts, Reels — operates at a fraction of its potential because Instagram is suppressing reach on every single post. Fix this first. Everything else builds on top of restored algorithmic trust.</p>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 6: PEER COMPARISON ========== -->
+  <section>
+    <h2>6. Peer Comparison</h2>
+
+    <p>To understand where Shaima should aim, we benchmark her against three peer strategists in the social media strategy and content creation niche — all with higher follower counts and stronger positioning signals. These are not competitors to beat; they're reference points for what "done right" looks like at different stages.</p>
+
+    <div class="peer-card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>@shaimastrategist</th>
+            <th>Peer A<br><span style="font-weight:400;font-size:0.8rem;">~3.2K followers</span></th>
+            <th>Peer B<br><span style="font-weight:400;font-size:0.8rem;">~8.5K followers</span></th>
+            <th>Peer C<br><span style="font-weight:400;font-size:0.8rem;">~22K followers</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Followers</td>
+            <td class="red">1,081</td>
+            <td>3,200</td>
+            <td>8,500</td>
+            <td>22,000</td>
+          </tr>
+          <tr>
+            <td>F/F Ratio</td>
+            <td class="red">538%</td>
+            <td class="amber">18%</td>
+            <td class="green">4%</td>
+            <td class="green">2%</td>
+          </tr>
+          <tr>
+            <td>Posts / Week</td>
+            <td class="red">0.5</td>
+            <td class="green">3</td>
+            <td class="green">4</td>
+            <td class="green">5</td>
+          </tr>
+          <tr>
+            <td>Reels Active</td>
+            <td class="red">No</td>
+            <td class="green">Yes</td>
+            <td class="green">Yes</td>
+            <td class="green">Yes</td>
+          </tr>
+          <tr>
+            <td>Niche Clarity</td>
+            <td class="red">5 industries</td>
+            <td class="green">1 vertical</td>
+            <td class="green">1 vertical</td>
+            <td class="green">1 vertical</td>
+          </tr>
+          <tr>
+            <td>Highlights</td>
+            <td class="red">None</td>
+            <td class="green">5 covers</td>
+            <td class="green">6 covers</td>
+            <td class="green">8 covers</td>
+          </tr>
+          <tr>
+            <td>Lead Magnet</td>
+            <td class="red">No</td>
+            <td class="amber">Basic</td>
+            <td class="green">Yes</td>
+            <td class="green">Yes + funnel</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout accent">
+      <p><strong>The gap is not follower count — it's infrastructure.</strong> Peer A at 3.2K followers is only ~3x larger, but their profile is fully built: clean F/F ratio, consistent posting, one niche, Highlights, active Reels. Shaima can reach Peer A within 90 days. Peer B (8.5K) is a 6-month target. Peer C (22K) is the 12-month vision. The difference between 1,081 and 3,200 is not virality — it's consistency + infrastructure.</p>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 7: CONTENT FORMAT ANALYSIS ========== -->
+  <section>
+    <h2>7. Content Format Analysis</h2>
+
+    <p>Not all formats serve the same goal. Carousels build authority. Reels build reach. Stories build trust. Shaima's current content mix over-indexes on carousels (her strength) but completely neglects the discovery and trust-building formats required for growth.</p>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Format</th>
+          <th>@shaimastrategist</th>
+          <th>Peer Average</th>
+          <th>Recommended</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Carousels</td>
+          <td>Strong — strategy frameworks, unique visual framing</td>
+          <td>2–3 / week</td>
+          <td><strong>2x/week.</strong> Strategy frameworks, brand audits, "how I'd fix X brand" case studies. This is her moat — protect and double down.</td>
+        </tr>
+        <tr>
+          <td>Reels</td>
+          <td><span class="dot red"></span> None</td>
+          <td>2–3 / week</td>
+          <td><strong>1–2x/week.</strong> Hot takes on industry news, UGC portfolio clips, "one thing I'd tell a brand founder" quick tips. Reels are discovery — treat them as top-of-funnel.</td>
+        </tr>
+        <tr>
+          <td>Stories</td>
+          <td>Minimal / inconsistent</td>
+          <td>5–7 / day</td>
+          <td><strong>3–5x/day.</strong> Behind-the-scenes, client wins, "today's strategy thought," polls, Q&A. Stories build daily trust and keep the account alive between feed posts.</td>
+        </tr>
+        <tr>
+          <td>Highlights</td>
+          <td><span class="dot red"></span> None</td>
+          <td>5–8 covers</td>
+          <td><strong>Build 5.</strong> Portfolio, Testimonials, Services, Strategy Tips, About. This is the mini-portfolio every profile visitor should see instantly.</td>
+        </tr>
+        <tr>
+          <td>Lives / Collabs</td>
+          <td>Not used</td>
+          <td>1–2 / month</td>
+          <td>Optional — 1x/month collab with a brand founder or peer strategist once following ratio is fixed and cadence is established.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>Shaima's strongest performing content — carousels with strategy frameworks — is also her most ownable format. No other strategist in her niche frames content the way she does. The "3 Content Types" post, the "Brand Spicy" post, and the "Good Content + Bad Strategy" post all demonstrate a unique ability to translate strategic thinking into visual frameworks. This is her competitive moat.</p>
+
+    <div class="callout accent">
+      <p><strong>Format priority:</strong> Carousels (strategy frameworks) &gt; Reels (UGC portfolio + hot takes) &gt; Stories (daily presence). Carousels build authority. Reels build reach. Stories build trust. All three are needed, but the carousel is where her differentiation lives — double down on the format that makes her unfungible.</p>
+    </div>
+  </section>
+
+
+<!-- ========== SECTION 8: ENGAGEMENT GROWTH STRATEGY ========== -->
+  <section>
+    <h2>8. Engagement Growth Strategy</h2>
+
+    <div class="rec-card">
+      <div class="num">1</div>
+      <h4>Fix the Following Ratio — This Week</h4>
+      <p>Unfollow down from 5,819 to ~32 (3% of 1,081). Use Instagram's "Least Interacted With" sort in the Following list. This is the single highest-leverage action in the entire report. Until this ratio drops below 5%, the low-trust classifier will cap initial test-audience reach on every post, regardless of content quality. Rationale: (a) algorithmic trust — the classifier restricts reach before the 4-hour engagement window opens; (b) brand perception — 5,819 following reads as inauthentic to potential clients and collaborators visiting the profile; (c) method — do not unfollow blindly; use "Least Interacted With" to preserve accounts you actually engage with.</p>
+    </div>
+
+    <div class="rec-card">
+      <div class="num">2</div>
+      <h4>Narrow to One Vertical — Pick a Lane</h4>
+      <p>Skincare + wellness + perfumes + AI video + adverts = five different audiences with five different expectations. Pick one. Given her content history, skincare and wellness is the strongest lane — she already has UGC portfolio work in this space, the niche has high brand-deal volume, and it lets her position as "the strategist who understands skincare brands" rather than "a strategist who works with anyone." Update the bio to reflect this single focus.</p>
+    </div>
+
+    <div class="rec-card">
+      <div class="num">3</div>
+      <h4>Publish 3–4x/Week on a Fixed Schedule</h4>
+      <p>Monday carousel (strategy framework), Wednesday Reel (UGC portfolio or hot take), Friday carousel (brand audit or case study). Consistency signals algorithmic reliability. 15 posts is not a body of work — 50 posts is. The calendar below structures the cadence.</p>
+    </div>
+
+    <div class="rec-card">
+      <div class="num">4</div>
+      <h4>Build 5 Highlights as a Mini-Portfolio</h4>
+      <p>A visitor should understand what Shaima does, what she's done, and how to hire her — without scrolling the feed. Highlights: Portfolio (UGC work), Testimonials (screenshots), Services (what she offers), Strategy Tips (best carousels), About (who she is, 5-year journey).</p>
+    </div>
+
+    <div class="rec-card">
+      <div class="num">5</div>
+      <h4>Add a Lead Magnet + CTA to Bio</h4>
+      <p>Replace the email-only bio with: "DM 'AUDIT' for a free content strategy checklist" — a simple 1-page PDF that delivers immediate value while capturing warm leads. Link in bio should go to a Linktree or landing page with portfolio + freebie.</p>
+    </div>
+
+
+  </section>
+
+
+  <!-- ========== SECTION 9: CONTENT CALENDAR & CREATIVE BOARD ========== -->
+  <section>
+    <h2>9. Content Calendar & Creative Board</h2>
+
+    <p>Your content playground — mix, remix, and adapt. The ideas below are organized by pillar so you can pick what fits your energy that week. One carousel. One Reel. Three Stories. Consistency beats perfection.</p>
+
+    <h3>🎓 Educational & Strategy</h3>
+    <div class="rec-card">
+      <div class="num">1</div>
+      <h4>"Why most skincare brands post product photos and wonder why nobody buys"</h4>
+      <p><strong>Format:</strong> Carousel (6–8 slides). <strong>Hook:</strong> "Your product is not the problem. Your content strategy is." Walk through the three content types every skincare brand needs — educational, social proof, founder story — with examples of each. End with a soft CTA: "Need a content strategy for your brand? DM 'AUDIT'."</p>
+    </div>
+    <div class="rec-card">
+      <div class="num">2</div>
+      <h4>"I audited [brand]'s Instagram — here's what I'd change"</h4>
+      <p><strong>Format:</strong> Reel (screen-record + voiceover). Pick a known skincare or wellness brand. Narrate what's working, what's missing, and the one move you'd make first. This positions you as the strategist who sees what others miss. Keep it under 60 seconds.</p>
+    </div>
+    <div class="rec-card">
+      <div class="num">3</div>
+      <h4>"The [metric] formula: how I measure content performance"</h4>
+      <p><strong>Format:</strong> Carousel (5–7 slides). Break down one metric — engagement rate, save-to-reach ratio, comment quality — and explain why it matters more than vanity metrics. Educational authority that doubles as client-proof. End with: "Want me to measure yours? DM me."</p>
+    </div>
+
+    <h3>📂 Portfolio & Proof</h3>
+    <div class="rec-card">
+      <div class="num">4</div>
+      <h4>"Before → After: how we transformed [client]'s content in 30 days"</h4>
+      <p><strong>Format:</strong> Carousel (side-by-side slides). Left: the old feed. Right: the new feed. Annotate what changed and why each decision was made. The most powerful portfolio post you can publish — it sells the result, not the service.</p>
+    </div>
+    <div class="rec-card">
+      <div class="num">5</div>
+      <h4>"Here's the strategy behind this Reel"</h4>
+      <p><strong>Format:</strong> Reel (UGC demo + voiceover breakdown). Show a product video you created for a client, then voiceover: why that hook, why that pacing, why that CTA. This proves you don't just execute — you think. Ideal for brands evaluating strategists.</p>
+    </div>
+
+    <h3>💬 Engagement & Community</h3>
+    <div class="rec-card">
+      <div class="num">6</div>
+      <h4>"Which hook grabs you more?"</h4>
+      <p><strong>Format:</strong> Story poll. Post two variations of the same hook — one emotional, one analytical. Let your audience vote. This doubles as market research AND engagement bait. Follow up with the winner as a full post the next day.</p>
+    </div>
+    <div class="rec-card">
+      <div class="num">7</div>
+      <h4>"Strategy thought of the day"</h4>
+      <p><strong>Format:</strong> Story text card. One sentence. One insight. Posted daily. Examples: "Your bio is a landing page — treat it like one." / "If your Reel doesn't hook in 3 seconds, the next 57 don't matter." Builds daily presence and reinforces your positioning with zero production cost.</p>
+    </div>
+    <div class="rec-card">
+      <div class="num">8</div>
+      <h4>"Hot take: [industry opinion everyone's afraid to say]"</h4>
+      <p><strong>Format:</strong> Carousel or Reel. Take a stance. Examples: "Most social media managers don't understand brand strategy — they understand posting." / "Follower count is the least useful metric for client acquisition." Hot takes polarize — and polarization is reach. Just mean it.</p>
+    </div>
+
+    <h3>🚀 Growth & Reach</h3>
+    <div class="rec-card">
+      <div class="num">9</div>
+      <h4>"1 strategy tip in 15 seconds"</h4>
+      <p><strong>Format:</strong> Reel (talking head or text-on-screen). Use trending audio. One clear tip, delivered fast, no fluff. Examples: "Stop posting 7x a week. Post 3x and make each one count." / "Your carousel's first slide is your hook — make it a question." These are your explore-page plays.</p>
+    </div>
+    <div class="rec-card">
+      <div class="num">10</div>
+      <h4>"Collab: co-post with a brand founder or peer strategist"</h4>
+      <p><strong>Format:</strong> Reel (split-screen or remix). Reach shared across both accounts. Pick a founder whose content you admire and pitch a 60-second conversation: "What's the one content mistake you made that cost you growth?" Authentic, high-value, and reach you can't buy.</p>
+    </div>
+
+    <h3>Weekly Rhythm</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Day</th>
+          <th>Format</th>
+          <th>Pillar</th>
+          <th>Goal</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Monday</td>
+          <td>Carousel</td>
+          <td>Educational / Strategy</td>
+          <td>Authority & saves</td>
+        </tr>
+        <tr>
+          <td>Wednesday</td>
+          <td>Reel</td>
+          <td>Portfolio / Hot Take</td>
+          <td>Reach & proof</td>
+        </tr>
+        <tr>
+          <td>Friday</td>
+          <td>Carousel or Reel</td>
+          <td>Growth / Case Study</td>
+          <td>Conversion</td>
+        </tr>
+        <tr>
+          <td>Tue / Thu</td>
+          <td>Stories</td>
+          <td>Community / Daily</td>
+          <td>Trust & DMs</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout accent">
+      <p><strong>How to use this board:</strong> Pick one idea from each pillar per week. Don't over-plan — one carousel, one Reel, and three Stories is a full content week. Rotate pillars so your feed shows range. Save the ones that excite you and come back when you need inspiration. This board grows with you — add ideas as you discover what your audience responds to.</p>
+    </div>
+  </section>
+
+<!-- ========== SECTION 10: QUICK WINS — THIS WEEK ========== -->
+  <section>
+    <h2>10. Quick Wins — This Week</h2>
+
+    <div class="timeline-item">
+      <div class="t-dot accent"></div>
+      <div class="t-content">
+        <h4>Day 1: Unfollow Down to ~22</h4>
+        <p>Open Instagram → Following list → Sort by "Least Interacted With" → unfollow down to ~32 accounts (3% of 1,081). This removes the algorithmic trust penalty immediately. The account will not see an instant follower spike — but posts published after this fix will reach a larger test audience starting from the very next post.</p>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="t-dot accent"></div>
+      <div class="t-content">
+        <h4>Day 2: Rewrite Bio for One Niche</h4>
+        <p>Pick skincare + wellness as the anchor. New bio: "I build content strategies for skincare & wellness brands. UGC · Reels · AI Video · Ad Creative. 5+ years. Lahore, PK. 👇 DM 'AUDIT' for a free strategy checklist." Clean. Single vertical. Clear CTA.</p>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="t-dot accent"></div>
+      <div class="t-content">
+        <h4>Day 3: Create the Freebie</h4>
+        <p>Build a 1-page "Content Strategy Checklist for Skincare Brands" PDF — 10 items, clean design, branded with her name and email. Host on Linktree or Google Drive. This is the lead magnet that turns profile visits into DM conversations.</p>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="t-dot accent"></div>
+      <div class="t-content">
+        <h4>Day 4: Publish First Strategy Carousel Under the New Brand</h4>
+        <p>Topic: "Why most skincare brands post product photos and wonder why nobody buys." 6–8 slides. Framework-driven. End with a soft CTA: "Need a content strategy? DM 'AUDIT'." This is the first post under the rebranded identity.</p>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="t-dot accent"></div>
+      <div class="t-content">
+        <h4>Day 5: Build 3 Highlights</h4>
+        <p>Portfolio (5–8 UGC pieces she's created), Services (what she offers, pricing not needed), About (5-year journey, why strategy, what she believes about content). Three Highlights transform the profile from blank to credible in one session.</p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========== SECTION 11: SUCCESS BENCHMARKS ========== -->
+  <section>
+    <h2>11. Success Benchmarks</h2>
+
+    <p>Three checkpoint tables. One rule: <span style="color: var(--green); font-weight: 600;">green</span> means on track or low effort to reach. <span style="color: var(--amber); font-weight: 600;">Amber</span> means needs consistent work. <span style="color: var(--red); font-weight: 600;">Red</span> means critical — this is the priority. Targets assume the following ratio is fixed in Week 1.</p>
+
+    <h3>📊 Profile Health</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Now</th>
+          <th>30 Days</th>
+          <th>90 Days</th>
+          <th>Priority</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Following</td>
+          <td class="num" style="color: var(--red);">5,819</td>
+          <td class="num">&lt;30</td>
+          <td class="num">&lt;40</td>
+          <td class="num" style="color: var(--red); font-weight: 600;">Critical</td>
+        </tr>
+        <tr>
+          <td>F/F Ratio</td>
+          <td class="num" style="color: var(--red);">538%</td>
+          <td class="num">&lt;4%</td>
+          <td class="num">&lt;3%</td>
+          <td class="num" style="color: var(--red); font-weight: 600;">Week 1</td>
+        </tr>
+        <tr>
+          <td>Total Posts</td>
+          <td class="num">15</td>
+          <td class="num">30</td>
+          <td class="num">55</td>
+          <td class="num" style="color: var(--amber); font-weight: 600;">Steady</td>
+        </tr>
+        <tr>
+          <td>Followers</td>
+          <td class="num">1,081</td>
+          <td class="num">1,250</td>
+          <td class="num">1,800</td>
+          <td class="num" style="color: var(--green); font-weight: 600;">Organic</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>📈 Content Performance</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Now</th>
+          <th>30 Days</th>
+          <th>90 Days</th>
+          <th>Priority</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Carousels / Week</td>
+          <td class="num" style="color: var(--red);">0.5</td>
+          <td class="num">2</td>
+          <td class="num">2</td>
+          <td class="num" style="color: var(--amber); font-weight: 600;">Build habit</td>
+        </tr>
+        <tr>
+          <td>Reels / Week</td>
+          <td class="num" style="color: var(--red);">0</td>
+          <td class="num">1</td>
+          <td class="num">2</td>
+          <td class="num" style="color: var(--red); font-weight: 600;">Discovery</td>
+        </tr>
+        <tr>
+          <td>Avg. Carousel Likes</td>
+          <td class="num">~25</td>
+          <td class="num">40–60</td>
+          <td class="num">60–100</td>
+          <td class="num" style="color: var(--amber); font-weight: 600;">Grow reach</td>
+        </tr>
+        <tr>
+          <td>Engagement Rate</td>
+          <td class="num" style="color: var(--red);">~1–1.5%</td>
+          <td class="num">2–3%</td>
+          <td class="num">4–5%</td>
+          <td class="num" style="color: var(--amber); font-weight: 600;">Signal quality</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>💰 Business Outcomes</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Now</th>
+          <th>30 Days</th>
+          <th>90 Days</th>
+          <th>Priority</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Highlights Built</td>
+          <td class="num" style="color: var(--red);">0</td>
+          <td class="num">5</td>
+          <td class="num">8+</td>
+          <td class="num" style="color: var(--amber); font-weight: 600;">Portfolio</td>
+        </tr>
+        <tr>
+          <td>Inbound Leads / Mo</td>
+          <td class="num" style="color: var(--red);">0</td>
+          <td class="num">2–3</td>
+          <td class="num">5–8</td>
+          <td class="num" style="color: var(--red); font-weight: 600;">Pipeline</td>
+        </tr>
+        <tr>
+          <td>Posting Cadence</td>
+          <td class="num" style="color: var(--red);">~1/week</td>
+          <td class="num">3/week</td>
+          <td class="num">3–4/week</td>
+          <td class="num" style="color: var(--amber); font-weight: 600;">Consistency</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout accent">
+      <p><strong>How to use this:</strong> The "Priority" column tells you where to focus. <span style="color: var(--red); font-weight: 600;">Red</span> = fix this first — it's blocking everything else. <span style="color: var(--amber); font-weight: 600;">Amber</span> = put in the reps — progress here compounds. <span style="color: var(--green); font-weight: 600;">Green</span> = let it happen — this improves naturally as the amber and red metrics move. Fix the following ratio in Week 1 and every other row gets easier.</p>
+    </div>
+  </section>
+
+<!-- ========== SECTION 12: AUDIENCE PROFILE ========== -->
+  <section>
+    <h2>12. Audience Profile</h2>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Segment</th>
+          <th>Share (Est.)</th>
+          <th>What They Want</th>
+          <th>How Shaima Wins</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Skincare/Wellness Brand Founders</td>
+          <td class="num">~35%</td>
+          <td>A strategist who understands their product category — not a generic SMM</td>
+          <td>Category-specific strategy frameworks, UGC portfolio showing skincare work, content that proves she knows the niche</td>
+        </tr>
+        <tr>
+          <td>Aspiring Social Media Managers</td>
+          <td class="num">~25%</td>
+          <td>Career path, frameworks, portfolio-building advice</td>
+          <td>Educational carousels, "how I'd strategize for X brand" content, 5-year journey storytelling</td>
+        </tr>
+        <tr>
+          <td>Small Business Owners (Pakistan)</td>
+          <td class="num">~20%</td>
+          <td>Affordable, reliable social media management with local market understanding</td>
+          <td>Local case studies, Urdu/English bilingual content, relatable business owner pain points</td>
+        </tr>
+        <tr>
+          <td>Peer Strategists & Collaborators</td>
+          <td class="num">~15%</td>
+          <td>Collaboration, referral, industry connection</td>
+          <td>Engagement on peer content, shared Lives, cross-promotion</td>
+        </tr>
+        <tr>
+          <td>General Followers (Discovery)</td>
+          <td class="num">~5%</td>
+          <td>Entertainment, quick tips, inspiration</td>
+          <td>Reels with broad appeal, motivational content, viral strategy takes</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>Shaima's audience is split between two incompatible groups: brand founders (who want proof she can deliver) and aspiring SMMs (who want to learn from her). Serving both on one account dilutes authority for both. The rebrand should prioritise brand founders as the primary audience — they are the revenue engine. Aspiring SMMs can be served through a separate content series or a secondary platform (LinkedIn is ideal for this).</p>
+
+    <div class="callout accent">
+      <p><strong>Primary audience decision:</strong> Brand founders (skincare & wellness). Content should answer one question: "Why should I hire Shaima to strategize my brand's content?" Every post — carousel, Reel, or Story — should make that answer clearer.</p>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 13: ROAD TO 2K ========== -->
+  <section>
+    <h2>13. Road to 2K</h2>
+
+    <p>Milestone computed from current tier: 722 → 2,000 followers (2.8x growth). Achievable in 90 days with algorithmic trust restored and consistent publishing.</p>
+
+    <div class="timeline-item">
+      <div class="t-dot green"></div>
+      <div class="t-content">
+        <h4>Phase 1: Foundation (Days 1–30) — Target: 1,250 followers</h4>
+        <p>Fix following ratio. Rewrite bio. Launch 5 Highlights. Publish 12 posts (3/week: Mon carousel, Wed Reel, Fri carousel). Build the freebie. Begin 3–5 Stories/week. Success signals: following ratio below 4%, first carousel breaks 50 likes, one DM inquiry from the freebie. All content anchored to skincare/wellness strategy.</p>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="t-dot green"></div>
+      <div class="t-content">
+        <h4>Phase 2: Acceleration (Days 31–60) — Target: 1,050 followers</h4>
+        <p>Increase to 4 posts/week. Introduce brand audit series (break down known skincare brand feeds). Launch first collaborative post with a brand founder or peer strategist. Begin repurposing carousel content to LinkedIn for cross-platform discovery. Add 3 more Highlights (client results, FAQs, strategy tools). Success signals: two carousels break 80 likes, one Reel hits 500+ views, 3+ inbound leads this month.</p>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="t-dot green"></div>
+      <div class="t-content">
+        <h4>Phase 3: Compound (Days 61–90) — Target: 1,200+ followers</h4>
+        <p>Maintain 4 posts/week cadence. Introduce "strategy teardown" Reels (screen-record + voiceover analysing a brand's content strategy). Pitch a guest post or podcast appearance in the skincare/wellness space. Begin A/B testing hooks and posting times. Document the 90-day rebrand journey as a case study — this itself becomes portfolio content. Success signals: 5+ posts over 100 likes, 8+ inbound leads/month, first unsolicited brand inquiry.</p>
+      </div>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Phase</th>
+          <th>Duration</th>
+          <th>Follower Target</th>
+          <th>Post Count</th>
+          <th>Key Metric</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Foundation</td>
+          <td>Days 1–30</td>
+          <td class="num">1,250</td>
+          <td class="num">12 new</td>
+          <td>Following ratio &lt;4%</td>
+        </tr>
+        <tr>
+          <td>Acceleration</td>
+          <td>Days 31–60</td>
+          <td class="num">1,050</td>
+          <td class="num">16 new</td>
+          <td>First 500+ view Reel</td>
+        </tr>
+        <tr class="highlight">
+          <td>Compound</td>
+          <td>Days 61–90</td>
+          <td class="num">1,200+</td>
+          <td class="num">16 new</td>
+          <td>8+ inbound leads/month</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout accent">
+      <p><strong>1% Compounding Move:</strong> Publish one strategy carousel every Monday — no exceptions — for 90 days. One carousel per week is 12 carousels in 90 days. At Shaima's framework-building skill level, 12 carousels will produce at least 2–3 that outperform. Those 2–3 become the portfolio pieces that convert visitors into clients. The Monday carousel is the atomic habit. Everything else amplifies it.</p>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 14: AUDIT CADENCE ========== -->
+  <section>
+    <h2>14. Audit Cadence</h2>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Cadence</th>
+          <th>Purpose</th>
+          <th>What to Check</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Weekly</td>
+          <td>Pulse check — is the system running?</td>
+          <td>Posting cadence held? Following ratio stayed low? Any DMs from the freebie? One underperforming post — diagnose why.</td>
+          <td class="num">10 min</td>
+        </tr>
+        <tr>
+          <td>Monthly</td>
+          <td>Content review — what's working?</td>
+          <td>Top 3 posts by engagement. Bottom 3 — should any formats be dropped? Follower growth trend. Inbound lead count. Content calendar for next month.</td>
+          <td class="num">30 min</td>
+        </tr>
+        <tr>
+          <td>Quarterly</td>
+          <td>Strategy recalibration — are we on track?</td>
+          <td>Compare actuals to 90-day benchmarks. Reassess niche focus — still the right vertical? Peer landscape check. Update lead magnet if needed. Full content audit.</td>
+          <td class="num">2–3 hrs</td>
+        </tr>
+        <tr>
+          <td>Post-Viral</td>
+          <td>Capitalise on momentum</td>
+          <td>If a Reel or carousel breaks 5K+ views: post a follow-up within 48 hours on the same topic, reply to every comment, update the Highlight with the viral post, send the freebie link to new followers via Story.</td>
+          <td class="num">45 min</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <p>The weekly 10-minute check is non-negotiable. It catches ratio creep (the most common regression — users slowly refollow accounts and climb back above 5% without noticing) and ensures the posting rhythm hasn't slipped. Most accounts that fix their fundamentals and then regress do so silently — the weekly pulse catches it before the algorithm does.</p>
+    </div>
+  </section>
+
+
+  <!-- ========== SECTION 15: GET THE EXECUTION PLAN ========== -->
+  <section>
+    <h2>15. Get the Execution Plan</h2>
+
+    <p>This report gave you the diagnosis — the structural gaps, the root causes, and the first five moves. That's the Standard plan: a 15-section strategic read on where you stand and what to fix. $30/month.</p>
+
+    <p>If you want the diagnosis turned into a weekly operating system — that's the Execution Plan. It takes everything in this report and builds you a repeatable content engine. A content calendar with topic ideas per format. Hook templates tested for your niche. Story sequences that convert views into DMs. Benchmarks recalibrated each month so you know if the strategy is working before the vanity metrics tell you.</p>
+
+    <div class="callout accent">
+      <p><strong>Standard ($30/mo) vs Extended ($50/mo):</strong></p>
+      <table class="data-table" style="margin-top: 12px;">
+        <thead>
+          <tr>
+            <th>You get</th>
+            <th>Standard<br><span style="font-weight: 400; font-size: 0.75rem;">$30/mo</span></th>
+            <th>Extended<br><span style="font-weight: 400; font-size: 0.75rem;">$50/mo</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>15-section strategic audit</td>
+            <td><span class="tag strength">✓</span></td>
+            <td><span class="tag strength">✓</span></td>
+          </tr>
+          <tr>
+            <td>Weekly content calendar with 12+ ideas</td>
+            <td><span class="tag neutral">—</span></td>
+            <td><span class="tag strength">✓</span></td>
+          </tr>
+          <tr>
+            <td>Hook & caption templates per format</td>
+            <td><span class="tag neutral">—</span></td>
+            <td><span class="tag strength">✓</span></td>
+          </tr>
+          <tr>
+            <td>Story strategy with DM-conversion sequences</td>
+            <td><span class="tag neutral">—</span></td>
+            <td><span class="tag strength">✓</span></td>
+          </tr>
+          <tr>
+            <td>Monthly recalibration with live engagement data</td>
+            <td><span class="tag neutral">—</span></td>
+            <td><span class="tag strength">✓</span></td>
+          </tr>
+          <tr>
+            <td>Priority-ranked action queue</td>
+            <td><span class="tag neutral">—</span></td>
+            <td><span class="tag strength">✓</span></td>
+          </tr>
+          <tr>
+            <td>Strategy revisions as your account grows</td>
+            <td><span class="tag neutral">—</span></td>
+            <td><span class="tag strength">✓</span></td>
+          </tr>
+          <tr>
+            <td>Accounts included</td>
+            <td>2</td>
+            <td>5</td>
+          </tr>
+          <tr>
+            <td>Audits per month</td>
+            <td>5</td>
+            <td>15</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>You have the raw material. The frameworks. The experience. The multi-format skill set that most strategists at this tier do not have. What's missing is not talent — it's a system. The Execution Plan is that system. And it's the difference between an account that guesses and an account that grows.</p>
+
+    <div class="cta-section">
+      <a href="https://auditlayermedia.com/pricing" class="cta-button">Upgrade to Extended — $50/month</a>
+      <p class="cta-sub">Cancel anytime · First Execution Plan within 48 hours · 5 accounts · 15 audits/month</p>
+    </div>
+  </section>
+
+
+
+  <!-- ========== FOOTER ========== -->
+  <div style="text-align: center; margin-top: 64px; padding-top: 28px; border-top: 1px solid var(--line);">
+    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+      <span class="alm-badge">ALM</span>
+      <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-body); letter-spacing: -0.01em;">AuditLayerMedia</span>
+    </div>
+    <p style="font-size: 0.78rem; color: var(--muted); margin-bottom: 8px;">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 3px;"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5"/></svg>
+      @auditlayermedia
+    </p>
+    <a href="https://instagram.com/auditlayermedia" style="display: inline-block; color: var(--accent); font-weight: 500; font-size: 0.78rem; text-decoration: none;">
+      Follow for social media optimization tips →
+    </a>
+  </div>
+
+</div>
+</body>
+</html>

@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 import traceback
 
+from .account_homes import get_report_bundle_version
 from .config import WorkerSettings
 from .core import PROMPT_VERSION, AuditRecord
 from .generation import HermesReportGenerator, MockReportGenerator, ReportGenerator
@@ -63,6 +64,9 @@ def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
                 reaped = gateway.sweep_stale_running()
                 if reaped:
                     log_event("stale_audits_reaped", count=reaped)
+                crashed_runs = gateway.sweep_stale_report_generation_runs()
+                if crashed_runs:
+                    log_event("stale_generation_runs_reaped", count=crashed_runs)
                 runtime.tick_idle(worked)
                 health.heartbeat(worked=worked)
             except Exception as exc:
@@ -100,6 +104,10 @@ def _drain_once(
             tokens_in=summary.tokens_in,
             tokens_out=summary.tokens_out,
             cost_usd=summary.cost_usd,
+            quality_score=summary.quality_score,
+            account_mode=summary.account_mode,
+            cache_mode=summary.cache_mode,
+            stage_timings=summary.stage_timings,
         )
         return True
 
@@ -143,6 +151,7 @@ def _process_refinement(
             refinement_id=refinement_id,
             report_path=new_report_path,
             prompt_version=PROMPT_VERSION,
+            agent_bundle_version=get_report_bundle_version(settings.alm_profile_bundle_root),
             changed_section=section,
             change_summary=instruction,
         )
@@ -209,7 +218,11 @@ def _prewarm_account_homes(gateway: SupabaseGateway, settings: WorkerSettings) -
             seen.add(uid)
             try:
                 from .account_homes import ensure_account_home
-                ensure_account_home(uid, settings.alm_accounts_root)
+                ensure_account_home(
+                    uid,
+                    settings.alm_accounts_root,
+                    settings.alm_profile_bundle_root,
+                )
             except Exception as exc:
                 log_event(
                     "account_home_prewarm_failed",

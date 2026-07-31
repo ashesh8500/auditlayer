@@ -1,0 +1,16 @@
+bundle_version: "1.0.0"
+profiles:
+  - operator
+  - dev
+  - ops
+  - report
+runtime_names:
+  operator: alm
+  dev: alm-dev
+  ops: alm-ops
+  report: alm-report
+source_of_truth: hermes-profile
+report_runtime:
+  provider: deepseek
+  model: deepseek-v4-flash
+  profile: report

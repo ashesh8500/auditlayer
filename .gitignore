@@ -14,21 +14,18 @@ web/.next.*/
 # Agent/runtime scratch artifacts
 .hermes/desktop-attachments/
 REVIEW-*.md
-
+.release-backups/
 # Private founder/customer operations data must never enter the public repo.
 outreach-list.md
 **/founder-outreach-list.md
 var/email-outbox.jsonl
 var/*.jsonl
-
 # One-off media prototypes (not production portal assets)
 carousel-*.html
 reel-*.html
 supabase/deferred/
-
 # Local logo/media explorations (production web assets live under web/public/)
 assets/
-
 # v0.1 freeze — untracked infra/marketing noise kept out of diff/CI
 .dockerignore
 .env.docker
@@ -50,3 +47,4 @@ docs/plans/alm-design-system-v2.md
 docs/plans/alm-v2-moat-design-spec.md
 worker/auditlayer_worker/stripe_payouts.py
 worker/tests/test_stripe_payouts.py
+docs/implementation/alm-intelligence-v1/ontology/.venv/

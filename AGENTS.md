@@ -4,6 +4,8 @@ Guidelines for AI agents (Hermes, Claude Code, Codex, Cursor) working on this re
 
 **Handoff / quick commands / live state:** [`docs/agent-handoff.md`](docs/agent-handoff.md) — read before starting work.
 
+**Active canonical implementation plan:** [`docs/implementation/alm-intelligence-v1/README.md`](docs/implementation/alm-intelligence-v1/README.md) — required context for the longitudinal-intelligence, bounded-runtime, and customer UI/UX mission.
+
 ---
 
 ## What This Repo Is

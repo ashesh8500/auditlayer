@@ -7,6 +7,12 @@ context.
 **Also read:** `AGENTS.md` (repo-wide rules), `docs/architecture-contract.md`
 (schema/enums — **code must match this**), `docs/deployment.md` (env + hosting).
 
+> **Active canonical mission:** The durable plan for the longitudinal-intelligence,
+> bounded-runtime, and customer UI/UX implementation is
+> [`docs/implementation/alm-intelligence-v1/README.md`](implementation/alm-intelligence-v1/README.md).
+> Future implementation sessions and Kanban workers must begin with that packet;
+> the runtime-hardening branch is only one prerequisite slice, not the complete mission.
+
 ---
 
 ## What exists today (June 2026)
@@ -39,7 +45,7 @@ Browser → Vercel (web/) → Supabase (Auth, Postgres, Storage, Realtime)
                          Hermes Gateway :8642/v1 → social-media-audit skill
 ```
 
-- **Web never calls Hermes.** Only the worker does.
+- **Web never calls Hermes for report generation.** Only the worker generates reports. The authenticated admin report workspace may call the restricted `alm` operator profile through the API-key-protected `/operator-api/p/alm/v1` server-to-server route for read-only discussion.
 - **Reports** live as private self-contained HTML artifacts; the web app serves
   them through authorized same-origin report and immersive-reader routes.
 - **Live timeline:** Realtime + 4s polling on `/api/audits/[id]/live`.

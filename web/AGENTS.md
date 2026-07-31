@@ -11,7 +11,7 @@ Parent rules: [`../AGENTS.md`](../AGENTS.md) and [`../docs/agent-handoff.md`](..
 - Stripe Checkout + Customer Portal + webhook
 - Deployed on **Vercel** (root directory `web/`)
 
-**This app does not call Hermes.** Report generation is the Python worker's job.
+**This app does not call Hermes for report generation.** Report generation is the Python worker's job. The admin-only report workspace may call the restricted canonical `alm` operator through the API-key-protected server-side proxy; client code must never receive that key.
 
 ---
 

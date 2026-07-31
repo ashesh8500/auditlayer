@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "repo": "/home/asheshkaji/projects/auditlayer",
+  "branch": "feat/bounded-report-runtime-v1",
+  "repo_sha": "20a85ee",
+  "hermes_version": "0.19.0",
+  "production_report_model": "deepseek-v4-flash",
+  "production_provider": "deepseek",
+  "production_fallbacks": [],
+  "current_foundations": [
+    "accounts",
+    "account_progression",
+    "audit_report_versions",
+    "connected Instagram metrics",
+    "deterministic report rendering",
+    "bounded runtime attempt telemetry"
+  ],
+  "known_missing": [
+    "subjects",
+    "subject_channels",
+    "Living Brief versions",
+    "audit batches",
+    "evidence ledger",
+    "score/finding/recommendation ledgers",
+    "adaptive channel fan-out",
+    "customer-safe three-state progress",
+    "ALM specialist implementation profiles"
+  ],
+  "verification": {
+    "runtime_focused_tests": "13 passed",
+    "supabase_runtime_metrics_migration": "applied",
+    "worker_rollout": "not deployed",
+    "web_rehaul": "not implemented"
+  }
+}

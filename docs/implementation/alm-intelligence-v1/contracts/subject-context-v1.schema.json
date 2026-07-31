@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "alm/subject-context-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "subject_id",
+    "version",
+    "subject_type",
+    "identity",
+    "channels",
+    "goals",
+    "constraints"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "subject_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "subject_type": {
+      "enum": [
+        "person",
+        "creator",
+        "brand",
+        "organization",
+        "project"
+      ]
+    },
+    "identity": {
+      "type": "object"
+    },
+    "audience": {
+      "type": "object"
+    },
+    "positioning": {
+      "type": "object"
+    },
+    "offers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "goals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "experiments": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "channels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "channel_id",
+          "channel_type",
+          "locator"
+        ],
+        "properties": {
+          "channel_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channel_type": {
+            "enum": [
+              "instagram",
+              "website",
+              "youtube",
+              "tiktok",
+              "x",
+              "linkedin"
+            ]
+          },
+          "locator": {
+            "type": "string"
+          },
+          "managed": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

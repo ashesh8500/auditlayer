@@ -1,0 +1,149 @@
+{
+  "schema_version": "1.1",
+  "task_id": "t_7b61b86e",
+  "branch": "feat/alm-intelligence-v1-kernel",
+  "worktree": "/home/asheshkaji/projects/auditlayer/.worktrees/t_7b61b86e",
+  "status": "kernel-slice-complete",
+  "timestamp": "2026-07-30T20:45:00Z",
+  "owned_todos_completed": [
+    "db-decision-doc",
+    "fix-schema-bugs",
+    "ontology-phase0",
+    "kernel-subjects",
+    "kernel-ai-storage"
+  ],
+  "changed_files": [
+    "docs/decisions/2026-07-30-alm-postgres-kernel.md",
+    "docs/architecture-contract.md",
+    "docs/implementation/alm-intelligence-v1/DECISIONS.md",
+    "docs/implementation/alm-intelligence-v1/NON_GOALS.md",
+    "docs/implementation/alm-intelligence-v1/FILE_OWNERSHIP.yaml",
+    "docs/implementation/alm-intelligence-v1/ontology/**",
+    "docs/implementation/alm-intelligence-v1/checkpoints/kernel.json",
+    "supabase/migrations/20260723020611_alm_intelligence_kernel.sql",
+    "supabase/migrations/20260730200000_alm_schema_bugfixes.sql",
+    "supabase/migrations/20260730201000_alm_intelligence_ai_storage.sql",
+    "supabase/tests/alm_intelligence_kernel_test.sql",
+    "supabase/tests/alm_intelligence_ai_storage_test.sql",
+    ".gitignore"
+  ],
+  "tests": {
+    "kernel_sql": {
+      "command": "PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/alm_intelligence_kernel_test.sql",
+      "result": "ALL KERNEL TESTS PASSED"
+    },
+    "ai_storage_sql": {
+      "command": "PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/alm_intelligence_ai_storage_test.sql",
+      "result": "ALL AI STORAGE / BUGFIX TESTS PASSED"
+    },
+    "ontology": {
+      "command": "python3 docs/implementation/alm-intelligence-v1/ontology/validate_ontology.py",
+      "result": "ALL ONTOLOGY CHECKS PASSED"
+    },
+    "not_run": [
+      "full web typecheck/lint/build",
+      "full worker pytest",
+      "linked production supabase db push",
+      "browser suite"
+    ]
+  },
+  "tables_created": [
+    "subjects",
+    "subject_channels",
+    "living_brief_versions",
+    "context_update_proposals",
+    "audit_batches",
+    "batch_audits",
+    "intelligence_runs",
+    "evidence_snapshots",
+    "evidence",
+    "evidence_snapshot_members",
+    "scores",
+    "findings",
+    "recommendations",
+    "decisions",
+    "intelligence_run_progress",
+    "embedding_models",
+    "evidence_embeddings"
+  ],
+  "naming_aliases": {
+    "living_brief_versions": "subject_brief_versions",
+    "context_update_proposals": "subject_brief_proposals",
+    "evidence": "evidence_items",
+    "scores": "audit_scores",
+    "findings": "audit_findings",
+    "recommendations": "subject_recommendations",
+    "decisions": "subject_decisions"
+  },
+  "rpc_functions": [
+    "owns_subject",
+    "create_subject",
+    "link_subject_channel",
+    "record_living_brief_version",
+    "create_context_update_proposals",
+    "resolve_context_update_proposal",
+    "create_audit_batch",
+    "add_audit_to_batch",
+    "submit_audit_batch",
+    "start_intelligence_run",
+    "finalize_intelligence_run",
+    "create_evidence_snapshot",
+    "upsert_evidence",
+    "pin_evidence_to_snapshot",
+    "record_scores",
+    "record_findings",
+    "record_recommendations",
+    "record_decision",
+    "set_intelligence_run_progress",
+    "backfill_connected_subjects",
+    "register_embedding_model",
+    "attach_evidence_embedding",
+    "persist_instagram_connection (restored accounts.updated_at)"
+  ],
+  "constraints_and_triggers": [
+    "Living Brief immutability (UPDATE/DELETE reject)",
+    "evidence append-only (UPDATE/DELETE reject)",
+    "evidence_snapshots immutable (UPDATE/DELETE reject)",
+    "evidence_snapshot_members append-only (UPDATE/DELETE reject)",
+    "accounts.updated_at + share_links.updated_at triggers aligned",
+    "same-subject pin integrity via pin_evidence_to_snapshot",
+    "pgvector extension enabled; embeddings empty-capable"
+  ],
+  "decisions": [
+    "Postgres/Supabase remains sole SoR; additive kernel chosen; Neo4j/Pinecone/Mongo rejected",
+    "pgvector is a secondary index over evidence, never SoR (NON_GOALS clarified)",
+    "Research cache TTL documented as 24h (worker write path); 0027 7-day comment superseded",
+    "Shipped SQL names retained; plan-prose aliases documented in architecture-contract + decision doc"
+  ],
+  "deviations": [
+    "Table names use shorter shipped forms (living_brief_versions, evidence, scores, …) rather than plan-prose subject_* / audit_* prefixes"
+  ],
+  "remaining_work": [
+    "Runtime packet: continuity compiler, evidence normalize, embed writer wiring",
+    "Product packet: Subject home / intake / 3-state wait consumers",
+    "Release gate: linked migration apply, type regen, preview QA, Ashesh prod approval",
+    "Optional: Realtime on intelligence_run_progress"
+  ],
+  "blockers": [],
+  "runtime_product_must_know": {
+    "customer_progress_states": [
+      "preparing",
+      "analyzing",
+      "finalizing",
+      "delayed",
+      "succeeded",
+      "failed"
+    ],
+    "progress_table": "intelligence_run_progress",
+    "progress_rpc": "set_intelligence_run_progress(run_id, customer_state, detail)",
+    "evidence_membership": "evidence_snapshot_members via upsert_evidence(snapshot_id) or pin_evidence_to_snapshot",
+    "embeddings": "register_embedding_model + attach_evidence_embedding (optional; empty OK)",
+    "backfill": "backfill_connected_subjects() — connected/managed only",
+    "do_not": [
+      "treat accounts as Subject parent",
+      "UPDATE living_brief_versions / evidence / snapshot members",
+      "apply linked prod migrations from this packet",
+      "edit web/ or worker/ from kernel ownership"
+    ]
+  }
+}

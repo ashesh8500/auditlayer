@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "alm/context-update-proposal-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "proposal_id",
+    "subject_id",
+    "base_version",
+    "path",
+    "operation",
+    "proposed_value",
+    "evidence_ids",
+    "reason",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "proposal_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "subject_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "base_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "path": {
+      "type": "string",
+      "pattern": "^/"
+    },
+    "operation": {
+      "enum": [
+        "add",
+        "replace",
+        "remove"
+      ]
+    },
+    "proposed_value": {},
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reason": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "accepted",
+        "rejected",
+        "superseded"
+      ]
+    },
+    "decided_by": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
+    "decided_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
+  }
+}

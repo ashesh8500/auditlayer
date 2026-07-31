@@ -40,6 +40,7 @@ def test_initial_report_finalization_uses_atomic_rpc() -> None:
         delivery_status="ready",
         report_path="audit-1/revisions/random.html",
         prompt_version="1.1",
+        agent_bundle_version="1.0.0",
     )
 
     assert version == 1
@@ -52,6 +53,7 @@ def test_initial_report_finalization_uses_atomic_rpc() -> None:
                 "p_report_path": "audit-1/revisions/random.html",
                 "p_prompt_version": "1.1",
                 "p_template_version": "master-skeleton-v1",
+                "p_agent_bundle_version": "1.0.0",
             },
         )
     ]
@@ -65,6 +67,7 @@ def test_refinement_finalization_delegates_version_allocation_to_database() -> N
         refinement_id="refinement-1",
         report_path="audit-1/revisions/unique.html",
         prompt_version="1.1",
+        agent_bundle_version="1.0.0",
         changed_section="Creative Board",
         change_summary="Use the approved content pillars",
     )
@@ -74,4 +77,5 @@ def test_refinement_finalization_delegates_version_allocation_to_database() -> N
     assert name == "finalize_refinement_report"
     assert params["p_refinement_id"] == "refinement-1"
     assert params["p_report_path"].endswith("unique.html")
+    assert params["p_agent_bundle_version"] == "1.0.0"
     assert "p_version" not in params

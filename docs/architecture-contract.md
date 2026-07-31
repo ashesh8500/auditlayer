@@ -80,9 +80,10 @@ One row per requested audit, owned by a profile.
 | `report_type` | text | not null, default `'standard'` | Added migration 0010. |
 | `retry_count` | int | not null, default `0` | Added migration 0008. |
 | `last_failed_at` | timestamptz | | Added migration 0008. |
-| `research_cache` | text | not null, default `''` | Added migration 0009. |
+| `research_cache` | text | not null, default `''` | Added migration 0009. Compatibility truncated blob; longitudinal evidence SoR is `evidence`. |
 | `claimed_at` | timestamptz | | Set atomically by RPC claim function. |
 | `claimed_by` | text | | Worker identity that claimed the audit. |
+| `agent_bundle_version` | text | | Canonical `alm-report` bundle version used for generation. |
 
 ### `audit_events`
 Append-only event trail that powers the live generation stream (via Realtime).
@@ -111,6 +112,24 @@ Section-scoped refinement requests against a generated report.
 | `error` | text | not null, default `''` |
 | `created_at` | timestamptz | default `now()` |
 | `updated_at` | timestamptz | default `now()` (auto-maintained by trigger) |
+
+### Canonical ALM operator control plane
+
+`operator_threads` provides one admin-only, report-scoped conversation per audit.
+`operator_messages` stores its bounded transcript. `operator_jobs` separates typed
+refinement, engineering, and operations requests from read-only discussion; operations
+requests require explicit approval. `operator_incidents` stores scrubbed, deduplicated
+Sentry/worker incidents and never authorizes execution. All four tables use RLS with
+admin-only authenticated **read** policies; browser JWTs have no insert, update, or
+delete privileges. Mutations are service-role-only except the narrow
+`approve_operator_job(...)` RPC, which verifies Ashesh's authenticated profile and a
+legal queued operations-job transition. Anonymous access is revoked. The
+`ingest_operator_incident(...)` RPC performs atomic fingerprint upserts and is executable
+only by `service_role`.
+
+Initial and refinement finalization RPCs commit the report pointer and
+`agent_bundle_version` on both the audit and immutable report-version row in one
+transaction.
 
 ### `app_settings`
 Single-row (`id = 1`) admin configuration for the Hermes worker.
@@ -344,3 +363,104 @@ update public.profiles
 set role = 'admin'
 where email in ('ashesh@asheshkaji.com', 'narin@auditlayer.com');
 ```
+
+---
+
+## Compatibility tables (pre-kernel)
+
+### `accounts`
+Workspace/IG bridge for a `(user_id, handle, platform)` identity. **Not** the parent
+ontology — Subjects are. Connected/managed rows backfill into `subjects` /
+`subject_channels`; observed public targets stay out.
+
+| column | type | notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | → `profiles` |
+| `handle` / `platform` | text | unique with user |
+| `ownership_status` | text | `observed` \| `connected` \| `managed` (and related) |
+| `ig_connection_id` | uuid | optional → `instagram_connections` |
+| `research_snapshot` | text | truncated web cache; **not** evidence SoR |
+| `cache_valid_until` | timestamptz | **Authoritative TTL: 24 hours** (worker write). Migration 0027's 7-day comment is superseded. |
+| `updated_at` | timestamptz | required; Instagram `persist_instagram_connection` bumps it |
+
+### `account_progression`
+Per-audit metric snapshots for dashboard charts. Compat bridge until score ledger
+(`scores`) is the customer progression source.
+
+### `audit_report_versions`
+Immutable HTML report lineage per audit (`generation` \| `refinement` \| `manual`).
+Reports remain projections; intelligence continuity lives in kernel ledgers.
+
+### Operator plane
+See earlier section: `operator_threads`, `operator_messages`, `operator_jobs`,
+`operator_incidents` — admin-only reads; service-role writes;
+`approve_operator_job`, `ingest_operator_incident` RPCs.
+
+### `report_generation_runs`
+Private attempt-level runtime telemetry (latency, tokens, cost, stage timings,
+cache mode, normalized error codes). Never stores report content, handles,
+credentials, or tracebacks. Service-role only.
+
+### `share_links`
+Share tokens for reports. Includes `updated_at` (trigger/column aligned).
+
+---
+
+## ALM intelligence kernel (additive)
+
+Authoritative decision: [`docs/decisions/2026-07-30-alm-postgres-kernel.md`](decisions/2026-07-30-alm-postgres-kernel.md).
+Migrations: `20260723020611_alm_intelligence_kernel.sql`,
+`20260730200000_alm_schema_bugfixes.sql`,
+`20260730201000_alm_intelligence_ai_storage.sql`.
+
+Postgres naming (shipped) vs plan prose aliases:
+
+| Shipped | Plan prose alias |
+|---|---|
+| `living_brief_versions` | subject_brief_versions |
+| `context_update_proposals` | subject_brief_proposals |
+| `evidence` | evidence_items |
+| `scores` / `findings` / `recommendations` / `decisions` | audit_scores / audit_findings / subject_recommendations / subject_decisions |
+
+### Core tables
+
+- **`subjects`** — parent identity (`person|creator|brand|organization|project`)
+- **`subject_channels`** — channel children; optional `account_id` bridge; `managed` flag
+- **`living_brief_versions`** — immutable Living Brief snapshots (DB rejects UPDATE/DELETE)
+- **`context_update_proposals`** — model diffs; human accept/reject
+- **`audit_batches`** / **`batch_audits`** — atomic idempotent multi-audit submit
+- **`intelligence_runs`** — pins brief version, evidence snapshot, methodology / expertise / prompt / model / schema versions + stage state
+- **`evidence_snapshots`** — immutable grouping (UPDATE/DELETE rejected)
+- **`evidence`** — append-only observations (`content_hash`, `observed_at`); UPDATE/DELETE rejected
+- **`evidence_snapshot_members`** — append-only membership (same-subject pin integrity)
+- **`scores`**, **`findings`**, **`recommendations`**, **`decisions`** — ledgers
+- **`intelligence_run_progress`** — customer-safe states only: `preparing|analyzing|finalizing|delayed|succeeded|failed`
+
+### AI storage (secondary index, not SoR)
+
+- **`embedding_models`** — model id → dims → distance metric
+- **`evidence_embeddings`** — pgvector rows; denormalized `user_id` + `subject_id`; RLS; empty OK
+
+### Service-role RPCs (kernel)
+
+| RPC | Role |
+|---|---|
+| `create_subject` | create subject |
+| `link_subject_channel` | channel + same-tenant account check |
+| `record_living_brief_version` | append immutable brief |
+| `create_context_update_proposals` / `resolve_context_update_proposal` | proposal workflow |
+| `submit_audit_batch` | atomic idempotent batch (preferred) |
+| `create_audit_batch` / `add_audit_to_batch` | compat shims |
+| `start_intelligence_run` / `finalize_intelligence_run` | run lifecycle |
+| `create_evidence_snapshot` | snapshot header |
+| `upsert_evidence` | append evidence; optional membership pin |
+| `pin_evidence_to_snapshot` | same-subject membership |
+| `record_scores` / `record_findings` / `record_recommendations` / `record_decision` | ledgers |
+| `set_intelligence_run_progress` | customer progress projection |
+| `backfill_connected_subjects` | connected/managed → subjects only |
+| `register_embedding_model` / `attach_evidence_embedding` | optional embed writer |
+
+Helper: `owns_subject(uuid)`. RLS: owner select + admin all; anon revoked; mutations via service-role RPCs.
+
+Ontology (CI only): `docs/implementation/alm-intelligence-v1/ontology/`.

@@ -127,7 +127,11 @@ def test_estimate_cost_within_band():
 
 
 def test_mock_pipeline_emits_all_phases_and_writes_files(tmp_path):
-    settings = _settings(generator="mock", output_dir=tmp_path)
+    settings = _settings(
+        generator="mock",
+        output_dir=tmp_path,
+        alm_accounts_root=str(tmp_path / "accounts"),
+    )
     audit = AuditRecord(
         id="demo-test-1",
         handle="hemalpatelphd",
@@ -170,8 +174,12 @@ def test_generator_factory_rejects_non_inprocess_runtime():
         build_generator(settings)
 
 
-def test_pipeline_gate_blocks_when_calibration_blocks():
-    settings = _settings(generator="mock")
+def test_pipeline_gate_blocks_when_calibration_blocks(tmp_path):
+    settings = _settings(
+        generator="mock",
+        output_dir=tmp_path,
+        alm_accounts_root=str(tmp_path / "accounts"),
+    )
     audit = AuditRecord(id="d2", handle="", platform="unknown", goal="growth", context="")
     pipeline = GenerationPipeline(settings, MockReportGenerator())
     summary = pipeline.run(audit, PrintEventSink(), gateway=None, enforce_gate=True)

@@ -12,6 +12,7 @@ only the ``EventSink`` and storage differ.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
@@ -21,7 +22,6 @@ from pathlib import Path
 import re
 import threading
 import time
-import traceback
 from typing import Protocol
 
 from .billing import estimate_cost
@@ -30,7 +30,6 @@ from .core import (
     AuditRecord,
     AuditStatus,
     CostCapExceeded,
-    Goal,
     Plan,
     Platform,
     PROMPT_VERSION,
@@ -40,8 +39,8 @@ from .core import (
     next_milestone,
     replace_section,
 )
-from .generation import ReportGenerator
-from .account_homes import ensure_account_home
+from .generation import GenerationStageError, ReportGenerator
+from .account_homes import ensure_account_home, get_report_bundle_version
 from .hermes_home_scope import HERMES_HOME_LOCK
 from .observability import log_event
 from .quality import evaluate_report_quality
@@ -78,6 +77,10 @@ class SupabaseEventSink:
 
 
 _HEARTBEAT_INTERVAL = 60.0  # seconds between heartbeat audit_events during generation
+_INSTAGRAM_FETCH_POOL = ThreadPoolExecutor(
+    max_workers=2,
+    thread_name_prefix="instagram-metrics",
+)
 
 
 class _Heartbeat:
@@ -157,6 +160,12 @@ class RunSummary:
     report_path: str | None = None
     report_url: str | None = None
     note: str = ""
+    stage_timings: dict[str, float] = field(default_factory=dict)
+    quality_score: int | None = None
+    account_mode: str = "unknown"
+    cache_mode: str = "fresh"
+    evidence_items: int = 0
+    format_retry_used: bool = False
 
 
 def _plan_from(value: str | None) -> Plan:
@@ -209,6 +218,8 @@ class GenerationPipeline:
         enforce_gate: bool = True,
         token_cap: int = 0,
         cost_cap_usd: float = 0.0,
+        persist_report: bool = True,
+        run_kind: str = "production",
     ) -> RunSummary:
         started_at = time.monotonic()
         sink.emit("started", f"Worker claimed audit for @{audit.handle} ({audit.goal})")
@@ -218,7 +229,7 @@ class GenerationPipeline:
         except Exception as exc:  # noqa: BLE001 - persist a terminal operator-visible failure
             note = f"Account home setup failed: {exc}"
             sink.emit("failed", "Account memory setup failed. Founder review is required.")
-            if gateway is not None:
+            if gateway is not None and persist_report:
                 gateway.update_audit(
                     audit.id,
                     status=AuditStatus.FAILED.value,
@@ -245,7 +256,7 @@ class GenerationPipeline:
             if gate == AuditStatus.BLOCKED:
                 note = "Hard-blocked by intake calibration"
                 sink.emit("failed", note)
-                if gateway is not None:
+                if gateway is not None and persist_report:
                     gateway.update_audit(
                         audit.id,
                         status=gate.value,
@@ -281,6 +292,37 @@ class GenerationPipeline:
                     event_type="research_cached",
                 )
 
+        cache_mode = (
+            "resume"
+            if bool(audit.research_cache)
+            else "reused"
+            if reused_account_cache
+            else "fresh"
+        )
+        bundle_version = get_report_bundle_version(
+            self.settings.alm_profile_bundle_root
+        )
+        generation_run_id: str | None = None
+        if gateway is not None and hasattr(gateway, "start_report_generation_run"):
+            try:
+                generation_run_id = gateway.start_report_generation_run(
+                    audit_id=audit.id if persist_report else None,
+                    worker_id=self.settings.worker_id,
+                    report_type=audit.report_type or "standard",
+                    model=getattr(self.generator, "model", self.settings.hermes_model),
+                    prompt_version=PROMPT_VERSION,
+                    bundle_version=bundle_version,
+                    cache_mode=cache_mode,
+                    run_kind=run_kind,
+                )
+            except Exception as exc:  # Metrics must not interrupt paid work.
+                log_event(
+                    "generation_metrics_start_failed",
+                    level="warning",
+                    audit_id=audit.id,
+                    error_type=type(exc).__name__,
+                )
+
         # Fetch live Instagram data if the client has connected their account.
         # Runs in parallel with web research — they're independent I/O.
         # ALWAYS fresh, even on a research cache hit.
@@ -313,24 +355,68 @@ class GenerationPipeline:
                        (cost_cap_usd > 0 and cost.total_usd > cost_cap_usd):
                         raise CostCapExceeded(total_tokens, token_cap, cost.total_usd)
             except Exception as exc:  # noqa: BLE001 - record failure, never crash the loop
-                tb_tail = traceback.format_exc()[-500:]
                 is_budget_block = isinstance(exc, CostCapExceeded)
-                fail_reason = "cost_cap" if is_budget_block else "error"
-                status = AuditStatus.BLOCKED if is_budget_block else AuditStatus.FAILED
+                stage_error = exc if isinstance(exc, GenerationStageError) else None
+                fail_reason = (
+                    "cost_cap"
+                    if is_budget_block
+                    else stage_error.error_code
+                    if stage_error is not None
+                    else "generation_error"
+                )
+                nonretryable = bool(stage_error is not None and not stage_error.retryable)
+                status = (
+                    AuditStatus.BLOCKED
+                    if is_budget_block or nonretryable
+                    else AuditStatus.FAILED
+                )
                 budget_result = result if is_budget_block else None
-                spent_tokens_in = budget_result.tokens_in if budget_result is not None else 0
-                spent_tokens_out = budget_result.tokens_out if budget_result is not None else 0
-                spent_cost = exc.cost_usd if isinstance(exc, CostCapExceeded) else 0.0
-                spent_model = budget_result.model if budget_result is not None else "-"
-                private_detail = f"{fail_reason}: {exc}" if is_budget_block else tb_tail
+                spent_tokens_in = (
+                    budget_result.tokens_in
+                    if budget_result is not None
+                    else stage_error.tokens_in
+                    if stage_error is not None
+                    else 0
+                )
+                spent_tokens_out = (
+                    budget_result.tokens_out
+                    if budget_result is not None
+                    else stage_error.tokens_out
+                    if stage_error is not None
+                    else 0
+                )
+                spent_cost = (
+                    exc.cost_usd
+                    if isinstance(exc, CostCapExceeded)
+                    else estimate_cost(
+                        spent_tokens_in,
+                        spent_tokens_out,
+                        self.settings.price_in_per_mtok,
+                        self.settings.price_out_per_mtok,
+                    ).total_usd
+                )
+                spent_model = (
+                    budget_result.model
+                    if budget_result is not None
+                    else self.settings.hermes_model
+                )
+                checkpoint = stage_error.research_cache if stage_error is not None else ""
+                private_detail = (
+                    f"{fail_reason} at {stage_error.stage}; "
+                    f"cause={type(exc.__cause__).__name__ if exc.__cause__ else type(exc).__name__}"
+                    if stage_error is not None
+                    else f"{fail_reason}; cause={type(exc).__name__}"
+                )
                 public_detail = (
                     "Generation stopped by the configured usage budget. Founder review is required."
                     if is_budget_block
+                    else "Generation output was held for founder review and will not be retried automatically."
+                    if nonretryable
                     else "Generation failed. The team has the diagnostic details and will retry if safe."
                 )
                 # Budget breaches are deterministic and must not enter the automatic retry loop.
                 hb.progress("failed", public_detail)
-                if gateway is not None:
+                if gateway is not None and persist_report:
                     gateway.emit_event(
                         audit.id,
                         "failed",
@@ -347,7 +433,28 @@ class GenerationPipeline:
                         tokens_out=spent_tokens_out,
                         cost_usd=spent_cost,
                         model=spent_model,
+                        research_cache=checkpoint if not nonretryable else "",
                     )
+                if gateway is not None and generation_run_id is not None:
+                    try:
+                        gateway.finish_report_generation_run(
+                            generation_run_id,
+                            status=status.value,
+                            total_seconds=time.monotonic() - started_at,
+                            stage_timings=(stage_error.stage_timings if stage_error else {}),
+                            tokens_in=spent_tokens_in,
+                            tokens_out=spent_tokens_out,
+                            cost_usd=spent_cost,
+                            research_cache_used=bool(audit.research_cache),
+                            error_code=fail_reason,
+                        )
+                    except Exception as metrics_exc:
+                        log_event(
+                            "generation_metrics_finish_failed",
+                            level="warning",
+                            audit_id=audit.id,
+                            error_type=type(metrics_exc).__name__,
+                        )
                 return RunSummary(
                     audit_id=audit.id,
                     status=status.value,
@@ -357,10 +464,14 @@ class GenerationPipeline:
                     cost_usd=spent_cost,
                     model=spent_model,
                     estimated_tokens=False,
-                    note=str(exc),
+                    note=fail_reason,
+                    stage_timings=(stage_error.stage_timings if stage_error else {}),
+                    cache_mode=cache_mode,
                 )
 
-        assert result is not None
+        if result is None:  # defensive: generation is expected to either return or raise
+            raise RuntimeError("generation returned no result")
+        postprocess_started = time.monotonic()
         cost = estimate_cost(
             result.tokens_in,
             result.tokens_out,
@@ -392,14 +503,12 @@ class GenerationPipeline:
             event_type="quality_passed" if quality.passed else "quality_blocked",
         )
 
-        report_path = report_url = None
-        if gateway is not None:
+        report_path = None
+        if gateway is not None and persist_report:
             report_path, _ = gateway.upload_report(audit.id, final_html, version=1)
             try:
                 gateway.update_audit(
                     audit.id,
-                    status=AuditStatus.RUNNING.value,
-                    report_path=report_path,
                     admin_notes=(quality.summary[:500] if not quality.passed else ""),
                     tokens_in=result.tokens_in,
                     tokens_out=result.tokens_out,
@@ -416,8 +525,17 @@ class GenerationPipeline:
                     report_path=report_path,
                     prompt_version=PROMPT_VERSION,
                     template_version="master-skeleton-v1",
+                    agent_bundle_version=bundle_version,
                 )
             except Exception as exc:
+                try:
+                    gateway.update_audit(
+                        audit.id,
+                        status=AuditStatus.FAILED.value,
+                        admin_notes="Report finalization failed after private artifact upload.",
+                    )
+                except Exception:
+                    pass
                 log_event(
                     "audit_finalization_failed",
                     level="error",
@@ -430,6 +548,34 @@ class GenerationPipeline:
                     "Report storage succeeded but audit finalization failed. The artifact is held for operator recovery.",
                     event_type="finalization_failed",
                 )
+                stage_timings = dict(result.stage_timings)
+                stage_timings["postprocess"] = round(
+                    time.monotonic() - postprocess_started, 3
+                )
+                if generation_run_id is not None:
+                    try:
+                        gateway.finish_report_generation_run(
+                            generation_run_id,
+                            status=AuditStatus.FAILED.value,
+                            total_seconds=time.monotonic() - started_at,
+                            stage_timings=stage_timings,
+                            tokens_in=result.tokens_in,
+                            tokens_out=result.tokens_out,
+                            cost_usd=cost.total_usd,
+                            evidence_items=result.evidence_items,
+                            quality_score=quality.score,
+                            format_retry_used=result.format_retry_used,
+                            research_cache_used=result.research_cache_used,
+                            account_mode=result.account_mode,
+                            error_code="report_finalization_failed",
+                        )
+                    except Exception as metrics_exc:
+                        log_event(
+                            "generation_metrics_finish_failed",
+                            level="warning",
+                            audit_id=audit.id,
+                            error_type=type(metrics_exc).__name__,
+                        )
                 return RunSummary(
                     audit_id=audit.id,
                     status=AuditStatus.FAILED.value,
@@ -442,6 +588,12 @@ class GenerationPipeline:
                     prompt_version=PROMPT_VERSION,
                     report_path=report_path,
                     note="Audit row finalization failed after private artifact upload.",
+                    stage_timings=stage_timings,
+                    quality_score=quality.score,
+                    account_mode=result.account_mode,
+                    cache_mode=cache_mode,
+                    evidence_items=result.evidence_items,
+                    format_retry_used=result.format_retry_used,
                 )
             sink.emit("uploaded", "HTML report stored")
         else:
@@ -461,7 +613,7 @@ class GenerationPipeline:
             )
 
         # Link audit to account and write progression data.
-        if gateway is not None and audit.user_id:
+        if gateway is not None and persist_report and audit.user_id:
             _link_account_and_progression(
                 gateway,
                 audit,
@@ -470,6 +622,34 @@ class GenerationPipeline:
                 research_cache=result.research_cache,
                 research_refreshed=not reused_account_cache,
             )
+
+        stage_timings = dict(result.stage_timings)
+        stage_timings["postprocess"] = round(
+            time.monotonic() - postprocess_started, 3
+        )
+        if gateway is not None and generation_run_id is not None:
+            try:
+                gateway.finish_report_generation_run(
+                    generation_run_id,
+                    status=delivery_status.value,
+                    total_seconds=time.monotonic() - started_at,
+                    stage_timings=stage_timings,
+                    tokens_in=result.tokens_in,
+                    tokens_out=result.tokens_out,
+                    cost_usd=cost.total_usd,
+                    evidence_items=result.evidence_items,
+                    quality_score=quality.score,
+                    format_retry_used=result.format_retry_used,
+                    research_cache_used=result.research_cache_used,
+                    account_mode=result.account_mode,
+                )
+            except Exception as metrics_exc:
+                log_event(
+                    "generation_metrics_finish_failed",
+                    level="warning",
+                    audit_id=audit.id,
+                    error_type=type(metrics_exc).__name__,
+                )
 
         return RunSummary(
             audit_id=audit.id,
@@ -482,6 +662,12 @@ class GenerationPipeline:
             estimated_tokens=result.estimated,
             prompt_version=PROMPT_VERSION,
             report_path=report_path,
+            stage_timings=stage_timings,
+            quality_score=quality.score,
+            account_mode=result.account_mode,
+            cache_mode=cache_mode,
+            evidence_items=result.evidence_items,
+            format_retry_used=result.format_retry_used,
         )
 
     def refine(
@@ -501,18 +687,24 @@ class GenerationPipeline:
 
     # -- helpers -----------------------------------------------------------
 
-    def _account_home(self, audit: AuditRecord) -> str | None:
-        if not audit.user_id:
-            return None
-        return str(ensure_account_home(audit.user_id, self.settings.alm_accounts_root))
+    def _account_home(self, audit: AuditRecord) -> str:
+        account_key = audit.user_id or f"anonymous-{audit.id}"
+        return str(
+            ensure_account_home(
+                account_key,
+                self.settings.alm_accounts_root,
+                self.settings.alm_profile_bundle_root,
+            )
+        )
 
     @staticmethod
     @contextmanager
-    def _scoped_home(home: str | None):
+    def _scoped_home(home: str):
+        if not home:
+            raise ValueError("report generation requires an isolated HERMES_HOME")
         with HERMES_HOME_LOCK:
             previous = os.environ.get("HERMES_HOME")
-            if home:
-                os.environ["HERMES_HOME"] = home
+            os.environ["HERMES_HOME"] = home
             try:
                 yield
             finally:
@@ -536,10 +728,6 @@ def _start_instagram_fetch(gateway, audit, sink):
     independent web research. Returns a Future that resolves to
     ig_metrics or None.
     """
-    from concurrent.futures import ThreadPoolExecutor
-
-    pool = ThreadPoolExecutor(max_workers=1)
-
     def _fetch():
         try:
             token_info = (
@@ -653,7 +841,7 @@ def _start_instagram_fetch(gateway, audit, sink):
         finally:
             client.close()
 
-    return pool.submit(_fetch)
+    return _INSTAGRAM_FETCH_POOL.submit(_fetch)
 
 
 def _extract_overall_score(report_html: str) -> int | None:
