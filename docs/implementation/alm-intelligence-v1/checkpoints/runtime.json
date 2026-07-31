@@ -1,8 +1,9 @@
 {
-  "version": 4,
+  "version": 5,
   "workstream": "runtime",
   "status": "implemented_amended_for_review",
   "branch": "feat/alm-intelligence-v1-runtime",
+  "worktree": ".worktrees/t_38841ca0",
   "contract_commit": "81d0a6a",
   "scope": {
     "owned_runtime": "worker/auditlayer_worker/intelligence/",
@@ -11,14 +12,29 @@
       "worker/tests/test_intelligence_inference.py",
       "worker/tests/test_intelligence_runtime.py",
       "worker/tests/test_intelligence_website.py",
-      "worker/tests/test_intelligence_adversarial.py"
+      "worker/tests/test_intelligence_adversarial.py",
+      "worker/tests/test_intelligence_continuity_ledger.py"
     ],
     "integration_files_modified": [],
     "forbidden_paths_modified": []
   },
+  "module_map": {
+    "continuity.py": "Continuity compiler — prior scores/recs/decisions/brief → ContinuityPacket (rejection suppression, change-cause hint, prior_state_hash)",
+    "evidence.py": "evidence-v1 normalization, content hash, UUIDv5 evidence_id, secret scrubbing",
+    "projection.py": "Bounded Living Brief projection for inference",
+    "cache.py": "Exact analysis cache key over all canonical reuse components",
+    "website.py": "SSRF/redirect/size/deadline-bounded website collector",
+    "inference.py": "DeepSeek V4 Flash-only tool-free Hermes adapter",
+    "validation.py": "channel-analysis / findings / recommendations / proposal validation with evidence_id integrity",
+    "runtime.py": "BoundedIntelligenceRuntime — single-channel fast path, max-3 fan-out, synthesis, resume, cache, telemetry",
+    "storage.py": "Atomic private JSON stage/cache stores",
+    "ledger.py": "Kernel RPC commit shapes for evidence/scores/findings/recommendations/proposals/finalize",
+    "subject_homes.py": "Subject-UUID Hermes scratch homes; rebuildable; never outranks ledger"
+  },
   "implemented": [
     "canonical content-addressed evidence-v1 normalization with runtime-boundary identity, nested-secret and expiry revalidation, finite-number checks, bounded payload/coverage documents and valid freshness intervals",
     "allowlisted and byte-bounded subject-context projection whose canonical content hash participates in reuse identity",
+    "continuity compiler projecting prior scores, open/rejected recommendations, decisions, and prior run pins into ContinuityPacket for IntelligenceRunRequest",
     "website collection with credential, scheme, port, DNS/IP, redirect, fetch-target, response-size, content-type, content-encoding and absolute wall-clock deadline controls, including DNS time",
     "DNS-rebinding-resistant HTTP and HTTPS connections pinned to pre-approved public addresses",
     "DeepSeek V4 Flash-only stateless inference transport with explicit empty enabled_toolsets, no session header, no fallback, provider/model drift failure and at most 150-second timeout",
@@ -31,8 +47,40 @@
     "typed finding, recommendation, context-proposal and synthesis validation with evidence-reference integrity",
     "additive deterministic synthesis assembly, stable recommendation fingerprints, rejected-advice suppression and typed proposal handoff",
     "optional pinned prior scores/result, deterministic score deltas and named evidence, brief/lens, methodology or correction causes",
+    "ledger commit batch builder matching kernel RPC JSONB shapes (upsert_evidence, record_scores, record_findings, record_recommendations, create_context_update_proposals, finalize_intelligence_run) plus change_explanations",
+    "subject-scoped rebuildable Hermes homes keyed by subject UUID; scratch only; ledger outranks",
     "allowlisted latency, token, cost, cache, attempted-call and normalized-failure telemetry"
   ],
+  "assumed_db_contracts": {
+    "source": "kernel branch feat/alm-intelligence-v1-kernel migration 20260723020611_alm_intelligence_kernel.sql (not present in this worktree)",
+    "tables": [
+      "subjects",
+      "subject_channels",
+      "living_brief_versions",
+      "context_update_proposals",
+      "audit_batches",
+      "batch_audits",
+      "intelligence_runs",
+      "evidence_snapshots",
+      "evidence",
+      "scores",
+      "findings",
+      "recommendations",
+      "decisions"
+    ],
+    "service_role_rpcs": {
+      "create_evidence_snapshot": "(p_subject_id uuid) → uuid",
+      "upsert_evidence": "(p_items jsonb) → setof uuid — fields: subject_id, channel_id, snapshot_id, source_type, source_url, observed_at, expires_at, content_hash, confidence, coverage, payload; ON CONFLICT (subject_id, content_hash) DO NOTHING",
+      "start_intelligence_run": "(p_subject_id, p_brief_version, p_evidence_snapshot_id, p_methodology_version, p_expertise_pack_version, p_prompt_version, p_model_config_hash, p_output_schema_version, p_batch_id) → uuid",
+      "record_scores": "(p_scores jsonb) — fields: run_id, dimension, value, evidence_ids, methodology_version; table also has previous_value, change_kind (runtime emits both; current RPC may ignore extras until kernel extends insert)",
+      "record_findings": "(p_findings jsonb) — fields: run_id, finding_ref, claim, evidence_ids, confidence, dimension_impacts, channel_type",
+      "record_recommendations": "(p_recommendations jsonb) — fields: run_id, recommendation_ref, content, evidence_ids, channel_type",
+      "create_context_update_proposals": "(p_proposals jsonb) → setof uuid — fields: subject_id, base_version, intelligence_run_id, path, operation, proposed_value, evidence_ids, reason",
+      "finalize_intelligence_run": "(p_run_id, p_status, p_latency_ms, p_tokens_in, p_tokens_out, p_cost_usd, p_cache_mode)"
+    },
+    "evidence_id_mapping": "Contract evidence_id is UUIDv5(content_hash). Kernel evidence.id is DB-generated. Findings/scores store contract evidence_id strings; row identity/reuse is (subject_id, content_hash).",
+    "not_wired_in_this_branch": "No supabase_client.py / pipeline.py binding — LedgerWriter and StageStore/AnalysisCache protocols remain injectable for release integration."
+  },
   "acceptance": {
     "website_collector_rejects_unsafe_targets": true,
     "website_collector_enforces_absolute_deadline": true,
@@ -46,22 +94,23 @@
     "deepseek_v4_flash_no_tools_no_sessions_no_fallback": true,
     "one_correction_maximum": true,
     "longitudinal_deltas_and_recommendation_suppression": true,
+    "continuity_compiler_projects_priors": true,
+    "ledger_commit_shapes_match_kernel_rpcs": true,
+    "subject_homes_rebuildable_and_subordinate": true,
     "runtime_telemetry_is_allowlisted": true,
     "existing_report_security_and_section_gates_pass": true
   },
   "verification": [
     {
-      "command": "cd worker && uv run pytest tests/test_intelligence_contracts.py tests/test_intelligence_inference.py tests/test_intelligence_runtime.py tests/test_intelligence_website.py tests/test_intelligence_adversarial.py -q",
-      "result": "101 passed in 0.58s"
-    },
-    {
-      "command": "cd worker && uv run pytest -q",
-      "result": "361 passed, 12 skipped in 4.34s"
-    },
-    {
-      "command": "cd worker && uvx ruff check auditlayer_worker/intelligence tests/test_intelligence_contracts.py tests/test_intelligence_inference.py tests/test_intelligence_runtime.py tests/test_intelligence_website.py tests/test_intelligence_adversarial.py && uv run python -m compileall -q auditlayer_worker && git diff --check",
-      "result": "All checks passed!; compileall and git diff --check exited 0"
+      "command": "cd worker && uv run pytest tests/test_intelligence_continuity_ledger.py tests/test_intelligence_contracts.py tests/test_intelligence_inference.py tests/test_intelligence_runtime.py tests/test_intelligence_website.py tests/test_intelligence_adversarial.py -q",
+      "result": "107 passed in 0.66s"
     }
+  ],
+  "blockers": [
+    "Kernel migration not present in this worktree — release must merge kernel before binding LedgerWriter to Supabase service-role RPCs.",
+    "record_scores RPC currently inserts only run_id/dimension/value/evidence_ids/methodology_version; scores.previous_value and scores.change_kind are emitted by runtime and need a kernel RPC extension (or direct insert) before those columns are populated.",
+    "No pipeline/generation wiring in this branch by ownership — release integrates BoundedIntelligenceRuntime behind compatibility boundaries.",
+    "No live provider or public-network benchmark in this worktree by contract."
   ],
   "release_handoff": {
     "live_models_called": false,
@@ -69,10 +118,8 @@
     "deployed": false,
     "pushed": false,
     "migration_or_web_changes": false,
-    "integration_note": "The runtime remains isolated behind model, stage-store, analysis-cache and telemetry protocols. Release integration must bind the kernel's canonical Supabase persistence and telemetry implementations.",
+    "integration_note": "Bind LedgerWriter to service-role RPCs listed in assumed_db_contracts; bind StageStore/AnalysisCache to intelligence_runs.stage_state or durable storage; route subject homes via ensure_subject_home(subject_id); keep Hermes scratch subordinate to ledger.",
     "risks": [
-      "The kernel branch must provide canonical Supabase-backed StageStore, AnalysisCache and telemetry bindings before production routing switches to this runtime; included JSON stores are private durable local implementations, not the canonical ledger.",
-      "No live provider or public-network benchmark was run in this implementation worktree by contract; release must perform controlled benchmark and canary gates.",
       "Website collection intentionally uses one pre-approved DNS address and does not fail over across answers, favoring SSRF determinism over availability.",
       "The strict intelligence adapter owns a dedicated non-streaming Hermes wire path so empty toolsets and stateless headers are explicit without changing the legacy report client's behavior."
     ]
