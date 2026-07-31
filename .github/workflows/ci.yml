@@ -224,16 +224,22 @@ jobs:
         continue-on-error: true
         run: |
           npx supabase@latest start -x studio,edge-runtime,logflare,vector,imgproxy,pgmeta || true
-          if pg_isready -h 127.0.0.1 -p 54322 >/dev/null 2>&1; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          fi
+          # Give postgres a moment after start
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if pg_isready -h 127.0.0.1 -p 54322 >/dev/null 2>&1; then
+              echo "ready=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "ready=false" >> "$GITHUB_OUTPUT"
 
       - name: Apply migrations and run kernel SQL tests
         if: steps.supabase.outputs.ready == 'true'
         run: |
           npx supabase@latest db reset --yes
+          # Wait for auth schema / seed settle
+          sleep 2
           PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 \
             -f supabase/tests/alm_intelligence_kernel_test.sql
           PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 \

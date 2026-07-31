@@ -328,6 +328,34 @@ end;
 $$;
 
 -- ===========================================================================
+-- 9b. Seed deterministic test profile for behavioral sections that follow.
+--     Must run before Living Brief / evidence / batch immutability tests.
+-- ===========================================================================
+do $$
+declare
+  _uid uuid := '00000000-0000-0000-0000-000000000001'::uuid;
+begin
+  insert into auth.users (id, email, instance_id, role, aud, raw_app_meta_data)
+  values (
+    _uid,
+    'alm-kernel-test@example.com',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated',
+    'authenticated',
+    '{"provider":"email","providers":["email"]}'::jsonb
+  )
+  on conflict (id) do nothing;
+
+  insert into public.profiles (id, email, full_name, role, plan)
+  values (_uid, 'alm-kernel-test@example.com', 'ALM Kernel Test', 'client', 'free')
+  on conflict (id) do update
+    set email = excluded.email;
+
+  raise notice 'OK: seeded test profile %', _uid;
+end;
+$$;
+
+-- ===========================================================================
 -- 10. Living Brief immutability — trigger rejects UPDATE and DELETE.
 -- ===========================================================================
 do $$
