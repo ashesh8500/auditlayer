@@ -335,6 +335,7 @@ declare
   _uid uuid := '00000000-0000-0000-0000-000000000001'::uuid;
   _subject_id uuid;
   _brief_id uuid;
+  _version integer;
 begin
   -- Ensure test profile exists
   if not exists (select 1 from public.profiles where id = _uid) then
@@ -346,13 +347,20 @@ begin
     _subject_id := public.create_subject(_uid, 'Immutability Test', 'creator');
   end if;
 
-  -- Create a brief version
+  select coalesce(max(version), 0) + 1 into _version
+  from public.living_brief_versions
+  where subject_id = _subject_id;
+
   _brief_id := public.record_living_brief_version(
-    _subject_id, 99, '1.0',
+    _subject_id, _version, '1.0',
     '{"name":"test"}'::jsonb, '{}'::jsonb, '{}'::jsonb,
     '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb,
     _uid, false
   );
+
+  if _brief_id is null then
+    raise exception 'Living Brief version insert returned null (version=%)', _version;
+  end if;
 
   -- Attempt UPDATE — must fail
   begin
@@ -398,6 +406,8 @@ declare
   _e1_snapshot_id uuid;
   _e_count int;
   _payload jsonb;
+  _hash1 text := 'evidence_test_hash_' || replace(gen_random_uuid()::text, '-', '');
+  _hash2 text := 'evidence_test_hash_' || replace(gen_random_uuid()::text, '-', '');
 begin
   select id into _subject_id from public.subjects where user_id = _uid limit 1;
 
@@ -420,7 +430,7 @@ begin
       'snapshot_id', _snapshot1_id,
       'source_type', 'connected_api',
       'observed_at', '2026-01-01T00:00:00Z',
-      'content_hash', 'evidence_test_hash_00000000000001',
+      'content_hash', _hash1,
       'confidence', 'high',
       'payload', jsonb_build_object('followers', 5000)
     )
@@ -430,10 +440,14 @@ begin
   select id, confidence, snapshot_id
   into _evidence_id1, _e1_confidence, _e1_snapshot_id
   from public.evidence
-  where content_hash = 'evidence_test_hash_00000000000001';
+  where content_hash = _hash1
+    and subject_id = _subject_id;
 
   if _evidence_id1 is null then
     raise exception 'Evidence row E1 not created';
+  end if;
+  if _e1_snapshot_id is distinct from _snapshot1_id then
+    raise exception 'Evidence E1 initial snapshot_id mismatch';
   end if;
 
   -- Snapshot 2: upsert the same content_hash again — must NOT mutate E1
@@ -446,7 +460,7 @@ begin
       'snapshot_id', _snapshot2_id,
       'source_type', 'connected_api',
       'observed_at', '2026-02-01T00:00:00Z',
-      'content_hash', 'evidence_test_hash_00000000000001',
+      'content_hash', _hash1,
       'confidence', 'low',
       'payload', jsonb_build_object('followers', 9999)
     )
@@ -465,10 +479,22 @@ begin
     raise exception 'Evidence E1 snapshot_id changed from % to %', _snapshot1_id, _e1_snapshot_id;
   end if;
 
+  -- Membership must include both snapshots without mutating the evidence row
+  if not exists (
+    select 1 from public.evidence_snapshot_members
+    where snapshot_id = _snapshot1_id and evidence_id = _evidence_id1
+  ) or not exists (
+    select 1 from public.evidence_snapshot_members
+    where snapshot_id = _snapshot2_id and evidence_id = _evidence_id1
+  ) then
+    raise exception 'Evidence E1 missing snapshot membership for reuse';
+  end if;
+
   -- Only one row exists for that content_hash
   select count(*) into _e_count
   from public.evidence
-  where content_hash = 'evidence_test_hash_00000000000001';
+  where content_hash = _hash1
+    and subject_id = _subject_id;
   if _e_count <> 1 then
     raise exception 'Expected 1 evidence row for content_hash, got %', _e_count;
   end if;
@@ -481,7 +507,7 @@ begin
       'snapshot_id', _snapshot2_id,
       'source_type', 'public_web',
       'observed_at', '2026-02-01T00:00:00Z',
-      'content_hash', 'different_evidence_hash_0000000002',
+      'content_hash', _hash2,
       'confidence', 'medium',
       'payload', jsonb_build_object('new_data', true)
     )
@@ -490,7 +516,8 @@ begin
 
   select id into _evidence_id2
   from public.evidence
-  where content_hash = 'different_evidence_hash_0000000002';
+  where content_hash = _hash2
+    and subject_id = _subject_id;
   if _evidence_id2 is null then
     raise exception 'New evidence row with different hash was not created';
   end if;
@@ -810,8 +837,21 @@ begin
   -- Create a connected account for the test user
   insert into public.accounts (user_id, handle, platform, ownership_status, display_name)
   values (_uid, '@backfilltest', 'instagram', 'connected', 'Backfill Creator')
-  on conflict (user_id, handle, platform) do nothing
+  on conflict (user_id, handle, platform) do update
+    set ownership_status = 'connected',
+        display_name = excluded.display_name,
+        updated_at = now()
   returning id into _account_id;
+
+  if _account_id is null then
+    select id into _account_id
+    from public.accounts
+    where user_id = _uid and handle = '@backfilltest' and platform = 'instagram';
+  end if;
+
+  -- Detach any prior channel link so backfill has work to do on first pass
+  -- (membership table may reference channels; only clear account_id link for this test account)
+  delete from public.subject_channels where account_id = _account_id;
 
   -- Also create an audit target for this handle (observed-target simulation)
   -- The audit exists — it must NOT be affected by backfill
@@ -978,21 +1018,29 @@ declare
   _uid uuid := '00000000-0000-0000-0000-000000000001'::uuid;
   _subject_id uuid;
   _brief_id uuid;
+  _version integer;
   _row public.living_brief_versions%rowtype;
 begin
   select id into _subject_id from public.subjects where user_id = _uid limit 1;
 
+  select coalesce(max(version), 0) + 1 into _version
+  from public.living_brief_versions
+  where subject_id = _subject_id;
+
   _brief_id := public.record_living_brief_version(
-    _subject_id, 1, '1.0',
+    _subject_id, _version, '1.0',
     '{"name": "Smoke Test Creator"}'::jsonb,
     '{"demographics": "25-45"}'::jsonb,
     '{}'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb,
     '[]'::jsonb, '[]'::jsonb,
     _uid, true
   );
+  if _brief_id is null then
+    raise exception 'record_living_brief_version returned null';
+  end if;
   select * into _row from public.living_brief_versions where id = _brief_id;
 
-  if _row.version <> 1 or _row.confirmed is not true then
+  if _row.version <> _version or _row.confirmed is not true then
     raise exception 'record_living_brief_version: version/confirmed mismatch';
   end if;
   raise notice 'OK: record_living_brief_version RPC works (brief_id=%)', _brief_id;
@@ -1007,6 +1055,7 @@ declare
   _channel_id uuid;
   _snapshot_id uuid;
   _evidence_count int;
+  _hash text := 'smoke_evidence_hash_' || replace(gen_random_uuid()::text, '-', '');
 begin
   select id into _subject_id from public.subjects where user_id = _uid limit 1;
   select id into _channel_id from public.subject_channels
@@ -1021,19 +1070,20 @@ begin
       "snapshot_id": "' || _snapshot_id || '",
       "source_type": "connected_api",
       "observed_at": "2026-01-01T00:00:00Z",
-      "content_hash": "smoke_evidence_hash_00000000000001",
+      "content_hash": "' || _hash || '",
       "confidence": "high",
       "payload": {"followers": 5000, "engagement": 3.2}
     }]')::jsonb
   );
 
   select count(*) into _evidence_count
-  from public.evidence where snapshot_id = _snapshot_id;
+  from public.evidence_snapshot_members
+  where snapshot_id = _snapshot_id;
   if _evidence_count <> 1 then
-    raise exception 'upsert_evidence: expected 1 row, got %', _evidence_count;
+    raise exception 'upsert_evidence: expected 1 membership row, got %', _evidence_count;
   end if;
 
-  -- Re-upsert same hash — must not change count (DO NOTHING)
+  -- Re-upsert same hash — must not change evidence row count (DO NOTHING)
   perform public.upsert_evidence(
     ('[{
       "subject_id": "' || _subject_id || '",
@@ -1041,17 +1091,21 @@ begin
       "snapshot_id": "' || _snapshot_id || '",
       "source_type": "connected_api",
       "observed_at": "2026-01-01T00:00:00Z",
-      "content_hash": "smoke_evidence_hash_00000000000001",
+      "content_hash": "' || _hash || '",
       "confidence": "low",
       "payload": {"followers": 9999}
     }]')::jsonb
   );
 
   select count(*) into _evidence_count
-  from public.evidence where content_hash = 'smoke_evidence_hash_00000000000001';
+  from public.evidence where content_hash = _hash and subject_id = _subject_id;
   if _evidence_count <> 1 then
     raise exception 'upsert_evidence idempotent re-insert created duplicate: %', _evidence_count;
   end if;
+
+  -- Stash hash for later smoke sections via a temp note on subject name is overkill;
+  -- later sections only need any evidence id string in JSON arrays.
+  perform set_config('alm.smoke_evidence_hash', _hash, false);
 
   raise notice 'OK: evidence snapshot + immutable upsert (snapshot_id=%)', _snapshot_id;
 end;
@@ -1063,17 +1117,26 @@ declare
   _uid uuid := '00000000-0000-0000-0000-000000000001'::uuid;
   _subject_id uuid;
   _snapshot_id uuid;
+  _brief_version integer;
   _run_id uuid;
   _score_count int;
   _finding_count int;
   _rec_count int;
+  _hash text := current_setting('alm.smoke_evidence_hash', true);
 begin
   select id into _subject_id from public.subjects where user_id = _uid limit 1;
   select id into _snapshot_id from public.evidence_snapshots
     where subject_id = _subject_id order by created_at desc limit 1;
+  select max(version) into _brief_version
+  from public.living_brief_versions
+  where subject_id = _subject_id;
+
+  if _hash is null or _hash = '' then
+    _hash := 'smoke_evidence_hash_fallback';
+  end if;
 
   _run_id := public.start_intelligence_run(
-    _subject_id, 1, _snapshot_id,
+    _subject_id, _brief_version, _snapshot_id,
     'methodology-v2.1', 'expertise-v1.3', 'prompt-v4.0',
     'sha256:abc123', '1.0', null
   );
@@ -1082,7 +1145,7 @@ begin
   perform public.record_scores(
     ('[{
       "run_id": "' || _run_id || '", "dimension": "engagement", "value": 72.5,
-      "evidence_ids": ["smoke_evidence_hash_00000000000001"],
+      "evidence_ids": ["' || _hash || '"],
       "methodology_version": "v2.1"
     }]')::jsonb
   );
@@ -1097,7 +1160,7 @@ begin
   perform public.record_findings(
     ('[{
       "run_id": "' || _run_id || '", "finding_ref": "f-smoke", "claim": "High engagement",
-      "evidence_ids": ["smoke_evidence_hash_00000000000001"],
+      "evidence_ids": ["' || _hash || '"],
       "confidence": "high", "dimension_impacts": {"engagement": 15}, "channel_type": "instagram"
     }]')::jsonb
   );
@@ -1111,9 +1174,9 @@ begin
   -- Record recommendations
   perform public.record_recommendations(
     ('[{
-      "run_id": "' || _run_id || '", "recommendation_ref": "r-smoke",
+      "run_id": "' || _run_id || '", "recommendation_ref": "r-smoke-' || replace(gen_random_uuid()::text, '-', '') || '",
       "content": {"action": "Post 3 reels per week"},
-      "evidence_ids": ["smoke_evidence_hash_00000000000001"],
+      "evidence_ids": ["' || _hash || '"],
       "channel_type": "instagram"
     }]')::jsonb
   );
@@ -1141,20 +1204,25 @@ declare
   _run_id uuid;
   _prop_ids uuid[];
   _prop_id uuid;
+  _hash text := coalesce(nullif(current_setting('alm.smoke_evidence_hash', true), ''), 'smoke');
+  _base_version integer;
 begin
   select id into _subject_id from public.subjects where user_id = _uid limit 1;
   select id into _run_id from public.intelligence_runs
     where subject_id = _subject_id order by created_at desc limit 1;
+  select max(version) into _base_version
+  from public.living_brief_versions
+  where subject_id = _subject_id;
 
   _prop_ids := array(select public.create_context_update_proposals(
     ('[{
       "subject_id": "' || _subject_id || '",
-      "base_version": 1,
+      "base_version": ' || _base_version || ',
       "intelligence_run_id": "' || _run_id || '",
       "path": "/audience/demographics",
       "operation": "add",
       "proposed_value": {"key": "also 18-24"},
-      "evidence_ids": ["smoke_evidence_hash_00000000000001"],
+      "evidence_ids": ["' || _hash || '"],
       "reason": "demographic shift"
     }]')::jsonb
   ));
@@ -1190,7 +1258,9 @@ begin
   select id into _rec_id from public.recommendations
     where intelligence_run_id in (
       select id from public.intelligence_runs where subject_id = _subject_id
-    ) limit 1;
+    )
+    order by created_at desc
+    limit 1;
 
   _decision_id := public.record_decision(
     _subject_id, _uid, 'recommendation', _rec_id, 'accepted',

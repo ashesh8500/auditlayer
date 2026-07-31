@@ -1,0 +1,52 @@
+@prefix alm:  <https://auditlayer.com/ontology/alm#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+# Minimal valid instance graph for SHACL CI.
+
+alm:subj1 a alm:Subject ;
+    alm:subjectType "creator" ;
+    alm:ownsChannel alm:ch1 ;
+    alm:hasBriefVersion alm:brief1 .
+
+alm:ch1 a alm:Channel ;
+    alm:channelType "instagram" ;
+    alm:locator "examplecreator" ;
+    alm:managed true .
+
+alm:brief1 a alm:LivingBriefVersion ;
+    alm:briefVersionNumber 1 .
+
+alm:ev1 a alm:EvidenceItem ;
+    alm:contentHash "0123456789abcdef0123" ;
+    alm:observedAt "2026-07-01T12:00:00Z"^^xsd:dateTime ;
+    alm:sourceType "public_web" .
+
+alm:snap1 a alm:EvidenceSnapshot .
+
+alm:run1 a alm:IntelligenceRun ;
+    alm:pinsBrief alm:brief1 ;
+    alm:pinsEvidenceSnapshot alm:snap1 ;
+    alm:methodologyVersion "m1" ;
+    alm:expertisePackVersion "e1" ;
+    alm:promptVersion "p1" ;
+    alm:modelConfigHash "cfg1" ;
+    alm:outputSchemaVersion "1.0" ;
+    alm:producedScore alm:score1 ;
+    alm:producedRecommendation alm:rec1 .
+
+alm:score1 a alm:Score ;
+    alm:changeCause "evidence" ;
+    alm:derivedFrom alm:ev1 .
+
+alm:rec1 a alm:Recommendation ;
+    alm:recommendationStatus "proposed" .
+
+alm:model1 a alm:EmbeddingModel .
+
+alm:emb1 a alm:EvidenceEmbedding ;
+    alm:indexesEvidence alm:ev1 ;
+    alm:usesModel alm:model1 ;
+    alm:embeddingDims 8 .
+
+alm:run1 alm:customerProgressState "analyzing" .

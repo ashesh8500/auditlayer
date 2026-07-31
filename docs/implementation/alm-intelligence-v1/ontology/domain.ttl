@@ -1,0 +1,254 @@
+@prefix alm:  <https://auditlayer.com/ontology/alm#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+
+# AuditLayer Longitudinal Intelligence — domain ontology (OWL 2 RL / RDFS).
+# Postgres remains system of record. This file documents meaning for CI and agents.
+# Version: 1.0
+
+alm: a owl:Ontology ;
+    rdfs:label "AuditLayer ALM Ontology" ;
+    owl:versionInfo "1.0" .
+
+##############################################################################
+# Core nouns
+##############################################################################
+
+alm:Subject a owl:Class ;
+    rdfs:label "Subject" ;
+    rdfs:comment "Neutral parent identity: person, creator, brand, organization, or project. Not a channel handle." .
+
+alm:Person a owl:Class ; rdfs:subClassOf alm:Subject .
+alm:Creator a owl:Class ; rdfs:subClassOf alm:Subject .
+alm:Brand a owl:Class ; rdfs:subClassOf alm:Subject .
+alm:Organization a owl:Class ; rdfs:subClassOf alm:Subject .
+alm:Project a owl:Class ; rdfs:subClassOf alm:Subject .
+
+alm:Channel a owl:Class ;
+    rdfs:label "Channel" ;
+    rdfs:comment "One presence (instagram, website, …). A Subject owns Channels; a Channel never is the Subject." .
+
+alm:WorkspaceRelationship a owl:Class ;
+    rdfs:label "Workspace relationship" ;
+    rdfs:comment "Connected or ExplicitlyManaged membership. Disjoint from mere observation." .
+
+alm:ConnectedRelationship a owl:Class ; rdfs:subClassOf alm:WorkspaceRelationship .
+alm:ManagedRelationship a owl:Class ; rdfs:subClassOf alm:WorkspaceRelationship .
+alm:ObservedTarget a owl:Class ;
+    rdfs:label "Observed target" ;
+    rdfs:comment "One-off public audit target. Must never appear as managed workspace property." .
+
+alm:ConnectedRelationship owl:disjointWith alm:ObservedTarget .
+alm:ManagedRelationship owl:disjointWith alm:ObservedTarget .
+
+alm:LivingBriefVersion a owl:Class ;
+    rdfs:label "Living Brief version" ;
+    rdfs:comment "Immutable versioned intent: identity, audience, positioning, offers, goals, constraints, experiments, decisions." ;
+    rdfs:subClassOf prov:Entity .
+
+alm:BriefProposal a owl:Class ;
+    rdfs:label "Brief update proposal" ;
+    rdfs:comment "Model-proposed Living Brief diff. Requires human confirmation for identity/vision/goals/constraints." .
+
+##############################################################################
+# Epistemic layer
+##############################################################################
+
+alm:EvidenceItem a owl:Class ;
+    rdfs:label "Evidence item" ;
+    rdfs:comment "Append-only observation with content_hash and observed_at. SoR for facts." ;
+    rdfs:subClassOf prov:Entity .
+
+alm:EvidenceSnapshot a owl:Class ;
+    rdfs:label "Evidence snapshot" ;
+    rdfs:comment "Immutable membership set of EvidenceItems pinned by an IntelligenceRun." .
+
+alm:Claim a owl:Class ; rdfs:label "Claim" .
+alm:Observation a owl:Class ; rdfs:subClassOf alm:Claim .
+alm:Interpretation a owl:Class ; rdfs:subClassOf alm:Claim .
+alm:RecommendationClaim a owl:Class ; rdfs:subClassOf alm:Claim .
+alm:DecisionClaim a owl:Class ; rdfs:subClassOf alm:Claim .
+
+alm:Score a owl:Class ;
+    rdfs:label "Score" ;
+    rdfs:comment "Dimension value or null (Data needed). Must deriveFrom ≥1 EvidenceItem when factual." .
+
+alm:Finding a owl:Class ;
+    rdfs:label "Finding" ;
+    rdfs:comment "Interpretation tied to methodology version and evidence IDs." .
+
+##############################################################################
+# Verbs / activities
+##############################################################################
+
+alm:IntelligenceRun a owl:Class ;
+    rdfs:label "Intelligence run" ;
+    rdfs:comment "Analysis activity pinning brief, evidence snapshot, methodology, expertise pack, prompt, model config, output schema." ;
+    rdfs:subClassOf prov:Activity .
+
+alm:Recommendation a owl:Class ;
+    rdfs:label "Recommendation" ;
+    rdfs:comment "Proposed action with lifecycle state. Rejected items do not revive without new evidence." .
+
+alm:ClientDecision a owl:Class ;
+    rdfs:label "Client decision" ;
+    rdfs:comment "Human-confirmed accept/reject/supersede. Highest precedence after safety." .
+
+alm:ReportVersion a owl:Class ;
+    rdfs:label "Report version" ;
+    rdfs:comment "Immutable HTML projection of a pinned run. Not the world model." .
+
+alm:Audit a owl:Class ;
+    rdfs:label "Audit" ;
+    rdfs:comment "Queue/billing generation unit. Distinct from ReportVersion and Subject." .
+
+alm:Audit owl:disjointWith alm:ReportVersion .
+alm:Audit owl:disjointWith alm:Subject .
+alm:Channel owl:disjointWith alm:Subject .
+
+##############################################################################
+# AI index (not SoR)
+##############################################################################
+
+alm:EmbeddingModel a owl:Class ;
+    rdfs:label "Embedding model" ;
+    rdfs:comment "Registry entry: model id, dims, distance metric." .
+
+alm:EvidenceEmbedding a owl:Class ;
+    rdfs:label "Evidence embedding" ;
+    rdfs:comment "Secondary ANN index over EvidenceItem text. Never the ledger." .
+
+##############################################################################
+# Properties
+##############################################################################
+
+alm:ownsChannel a owl:ObjectProperty ;
+    rdfs:domain alm:Subject ;
+    rdfs:range alm:Channel .
+
+alm:hasBriefVersion a owl:ObjectProperty ;
+    rdfs:domain alm:Subject ;
+    rdfs:range alm:LivingBriefVersion .
+
+alm:pinsBrief a owl:ObjectProperty ;
+    rdfs:domain alm:IntelligenceRun ;
+    rdfs:range alm:LivingBriefVersion .
+
+alm:pinsEvidenceSnapshot a owl:ObjectProperty ;
+    rdfs:domain alm:IntelligenceRun ;
+    rdfs:range alm:EvidenceSnapshot .
+
+alm:memberOfSnapshot a owl:ObjectProperty ;
+    rdfs:domain alm:EvidenceItem ;
+    rdfs:range alm:EvidenceSnapshot .
+
+alm:derivedFrom a owl:ObjectProperty ;
+    rdfs:range alm:EvidenceItem .
+
+alm:producedBy a owl:ObjectProperty ;
+    rdfs:range alm:IntelligenceRun .
+
+alm:producedScore a owl:ObjectProperty ;
+    rdfs:domain alm:IntelligenceRun ;
+    rdfs:range alm:Score .
+
+alm:producedFinding a owl:ObjectProperty ;
+    rdfs:domain alm:IntelligenceRun ;
+    rdfs:range alm:Finding .
+
+alm:producedRecommendation a owl:ObjectProperty ;
+    rdfs:domain alm:IntelligenceRun ;
+    rdfs:range alm:Recommendation .
+
+alm:decidesOn a owl:ObjectProperty ;
+    rdfs:domain alm:ClientDecision ;
+    rdfs:range alm:Recommendation .
+
+alm:indexesEvidence a owl:ObjectProperty ;
+    rdfs:domain alm:EvidenceEmbedding ;
+    rdfs:range alm:EvidenceItem .
+
+alm:usesModel a owl:ObjectProperty ;
+    rdfs:domain alm:EvidenceEmbedding ;
+    rdfs:range alm:EmbeddingModel .
+
+alm:aboutSubject a owl:ObjectProperty ;
+    rdfs:range alm:Subject .
+
+alm:subjectType a owl:DatatypeProperty ;
+    rdfs:domain alm:Subject ;
+    rdfs:range xsd:string .
+
+alm:subjectId a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
+alm:channelType a owl:DatatypeProperty ;
+    rdfs:domain alm:Channel ;
+    rdfs:range xsd:string .
+
+alm:locator a owl:DatatypeProperty ;
+    rdfs:domain alm:Channel ;
+    rdfs:range xsd:string .
+
+alm:managed a owl:DatatypeProperty ;
+    rdfs:domain alm:Channel ;
+    rdfs:range xsd:boolean .
+
+alm:briefVersionNumber a owl:DatatypeProperty ;
+    rdfs:domain alm:LivingBriefVersion ;
+    rdfs:range xsd:integer .
+
+alm:proposalStatus a owl:DatatypeProperty ;
+    rdfs:domain alm:BriefProposal ;
+    rdfs:range xsd:string .
+
+alm:sourceType a owl:DatatypeProperty ;
+    rdfs:domain alm:EvidenceItem ;
+    rdfs:range xsd:string .
+
+alm:observedAt a owl:DatatypeProperty ;
+    rdfs:domain alm:EvidenceItem ;
+    rdfs:range xsd:dateTime .
+
+alm:contentHash a owl:DatatypeProperty ;
+    rdfs:domain alm:EvidenceItem ;
+    rdfs:range xsd:string .
+
+alm:methodologyVersion a owl:DatatypeProperty ; rdfs:range xsd:string .
+alm:expertisePackVersion a owl:DatatypeProperty ; rdfs:range xsd:string .
+alm:promptVersion a owl:DatatypeProperty ; rdfs:range xsd:string .
+alm:modelConfigHash a owl:DatatypeProperty ; rdfs:range xsd:string .
+alm:outputSchemaVersion a owl:DatatypeProperty ; rdfs:range xsd:string .
+
+alm:changeCause a owl:DatatypeProperty ;
+    rdfs:domain alm:Score ;
+    rdfs:range xsd:string ;
+    rdfs:comment "evidence | brief_lens | methodology | prior_correction" .
+
+alm:dimension a owl:DatatypeProperty ;
+    rdfs:domain alm:Score ;
+    rdfs:range xsd:string .
+
+alm:recommendationStatus a owl:DatatypeProperty ;
+    rdfs:domain alm:Recommendation ;
+    rdfs:range xsd:string .
+
+alm:embeddingDims a owl:DatatypeProperty ;
+    rdfs:domain alm:EvidenceEmbedding ;
+    rdfs:range xsd:integer .
+
+alm:customerProgressState a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:comment "preparing | analyzing | finalizing | delayed | succeeded | failed" .
+
+##############################################################################
+# SKOS-ish taxonomies (placeholders for evolving niche/offer vocabularies)
+##############################################################################
+
+alm:NicheConcept a owl:Class ; rdfs:subClassOf skos:Concept .
+alm:OfferType a owl:Class ; rdfs:subClassOf skos:Concept .
+alm:PeerRelation a owl:Class ; rdfs:subClassOf skos:Concept .

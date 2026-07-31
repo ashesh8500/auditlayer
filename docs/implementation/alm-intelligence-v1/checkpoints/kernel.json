@@ -1,36 +1,50 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "task_id": "t_7b61b86e",
-  "status": "verified-clean-reset",
-  "timestamp": "2026-07-23T03:33:00Z",
+  "branch": "feat/alm-intelligence-v1-kernel",
+  "worktree": "/home/asheshkaji/projects/auditlayer/.worktrees/t_7b61b86e",
+  "status": "kernel-slice-complete",
+  "timestamp": "2026-07-30T20:45:00Z",
+  "owned_todos_completed": [
+    "db-decision-doc",
+    "fix-schema-bugs",
+    "ontology-phase0",
+    "kernel-subjects",
+    "kernel-ai-storage"
+  ],
   "changed_files": [
+    "docs/decisions/2026-07-30-alm-postgres-kernel.md",
+    "docs/architecture-contract.md",
+    "docs/implementation/alm-intelligence-v1/DECISIONS.md",
+    "docs/implementation/alm-intelligence-v1/NON_GOALS.md",
+    "docs/implementation/alm-intelligence-v1/FILE_OWNERSHIP.yaml",
+    "docs/implementation/alm-intelligence-v1/ontology/**",
+    "docs/implementation/alm-intelligence-v1/checkpoints/kernel.json",
     "supabase/migrations/20260723020611_alm_intelligence_kernel.sql",
-    "supabase/tests/alm_intelligence_kernel_test.sql"
+    "supabase/migrations/20260730200000_alm_schema_bugfixes.sql",
+    "supabase/migrations/20260730201000_alm_intelligence_ai_storage.sql",
+    "supabase/tests/alm_intelligence_kernel_test.sql",
+    "supabase/tests/alm_intelligence_ai_storage_test.sql",
+    ".gitignore"
   ],
   "tests": {
-    "total": 25,
-    "passed": 25,
-    "failed": 0,
-    "run_via": "PGPASSWORD=*** psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supabase/tests/alm_intelligence_kernel_test.sql",
-    "results": "ALL KERNEL TESTS PASSED",
-    "sections": [
-      "1. schema existence (13 tables)",
-      "2. RLS enabled on all 13 tables",
-      "3. owns_subject helper present and SECURITY DEFINER",
-      "4. all 18 RPCs/procs present",
-      "5. service-role RPCs not leaked to anon/authenticated",
-      "6. all select-own and admin-all RLS policies exist",
-      "7. key column constraints present",
-      "8. all kernel tables have comments",
-      "9. existing tables and observed-target semantics preserved",
-      "10. Living Brief immutability trigger rejects UPDATE and DELETE",
-      "11. evidence immutability — existing rows unchanged, new hashes create new rows",
-      "12. relational consistency FKs exist and are enforced",
-      "13. submit_audit_batch is atomic, idempotent, and validates ownership",
-      "14. behavioral RLS — two users seeded, own reads verified, cross-tenant denied, anon denied, cleanup",
-      "15. backfill promotes connected/managed accounts, idempotent, observed targets untouched",
-      "16. same-tenant consistency — cross-user account link rejected",
-      "17. integration smoke (full lifecycle via all RPCs)"
+    "kernel_sql": {
+      "command": "PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/alm_intelligence_kernel_test.sql",
+      "result": "ALL KERNEL TESTS PASSED"
+    },
+    "ai_storage_sql": {
+      "command": "PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/alm_intelligence_ai_storage_test.sql",
+      "result": "ALL AI STORAGE / BUGFIX TESTS PASSED"
+    },
+    "ontology": {
+      "command": "python3 docs/implementation/alm-intelligence-v1/ontology/validate_ontology.py",
+      "result": "ALL ONTOLOGY CHECKS PASSED"
+    },
+    "not_run": [
+      "full web typecheck/lint/build",
+      "full worker pytest",
+      "linked production supabase db push",
+      "browser suite"
     ]
   },
   "tables_created": [
@@ -43,76 +57,93 @@
     "intelligence_runs",
     "evidence_snapshots",
     "evidence",
+    "evidence_snapshot_members",
     "scores",
     "findings",
     "recommendations",
-    "decisions"
+    "decisions",
+    "intelligence_run_progress",
+    "embedding_models",
+    "evidence_embeddings"
   ],
+  "naming_aliases": {
+    "living_brief_versions": "subject_brief_versions",
+    "context_update_proposals": "subject_brief_proposals",
+    "evidence": "evidence_items",
+    "scores": "audit_scores",
+    "findings": "audit_findings",
+    "recommendations": "subject_recommendations",
+    "decisions": "subject_decisions"
+  },
   "rpc_functions": [
-    "owns_subject (helper)",
-    "reject_living_brief_mutation (trigger fn)",
+    "owns_subject",
     "create_subject",
-    "link_subject_channel (same-tenant validated)",
+    "link_subject_channel",
     "record_living_brief_version",
     "create_context_update_proposals",
-    "resolve_context_update_proposal (same-tenant validated)",
-    "create_audit_batch (compatibility shim)",
-    "add_audit_to_batch (compatibility shim)",
-    "submit_audit_batch (atomic, idempotent)",
+    "resolve_context_update_proposal",
+    "create_audit_batch",
+    "add_audit_to_batch",
+    "submit_audit_batch",
     "start_intelligence_run",
     "finalize_intelligence_run",
     "create_evidence_snapshot",
-    "upsert_evidence (immutable: ON CONFLICT DO NOTHING)",
+    "upsert_evidence",
+    "pin_evidence_to_snapshot",
     "record_scores",
     "record_findings",
     "record_recommendations",
-    "record_decision (same-tenant validated)",
-    "backfill_connected_subjects"
+    "record_decision",
+    "set_intelligence_run_progress",
+    "backfill_connected_subjects",
+    "register_embedding_model",
+    "attach_evidence_embedding",
+    "persist_instagram_connection (restored accounts.updated_at)"
   ],
   "constraints_and_triggers": [
-    "Living Brief immutability trigger (BEFORE UPDATE OR DELETE → reject)",
-    "FK intelligence_runs(subject_id, brief_version) → living_brief_versions(subject_id, version)",
-    "FK context_update_proposals.intelligence_run_id → intelligence_runs(id)",
-    "FK evidence_snapshots.subject_id → subjects(id)",
-    "UNIQUE evidence(subject_id, content_hash) — append-only via DO NOTHING"
+    "Living Brief immutability (UPDATE/DELETE reject)",
+    "evidence append-only (UPDATE/DELETE reject)",
+    "evidence_snapshots immutable (UPDATE/DELETE reject)",
+    "evidence_snapshot_members append-only (UPDATE/DELETE reject)",
+    "accounts.updated_at + share_links.updated_at triggers aligned",
+    "same-subject pin integrity via pin_evidence_to_snapshot",
+    "pgvector extension enabled; embeddings empty-capable"
   ],
   "decisions": [
-    "Evidence is append-only: upsert_evidence uses ON CONFLICT DO NOTHING. Rows referenced by prior snapshots are never mutated. New content hashes create new rows. Unchanged evidence reuse is automatic via the unique constraint.",
-    "Living Brief immutability enforced at the database by a BEFORE UPDATE/DELETE trigger — no path around it.",
-    "Intelligence runs now require a real (subject_id, brief_version) FK to living_brief_versions. Run cannot be created with a non-existent brief version.",
-    "Atomic batch submission via submit_audit_batch: validates subject ownership, validates all audit ownerships, creates batch + all links in one transaction, idempotent on key collision. Legacy create_audit_batch/add_audit_to_batch preserved as compatibility shims.",
-    "Same-tenant consistency: link_subject_channel validates account_id belongs to subject's user; resolve_context_update_proposal validates proposal's subject is owned by deciding user; record_decision validates target belongs to the specified subject.",
-    "Bounded backfill: backfill_connected_subjects() only promotes accounts with ownership_status IN ('connected','managed'). Observed targets are never touched. Fully idempotent.",
-    "Behavioral RLS: tested with two real users via set_config('role', ...) and set_config('request.jwt.claims', ...), confirmed own-data reads, cross-tenant denial, anon denial."
+    "Postgres/Supabase remains sole SoR; additive kernel chosen; Neo4j/Pinecone/Mongo rejected",
+    "pgvector is a secondary index over evidence, never SoR (NON_GOALS clarified)",
+    "Research cache TTL documented as 24h (worker write path); 0027 7-day comment superseded",
+    "Shipped SQL names retained; plan-prose aliases documented in architecture-contract + decision doc"
   ],
-  "deviations": [],
-  "risks": [
-    "The fk_intelligence_runs_evidence_snapshot constraint uses ON DELETE RESTRICT — deleting an evidence_snapshot will fail if referenced by an intelligence_run.",
-    "The subject_channels.account_id FK to accounts is nullable and ON DELETE SET NULL.",
-    "Integration tests require an existing auth.users row for the test user. In CI, a seed step must create this user before running integration tests.",
-    "Behavioral RLS tests use set_config() which may behave differently than real JWT tokens in some PostgreSQL configurations — Supabase Data API integration test is the definitive cross-tenant verification."
+  "deviations": [
+    "Table names use shorter shipped forms (living_brief_versions, evidence, scores, …) rather than plan-prose subject_* / audit_* prefixes"
   ],
   "remaining_work": [
-    "Supabase Realtime configuration for intelligence run progress events",
-    "pgTAP-compatible test suite for CI integration",
-    "TypeScript type regeneration (release gate ownership)"
+    "Runtime packet: continuity compiler, evidence normalize, embed writer wiring",
+    "Product packet: Subject home / intake / 3-state wait consumers",
+    "Release gate: linked migration apply, type regen, preview QA, Ashesh prod approval",
+    "Optional: Realtime on intelligence_run_progress"
   ],
-  "acceptance_check": {
-    "one_subject_owns_instagram_and_website": "PASS — subject_channels unique (subject_id, channel_type, locator) allows multiple channel types per subject",
-    "observed_targets_remain_outside_workspace": "PASS — accounts and audits tables unchanged; ownership_status check preserved; backfill only promotes connected/managed",
-    "living_brief_edits_create_immutable_versions": "PASS — living_brief_versions has unique (subject_id, version), confirmed flag, AND database trigger rejects UPDATE/DELETE",
-    "model_proposals_cannot_overwrite_confirmed_context": "PASS — context_update_proposals table with proposed/accepted/rejected/superseded workflow; resolution validates user ownership",
-    "audit_batches_atomic_and_idempotent": "PASS — submit_audit_batch RPC is a single atomic transaction with ownership validation and idempotency-key collision handling",
-    "intelligence_runs_pin_all_contract_versions": "PASS — methodology_version, expertise_pack_version, prompt_version, model_config_hash, output_schema_version all required; brief_version FK enforced",
-    "rls_and_service_role_boundaries_pass_tests": "PASS — 25/25 tests including behavioral RLS with two users, cross-tenant denial, anon denial, service-role RPC gating"
-  },
-  "review_items_addressed": {
-    "1_living_brief_immutability": "Trigger rejects UPDATE/DELETE; tested with both operations; confirmed error messages",
-    "2_evidence_historically_exact": "ON CONFLICT DO NOTHING makes evidence append-only; tested unchanged reuse and changed evidence separation; existing rows never mutated",
-    "3_relational_consistency": "FK intelligence_runs→living_brief_versions enforced; FK context_update_proposals→intelligence_runs enforced; tested with invalid brief_version and invalid run id",
-    "4_atomic_idempotent_batch": "submit_audit_batch validates ownership, creates batch+links atomically, idempotent; legacy shims preserved; tested with valid, idempotent, invalid subject, and invalid audit",
-    "5_behavioral_rls": "Two users seeded; User A sees own (1 subject); User B sees own, cannot see User A's; anon denied; cleaned up",
-    "6_backfill": "backfill_connected_subjects() processes only connected/managed; creates subject and links channel; idempotent on re-run; observed targets untouched",
-    "7_same_tenant_consistency": "link_subject_channel validates account ownership; resolve_context_update_proposal validates subject ownership; record_decision validates target→subject membership; tested with cross-user account rejection and foreign recommendation rejection"
+  "blockers": [],
+  "runtime_product_must_know": {
+    "customer_progress_states": [
+      "preparing",
+      "analyzing",
+      "finalizing",
+      "delayed",
+      "succeeded",
+      "failed"
+    ],
+    "progress_table": "intelligence_run_progress",
+    "progress_rpc": "set_intelligence_run_progress(run_id, customer_state, detail)",
+    "evidence_membership": "evidence_snapshot_members via upsert_evidence(snapshot_id) or pin_evidence_to_snapshot",
+    "embeddings": "register_embedding_model + attach_evidence_embedding (optional; empty OK)",
+    "backfill": "backfill_connected_subjects() — connected/managed only",
+    "do_not": [
+      "treat accounts as Subject parent",
+      "UPDATE living_brief_versions / evidence / snapshot members",
+      "apply linked prod migrations from this packet",
+      "edit web/ or worker/ from kernel ownership"
+    ]
   }
 }

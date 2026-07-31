@@ -7,8 +7,11 @@ shared_read_only:
 kernel:
   owns:
     - supabase/migrations/*alm_intelligence*
+    - supabase/migrations/*alm_schema_bugfixes*
     - supabase/tests/**
     - docs/implementation/alm-intelligence-v1/checkpoints/kernel.json
+    - docs/implementation/alm-intelligence-v1/ontology/**
+    - docs/decisions/2026-07-30-alm-postgres-kernel.md
   may_read:
     - web/src/lib/supabase/types.ts
     - worker/auditlayer_worker/supabase_client.py

@@ -12,3 +12,5 @@
 10. Implementation uses three isolated ALM specialist profiles/worktrees and one independent release gate. This fan-out is for engineering, never production report generation.
 11. Hermes remains pinned during this mission; no framework upgrade is combined with the release.
 12. Existing immutable reports and account history remain accessible through additive migration and compatibility reads.
+13. Supabase Postgres remains the sole system of record. The ALM kernel schema lands additively before scale; `accounts` stays as IG/workspace bridge, not the parent ontology.
+14. pgvector embeddings are optional secondary indexes over evidence ledger text (model + dims mandatory). They never outrank Postgres ledgers. No Neo4j, Pinecone, Mongo, or event-store platform in this mission.

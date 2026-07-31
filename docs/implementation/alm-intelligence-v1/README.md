@@ -29,6 +29,8 @@ One independent release gate integrates the three branches and alone owns full b
 5. `ACCEPTANCE.yaml`
 6. Your role packet in `packets/`
 7. Only the contracts and source files named by that packet
+8. Ontology (Phase 0): `ontology/` — TTL/SHACL/competency SQL twins (CI only; Postgres remains SoR)
+9. DB decision: `docs/decisions/2026-07-30-alm-postgres-kernel.md`
 
 ## Related authoritative context
 

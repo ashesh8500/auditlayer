@@ -1,6 +1,7 @@
 # Non-goals
 
-- No graph database, vector-memory layer, crawler fleet, new queue service, or new hosting platform.
+- No graph database, crawler fleet, new queue service, or new hosting platform.
+- No **vector-memory layer as system of record** (chat transcripts, Hermes `MEMORY.md`, embedding neighborhoods, or truncated research TEXT treated as identity/scores/decisions). A pgvector **secondary index** over normalized `evidence` rows (`embedding_models` + `evidence_embeddings`, same Postgres/RLS) is allowed and is not a second SoR — see `docs/decisions/2026-07-30-alm-postgres-kernel.md`.
 - No multi-agent production report swarm.
 - No profile per report section or channel.
 - No model-controlled research, tools, retries, persistence, rendering, or deployment.

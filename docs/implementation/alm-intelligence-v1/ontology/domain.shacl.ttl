@@ -1,0 +1,201 @@
+@prefix alm:  <https://auditlayer.com/ontology/alm#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Closed-world shapes mirroring ACCEPTANCE.yaml / COMMON.md invariants.
+# Validated in CI with pyshacl against fixtures — no graph DB runtime.
+
+##############################################################################
+# Subject
+##############################################################################
+
+alm:SubjectShape a sh:NodeShape ;
+    sh:targetClass alm:Subject ;
+    sh:property [
+        sh:path alm:subjectType ;
+        sh:in ( "person" "creator" "brand" "organization" "project" ) ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path alm:ownsChannel ;
+        sh:class alm:Channel ;
+    ] ;
+    sh:property [
+        sh:path alm:hasBriefVersion ;
+        sh:class alm:LivingBriefVersion ;
+    ] .
+
+##############################################################################
+# Channel — never the Subject; managed flag explicit
+##############################################################################
+
+alm:ChannelShape a sh:NodeShape ;
+    sh:targetClass alm:Channel ;
+    sh:property [
+        sh:path alm:channelType ;
+        sh:in ( "instagram" "website" "youtube" "tiktok" "x" "linkedin" ) ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path alm:locator ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:minLength 1 ;
+    ] ;
+    sh:property [
+        sh:path alm:managed ;
+        sh:datatype xsd:boolean ;
+        sh:minCount 1 ;
+    ] ;
+    sh:not [
+        sh:class alm:Subject ;
+    ] .
+
+##############################################################################
+# Living Brief — immutable versions; proposals are separate
+##############################################################################
+
+alm:LivingBriefVersionShape a sh:NodeShape ;
+    sh:targetClass alm:LivingBriefVersion ;
+    sh:property [
+        sh:path alm:briefVersionNumber ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 1 ;
+        sh:minCount 1 ;
+    ] .
+
+alm:BriefProposalShape a sh:NodeShape ;
+    sh:targetClass alm:BriefProposal ;
+    sh:property [
+        sh:path alm:proposalStatus ;
+        sh:in ( "proposed" "accepted" "rejected" "superseded" ) ;
+        sh:minCount 1 ;
+    ] .
+
+##############################################################################
+# Evidence — hash + observed_at required; reuse must not invent new time
+##############################################################################
+
+alm:EvidenceItemShape a sh:NodeShape ;
+    sh:targetClass alm:EvidenceItem ;
+    sh:property [
+        sh:path alm:contentHash ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:minLength 16 ;
+    ] ;
+    sh:property [
+        sh:path alm:observedAt ;
+        sh:datatype xsd:dateTime ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path alm:sourceType ;
+        sh:in ( "connected_api" "official_web" "public_web" "user_context" "methodology" ) ;
+        sh:minCount 1 ;
+    ] .
+
+##############################################################################
+# Intelligence run — must pin brief + evidence snapshot + version pins
+##############################################################################
+
+alm:IntelligenceRunShape a sh:NodeShape ;
+    sh:targetClass alm:IntelligenceRun ;
+    sh:property [
+        sh:path alm:pinsBrief ;
+        sh:class alm:LivingBriefVersion ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path alm:pinsEvidenceSnapshot ;
+        sh:class alm:EvidenceSnapshot ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path alm:methodologyVersion ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path alm:expertisePackVersion ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path alm:promptVersion ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path alm:modelConfigHash ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path alm:outputSchemaVersion ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+    ] .
+
+##############################################################################
+# Score — change cause when prior exists; null value = Data needed
+##############################################################################
+
+alm:ScoreShape a sh:NodeShape ;
+    sh:targetClass alm:Score ;
+    sh:property [
+        sh:path alm:changeCause ;
+        sh:in ( "evidence" "brief_lens" "methodology" "prior_correction" ) ;
+    ] ;
+    sh:property [
+        sh:path alm:derivedFrom ;
+        sh:class alm:EvidenceItem ;
+    ] .
+
+##############################################################################
+# Recommendation lifecycle
+##############################################################################
+
+alm:RecommendationShape a sh:NodeShape ;
+    sh:targetClass alm:Recommendation ;
+    sh:property [
+        sh:path alm:recommendationStatus ;
+        sh:in ( "proposed" "accepted" "rejected" "implemented" "superseded" ) ;
+        sh:minCount 1 ;
+    ] .
+
+##############################################################################
+# Embedding — secondary index only; model + dims required
+##############################################################################
+
+alm:EvidenceEmbeddingShape a sh:NodeShape ;
+    sh:targetClass alm:EvidenceEmbedding ;
+    sh:property [
+        sh:path alm:indexesEvidence ;
+        sh:class alm:EvidenceItem ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path alm:usesModel ;
+        sh:class alm:EmbeddingModel ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path alm:embeddingDims ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 1 ;
+        sh:minCount 1 ;
+    ] .
+
+##############################################################################
+# Customer progress — allowlisted states only
+##############################################################################
+
+alm:CustomerProgressShape a sh:NodeShape ;
+    sh:targetClass alm:IntelligenceRun ;
+    sh:property [
+        sh:path alm:customerProgressState ;
+        sh:in ( "preparing" "analyzing" "finalizing" "delayed" "succeeded" "failed" ) ;
+    ] .
