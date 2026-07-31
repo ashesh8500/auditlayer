@@ -205,12 +205,30 @@
   },
   "remaining_blockers": [
     "Linked production migration apply requires Ashesh approval",
-    "Subject home still uses fixture Mode for ledger tabs until live subject rows + scores/recs queries land in a follow-up",
-    "Customer progress still derived from /live events; dedicated allowlisted /progress API not shipped",
-    "BoundedIntelligenceRuntime not yet bound into pipeline.py generation path (LedgerWriter ready; orchestration follow-up)",
-    "No Vercel preview or browser e2e in this gate run",
-    "make check-v2 full matrix not executed (focused ALM matrix passed)"
+    "Full BoundedIntelligenceRuntime still optional — pipeline uses alm-bridge ledger commit for batched subject audits after successful report generation",
+    "Vercel preview / linked db push / Hetzner canary / make deploy-prod still manual",
+    "make check-v2 full matrix not required for ALM gate (alm-check + CI alm-intelligence job cover focused path)"
   ],
+  "e2e_followup": {
+    "commit": "c6a3ad1",
+    "wired": [
+      "pipeline → intelligence.bridge.maybe_commit_subject_ledger for batched audits",
+      "live subject list/channels/home bundle loaders",
+      "initial Living Brief v1 on create_subject",
+      "/api/audits/:id/progress customer-safe projection",
+      "CustomerWaitState polls /progress not raw /live",
+      "CI alm-intelligence job + make alm-check",
+      "user-stories vitest + bridge pytest"
+    ],
+    "verified": {
+      "worker_intelligence": "114 passed",
+      "web_intelligence": "42 passed",
+      "web_tsc": "pass",
+      "web_eslint_intelligence": "pass",
+      "ontology": "pass",
+      "playwright_intelligence": "2 passed (PLAYWRIGHT_PORT=3010)"
+    }
+  },
   "rollback": {
     "git": "revert merge commits on feat/alm-intelligence-v1-release or reset branch before merge to master",
     "schema": "ALM migrations are additive; rollback is forward-fix or leave tables unused — do not drop without a dedicated down plan",
