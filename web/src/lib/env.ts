@@ -39,8 +39,42 @@ export function isOperatorConfigured(): boolean {
 
 /** Absolute site origin used for auth redirects and Stripe return URLs. */
 export function siteUrl(): string {
+  // Vercel Preview deployments must never inherit production Site URL —
+  // Google OAuth / magic-link redirectTo would bounce users to prod.
+  if (process.env.VERCEL_ENV === "preview" && process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
+  }
   const explicit = process.env.NEXT_PUBLIC_SITE_URL;
   if (explicit) return explicit.replace(/\/$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
   return "http://localhost:3000";
+}
+
+/**
+ * Preview / local test login. Hard-disabled on Vercel production.
+ * Enable locally with AUDITLAYER_ALLOW_PREVIEW_LOGIN=1.
+ */
+export function isPreviewLoginAllowed(): boolean {
+  if (process.env.VERCEL_ENV === "production") return false;
+  if (process.env.AUDITLAYER_ALLOW_PREVIEW_LOGIN === "0") return false;
+  if (process.env.VERCEL_ENV === "preview") return true;
+  if (process.env.AUDITLAYER_ALLOW_PREVIEW_LOGIN === "1") return true;
+  if (process.env.NODE_ENV === "development") return true;
+  return false;
+}
+
+/** Email used by the preview auto-login path (never a real customer). */
+export function previewTestUserEmail(): string {
+  return (
+    process.env.PREVIEW_TEST_USER_EMAIL?.trim().toLowerCase() ||
+    "preview-tester@auditlayermedia.com"
+  );
+}
+
+export function previewTestUserPassword(): string {
+  return process.env.PREVIEW_TEST_USER_PASSWORD?.trim() || "";
+}
+
+export function previewLoginSecret(): string {
+  return process.env.PREVIEW_TEST_LOGIN_SECRET?.trim() || "";
 }

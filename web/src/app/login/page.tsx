@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
+import { isPreviewLoginAllowed, previewTestUserPassword } from "@/lib/env";
 import { Brand } from "@/components/brand";
 import { LoginForm } from "./login-form";
 
@@ -48,11 +49,21 @@ export default async function LoginPage({
             <p className="mb-4 rounded-lg bg-[color:var(--red-muted)] border border-[color:var(--red)]/20 px-3 py-2 text-center text-xs text-[color:var(--red)] font-semibold">
               {error === "unconfigured"
                 ? "Sign-in isn't configured yet."
-                : "Something went wrong signing you in. Please try again."}
+                : error === "preview_login_disabled"
+                  ? "Preview login is not available in this environment."
+                  : error === "preview_login"
+                    ? "Preview test login failed. Check Preview env secrets."
+                    : "Something went wrong signing you in. Please try again."}
             </p>
           )}
 
-          <LoginForm next={safeNext} trial={trial ?? undefined} />
+          <LoginForm
+            next={safeNext}
+            trial={trial ?? undefined}
+            previewLogin={
+              isPreviewLoginAllowed() && Boolean(previewTestUserPassword())
+            }
+          />
         </div>
 
         <p className="mt-6 text-xs leading-5 text-muted-foreground">

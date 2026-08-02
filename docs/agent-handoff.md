@@ -121,10 +121,16 @@ make check             # legacy v1 tests (legacy/src/auditlayer) — archived pa
 ## Cofounder / E2E test recipe
 
 1. **Start worker:** `make worker-run` (keep terminal open).
-2. **Open:** https://web-delta-dun-29.vercel.app/login — use **Google** until Resend is configured.
+2. **Open preview login:** on a Vercel Preview URL, use **Continue as preview tester** (requires Preview env: `PREVIEW_TEST_USER_PASSWORD`). Never available on production. Locally: set the same vars + `AUDITLAYER_ALLOW_PREVIEW_LOGIN=1` if needed.
 3. **New audit:** `/audits/new` — try `iamsrk` or `instagram.com/hemalpatelphd`.
 4. **Watch:** `/audits/{id}` — status should move `queued → running → ready` (~5–10 min with Hermes).
 5. **Report:** HTML in the workspace viewer, immersive reader, share link, and direct download.
+
+**Playwright against preview:**
+```bash
+PREVIEW_TEST_LOGIN_SECRET=… PLAYWRIGHT_BASE_URL=https://web-….vercel.app \
+  cd web && pnpm e2e e2e/preview-login.spec.ts
+```
 
 If timeline stuck at `queued`, worker is not running or lacks `SUPABASE_SERVICE_ROLE_KEY`.
 
@@ -136,6 +142,7 @@ If timeline stuck at `queued`, worker is not running or lacks `SUPABASE_SERVICE_
 |---|---|
 | Intake rules, plan limits, platform detection | `web/src/lib/domain.ts`, `worker/auditlayer_worker/core.py` |
 | Auth (magic link, OAuth, callback) | `web/src/app/login/`, `web/src/app/auth/callback/route.ts`, `web/src/lib/auth/magic-link-email.ts` |
+| Preview-only test login | `web/src/lib/auth/preview-login.ts`, `web/src/app/api/auth/preview-login/route.ts` |
 | Billing / Stripe | `web/src/lib/actions/billing.ts`, `web/src/app/api/webhooks/stripe/route.ts` |
 | Report viewer / reader proxy | `web/src/components/report-viewer.tsx`, `web/src/app/api/audits/[id]/report/route.ts` |
 | Live timeline | `web/src/components/live-timeline.tsx`, `web/src/app/api/audits/[id]/live/route.ts` |

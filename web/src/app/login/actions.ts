@@ -8,8 +8,13 @@ import {
   isBrandedMagicLinkConfigured,
   sendBrandedMagicLink,
 } from "@/lib/auth/magic-link-email";
+import { establishPreviewTestSession } from "@/lib/auth/preview-login";
 import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured, siteUrl } from "@/lib/env";
+import {
+  isPreviewLoginAllowed,
+  isSupabaseConfigured,
+  siteUrl,
+} from "@/lib/env";
 
 const AUTH_NEXT_COOKIE = "auth_next";
 const TRIAL_COOKIE = "alm_trial_token";
@@ -123,6 +128,24 @@ export async function signInWithGoogle(formData: FormData): Promise<void> {
   }
 
   redirect(data.url);
+}
+
+/**
+ * One-click preview / local test login. Never available on Vercel production.
+ */
+export async function signInWithPreviewTestUser(
+  formData: FormData,
+): Promise<void> {
+  if (!isPreviewLoginAllowed()) {
+    redirect("/login?error=preview_login_disabled");
+  }
+
+  const next = safeNext(formData.get("next"));
+  const result = await establishPreviewTestSession();
+  if (!result.ok) {
+    redirect(`/login?error=preview_login&detail=${encodeURIComponent(result.error)}`);
+  }
+  redirect(next);
 }
 
 export async function signOut(): Promise<void> {

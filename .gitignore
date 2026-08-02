@@ -48,3 +48,4 @@ docs/plans/alm-v2-moat-design-spec.md
 worker/auditlayer_worker/stripe_payouts.py
 worker/tests/test_stripe_payouts.py
 docs/implementation/alm-intelligence-v1/ontology/.venv/
+tmp/

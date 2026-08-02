@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Loader2, Mail } from "lucide-react";
+import { FlaskConical, Loader2, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,12 +9,22 @@ import { Label } from "@/components/ui/label";
 import {
   signInWithGoogle,
   signInWithMagicLink,
+  signInWithPreviewTestUser,
   type AuthFormState,
 } from "./actions";
 
 const initialState: AuthFormState = { status: "idle" };
 
-export function LoginForm({ next, trial }: { next: string; trial?: string }) {
+export function LoginForm({
+  next,
+  trial,
+  previewLogin,
+}: {
+  next: string;
+  trial?: string;
+  /** Server-gated: only true on Vercel Preview / local dev. */
+  previewLogin?: boolean;
+}) {
   const [state, action, pending] = useActionState(
     signInWithMagicLink,
     initialState,
@@ -22,6 +32,24 @@ export function LoginForm({ next, trial }: { next: string; trial?: string }) {
 
   return (
     <div className="space-y-5">
+      {previewLogin && (
+        <form action={signInWithPreviewTestUser}>
+          <input type="hidden" name="next" value={next} />
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full font-medium"
+            data-testid="preview-test-login"
+          >
+            <FlaskConical className="size-4" />
+            Continue as preview tester
+          </Button>
+          <p className="mt-2 text-center text-[0.7rem] text-muted-foreground">
+            Preview / local only — never shown on production.
+          </p>
+        </form>
+      )}
+
       <form action={signInWithGoogle}>
         <input type="hidden" name="next" value={next} />
         {trial && <input type="hidden" name="trial" value={trial} />}

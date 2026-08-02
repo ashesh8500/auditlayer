@@ -90,7 +90,7 @@ Set these in **Vercel → Project → Settings → Environment Variables** (see 
 
 | Variable | Scope | Notes |
 |---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | All | `https://auditlayer.com` in prod |
+| `NEXT_PUBLIC_SITE_URL` | Production (+ Development) | Prod origin only. **Do not set on Preview** — previews use `VERCEL_URL` so OAuth/magic-link redirects stay on the preview host. |
 | `NEXT_PUBLIC_SUPABASE_URL` | All | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | All | Publishable anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server only | Service role — never expose to browser |
@@ -100,6 +100,11 @@ Set these in **Vercel → Project → Settings → Environment Variables** (see 
 | `STRIPE_PRICE_PRO` | Server only | Recurring price ID ($50/mo) |
 | `RESEND_API_KEY` | Server only | Branded magic-link email (recommended) |
 | `AUTH_EMAIL_FROM` | Server only | e.g. `AuditLayer <noreply@auditlayer.com>` |
+| `PREVIEW_TEST_USER_EMAIL` | **Preview only** | Auto-login test user (default `preview-tester@auditlayermedia.com`) |
+| `PREVIEW_TEST_USER_PASSWORD` | **Preview only** | Password for that user — never set on Production |
+| `PREVIEW_TEST_LOGIN_SECRET` | **Preview only** | Header secret for `POST /api/auth/preview-login` (Playwright/CI) |
+
+**Preview test login:** On Vercel Preview (and local `pnpm dev`), `/login` shows **Continue as preview tester**. Production hard-disables this (`VERCEL_ENV=production`). The button upserts the Supabase Auth user via service-role and sets a cookie session — no Google OAuth needed for QA.
 
 **Stripe webhook:** point at `https://<your-domain>/api/webhooks/stripe`. Subscribe to `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`.
 

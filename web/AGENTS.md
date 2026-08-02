@@ -54,6 +54,9 @@ Session refresh + protected-route redirect: `proxy.ts` → `src/lib/supabase/mid
 - **Magic link:** requires `RESEND_API_KEY` on Vercel **or** Supabase email template
   with `token_hash` link (see `src/lib/auth/magic-link-email.ts`,
   `../supabase/templates/magic_link.html`).
+- **Preview test login:** Vercel Preview / local only — never Production.
+  `Continue as preview tester` on `/login` + `POST /api/auth/preview-login`
+  (`PREVIEW_TEST_USER_*`, `PREVIEW_TEST_LOGIN_SECRET`). See `src/lib/auth/preview-login.ts`.
 - **Admin:** `profiles.role = 'admin'` — not middleware-only; re-check in server components.
 - **Service role:** `src/lib/supabase/admin.ts` — Stripe webhook, refinement enqueue,
   admin writes only. Never import in client components.
