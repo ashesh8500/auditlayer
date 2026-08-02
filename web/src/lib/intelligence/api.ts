@@ -254,8 +254,13 @@ export async function rpcRecordLivingBriefVersion(
     version: number;
     createdBy: string;
     identity?: Record<string, string>;
+    audience?: Record<string, string>;
+    positioning?: Record<string, string>;
+    offers?: string[];
     goals?: string[];
     constraints?: string[];
+    experiments?: string[];
+    decisions?: string[];
     confirmed?: boolean;
   },
 ): Promise<string> {
@@ -267,13 +272,13 @@ export async function rpcRecordLivingBriefVersion(
     p_version: input.version,
     p_schema_version: "1.0",
     p_identity: identity,
-    p_audience: {},
-    p_positioning: {},
-    p_offers: [] as string[],
+    p_audience: (input.audience ?? {}) as { [key: string]: string },
+    p_positioning: (input.positioning ?? {}) as { [key: string]: string },
+    p_offers: input.offers ?? [],
     p_goals: input.goals ?? [],
     p_constraints: input.constraints ?? [],
-    p_experiments: [] as string[],
-    p_decisions: [] as string[],
+    p_experiments: input.experiments ?? [],
+    p_decisions: input.decisions ?? [],
     p_created_by: input.createdBy,
     p_confirmed: input.confirmed ?? true,
   });

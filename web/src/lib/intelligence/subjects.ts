@@ -10,12 +10,15 @@ import type {
   ChannelOwnershipStatus,
   LivingBriefVersion,
   LivingBriefProposal,
-  LivingBriefContent,
   ScoreEvidence,
   RecommendationSummary,
   ReportArchiveItem,
   SinceLastAuditItem,
 } from "@/lib/intelligence/types";
+import {
+  projectBriefField,
+  projectLivingBriefContent,
+} from "@/lib/intelligence/brief-project";
 import { fixtureSubjects } from "@/lib/intelligence/fixtures";
 
 export type SubjectListSource = "live" | "fixture";
@@ -31,39 +34,6 @@ export type SubjectHomeBundle = {
   reports: ReportArchiveItem[];
   source: SubjectListSource;
 };
-
-function emptyBriefContent(type: SubjectType): LivingBriefContent {
-  return {
-    subjectType: type,
-    identity: "",
-    vision: "",
-    audience: "",
-    offers: "",
-    voice: "",
-    positioning: "",
-    goals: "",
-    successCriteria: "",
-    constraints: "",
-    activeExperiments: "",
-    plannedChanges: "",
-  };
-}
-
-function jsonbText(value: unknown, fallback = ""): string {
-  if (typeof value === "string") return value;
-  if (value == null) return fallback;
-  if (typeof value === "object") {
-    const obj = value as Record<string, unknown>;
-    if (typeof obj.summary === "string") return obj.summary;
-    if (typeof obj.text === "string") return obj.text;
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return fallback;
-    }
-  }
-  return String(value);
-}
 
 export async function listSubjectsForUser(): Promise<{
   subjects: SubjectSummary[];
@@ -125,7 +95,9 @@ export async function listChannelsForSubject(
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("subject_channels")
-      .select("id, subject_id, channel_type, locator, managed")
+      .select(
+        "id, subject_id, channel_type, locator, managed, account_id, accounts(id, ownership_status, ig_connection_id, display_name)",
+      )
       .eq("subject_id", subjectId)
       .order("created_at", { ascending: true });
     if (error || !data) return [];
@@ -133,19 +105,35 @@ export async function listChannelsForSubject(
       const platform = row.channel_type as ChannelPlatform;
       const isWebsite = platform === "website";
       const locator = row.locator || "";
+      const accountRaw = (
+        row as {
+          accounts?: {
+            ownership_status?: string | null;
+            ig_connection_id?: string | null;
+            display_name?: string | null;
+          } | null;
+        }
+      ).accounts;
+      const account = Array.isArray(accountRaw) ? accountRaw[0] : accountRaw;
+      const connected = Boolean(
+        account?.ig_connection_id || account?.ownership_status === "connected",
+      );
+      const ownershipStatus: ChannelOwnershipStatus = connected
+        ? "connected"
+        : row.managed
+          ? "managed"
+          : "observed";
       return {
         id: row.id,
         platform,
         handle: isWebsite ? "" : locator.replace(/^@/, ""),
         url: isWebsite ? locator : null,
-        ownershipStatus: (row.managed
-          ? "managed"
-          : "observed") as ChannelOwnershipStatus,
+        ownershipStatus,
         displayName: isWebsite
           ? locator.replace(/^https?:\/\//, "")
-          : locator.replace(/^@/, ""),
+          : account?.display_name || locator.replace(/^@/, ""),
         avatarUrl: null,
-        connected: Boolean(row.managed),
+        connected,
         subjectId: row.subject_id,
       };
     });
@@ -180,16 +168,7 @@ export async function getSubjectHomeBundle(
     id: row.id,
     subjectId: row.subject_id,
     version: row.version,
-    content: {
-      ...emptyBriefContent(subject.type),
-      identity: jsonbText(row.identity),
-      audience: jsonbText(row.audience),
-      positioning: jsonbText(row.positioning),
-      offers: jsonbText(row.offers),
-      goals: jsonbText(row.goals),
-      constraints: jsonbText(row.constraints),
-      activeExperiments: jsonbText(row.experiments),
-    },
+    content: projectLivingBriefContent(subject.type, row),
     source: row.confirmed ? "user" : "user",
     parentVersionId: null,
     changeSummary: null,
@@ -212,7 +191,7 @@ export async function getSubjectHomeBundle(
     baseVersion: row.base_version,
     path: row.path,
     operation: row.operation as LivingBriefProposal["operation"],
-    proposedValue: jsonbText(row.proposed_value),
+    proposedValue: projectBriefField(row.proposed_value),
     evidenceIds: Array.isArray(row.evidence_ids)
       ? (row.evidence_ids as string[])
       : [],

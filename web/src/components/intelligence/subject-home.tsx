@@ -17,6 +17,10 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  LivingBriefView,
+  briefPathLabel,
+} from "@/components/intelligence/living-brief-view";
 import type {
   SubjectSummary,
   ChannelSummary,
@@ -240,7 +244,11 @@ function OverviewTab({
                         : "neutral"
                   }
                 >
-                  {ch.ownershipStatus === "observed" ? "Observed" : "Managed"}
+                  {ch.ownershipStatus === "connected"
+                    ? "Connected"
+                    : ch.ownershipStatus === "observed"
+                      ? "Observed"
+                      : "Managed"}
                 </Badge>
               </li>
             ))}
@@ -254,21 +262,19 @@ function OverviewTab({
           <h2 className="text-base font-semibold">Living Brief</h2>
         </div>
         {currentBrief ? (
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               v{currentBrief.version}
               {currentBrief.source === "user"
                 ? " · Confirmed"
                 : " · From proposal"}
             </p>
-            <p className="text-sm leading-relaxed">
-              {currentBrief.content.identity}
-            </p>
+            <LivingBriefView content={currentBrief.content} compact />
             {pendingProposalCount > 0 && (
               <p className="text-xs text-[color:var(--amber)]">
-                {pendingProposalCount} model proposal
-                {pendingProposalCount === 1 ? "" : "s"} waiting for confirm or
-                reject.
+                {pendingProposalCount} update
+                {pendingProposalCount === 1 ? "" : "s"} waiting for your
+                confirm or reject.
               </p>
             )}
           </div>
@@ -432,24 +438,13 @@ function BriefTab({
                   </p>
                 </button>
                 {expanded === v.id && (
-                  <div className="mt-3 space-y-3 rounded bg-[var(--surface-muted)] p-4 text-xs">
+                  <div className="mt-3 space-y-3">
                     {v.changeSummary && (
-                      <p className="italic text-muted-foreground">
+                      <p className="text-sm italic text-muted-foreground">
                         {v.changeSummary}
                       </p>
                     )}
-                    {(
-                      Object.entries(v.content) as [string, string][]
-                    ).map(([key, value]) => (
-                      <div key={key}>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                          {key}
-                        </p>
-                        <p className="mt-0.5 whitespace-pre-wrap leading-relaxed">
-                          {value || "—"}
-                        </p>
-                      </div>
-                    ))}
+                    <LivingBriefView content={v.content} />
                   </div>
                 )}
               </li>
@@ -460,17 +455,17 @@ function BriefTab({
 
       <section>
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <h2 className="text-base font-semibold">Model proposals</h2>
-          <Badge tone="warning">Diffs — not yet confirmed</Badge>
+          <h2 className="text-base font-semibold">Suggested updates</h2>
+          <Badge tone="warning">Needs your call</Badge>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          Models may propose Living Brief changes. Identity, vision, goals, and
-          constraints require your confirm or reject.
+          When analysis suggests a change to the story, it lands here for you to
+          accept or reject — nothing updates until you decide.
         </p>
         {proposals.length === 0 ? (
           <EmptyState
-            title="No open proposals"
-            detail="When an intelligence run suggests brief updates, they appear here."
+            title="No open suggestions"
+            detail="When an audit suggests brief updates, they appear here."
           />
         ) : (
           <ul className="divide-y divide-border border-y border-border">
@@ -489,22 +484,23 @@ function BriefTab({
                       }
                     >
                       {status === "proposed"
-                        ? "Awaiting decision"
-                        : status}
+                        ? "Your decision"
+                        : status === "accepted"
+                          ? "You kept this"
+                          : status === "rejected"
+                            ? "You passed"
+                            : status}
                     </Badge>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {p.operation} {p.path} · base v{p.baseVersion}
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {briefPathLabel(p.path)}
                     </span>
                   </div>
                   <p className="text-sm leading-relaxed">{p.proposedValue}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {p.changeExplanation}
-                  </p>
-                  {p.evidenceIds.length > 0 && (
-                    <p className="font-mono text-[10px] text-muted-foreground">
-                      Evidence: {p.evidenceIds.join(", ")}
+                  {p.changeExplanation ? (
+                    <p className="text-xs text-muted-foreground">
+                      {p.changeExplanation}
                     </p>
-                  )}
+                  ) : null}
                   {status === "proposed" && (
                     <div className="flex flex-wrap gap-2">
                       <Button

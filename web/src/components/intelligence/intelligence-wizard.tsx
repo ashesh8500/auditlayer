@@ -41,6 +41,7 @@ import {
 } from "@/lib/intelligence/batch";
 import { prepareAndSubmitIntelligenceBatch } from "@/lib/actions/intelligence";
 import { allowedReportTypes, type Plan } from "@/lib/domain";
+import { LivingBriefView } from "@/components/intelligence/living-brief-view";
 
 type BatchReportType = "pulse" | "standard" | "extended" | "blueprint";
 
@@ -706,31 +707,12 @@ function LensStep({
               Living Brief · v{currentBrief.version}
             </p>
             <Badge tone={currentBrief.source === "user" ? "accent" : "warning"}>
-              {currentBrief.source === "user" ? "Confirmed" : "Model proposal"}
+              {currentBrief.source === "user" ? "Confirmed" : "Suggested"}
             </Badge>
           </div>
-          <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-            {(
-              [
-                ["Identity", currentBrief.content.identity],
-                ["Vision", currentBrief.content.vision],
-                ["Audience", currentBrief.content.audience],
-                ["Voice", currentBrief.content.voice],
-                ["Goals", currentBrief.content.goals],
-                [
-                  "Active experiments",
-                  currentBrief.content.activeExperiments || "None",
-                ],
-              ] as const
-            ).map(([label, value]) => (
-              <div key={label}>
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  {label}
-                </dt>
-                <dd className="mt-1 text-xs leading-relaxed">{value}</dd>
-              </div>
-            ))}
-          </dl>
+          <div className="mt-4">
+            <LivingBriefView content={currentBrief.content} />
+          </div>
         </div>
       ) : (
         <div className="border border-dashed border-border p-6 text-center">

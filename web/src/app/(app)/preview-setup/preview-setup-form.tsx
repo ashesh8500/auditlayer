@@ -81,9 +81,9 @@ export function PreviewSetupForm({ currentPlan }: { currentPlan: Plan }) {
           Demo subjects
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Seeds <strong>Narin Fazlalipour</strong> (person) and{" "}
-          <strong>GlowState Wellness</strong> (brand) onto this preview account
-          with channels + Living Brief v1. Use after an empty Subjects list.
+          Reseeds <strong>AuditLayerMedia</strong> (live @auditlayermedia
+          Instagram + auditlayermedia.com), plus optional demos Narin
+          Fazlalipour and GlowState Wellness. Use after an empty Subjects list.
         </p>
         <form action={seedAction} className="mt-5">
           <Button

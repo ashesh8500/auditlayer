@@ -82,7 +82,7 @@ export async function reseedPreviewDemoSubjects(
     revalidatePath("/preview-setup");
     return {
       status: "ok",
-      message: `Reseeded ${result.subjectIds.length} demo subjects (Narin Fazlalipour + GlowState Wellness).`,
+      message: `Reseeded ${result.subjectIds.length} subjects (AuditLayerMedia + demos).`,
     };
   } catch (err) {
     return {
