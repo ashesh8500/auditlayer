@@ -1,14 +1,16 @@
 import Link from "next/link";
-import { Building2, FilePlus2, Files, Shield } from "lucide-react";
+import { Building2, FilePlus2, Files, FlaskConical, Shield } from "lucide-react";
 
 import { signOut } from "@/app/login/actions";
 import { Brand } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { getProfile } from "@/lib/auth";
+import { isPreviewTesterEmail } from "@/lib/env";
 
 export async function AppHeader() {
   const profile = await getProfile();
   const isAdmin = profile?.role === "admin";
+  const isPreviewTester = isPreviewTesterEmail(profile?.email);
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-xl">
@@ -37,6 +39,15 @@ export async function AppHeader() {
               <span className="sr-only sm:hidden">New Audit</span>
             </Link>
           </Button>
+          {isPreviewTester && (
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/preview-setup">
+                <FlaskConical className="size-4 sm:hidden" />
+                <span className="hidden sm:inline">Tester</span>
+                <span className="sr-only sm:hidden">Tester setup</span>
+              </Link>
+            </Button>
+          )}
           {isAdmin && (
             <Button asChild variant="ghost" size="sm">
               <Link href="/admin">

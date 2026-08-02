@@ -22,12 +22,12 @@ function mkSubmission(overrides: Partial<BatchSubmission> = {}): BatchSubmission
 describe("buildBatchIdempotencyKey", () => {
   it("is stable for the same inputs", () => {
     const a = buildBatchIdempotencyKey(mkSubmission(), [
-      "@narinkaji",
-      "https://narinkaji.com",
+      "@narinfazlalipour",
+      "https://example.com/narin-fazlalipour",
     ]);
     const b = buildBatchIdempotencyKey(mkSubmission(), [
-      "https://narinkaji.com",
-      "@narinkaji",
+      "https://example.com/narin-fazlalipour",
+      "@narinfazlalipour",
     ]);
     expect(a).toBe(b);
   });
@@ -59,7 +59,7 @@ describe("stubPrepareAndSubmitBatch", () => {
 
   it("returns deterministic stub ids without inventing live progress", () => {
     const submission = mkSubmission();
-    const locators = ["@narinkaji", "https://narinkaji.com"];
+    const locators = ["@narinfazlalipour", "https://example.com/narin-fazlalipour"];
     const a = stubPrepareAndSubmitBatch(submission, locators);
     const b = stubPrepareAndSubmitBatch(submission, locators);
     expect(a.ok && b.ok).toBe(true);

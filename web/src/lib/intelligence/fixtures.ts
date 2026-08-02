@@ -26,7 +26,7 @@ export function fixtureSubjects(): SubjectSummary[] {
   return [
     {
       id: "subj-001",
-      name: "Narin Kaji",
+      name: "Narin Fazlalipour",
       type: "person",
       avatarUrl: null,
       channelCount: 2,
@@ -51,10 +51,10 @@ export function fixtureChannels(subjectId: string): ChannelSummary[] {
       {
         id: "ch-001",
         platform: "instagram",
-        handle: "narinkaji",
+        handle: "narinfazlalipour",
         url: null,
         ownershipStatus: "connected",
-        displayName: "Narin Kaji",
+        displayName: "Narin Fazlalipour",
         avatarUrl: null,
         connected: true,
         subjectId: "subj-001",
@@ -63,9 +63,9 @@ export function fixtureChannels(subjectId: string): ChannelSummary[] {
         id: "ch-002",
         platform: "website",
         handle: "",
-        url: "https://narinkaji.com",
+        url: "https://example.com/narin-fazlalipour",
         ownershipStatus: "managed",
-        displayName: "narinkaji.com",
+        displayName: "example.com/narin-fazlalipour",
         avatarUrl: null,
         connected: false,
         subjectId: "subj-001",
@@ -205,7 +205,7 @@ export function fixtureEvidence(): EvidenceItemSummary[] {
     {
       id: "WEB#official-about-7f1a",
       sourceType: "web_page",
-      sourceUrl: "https://narinkaji.com/about",
+      sourceUrl: "https://example.com/narin-fazlalipour/about",
       observedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
       expiresAt: new Date(Date.now() + 11 * 86400000).toISOString(),
       confidence: 0.90,
@@ -340,7 +340,7 @@ export function fixtureRecommendations(
 
 export function fixtureBatchReview(): BatchReview {
   return {
-    subjectName: "Narin Kaji",
+    subjectName: "Narin Fazlalipour",
     channelCount: 2,
     auditCount: 2,
     reportTypes: { pulse: 1, standard: 1 },
@@ -431,7 +431,7 @@ export function fixtureReportArchive(subjectId: string): ReportArchiveItem[] {
     {
       id: "rpt-001",
       auditId: "audit-002",
-      channelLabel: "@narinkaji",
+      channelLabel: "@narinfazlalipour",
       reportVersion: 1,
       promptVersion: "alm-report-v4",
       createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
@@ -440,7 +440,7 @@ export function fixtureReportArchive(subjectId: string): ReportArchiveItem[] {
     {
       id: "rpt-002",
       auditId: "audit-001",
-      channelLabel: "@narinkaji",
+      channelLabel: "@narinfazlalipour",
       reportVersion: 1,
       promptVersion: "alm-report-v3",
       createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),

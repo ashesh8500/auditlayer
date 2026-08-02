@@ -1,8 +1,9 @@
 /**
  * Preview-only test login helpers.
  *
- * Creates (or updates) a dedicated Supabase Auth user and signs the browser
- * session in via password. Hard-gated: never runs when VERCEL_ENV=production.
+ * Creates (or updates) a dedicated Supabase Auth user, bootstraps plan + demo
+ * subjects, and signs the browser session in via password.
+ * Hard-gated: never runs when VERCEL_ENV=production.
  */
 
 import "server-only";
@@ -14,7 +15,9 @@ import {
   previewLoginSecret,
   previewTestUserEmail,
   previewTestUserPassword,
+  previewTestUserPlan,
 } from "@/lib/env";
+import { bootstrapPreviewTesterWorkspace } from "@/lib/auth/preview-seed";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -38,7 +41,7 @@ function assertPreviewLoginAllowed(): string | null {
 async function ensurePreviewAuthUser(
   email: string,
   password: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const admin = createAdminClient();
   const metadata = {
     full_name: "Preview Tester",
@@ -51,8 +54,8 @@ async function ensurePreviewAuthUser(
     email_confirm: true,
     user_metadata: metadata,
   });
-  if (!created.error && created.data.user) {
-    return { ok: true };
+  if (!created.error && created.data.user?.id) {
+    return { ok: true, userId: created.data.user.id };
   }
 
   // User likely already exists — resolve id via generateLink (no email sent).
@@ -82,7 +85,7 @@ async function ensurePreviewAuthUser(
       error: `Could not refresh preview user: ${updated.error.message}`,
     };
   }
-  return { ok: true };
+  return { ok: true, userId };
 }
 
 /**
@@ -114,6 +117,21 @@ export async function establishPreviewTestSession(options?: {
 
   const ensured = await ensurePreviewAuthUser(email, password);
   if (!ensured.ok) return ensured;
+
+  try {
+    await bootstrapPreviewTesterWorkspace(
+      ensured.userId,
+      previewTestUserPlan(),
+    );
+  } catch (err) {
+    return {
+      ok: false,
+      error:
+        err instanceof Error
+          ? err.message
+          : "Failed to bootstrap preview workspace.",
+    };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });

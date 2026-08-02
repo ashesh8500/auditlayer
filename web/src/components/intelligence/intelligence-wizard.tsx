@@ -40,7 +40,7 @@ import {
   validateBatch,
 } from "@/lib/intelligence/batch";
 import { prepareAndSubmitIntelligenceBatch } from "@/lib/actions/intelligence";
-import type { Plan } from "@/lib/domain";
+import { allowedReportTypes, type Plan } from "@/lib/domain";
 
 type BatchReportType = "pulse" | "standard" | "extended" | "blueprint";
 
@@ -82,16 +82,24 @@ interface NewAuditState {
   reportType: BatchReportType;
 }
 
-const EMPTY_STATE: NewAuditState = {
-  subjectId: "",
-  newSubjectName: "",
-  newSubjectType: "creator",
-  selectedChannelIds: [],
-  newWebsiteUrl: "",
-  changeNotes: "",
-  batchRequests: [],
-  reportType: "standard",
-};
+function defaultReportTypeForPlan(plan: Plan): BatchReportType {
+  const allowed = allowedReportTypes(plan);
+  if (allowed.includes("standard")) return "standard";
+  return (allowed[0] ?? "pulse") as BatchReportType;
+}
+
+function initialWizardState(plan: Plan): NewAuditState {
+  return {
+    subjectId: "",
+    newSubjectName: "",
+    newSubjectType: "creator",
+    selectedChannelIds: [],
+    newWebsiteUrl: "",
+    changeNotes: "",
+    batchRequests: [],
+    reportType: defaultReportTypeForPlan(plan),
+  };
+}
 
 export function IntelligenceWizard({
   plan,
@@ -104,7 +112,7 @@ export function IntelligenceWizard({
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [state, setState] = useState<NewAuditState>(EMPTY_STATE);
+  const [state, setState] = useState<NewAuditState>(() => initialWizardState(plan));
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
@@ -490,7 +498,7 @@ function SubjectStep({
             id="new-subject-name"
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
-            placeholder="e.g., Narin Kaji, GlowState Wellness"
+            placeholder="e.g., Narin Fazlalipour, GlowState Wellness"
             className="h-11 text-sm"
           />
           <Label

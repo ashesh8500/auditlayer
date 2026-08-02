@@ -60,4 +60,11 @@ describe("isPreviewLoginAllowed", () => {
     delete process.env.PREVIEW_TEST_USER_EMAIL;
     expect(previewTestUserEmail()).toBe("preview-tester@auditlayermedia.com");
   });
+
+  it("defaults preview tester plan to pro", async () => {
+    captureEnv();
+    delete process.env.PREVIEW_TEST_USER_PLAN;
+    const { previewTestUserPlan } = await import("./env");
+    expect(previewTestUserPlan()).toBe("pro");
+  });
 });

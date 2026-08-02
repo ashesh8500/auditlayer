@@ -78,3 +78,21 @@ export function previewTestUserPassword(): string {
 export function previewLoginSecret(): string {
   return process.env.PREVIEW_TEST_LOGIN_SECRET?.trim() || "";
 }
+
+/**
+ * Default plan for the preview tester workspace.
+ * Preview only — never applied on production.
+ */
+export function previewTestUserPlan(): "free" | "starter" | "pro" | "enterprise" {
+  const raw = process.env.PREVIEW_TEST_USER_PLAN?.trim().toLowerCase();
+  if (raw === "free" || raw === "starter" || raw === "pro" || raw === "enterprise") {
+    return raw;
+  }
+  return "pro";
+}
+
+/** True when this email is the preview tester AND preview login is allowed. */
+export function isPreviewTesterEmail(email: string | null | undefined): boolean {
+  if (!email || !isPreviewLoginAllowed()) return false;
+  return email.trim().toLowerCase() === previewTestUserEmail();
+}

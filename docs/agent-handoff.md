@@ -132,6 +132,15 @@ PREVIEW_TEST_LOGIN_SECRET=… PLAYWRIGHT_BASE_URL=https://web-….vercel.app \
   cd web && pnpm e2e e2e/preview-login.spec.ts
 ```
 
+### Preview user-story QA (manual)
+
+1. Open the preview `/login` → **Continue as preview tester** (SSO if prompted).
+2. Confirm `/subjects` lists **Narin Fazlalipour** and **GlowState Wellness** (seeded onto the preview account).
+3. Open **Tester** in the nav → set plan to **Pro** (or Starter) → **Apply plan**.
+4. **New Audit** → pick Narin → select a channel → confirm report type is Standard (not blocked).
+5. Optional: set plan to **Free** in Tester, reopen New Audit — should default to Pulse only.
+6. If Subjects is empty after an old session: Tester → **Reseed demo subjects**, or sign out and preview-login again.
+
 If timeline stuck at `queued`, worker is not running or lacks `SUPABASE_SERVICE_ROLE_KEY`.
 
 ---
