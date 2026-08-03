@@ -124,7 +124,7 @@ export function SubjectHome({
             </p>
           </div>
         </div>
-        <Link href="/audits/new">
+        <Link href={`/audits/new?subject=${encodeURIComponent(subject.id)}`}>
           <Button size="sm" className="font-semibold">
             New audit
           </Button>

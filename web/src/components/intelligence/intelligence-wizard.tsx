@@ -89,9 +89,12 @@ function defaultReportTypeForPlan(plan: Plan): BatchReportType {
   return (allowed[0] ?? "pulse") as BatchReportType;
 }
 
-function initialWizardState(plan: Plan): NewAuditState {
+function initialWizardState(
+  plan: Plan,
+  initialSubjectId?: string,
+): NewAuditState {
   return {
-    subjectId: "",
+    subjectId: initialSubjectId ?? "",
     newSubjectName: "",
     newSubjectType: "creator",
     selectedChannelIds: [],
@@ -104,16 +107,23 @@ function initialWizardState(plan: Plan): NewAuditState {
 
 export function IntelligenceWizard({
   plan,
+  initialSubjectId,
   initialSubjects = [],
   initialChannelsBySubject = {},
+  initialBriefsBySubject = {},
 }: {
   plan: Plan;
+  /** Pre-select this subject (e.g. from /audits/new?subject=…). */
+  initialSubjectId?: string;
   initialSubjects?: SubjectSummary[];
   initialChannelsBySubject?: Record<string, ChannelSummary[]>;
+  initialBriefsBySubject?: Record<string, LivingBriefVersion[]>;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState(0);
-  const [state, setState] = useState<NewAuditState>(() => initialWizardState(plan));
+  const [step, setStep] = useState(() => (initialSubjectId ? 1 : 0));
+  const [state, setState] = useState<NewAuditState>(() =>
+    initialWizardState(plan, initialSubjectId),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
@@ -150,12 +160,15 @@ export function IntelligenceWizard({
 
   const briefVersions = useMemo(() => {
     if (!state.subjectId || state.subjectId.startsWith("new-")) return [];
+    if (initialBriefsBySubject[state.subjectId]?.length) {
+      return initialBriefsBySubject[state.subjectId]!;
+    }
     if (initialSubjects.length > 0) {
-      // Live mode: brief is confirmed at submit; empty list is valid for new subjects.
+      // Live mode with no brief row yet — empty is valid for brand-new subjects.
       return [] as LivingBriefVersion[];
     }
     return fixtureBriefVersions(state.subjectId);
-  }, [state.subjectId, initialSubjects.length]);
+  }, [state.subjectId, initialBriefsBySubject, initialSubjects.length]);
   const currentBrief = briefVersions[0] ?? null;
 
   const effectiveChannels = useMemo(() => {
@@ -248,8 +261,14 @@ export function IntelligenceWizard({
     setSubmitNotice(
       outcome.mode === "stub"
         ? `Batch prepared (${outcome.batchId}) in stub mode — admin Supabase not configured.`
-        : `Batch ${outcome.batchId} submitted.`,
+        : `Batch submitted — opening progress…`,
     );
+    const progressId = outcome.auditIds[0];
+    if (progressId && outcome.mode === "live") {
+      router.push(`/audits/${progressId}`);
+      return;
+    }
+    // Stub / no audit id — still land somewhere findable.
     router.push(`/subjects/${outcome.subjectId}`);
   };
 

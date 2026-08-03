@@ -142,6 +142,36 @@ export async function listChannelsForSubject(
   }
 }
 
+export async function listBriefVersionsForSubject(
+  subjectId: string,
+  subjectType: SubjectType,
+): Promise<LivingBriefVersion[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const supabase = await createClient();
+    const { data: briefs, error } = await supabase
+      .from("living_brief_versions")
+      .select(
+        "id, subject_id, version, identity, audience, positioning, offers, goals, constraints, experiments, decisions, confirmed, created_at",
+      )
+      .eq("subject_id", subjectId)
+      .order("version", { ascending: false });
+    if (error || !briefs) return [];
+    return briefs.map((row) => ({
+      id: row.id,
+      subjectId: row.subject_id,
+      version: row.version,
+      content: projectLivingBriefContent(subjectType, row),
+      source: row.confirmed ? ("user" as const) : ("user" as const),
+      parentVersionId: null,
+      changeSummary: null,
+      createdAt: row.created_at,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function getSubjectHomeBundle(
   subjectId: string,
 ): Promise<SubjectHomeBundle | null> {
@@ -154,26 +184,11 @@ export async function getSubjectHomeBundle(
   }
 
   const channels = await listChannelsForSubject(subjectId);
+  const briefVersions = await listBriefVersionsForSubject(
+    subjectId,
+    subject.type,
+  );
   const supabase = await createClient();
-
-  const { data: briefs } = await supabase
-    .from("living_brief_versions")
-    .select(
-      "id, subject_id, version, identity, audience, positioning, offers, goals, constraints, experiments, decisions, confirmed, created_at",
-    )
-    .eq("subject_id", subjectId)
-    .order("version", { ascending: false });
-
-  const briefVersions: LivingBriefVersion[] = (briefs ?? []).map((row) => ({
-    id: row.id,
-    subjectId: row.subject_id,
-    version: row.version,
-    content: projectLivingBriefContent(subject.type, row),
-    source: row.confirmed ? "user" : "user",
-    parentVersionId: null,
-    changeSummary: null,
-    createdAt: row.created_at,
-  }));
 
   const { data: proposalRows } = await supabase
     .from("context_update_proposals")
