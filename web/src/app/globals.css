@@ -279,7 +279,7 @@
 
 .alm-nav-progress--active {
   width: 72%;
-  transition: width 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: width 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .alm-nav-progress--done {

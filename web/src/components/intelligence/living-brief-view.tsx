@@ -111,21 +111,26 @@ export const BRIEF_EDIT_FIELDS: Array<{
 export function LivingBriefView({
   content,
   compact = false,
+  showEmptyPlaceholders = false,
 }: {
   content: LivingBriefContent;
   /** Overview snippet: identity + goals only */
   compact?: boolean;
+  /** When true, unfilled sections render as dim placeholders. */
+  showEmptyPlaceholders?: boolean;
 }) {
   const sections = compact
     ? SECTIONS.filter((s) => s.key === "identity" || s.key === "goals")
     : SECTIONS.filter((s) => s.key !== "subjectType");
 
-  const filled = sections.filter((s) => {
-    const value = content[s.key];
-    return typeof value === "string" && value.trim().length > 0;
-  });
+  const visible = showEmptyPlaceholders
+    ? sections
+    : sections.filter((s) => {
+        const value = content[s.key];
+        return typeof value === "string" && value.trim().length > 0;
+      });
 
-  if (filled.length === 0) {
+  if (visible.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
         This brief is still empty. Use Edit Living Brief to set who you serve
@@ -136,12 +141,17 @@ export function LivingBriefView({
 
   return (
     <div className={compact ? "space-y-3" : "grid gap-3 sm:grid-cols-2"}>
-      {filled.map(({ key, label, Icon }) => {
-        const value = String(content[key]);
+      {visible.map(({ key, label, Icon }) => {
+        const raw = content[key];
+        const value =
+          typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : "";
+        const empty = !value;
         return (
           <article
             key={key}
-            className="border border-border bg-card p-4 shadow-[var(--shadow)]"
+            className={`border border-border bg-card p-4 shadow-[var(--shadow)] ${
+              empty ? "opacity-60" : ""
+            }`}
           >
             <div className="flex items-center gap-2">
               <span className="grid size-8 place-items-center bg-[color:var(--accent-muted)] text-[color:var(--accent)]">
@@ -151,8 +161,12 @@ export function LivingBriefView({
                 {label}
               </h3>
             </div>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-              {value}
+            <p
+              className={`mt-3 whitespace-pre-wrap text-sm leading-relaxed ${
+                empty ? "italic text-muted-foreground" : "text-foreground"
+              }`}
+            >
+              {empty ? "Not yet defined — add it when you edit." : value}
             </p>
           </article>
         );
@@ -179,7 +193,13 @@ export function briefPathLabel(path: string): string {
     activeExperiments: "What you're testing",
     plannedChanges: "What's changing next",
     "planned changes": "What's changing next",
+    summary: "Summary",
+    role: "Role",
+    niche: "Niche",
+    description: "Description",
   };
-  const key = cleaned.split(/[./]/)[0] ?? cleaned;
-  return map[key] ?? map[cleaned] ?? (cleaned || "Brief update");
+  const parts = cleaned.split(/[./]/).filter(Boolean);
+  if (parts.length === 0) return "Brief update";
+  const labels = parts.map((part) => map[part] ?? part);
+  return labels.join(" → ");
 }

@@ -10,6 +10,7 @@ import {
   FileText,
   GitBranch,
   History,
+  Loader2,
   Target,
   XCircle,
   BookOpen,
@@ -28,6 +29,7 @@ import type {
   ChannelSummary,
   LivingBriefVersion,
   LivingBriefProposal,
+  LivingBriefContent,
   ScoreEvidence,
   RecommendationSummary,
   SinceLastAuditItem,
@@ -72,6 +74,7 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
     Record<string, LivingBriefProposal["status"]>
   >(() => Object.fromEntries(proposals.map((p) => [p.id, p.status])));
   const [proposalError, setProposalError] = useState<string | null>(null);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const currentBrief = briefVersions[0] ?? null;
@@ -81,11 +84,13 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
 
   const resolveProposal = (id: string, status: "accepted" | "rejected") => {
     setProposalError(null);
+    setResolvingId(id);
     startTransition(async () => {
       const result = await resolveBriefProposalAction({
         proposalId: id,
         status,
       });
+      setResolvingId(null);
       if (!result.ok) {
         setProposalError(result.error);
         return;
@@ -163,6 +168,7 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
           proposals={proposals}
           proposalState={proposalState}
           proposalError={proposalError}
+          resolvingId={resolvingId}
           resolving={pending}
           onResolve={resolveProposal}
         />
@@ -249,12 +255,12 @@ function OverviewTab({
           <h2 className="text-base font-semibold">Living Brief</h2>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          The strategy lens for every audit — not another report.
+          The strategy every audit reads through — sharper brief, sharper report.
         </p>
         {currentBrief ? (
           <div className="mt-3 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              v{currentBrief.version} · Active lens
+              v{currentBrief.version} · Active
             </p>
             <LivingBriefView content={currentBrief.content} compact />
             {pendingProposalCount > 0 && (
@@ -365,6 +371,7 @@ function BriefTab({
   proposals,
   proposalState,
   proposalError,
+  resolvingId,
   resolving,
   onResolve,
 }: {
@@ -374,6 +381,7 @@ function BriefTab({
   proposals: LivingBriefProposal[];
   proposalState: Record<string, LivingBriefProposal["status"]>;
   proposalError: string | null;
+  resolvingId: string | null;
   resolving: boolean;
   onResolve: (id: string, status: "accepted" | "rejected") => void;
 }) {
@@ -382,6 +390,32 @@ function BriefTab({
   );
   const [editing, setEditing] = useState(false);
   const current = versions[0] ?? null;
+
+  const currentFieldValue = (path: string): string => {
+    if (!current) return "";
+    const key = path.replace(/^\/+/, "").split(/[./]/)[0] ?? "";
+    const content = current.content;
+    const map: Record<string, keyof LivingBriefContent> = {
+      identity: "identity",
+      vision: "vision",
+      audience: "audience",
+      offers: "offers",
+      voice: "voice",
+      positioning: "positioning",
+      goals: "goals",
+      successCriteria: "successCriteria",
+      success_criteria: "successCriteria",
+      constraints: "constraints",
+      experiments: "activeExperiments",
+      activeExperiments: "activeExperiments",
+      plannedChanges: "plannedChanges",
+      decisions: "plannedChanges",
+    };
+    const field = map[key];
+    if (!field || field === "subjectType") return "";
+    const value = content[field];
+    return typeof value === "string" ? value : "";
+  };
 
   return (
     <div className="space-y-10">
@@ -421,9 +455,9 @@ function BriefTab({
             <p className="text-sm font-semibold">
               Current · v{current.version}
             </p>
-            <Badge tone="accent">Active lens</Badge>
+            <Badge tone="accent">Active</Badge>
           </div>
-          <LivingBriefView content={current.content} />
+          <LivingBriefView content={current.content} showEmptyPlaceholders />
         </section>
       )}
 
@@ -517,6 +551,8 @@ function BriefTab({
           <ul className="divide-y divide-border border-y border-border">
             {proposals.map((p) => {
               const status = proposalState[p.id] ?? p.status;
+              const before = currentFieldValue(p.path);
+              const busy = resolving && resolvingId === p.id;
               return (
                 <li key={p.id} className="space-y-3 py-4">
                   <div className="flex flex-wrap items-center gap-2">
@@ -541,7 +577,24 @@ function BriefTab({
                       {briefPathLabel(p.path)}
                     </span>
                   </div>
-                  <p className="text-sm leading-relaxed">{p.proposedValue}</p>
+                  {before ? (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Current
+                      </p>
+                      <p className="text-sm leading-relaxed text-muted-foreground line-through decoration-border">
+                        {before}
+                      </p>
+                    </div>
+                  ) : null}
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Suggested
+                    </p>
+                    <p className="text-sm leading-relaxed text-[color:var(--accent)]">
+                      {p.proposedValue}
+                    </p>
+                  </div>
                   {p.changeExplanation ? (
                     <p className="text-xs text-muted-foreground">
                       {p.changeExplanation}
@@ -555,6 +608,9 @@ function BriefTab({
                         disabled={resolving}
                         onClick={() => onResolve(p.id, "accepted")}
                       >
+                        {busy ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : null}
                         Confirm
                       </Button>
                       <Button

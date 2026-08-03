@@ -41,6 +41,7 @@ import {
 } from "@/lib/actions/intelligence";
 import { allowedReportTypes, type Plan } from "@/lib/domain";
 import { LivingBriefView } from "@/components/intelligence/living-brief-view";
+import { startNavigationProgress } from "@/components/navigation-progress";
 import {
   canonicalizeWebsiteLocator,
   channelDedupeKey,
@@ -297,6 +298,7 @@ export function IntelligenceWizard({
 
     setSubmitNotice(`Batch submitted — opening progress…`);
     const progressId = outcome.auditIds[0];
+    startNavigationProgress();
     if (progressId) {
       router.push(`/audits/${progressId}`);
       return;
@@ -306,7 +308,7 @@ export function IntelligenceWizard({
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
-      <Stepper step={step} labels={["Subject", "Channels", "Lens", "Batch"]} />
+      <Stepper step={step} labels={["Subject", "Channels", "Brief", "Batch"]} />
 
       {step === 0 && (
         <SubjectStep
@@ -844,7 +846,7 @@ function LensStep({
               Using Living Brief · v{currentBrief.version}
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="accent">Active lens</Badge>
+              <Badge tone="accent">Active</Badge>
               {canLinkSubject && (
                 <Link
                   href={`/subjects/${subjectId}`}

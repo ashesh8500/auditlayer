@@ -3,9 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
+type Listener = (active: boolean) => void;
+
+const listeners = new Set<Listener>();
+let navigating = false;
+
+function emit(active: boolean) {
+  navigating = active;
+  for (const listener of listeners) listener(active);
+}
+
+/** Call before programmatic navigations (router.push) so the bar appears. */
+export function startNavigationProgress() {
+  emit(true);
+}
+
 /**
  * Thin top progress bar on in-app navigations.
- * Starts on same-origin link click; completes when the route settles.
+ * Starts on same-origin link click or startNavigationProgress();
+ * completes when the route settles.
  */
 export function NavigationProgress() {
   const pathname = usePathname();
@@ -13,6 +29,17 @@ export function NavigationProgress() {
   const routeKey = `${pathname}?${searchParams?.toString() ?? ""}`;
   const [phase, setPhase] = useState<"idle" | "start" | "done">("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const onProg = (active: boolean) => {
+      if (active) setPhase("start");
+    };
+    listeners.add(onProg);
+    if (navigating) setPhase("start");
+    return () => {
+      listeners.delete(onProg);
+    };
+  }, []);
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
@@ -49,6 +76,7 @@ export function NavigationProgress() {
   useEffect(() => {
     if (phase === "idle") return;
     setPhase("done");
+    emit(false);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setPhase("idle"), 180);
     return () => {
