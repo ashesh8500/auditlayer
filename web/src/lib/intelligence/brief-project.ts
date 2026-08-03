@@ -120,3 +120,39 @@ export function projectLivingBriefContent(
     ),
   };
 }
+
+function linesToList(text: string): string[] {
+  return text
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-•*]\s*/, "").trim())
+    .filter(Boolean);
+}
+
+/** Serialize product narrative fields back into kernel JSONB columns. */
+export function contentToKernelPayload(content: LivingBriefContent): {
+  identity: Record<string, string>;
+  audience: Record<string, string>;
+  positioning: Record<string, string>;
+  offers: string[];
+  goals: string[];
+  constraints: string[];
+  experiments: string[];
+  decisions: string[];
+} {
+  return {
+    identity: {
+      summary: content.identity.trim(),
+      vision: content.vision.trim(),
+      voice: content.voice.trim(),
+      success_criteria: content.successCriteria.trim(),
+      planned_changes: content.plannedChanges.trim(),
+    },
+    audience: { summary: content.audience.trim() },
+    positioning: { summary: content.positioning.trim() },
+    offers: linesToList(content.offers),
+    goals: linesToList(content.goals),
+    constraints: linesToList(content.constraints),
+    experiments: linesToList(content.activeExperiments),
+    decisions: linesToList(content.plannedChanges),
+  };
+}

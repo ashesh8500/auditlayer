@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
   CheckCircle2,
   Clock,
+  Eye,
   FileText,
   GitBranch,
   History,
   Target,
   XCircle,
-  Eye,
   BookOpen,
 } from "lucide-react";
 
@@ -21,6 +21,8 @@ import {
   LivingBriefView,
   briefPathLabel,
 } from "@/components/intelligence/living-brief-view";
+import { resolveBriefProposalAction } from "@/lib/actions/intelligence";
+import { LivingBriefEditor } from "@/components/intelligence/living-brief-editor";
 import type {
   SubjectSummary,
   ChannelSummary,
@@ -31,16 +33,6 @@ import type {
   SinceLastAuditItem,
   ReportArchiveItem,
 } from "@/lib/intelligence/types";
-import {
-  fixtureSubjects,
-  fixtureChannels,
-  fixtureBriefVersions,
-  fixtureBriefProposals,
-  fixtureScores,
-  fixtureRecommendations,
-  fixtureSinceLastAudit,
-  fixtureReportArchive,
-} from "@/lib/intelligence/fixtures";
 
 const TABS = [
   ["overview", "Overview"],
@@ -51,10 +43,7 @@ const TABS = [
 
 interface SubjectHomeProps {
   subjectId: string;
-  /** When true, show fixture banner so customers know data is illustrative */
-  fixtureMode?: boolean;
-  /** Live bundle from server; when provided, fixtures are not used. */
-  data?: {
+  data: {
     subject: SubjectSummary;
     channels: ChannelSummary[];
     briefVersions: LivingBriefVersion[];
@@ -66,29 +55,15 @@ interface SubjectHomeProps {
   };
 }
 
-export function SubjectHome({
-  subjectId,
-  fixtureMode = true,
-  data,
-}: SubjectHomeProps) {
-  const subjects = data ? [data.subject] : fixtureSubjects();
-  const subject =
-    subjects.find((s) => s.id === subjectId) ?? subjects[0] ?? {
-      id: subjectId,
-      name: "Subject",
-      type: "creator" as const,
-      avatarUrl: null,
-      channelCount: 0,
-      lastAuditAt: null,
-    };
-  const channels = data?.channels ?? fixtureChannels(subject.id);
-  const briefVersions = data?.briefVersions ?? fixtureBriefVersions(subject.id);
-  const proposals = data?.proposals ?? fixtureBriefProposals(subject.id);
-  const scores = data?.scores ?? fixtureScores();
-  const recommendations =
-    data?.recommendations ?? fixtureRecommendations(subject.id);
-  const sinceLast = data?.sinceLast ?? fixtureSinceLastAudit();
-  const reports = data?.reports ?? fixtureReportArchive(subject.id);
+export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
+  const subject = data.subject;
+  const channels = data.channels;
+  const briefVersions = data.briefVersions;
+  const proposals = data.proposals;
+  const scores = data.scores;
+  const recommendations = data.recommendations;
+  const sinceLast = data.sinceLast;
+  const reports = data.reports;
 
   const [activeTab, setActiveTab] = useState<
     "overview" | "brief" | "scores" | "recommendations"
@@ -96,11 +71,28 @@ export function SubjectHome({
   const [proposalState, setProposalState] = useState<
     Record<string, LivingBriefProposal["status"]>
   >(() => Object.fromEntries(proposals.map((p) => [p.id, p.status])));
+  const [proposalError, setProposalError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   const currentBrief = briefVersions[0] ?? null;
   const pendingProposals = proposals.filter(
     (p) => (proposalState[p.id] ?? p.status) === "proposed",
   );
+
+  const resolveProposal = (id: string, status: "accepted" | "rejected") => {
+    setProposalError(null);
+    startTransition(async () => {
+      const result = await resolveBriefProposalAction({
+        proposalId: id,
+        status,
+      });
+      if (!result.ok) {
+        setProposalError(result.error);
+        return;
+      }
+      setProposalState((prev) => ({ ...prev, [id]: status }));
+    });
+  };
 
   return (
     <div className="space-y-8">
@@ -124,22 +116,15 @@ export function SubjectHome({
             </p>
           </div>
         </div>
-        <Link href={`/audits/new?subject=${encodeURIComponent(subject.id)}`}>
+        <Link href={`/audits/new?subject=${encodeURIComponent(subjectId)}`}>
           <Button size="sm" className="font-semibold">
             New audit
           </Button>
         </Link>
       </header>
 
-      {fixtureMode && (
-        <p className="text-xs text-muted-foreground">
-          Showing contract fixtures until subject ledgers are available on this
-          environment. Confirmed versions and model proposals stay visually distinct.
-        </p>
-      )}
-
       <nav
-        className="-mx-1 flex gap-1 overflow-x-auto border-b border-border px-1"
+        className="flex flex-wrap gap-1 border-b border-border"
         role="tablist"
         aria-label="Subject intelligence"
       >
@@ -149,7 +134,7 @@ export function SubjectHome({
             role="tab"
             aria-selected={activeTab === tab}
             onClick={() => setActiveTab(tab)}
-            className={`shrink-0 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px sm:px-4 ${
+            className={`px-3 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px sm:px-4 ${
               activeTab === tab
                 ? "border-[color:var(--accent)] text-[color:var(--accent)]"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -172,12 +157,14 @@ export function SubjectHome({
       )}
       {activeTab === "brief" && (
         <BriefTab
+          subjectId={subjectId}
+          subjectType={subject.type}
           versions={briefVersions}
           proposals={proposals}
           proposalState={proposalState}
-          onResolve={(id, status) =>
-            setProposalState((prev) => ({ ...prev, [id]: status }))
-          }
+          proposalError={proposalError}
+          resolving={pending}
+          onResolve={resolveProposal}
         />
       )}
       {activeTab === "scores" && <ScoresTab scores={scores} />}
@@ -261,13 +248,13 @@ function OverviewTab({
           <BookOpen className="size-4 text-[color:var(--accent)]" />
           <h2 className="text-base font-semibold">Living Brief</h2>
         </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          The strategy lens for every audit — not another report.
+        </p>
         {currentBrief ? (
           <div className="mt-3 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              v{currentBrief.version}
-              {currentBrief.source === "user"
-                ? " · Confirmed"
-                : " · From proposal"}
+              v{currentBrief.version} · Active lens
             </p>
             <LivingBriefView content={currentBrief.content} compact />
             {pendingProposalCount > 0 && (
@@ -280,37 +267,40 @@ function OverviewTab({
           </div>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">
-            No brief yet — it is created with your first audit.
+            No brief yet — open the Living Brief tab to set who you serve and
+            what success looks like.
           </p>
         )}
       </section>
 
-      <section>
-        <div className="flex items-center gap-2">
-          <History className="size-4 text-[color:var(--accent)]" />
-          <h2 className="text-base font-semibold">Since last audit</h2>
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Evidence, decisions, and brief changes — not another full report.
-        </p>
-        <ol className="mt-4 space-y-3 border-l-2 border-border pl-4">
-          {sinceLast.map((item) => (
-            <li key={item.id}>
-              <p className="text-sm font-medium">{item.title}</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                {item.detail}
-              </p>
-              <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                {item.kind} ·{" "}
-                {new Date(item.at).toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </p>
-            </li>
-          ))}
-        </ol>
-      </section>
+      {sinceLast.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2">
+            <History className="size-4 text-[color:var(--accent)]" />
+            <h2 className="text-base font-semibold">Since last audit</h2>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Evidence, decisions, and brief changes — not another full report.
+          </p>
+          <ol className="mt-4 space-y-3 border-l-2 border-border pl-4">
+            {sinceLast.map((item) => (
+              <li key={item.id}>
+                <p className="text-sm font-medium">{item.title}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  {item.detail}
+                </p>
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {item.kind} ·{" "}
+                  {new Date(item.at).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       {activeRecs.length > 0 && (
         <section>
@@ -369,32 +359,84 @@ function OverviewTab({
 }
 
 function BriefTab({
+  subjectId,
+  subjectType,
   versions,
   proposals,
   proposalState,
+  proposalError,
+  resolving,
   onResolve,
 }: {
+  subjectId: string;
+  subjectType: SubjectSummary["type"];
   versions: LivingBriefVersion[];
   proposals: LivingBriefProposal[];
   proposalState: Record<string, LivingBriefProposal["status"]>;
+  proposalError: string | null;
+  resolving: boolean;
   onResolve: (id: string, status: "accepted" | "rejected") => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(
     versions[0]?.id ?? null,
   );
+  const [editing, setEditing] = useState(false);
+  const current = versions[0] ?? null;
 
   return (
     <div className="space-y-10">
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-base font-semibold">Living Brief</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Your Living Brief is the strategy AuditLayer uses to interpret every
+            audit for this subject. Keep it current — who you are, who you serve,
+            how you stand out, and what matters next. Changes create a new
+            version; past reports stay unchanged.
+          </p>
+        </div>
+
+        {!editing ? (
+          <Button
+            type="button"
+            size="sm"
+            className="font-semibold"
+            onClick={() => setEditing(true)}
+          >
+            {current ? "Edit Living Brief" : "Create Living Brief"}
+          </Button>
+        ) : (
+          <LivingBriefEditor
+            subjectId={subjectId}
+            subjectType={subjectType}
+            initial={current?.content ?? null}
+            onCancel={() => setEditing(false)}
+          />
+        )}
+      </section>
+
+      {!editing && current && (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold">
+              Current · v{current.version}
+            </p>
+            <Badge tone="accent">Active lens</Badge>
+          </div>
+          <LivingBriefView content={current.content} />
+        </section>
+      )}
+
       <section>
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <GitBranch className="size-4 text-[color:var(--accent)]" />
-          <h2 className="text-base font-semibold">Confirmed versions</h2>
+          <h2 className="text-base font-semibold">Version history</h2>
           <Badge tone="neutral">{versions.length}</Badge>
         </div>
         {versions.length === 0 ? (
           <EmptyState
-            title="No Living Brief versions yet"
-            detail="A brief is created from your subject and channel data on the first audit."
+            title="Set the strategy for this subject"
+            detail="Add who you serve, how you stand out, and what you want to achieve. Your first audit will use this as its starting point."
           />
         ) : (
           <ol className="relative ml-3 space-y-6 border-l-2 border-border">
@@ -426,7 +468,7 @@ function BriefTab({
                     <Badge
                       tone={v.source === "user" ? "accent" : "warning"}
                     >
-                      {v.source === "user" ? "Confirmed" : "From proposal"}
+                      {v.source === "user" ? "Owner edit" : "From proposal"}
                     </Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -437,7 +479,7 @@ function BriefTab({
                     })}
                   </p>
                 </button>
-                {expanded === v.id && (
+                {expanded === v.id && i > 0 && (
                   <div className="mt-3 space-y-3">
                     {v.changeSummary && (
                       <p className="text-sm italic text-muted-foreground">
@@ -459,9 +501,13 @@ function BriefTab({
           <Badge tone="warning">Needs your call</Badge>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          When analysis suggests a change to the story, it lands here for you to
-          accept or reject — nothing updates until you decide.
+          When an audit suggests a change to your strategy, it lands here for
+          you to accept or reject — nothing rewrites the Living Brief until you
+          decide.
         </p>
+        {proposalError && (
+          <p className="mb-3 text-sm text-[color:var(--red)]">{proposalError}</p>
+        )}
         {proposals.length === 0 ? (
           <EmptyState
             title="No open suggestions"
@@ -506,6 +552,7 @@ function BriefTab({
                       <Button
                         type="button"
                         size="sm"
+                        disabled={resolving}
                         onClick={() => onResolve(p.id, "accepted")}
                       >
                         Confirm
@@ -514,6 +561,7 @@ function BriefTab({
                         type="button"
                         size="sm"
                         variant="outline"
+                        disabled={resolving}
                         onClick={() => onResolve(p.id, "rejected")}
                       >
                         Reject

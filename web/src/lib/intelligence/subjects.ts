@@ -15,13 +15,13 @@ import type {
   ReportArchiveItem,
   SinceLastAuditItem,
 } from "@/lib/intelligence/types";
+import { dedupeChannels } from "@/lib/intelligence/channel-locator";
 import {
   projectBriefField,
   projectLivingBriefContent,
 } from "@/lib/intelligence/brief-project";
-import { fixtureSubjects } from "@/lib/intelligence/fixtures";
 
-export type SubjectListSource = "live" | "fixture";
+export type SubjectListSource = "live";
 
 export type SubjectHomeBundle = {
   subject: SubjectSummary;
@@ -40,7 +40,7 @@ export async function listSubjectsForUser(): Promise<{
   source: SubjectListSource;
 }> {
   if (!isSupabaseConfigured()) {
-    return { subjects: fixtureSubjects(), source: "fixture" };
+    return { subjects: [], source: "live" };
   }
 
   try {
@@ -51,19 +51,20 @@ export async function listSubjectsForUser(): Promise<{
       .order("created_at", { ascending: false });
 
     if (error || !data) {
-      return { subjects: fixtureSubjects(), source: "fixture" };
+      return { subjects: [], source: "live" };
     }
 
     if (data.length === 0) {
       return { subjects: [], source: "live" };
     }
 
+    const active = data.filter(
+      (row) => !String(row.name).startsWith("Archived · "),
+    );
+
     const subjects: SubjectSummary[] = await Promise.all(
-      data.map(async (row) => {
-        const { count } = await supabase
-          .from("subject_channels")
-          .select("id", { count: "exact", head: true })
-          .eq("subject_id", row.id);
+      active.map(async (row) => {
+        const channels = await listChannelsForSubject(row.id);
         const { data: batches } = await supabase
           .from("audit_batches")
           .select("id, created_at")
@@ -75,7 +76,7 @@ export async function listSubjectsForUser(): Promise<{
           name: row.name,
           type: row.subject_type as SubjectType,
           avatarUrl: null,
-          channelCount: count ?? 0,
+          channelCount: channels.length,
           lastAuditAt: batches?.[0]?.created_at ?? null,
         };
       }),
@@ -83,7 +84,7 @@ export async function listSubjectsForUser(): Promise<{
 
     return { subjects, source: "live" };
   } catch {
-    return { subjects: fixtureSubjects(), source: "fixture" };
+    return { subjects: [], source: "live" };
   }
 }
 
@@ -101,7 +102,7 @@ export async function listChannelsForSubject(
       .eq("subject_id", subjectId)
       .order("created_at", { ascending: true });
     if (error || !data) return [];
-    return data.map((row) => {
+    const mapped = data.map((row) => {
       const platform = row.channel_type as ChannelPlatform;
       const isWebsite = platform === "website";
       const locator = row.locator || "";
@@ -137,6 +138,7 @@ export async function listChannelsForSubject(
         subjectId: row.subject_id,
       };
     });
+    return dedupeChannels(mapped);
   } catch {
     return [];
   }
@@ -175,13 +177,9 @@ export async function listBriefVersionsForSubject(
 export async function getSubjectHomeBundle(
   subjectId: string,
 ): Promise<SubjectHomeBundle | null> {
-  const { subjects, source } = await listSubjectsForUser();
+  const { subjects } = await listSubjectsForUser();
   const subject = subjects.find((s) => s.id === subjectId);
   if (!subject) return null;
-
-  if (source === "fixture") {
-    return null;
-  }
 
   const channels = await listChannelsForSubject(subjectId);
   const briefVersions = await listBriefVersionsForSubject(
@@ -328,13 +326,7 @@ export async function getSubjectHomeBundle(
     }
   }
 
-  const sinceLast: SinceLastAuditItem[] = (runs ?? []).slice(0, 3).map((run) => ({
-    id: run.id,
-    kind: "evidence",
-    title: `Intelligence run ${run.status}`,
-    detail: "Pinned evidence snapshot and score ledger for this subject.",
-    at: run.created_at,
-  }));
+  const sinceLast: SinceLastAuditItem[] = [];
 
   return {
     subject,

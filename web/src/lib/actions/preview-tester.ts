@@ -82,7 +82,7 @@ export async function reseedPreviewDemoSubjects(
     revalidatePath("/preview-setup");
     return {
       status: "ok",
-      message: `Reseeded ${result.subjectIds.length} subjects (AuditLayerMedia + demos).`,
+      message: `Reseeded ${result.subjectIds.length} subjects. Prior demos were archived (briefs are immutable and cannot be deleted).`,
     };
   } catch (err) {
     return {

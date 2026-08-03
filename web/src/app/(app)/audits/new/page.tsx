@@ -40,20 +40,18 @@ export default async function NewAuditPage({
   if (usage >= limit) redirect("/dashboard?billing=unconfigured");
 
   const plan = effectivePlanForProfile(profile as never);
-  const { subjects, source } = await listSubjectsForUser();
+  const { subjects } = await listSubjectsForUser();
   const channelsBySubject: Record<string, ChannelSummary[]> = {};
   const briefsBySubject: Record<string, LivingBriefVersion[]> = {};
-  if (source === "live") {
-    await Promise.all(
-      subjects.map(async (subject) => {
-        channelsBySubject[subject.id] = await listChannelsForSubject(subject.id);
-        briefsBySubject[subject.id] = await listBriefVersionsForSubject(
-          subject.id,
-          subject.type,
-        );
-      }),
-    );
-  }
+  await Promise.all(
+    subjects.map(async (subject) => {
+      channelsBySubject[subject.id] = await listChannelsForSubject(subject.id);
+      briefsBySubject[subject.id] = await listBriefVersionsForSubject(
+        subject.id,
+        subject.type,
+      );
+    }),
+  );
 
   const initialSubjectId =
     subjectParam &&
@@ -77,11 +75,9 @@ export default async function NewAuditPage({
       <IntelligenceWizard
         plan={plan}
         initialSubjectId={initialSubjectId}
-        initialSubjects={source === "live" ? subjects : undefined}
-        initialChannelsBySubject={
-          source === "live" ? channelsBySubject : undefined
-        }
-        initialBriefsBySubject={source === "live" ? briefsBySubject : undefined}
+        initialSubjects={subjects}
+        initialChannelsBySubject={channelsBySubject}
+        initialBriefsBySubject={briefsBySubject}
       />
     </main>
   );

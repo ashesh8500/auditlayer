@@ -13,12 +13,17 @@ import {
   rpcLinkSubjectChannel,
   rpcRecordLivingBriefVersion,
 } from "@/lib/intelligence/api";
+import {
+  canonicalizeSocialLocator,
+  canonicalizeWebsiteLocator,
+  channelDedupeKey,
+} from "@/lib/intelligence/channel-locator";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Plan } from "@/lib/domain";
 
 const ALM_SUBJECT_NAME = "AuditLayerMedia";
 const ALM_IG_HANDLE = "auditlayermedia";
-const ALM_WEBSITE = "https://auditlayermedia.com";
+const ALM_WEBSITE = canonicalizeWebsiteLocator("https://auditlayermedia.com");
 
 type DemoBrief = {
   identity: Record<string, string>;
@@ -353,11 +358,23 @@ async function ensureAlmSubject(
     .select("id, channel_type, locator, account_id")
     .eq("subject_id", subjectId);
 
-  const hasIg = (channels ?? []).some(
-    (c) => c.channel_type === "instagram" && c.locator === ALM_IG_HANDLE,
+  await purgeNearDuplicateChannels(subjectId, channels ?? []);
+
+  const { data: refreshed } = await admin
+    .from("subject_channels")
+    .select("id, channel_type, locator, account_id")
+    .eq("subject_id", subjectId);
+
+  const list = refreshed ?? [];
+  const hasIg = list.some(
+    (c) =>
+      c.channel_type === "instagram" &&
+      canonicalizeSocialLocator(c.locator) === ALM_IG_HANDLE,
   );
-  const hasWeb = (channels ?? []).some(
-    (c) => c.channel_type === "website" && c.locator === ALM_WEBSITE,
+  const hasWeb = list.some(
+    (c) =>
+      c.channel_type === "website" &&
+      canonicalizeWebsiteLocator(c.locator) === ALM_WEBSITE,
   );
 
   if (!hasIg) {
@@ -369,8 +386,10 @@ async function ensureAlmSubject(
       accountId,
     });
   } else if (accountId) {
-    const ig = (channels ?? []).find(
-      (c) => c.channel_type === "instagram" && c.locator === ALM_IG_HANDLE,
+    const ig = list.find(
+      (c) =>
+        c.channel_type === "instagram" &&
+        canonicalizeSocialLocator(c.locator) === ALM_IG_HANDLE,
     );
     if (ig && ig.account_id !== accountId) {
       await admin
@@ -387,9 +406,61 @@ async function ensureAlmSubject(
       locator: ALM_WEBSITE,
       managed: true,
     });
+  } else {
+    const web = list.find(
+      (c) =>
+        c.channel_type === "website" &&
+        canonicalizeWebsiteLocator(c.locator) === ALM_WEBSITE,
+    );
+    if (web && web.locator !== ALM_WEBSITE) {
+      await admin
+        .from("subject_channels")
+        .update({ locator: ALM_WEBSITE })
+        .eq("id", web.id);
+    }
   }
 
   return subjectId;
+}
+
+/** Keep one row per canonical channel key; prefer https:// locators. */
+async function purgeNearDuplicateChannels(
+  _subjectId: string,
+  channels: Array<{ id: string; channel_type: string; locator: string }>,
+): Promise<void> {
+  const admin = createAdminClient();
+  const keep = new Map<string, { id: string; locator: string }>();
+  const drop: string[] = [];
+
+  for (const row of channels) {
+    const platform = row.channel_type as
+      | "instagram"
+      | "website"
+      | "tiktok"
+      | "youtube"
+      | "linkedin"
+      | "x";
+    const key = channelDedupeKey(platform, row.locator);
+    const existing = keep.get(key);
+    if (!existing) {
+      keep.set(key, { id: row.id, locator: row.locator });
+      continue;
+    }
+    const preferNew =
+      platform === "website" &&
+      row.locator.startsWith("https://") &&
+      !existing.locator.startsWith("https://");
+    if (preferNew) {
+      drop.push(existing.id);
+      keep.set(key, { id: row.id, locator: row.locator });
+    } else {
+      drop.push(row.id);
+    }
+  }
+
+  if (drop.length > 0) {
+    await admin.from("subject_channels").delete().in("id", drop);
+  }
 }
 
 async function createDemoSubject(
@@ -430,12 +501,24 @@ export async function seedPreviewDemoSubjects(
   }
 
   if (options?.force && (existing.data?.length ?? 0) > 0) {
-    const { error: delError } = await admin
-      .from("subjects")
-      .delete()
-      .eq("user_id", userId);
-    if (delError) {
-      throw new Error(`Failed to clear preview subjects: ${delError.message}`);
+    // living_brief_versions (and related evidence) are immutable — DELETE is
+    // rejected. Archive by renaming so reseeds can recreate clean demo subjects.
+    const stamp = new Date()
+      .toISOString()
+      .slice(0, 19)
+      .replace("T", " ");
+    for (const row of existing.data ?? []) {
+      const archivedName = `Archived · ${row.name} · ${stamp}`;
+      const { error: renameError } = await admin
+        .from("subjects")
+        .update({ name: archivedName })
+        .eq("id", row.id)
+        .eq("user_id", userId);
+      if (renameError) {
+        throw new Error(
+          `Failed to archive preview subject "${row.name}": ${renameError.message}`,
+        );
+      }
     }
   }
 

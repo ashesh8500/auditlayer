@@ -37,6 +37,77 @@ const SECTIONS: {
   { key: "plannedChanges", label: "What's changing next", Icon: Eye },
 ];
 
+/** Editable narrative fields for the Living Brief form (not subjectType). */
+export const BRIEF_EDIT_FIELDS: Array<{
+  key: Exclude<keyof LivingBriefContent, "subjectType">;
+  label: string;
+  hint?: string;
+  rows: number;
+}> = [
+  {
+    key: "identity",
+    label: "Who you are",
+    hint: "One or two sentences — the subject in plain language.",
+    rows: 3,
+  },
+  {
+    key: "audience",
+    label: "Who you serve",
+    hint: "The people this content is for.",
+    rows: 3,
+  },
+  {
+    key: "positioning",
+    label: "How you stand out",
+    hint: "What makes this subject different from peers.",
+    rows: 3,
+  },
+  {
+    key: "offers",
+    label: "What you offer",
+    hint: "One offer per line.",
+    rows: 3,
+  },
+  {
+    key: "goals",
+    label: "Near-term goals",
+    hint: "One goal per line — what the next audits should optimize for.",
+    rows: 3,
+  },
+  {
+    key: "vision",
+    label: "Where you're going",
+    rows: 2,
+  },
+  {
+    key: "voice",
+    label: "How you sound",
+    rows: 2,
+  },
+  {
+    key: "successCriteria",
+    label: "What success looks like",
+    rows: 2,
+  },
+  {
+    key: "constraints",
+    label: "Guardrails",
+    hint: "What you will not do. One per line.",
+    rows: 2,
+  },
+  {
+    key: "activeExperiments",
+    label: "What you're testing",
+    hint: "One experiment per line.",
+    rows: 2,
+  },
+  {
+    key: "plannedChanges",
+    label: "What's changing next",
+    rows: 2,
+  },
+];
+
 export function LivingBriefView({
   content,
   compact = false,
@@ -57,8 +128,8 @@ export function LivingBriefView({
   if (filled.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        This brief is still empty. Run an audit or update the subject story to
-        fill it in.
+        This brief is still empty. Use Edit Living Brief to set who you serve
+        and what success looks like — future audits will read through it.
       </p>
     );
   }

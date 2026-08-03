@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   projectBriefField,
   projectLivingBriefContent,
+  contentToKernelPayload,
 } from "./brief-project";
+import { emptyBriefContent } from "./brief-project";
 
 describe("projectBriefField", () => {
   it("never returns raw JSON for nested objects", () => {
@@ -56,5 +58,29 @@ describe("projectLivingBriefContent", () => {
     expect(content.plannedChanges).toContain("story board");
     expect(content.identity).not.toContain("{");
     expect(content.offers).toBe("Pulse\nStandard");
+  });
+});
+
+describe("contentToKernelPayload", () => {
+  it("round-trips narrative fields into kernel-shaped JSON", () => {
+    const content = emptyBriefContent("brand");
+    content.identity = "AuditLayerMedia builds creator audits.";
+    content.audience = "Wellness creators.";
+    content.positioning = "Domain-calibrated.";
+    content.offers = "Pulse\nStandard";
+    content.goals = "Grow IG";
+    content.vision = "Research desk";
+    content.voice = "Clinical-calm";
+    content.successCriteria = "Clear next move";
+    content.constraints = "No hype";
+    content.activeExperiments = "Subject home first";
+    content.plannedChanges = "Ship Living Brief edit";
+
+    const payload = contentToKernelPayload(content);
+    expect(payload.identity.summary).toContain("AuditLayerMedia");
+    expect(payload.identity.vision).toBe("Research desk");
+    expect(payload.offers).toEqual(["Pulse", "Standard"]);
+    expect(payload.goals).toEqual(["Grow IG"]);
+    expect(payload.decisions).toEqual(["Ship Living Brief edit"]);
   });
 });

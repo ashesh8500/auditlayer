@@ -81,9 +81,10 @@ export function PreviewSetupForm({ currentPlan }: { currentPlan: Plan }) {
           Demo subjects
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Reseeds <strong>AuditLayerMedia</strong> (live @auditlayermedia
-          Instagram + auditlayermedia.com), plus optional demos Narin
-          Fazlalipour and GlowState Wellness. Use after an empty Subjects list.
+          Refreshes <strong>AuditLayerMedia</strong> (live @auditlayermedia
+          Instagram + auditlayermedia.com), plus demos Narin Fazlalipour and
+          GlowState Wellness. Prior demos are archived — Living Briefs cannot be
+          deleted.
         </p>
         <form action={seedAction} className="mt-5">
           <Button

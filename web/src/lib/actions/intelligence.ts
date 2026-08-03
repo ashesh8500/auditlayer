@@ -1,11 +1,11 @@
 /**
  * Server-side intelligence adapters wired to kernel service-role RPCs.
- *
- * Falls back to deterministic stubs when admin Supabase is not configured
- * (local UI / typecheck without credentials). Never invents live scanning.
+ * Fails closed when admin Supabase is not configured — no stub success paths.
  */
 
 "use server";
+
+import { revalidatePath } from "next/cache";
 
 import { requireProfile } from "@/lib/auth";
 import {
@@ -29,9 +29,12 @@ import {
   stubPrepareAndSubmitBatch,
   type PrepareBatchOutcome,
 } from "@/lib/intelligence/api";
+import { canonicalizeWebsiteLocator } from "@/lib/intelligence/channel-locator";
+import { contentToKernelPayload } from "@/lib/intelligence/brief-project";
 import type {
   BatchSubmission,
   ChannelPlatform,
+  LivingBriefContent,
   SubjectType,
 } from "@/lib/intelligence/types";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -58,7 +61,11 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
   if (!stub.ok) return stub;
 
   if (!isSupabaseAdminConfigured()) {
-    return stub;
+    return {
+      ok: false,
+      mode: "live",
+      error: "Audit submission is not configured on this environment.",
+    };
   }
 
   const profile = await requireProfile();
@@ -155,10 +162,14 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
       }
 
       if (UUID_RE.test(subjectId) && channelType) {
+        const locatorForLink =
+          channelType === "website"
+            ? canonicalizeWebsiteLocator(decision.normalizedHandle || locator)
+            : decision.normalizedHandle || locator;
         await rpcLinkSubjectChannel(admin, {
           subjectId,
           channelType,
-          locator: decision.normalizedHandle || locator,
+          locator: locatorForLink,
           managed: true,
         });
       }
@@ -223,9 +234,12 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
 export async function resolveBriefProposalAction(input: {
   proposalId: string;
   status: "accepted" | "rejected";
-}): Promise<{ ok: true; mode: "live" | "stub" } | { ok: false; error: string }> {
-  if (!UUID_RE.test(input.proposalId) || !isSupabaseAdminConfigured()) {
-    return { ok: true, mode: "stub" };
+}): Promise<{ ok: true; mode: "live" } | { ok: false; error: string }> {
+  if (!UUID_RE.test(input.proposalId)) {
+    return { ok: false, error: "Invalid proposal." };
+  }
+  if (!isSupabaseAdminConfigured()) {
+    return { ok: false, error: "Could not save that decision right now." };
   }
 
   try {
@@ -241,6 +255,80 @@ export async function resolveBriefProposalAction(input: {
     return {
       ok: false,
       error: err instanceof Error ? err.message : "Could not resolve proposal.",
+    };
+  }
+}
+
+export async function saveLivingBriefVersionAction(input: {
+  subjectId: string;
+  content: LivingBriefContent;
+}): Promise<
+  | { ok: true; versionId: string; version: number }
+  | { ok: false; error: string }
+> {
+  if (!UUID_RE.test(input.subjectId)) {
+    return { ok: false, error: "Invalid subject." };
+  }
+  if (!isSupabaseAdminConfigured()) {
+    return { ok: false, error: "Could not save the Living Brief right now." };
+  }
+
+  const identity = input.content.identity?.trim() ?? "";
+  const audience = input.content.audience?.trim() ?? "";
+  if (identity.length < 8 && audience.length < 8) {
+    return {
+      ok: false,
+      error: "Add at least who you are or who you serve before saving.",
+    };
+  }
+
+  try {
+    const profile = await requireProfile();
+    const admin = createAdminClient();
+
+    const { data: subject, error: subjectError } = await admin
+      .from("subjects")
+      .select("id, user_id")
+      .eq("id", input.subjectId)
+      .maybeSingle();
+    if (subjectError || !subject || subject.user_id !== profile.id) {
+      return { ok: false, error: "Subject not found." };
+    }
+
+    const { data: latest } = await admin
+      .from("living_brief_versions")
+      .select("version")
+      .eq("subject_id", input.subjectId)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const nextVersion = (latest?.version ?? 0) + 1;
+    const payload = contentToKernelPayload(input.content);
+
+    const versionId = await rpcRecordLivingBriefVersion(admin, {
+      subjectId: input.subjectId,
+      version: nextVersion,
+      createdBy: profile.id,
+      identity: payload.identity,
+      audience: payload.audience,
+      positioning: payload.positioning,
+      offers: payload.offers,
+      goals: payload.goals,
+      constraints: payload.constraints,
+      experiments: payload.experiments,
+      decisions: payload.decisions,
+      confirmed: true,
+    });
+
+    revalidatePath(`/subjects/${input.subjectId}`);
+    revalidatePath("/subjects");
+    revalidatePath("/audits/new");
+
+    return { ok: true, versionId, version: nextVersion };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not save Living Brief.",
     };
   }
 }

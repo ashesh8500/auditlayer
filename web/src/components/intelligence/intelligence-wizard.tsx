@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -31,17 +32,19 @@ import type {
   SubjectType,
 } from "@/lib/intelligence/types";
 import {
-  fixtureSubjects,
-  fixtureChannels,
-  fixtureBriefVersions,
-} from "@/lib/intelligence/fixtures";
-import {
   estimateBatchDuration,
   validateBatch,
 } from "@/lib/intelligence/batch";
 import { prepareAndSubmitIntelligenceBatch } from "@/lib/actions/intelligence";
 import { allowedReportTypes, type Plan } from "@/lib/domain";
 import { LivingBriefView } from "@/components/intelligence/living-brief-view";
+import {
+  canonicalizeWebsiteLocator,
+  channelDedupeKey,
+  displayWebsiteHost,
+  inputLooksLikeWebsite,
+  suggestChannelsForInput,
+} from "@/lib/intelligence/channel-locator";
 
 type BatchReportType = "pulse" | "standard" | "extended" | "blueprint";
 
@@ -128,10 +131,7 @@ export function IntelligenceWizard({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
 
-  const baseSubjects = useMemo(() => {
-    if (initialSubjects.length > 0) return initialSubjects;
-    return fixtureSubjects();
-  }, [initialSubjects]);
+  const baseSubjects = useMemo(() => initialSubjects, [initialSubjects]);
   const subjects = useMemo(() => {
     if (state.subjectId.startsWith("new-") && state.newSubjectName) {
       return [
@@ -151,40 +151,39 @@ export function IntelligenceWizard({
 
   const channels = useMemo(() => {
     if (!state.subjectId || state.subjectId.startsWith("new-")) return [];
-    if (initialChannelsBySubject[state.subjectId]?.length) {
-      return initialChannelsBySubject[state.subjectId]!;
-    }
-    if (initialSubjects.length > 0) return [];
-    return fixtureChannels(state.subjectId);
-  }, [state.subjectId, initialChannelsBySubject, initialSubjects.length]);
+    return initialChannelsBySubject[state.subjectId] ?? [];
+  }, [state.subjectId, initialChannelsBySubject]);
 
   const briefVersions = useMemo(() => {
     if (!state.subjectId || state.subjectId.startsWith("new-")) return [];
-    if (initialBriefsBySubject[state.subjectId]?.length) {
-      return initialBriefsBySubject[state.subjectId]!;
-    }
-    if (initialSubjects.length > 0) {
-      // Live mode with no brief row yet — empty is valid for brand-new subjects.
-      return [] as LivingBriefVersion[];
-    }
-    return fixtureBriefVersions(state.subjectId);
-  }, [state.subjectId, initialBriefsBySubject, initialSubjects.length]);
+    return initialBriefsBySubject[state.subjectId] ?? [];
+  }, [state.subjectId, initialBriefsBySubject]);
   const currentBrief = briefVersions[0] ?? null;
 
   const effectiveChannels = useMemo(() => {
     const list = [...channels];
-    if (state.newWebsiteUrl.trim()) {
-      list.push({
-        id: "pending-website",
-        platform: "website",
-        handle: "",
-        url: state.newWebsiteUrl.trim(),
-        ownershipStatus: "managed",
-        displayName: state.newWebsiteUrl.trim().replace(/^https?:\/\//, ""),
-        avatarUrl: null,
-        connected: false,
-        subjectId: state.subjectId || "pending",
-      });
+    const pending = state.newWebsiteUrl.trim();
+    if (pending) {
+      const canonical = canonicalizeWebsiteLocator(pending);
+      const already = list.some(
+        (c) =>
+          c.platform === "website" &&
+          channelDedupeKey("website", c.url || "") ===
+            channelDedupeKey("website", canonical),
+      );
+      if (!already && canonical) {
+        list.push({
+          id: "pending-website",
+          platform: "website",
+          handle: "",
+          url: canonical,
+          ownershipStatus: "managed",
+          displayName: displayWebsiteHost(canonical),
+          avatarUrl: null,
+          connected: false,
+          subjectId: state.subjectId || "pending",
+        });
+      }
     }
     return list;
   }, [channels, state.newWebsiteUrl, state.subjectId]);
@@ -258,17 +257,12 @@ export function IntelligenceWizard({
       return;
     }
 
-    setSubmitNotice(
-      outcome.mode === "stub"
-        ? `Batch prepared (${outcome.batchId}) in stub mode — admin Supabase not configured.`
-        : `Batch submitted — opening progress…`,
-    );
+    setSubmitNotice(`Batch submitted — opening progress…`);
     const progressId = outcome.auditIds[0];
-    if (progressId && outcome.mode === "live") {
+    if (progressId) {
       router.push(`/audits/${progressId}`);
       return;
     }
-    // Stub / no audit id — still land somewhere findable.
     router.push(`/subjects/${outcome.subjectId}`);
   };
 
@@ -321,13 +315,32 @@ export function IntelligenceWizard({
             update({ selectedChannelIds: next });
           }}
           onWebsiteUrlChange={(url) => update({ newWebsiteUrl: url })}
+          onPickSuggestedChannel={(id) => {
+            const next = state.selectedChannelIds.includes(id)
+              ? state.selectedChannelIds
+              : [...state.selectedChannelIds, id];
+            update({ selectedChannelIds: next, newWebsiteUrl: "" });
+          }}
           onNext={() => {
             const ids = [...state.selectedChannelIds];
             if (
               state.newWebsiteUrl.trim() &&
               !ids.includes("pending-website")
             ) {
-              ids.push("pending-website");
+              const canonical = canonicalizeWebsiteLocator(
+                state.newWebsiteUrl,
+              );
+              const match = channels.find(
+                (c) =>
+                  c.platform === "website" &&
+                  channelDedupeKey("website", c.url || "") ===
+                    channelDedupeKey("website", canonical),
+              );
+              if (match) {
+                if (!ids.includes(match.id)) ids.push(match.id);
+              } else if (canonical) {
+                ids.push("pending-website");
+              }
             }
             const requests: BatchAuditRequest[] = ids.map((cid) => ({
               channelId: cid,
@@ -343,6 +356,7 @@ export function IntelligenceWizard({
 
       {step === 2 && (
         <LensStep
+          subjectId={state.subjectId}
           currentBrief={currentBrief}
           changeNotes={state.changeNotes}
           onChangeNotes={(notes) => update({ changeNotes: notes })}
@@ -582,6 +596,7 @@ function ChannelStep({
   newWebsiteUrl,
   onToggleChannel,
   onWebsiteUrlChange,
+  onPickSuggestedChannel,
   onNext,
   onBack,
 }: {
@@ -590,15 +605,25 @@ function ChannelStep({
   newWebsiteUrl: string;
   onToggleChannel: (id: string) => void;
   onWebsiteUrlChange: (url: string) => void;
+  onPickSuggestedChannel: (id: string) => void;
   onNext: () => void;
   onBack: () => void;
 }) {
   const managed = channels.filter(
     (c) => c.ownershipStatus !== "observed" && c.id !== "pending-website",
   );
+  const suggestions = suggestChannelsForInput(newWebsiteUrl, managed);
+  const exactWebsiteMatch =
+    inputLooksLikeWebsite(newWebsiteUrl) &&
+    suggestions.find(
+      (s) =>
+        s.platform === "website" &&
+        channelDedupeKey("website", s.url || "") ===
+          channelDedupeKey("website", newWebsiteUrl),
+    );
   const canContinue =
     selectedIds.some((id) => id !== "pending-website") ||
-    newWebsiteUrl.trim().length > 0;
+    (newWebsiteUrl.trim().length > 0 && !exactWebsiteMatch);
 
   return (
     <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -633,7 +658,9 @@ function ChannelStep({
                     {ch.displayName || ch.handle || ch.url}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {ch.platform === "website" ? "Website" : `@${ch.handle}`}
+                    {ch.platform === "website"
+                      ? displayWebsiteHost(ch.url || "")
+                      : `@${ch.handle}`}
                     {" · "}
                     {ch.connected ? "Connected — live data" : "Public research"}
                   </p>
@@ -661,15 +688,43 @@ function ChannelStep({
           htmlFor="website-url"
           className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
         >
-          Add a website channel
+          Add a website or handle
         </Label>
         <Input
           id="website-url"
           value={newWebsiteUrl}
           onChange={(e) => onWebsiteUrlChange(e.target.value)}
-          placeholder="https://yourbrand.com"
-          className="h-11 font-mono text-sm"
+          placeholder="auditlayermedia.com or @handle"
+          className="h-11 text-sm"
+          autoComplete="off"
         />
+        {suggestions.length > 0 && (
+          <ul className="border border-border bg-card divide-y divide-border">
+            {suggestions.map((s) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-muted)]"
+                  onClick={() => onPickSuggestedChannel(s.id)}
+                >
+                  <PlatformIcon platform={s.platform} />
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {s.displayName || s.handle || s.url}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Already in workspace — select
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {exactWebsiteMatch && (
+          <p className="text-xs text-[color:var(--accent)]">
+            That site is already on this subject. Use the match above instead of
+            adding a duplicate.
+          </p>
+        )}
       </div>
 
       <div className="flex justify-between pt-2">
@@ -697,48 +752,73 @@ function ChannelStep({
 }
 
 function LensStep({
+  subjectId,
   currentBrief,
   changeNotes,
   onChangeNotes,
   onNext,
   onBack,
 }: {
+  subjectId: string;
   currentBrief: LivingBriefVersion | null;
   changeNotes: string;
   onChangeNotes: (notes: string) => void;
   onNext: () => void;
   onBack: () => void;
 }) {
+  const canLinkSubject =
+    Boolean(subjectId) && !subjectId.startsWith("new-");
+
   return (
     <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="space-y-1">
-        <h2 className="text-xl font-bold tracking-tight">Confirm the lens</h2>
+        <h2 className="text-xl font-bold tracking-tight">
+          Set the strategy for this audit
+        </h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Your Living Brief calibrates the analysis. Review the current version
-          and note what has changed since the last audit.
+          This audit will use the current Living Brief to prioritize what
+          matters. Review it here; edit strategy on the subject page if it has
+          changed.
         </p>
       </div>
 
       {currentBrief ? (
         <div className="border border-border bg-card p-5 shadow-[var(--shadow)]">
-          <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Living Brief · v{currentBrief.version}
+              Using Living Brief · v{currentBrief.version}
             </p>
-            <Badge tone={currentBrief.source === "user" ? "accent" : "warning"}>
-              {currentBrief.source === "user" ? "Confirmed" : "Suggested"}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="accent">Active lens</Badge>
+              {canLinkSubject && (
+                <Link
+                  href={`/subjects/${subjectId}`}
+                  className="text-xs font-semibold text-[color:var(--accent)] hover:underline"
+                >
+                  Edit Living Brief
+                </Link>
+              )}
+            </div>
           </div>
           <div className="mt-4">
             <LivingBriefView content={currentBrief.content} />
           </div>
         </div>
       ) : (
-        <div className="border border-dashed border-border p-6 text-center">
+        <div className="border border-dashed border-border p-6 text-center space-y-3">
           <p className="text-sm text-muted-foreground">
             No Living Brief yet. A default brief will be created from your
-            subject and channel data.
+            subject and channel data — or set strategy first on the subject
+            page.
           </p>
+          {canLinkSubject && (
+            <Link
+              href={`/subjects/${subjectId}`}
+              className="inline-block text-sm font-semibold text-[color:var(--accent)] hover:underline"
+            >
+              Create Living Brief on subject
+            </Link>
+          )}
         </div>
       )}
 
@@ -747,7 +827,7 @@ function LensStep({
           htmlFor="change-notes"
           className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
         >
-          What has changed since the last audit?
+          What changed since your last audit? (optional)
         </Label>
         <Textarea
           id="change-notes"

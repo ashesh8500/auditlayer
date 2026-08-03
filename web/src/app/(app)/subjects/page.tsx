@@ -9,7 +9,7 @@ export const metadata = { title: "Subjects — AuditLayerMedia" };
 
 export default async function SubjectsPage() {
   await requireProfile();
-  const { subjects, source } = await listSubjectsForUser();
+  const { subjects } = await listSubjectsForUser();
 
   return (
     <main className="alm-shell py-8 sm:py-12 animate-page-in">
@@ -33,9 +33,7 @@ export default async function SubjectsPage() {
       </div>
 
       <p className="mt-4 text-xs text-muted-foreground">
-        {source === "live"
-          ? "Subjects loaded from your workspace."
-          : "Fixture subjects until kernel tables are readable on this environment."}
+        Subjects in your workspace.
       </p>
 
       {subjects.length === 0 ? (
