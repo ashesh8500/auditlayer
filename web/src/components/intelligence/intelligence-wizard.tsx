@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useTransition, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -35,7 +35,10 @@ import {
   estimateBatchDuration,
   validateBatch,
 } from "@/lib/intelligence/batch";
-import { prepareAndSubmitIntelligenceBatch } from "@/lib/actions/intelligence";
+import {
+  loadSubjectWizardContextAction,
+  prepareAndSubmitIntelligenceBatch,
+} from "@/lib/actions/intelligence";
 import { allowedReportTypes, type Plan } from "@/lib/domain";
 import { LivingBriefView } from "@/components/intelligence/living-brief-view";
 import {
@@ -130,6 +133,17 @@ export function IntelligenceWizard({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
+  const [channelsBySubject, setChannelsBySubject] = useState(
+    initialChannelsBySubject,
+  );
+  const [briefsBySubject, setBriefsBySubject] = useState(
+    initialBriefsBySubject,
+  );
+  const [contextPending, startContextLoad] = useTransition();
+  const [contextError, setContextError] = useState<string | null>(null);
+  const loadedSubjectsRef = useRef(
+    new Set(Object.keys(initialChannelsBySubject)),
+  );
 
   const baseSubjects = useMemo(() => initialSubjects, [initialSubjects]);
   const subjects = useMemo(() => {
@@ -149,15 +163,39 @@ export function IntelligenceWizard({
     return baseSubjects;
   }, [baseSubjects, state.newSubjectName, state.newSubjectType, state.subjectId]);
 
+  useEffect(() => {
+    const subjectId = state.subjectId;
+    if (!subjectId || subjectId.startsWith("new-")) return;
+    if (loadedSubjectsRef.current.has(subjectId)) return;
+
+    setContextError(null);
+    startContextLoad(async () => {
+      const result = await loadSubjectWizardContextAction({ subjectId });
+      if (!result.ok) {
+        setContextError(result.error);
+        return;
+      }
+      loadedSubjectsRef.current.add(subjectId);
+      setChannelsBySubject((prev) => ({
+        ...prev,
+        [subjectId]: result.channels,
+      }));
+      setBriefsBySubject((prev) => ({
+        ...prev,
+        [subjectId]: result.briefs,
+      }));
+    });
+  }, [state.subjectId]);
+
   const channels = useMemo(() => {
     if (!state.subjectId || state.subjectId.startsWith("new-")) return [];
-    return initialChannelsBySubject[state.subjectId] ?? [];
-  }, [state.subjectId, initialChannelsBySubject]);
+    return channelsBySubject[state.subjectId] ?? [];
+  }, [state.subjectId, channelsBySubject]);
 
   const briefVersions = useMemo(() => {
     if (!state.subjectId || state.subjectId.startsWith("new-")) return [];
-    return initialBriefsBySubject[state.subjectId] ?? [];
-  }, [state.subjectId, initialBriefsBySubject]);
+    return briefsBySubject[state.subjectId] ?? [];
+  }, [state.subjectId, briefsBySubject]);
   const currentBrief = briefVersions[0] ?? null;
 
   const effectiveChannels = useMemo(() => {
@@ -308,6 +346,8 @@ export function IntelligenceWizard({
           channels={effectiveChannels}
           selectedIds={state.selectedChannelIds}
           newWebsiteUrl={state.newWebsiteUrl}
+          loading={contextPending}
+          loadError={contextError}
           onToggleChannel={(id) => {
             const next = state.selectedChannelIds.includes(id)
               ? state.selectedChannelIds.filter((cid) => cid !== id)
@@ -410,7 +450,7 @@ function Stepper({ step, labels }: { step: number; labels: string[] }) {
         return (
           <li key={label} className="flex flex-1 items-center gap-2.5">
             <span
-              className={`grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold transition-all duration-300 ${
+              className={`grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold transition-colors duration-150 ${
                 isCompleted
                   ? "bg-[color:var(--green)] text-white"
                   : isActive
@@ -466,7 +506,7 @@ function SubjectStep({
     Boolean(selectedId) || (showNew && draftName.trim().length >= 2);
 
   return (
-    <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <section className="space-y-6 animate-in fade-in slide-in-from-bottom-1 duration-150">
       <div className="space-y-1">
         <h2 className="text-xl font-bold tracking-tight">Choose a subject</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
@@ -521,7 +561,7 @@ function SubjectStep({
       </button>
 
       {showNew && (
-        <div className="space-y-3 border border-border bg-card p-4 animate-in fade-in duration-200">
+        <div className="space-y-3 border border-border bg-card p-4 animate-in fade-in duration-150">
           <Label
             htmlFor="new-subject-name"
             className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
@@ -594,6 +634,8 @@ function ChannelStep({
   channels,
   selectedIds,
   newWebsiteUrl,
+  loading,
+  loadError,
   onToggleChannel,
   onWebsiteUrlChange,
   onPickSuggestedChannel,
@@ -603,6 +645,8 @@ function ChannelStep({
   channels: ChannelSummary[];
   selectedIds: string[];
   newWebsiteUrl: string;
+  loading?: boolean;
+  loadError?: string | null;
   onToggleChannel: (id: string) => void;
   onWebsiteUrlChange: (url: string) => void;
   onPickSuggestedChannel: (id: string) => void;
@@ -622,11 +666,12 @@ function ChannelStep({
           channelDedupeKey("website", newWebsiteUrl),
     );
   const canContinue =
-    selectedIds.some((id) => id !== "pending-website") ||
-    (newWebsiteUrl.trim().length > 0 && !exactWebsiteMatch);
+    !loading &&
+    (selectedIds.some((id) => id !== "pending-website") ||
+      (newWebsiteUrl.trim().length > 0 && !exactWebsiteMatch));
 
   return (
-    <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <section className="space-y-6 animate-in fade-in slide-in-from-bottom-1 duration-150">
       <div className="space-y-1">
         <h2 className="text-xl font-bold tracking-tight">Choose channels</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
@@ -634,6 +679,16 @@ function ChannelStep({
           managed channels use public research.
         </p>
       </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin text-[color:var(--accent)]" />
+          Loading channels…
+        </div>
+      )}
+      {loadError && (
+        <p className="text-sm text-[color:var(--red)]">{loadError}</p>
+      )}
 
       {managed.length > 0 && (
         <div className="space-y-2">
@@ -770,7 +825,7 @@ function LensStep({
     Boolean(subjectId) && !subjectId.startsWith("new-");
 
   return (
-    <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <section className="space-y-6 animate-in fade-in slide-in-from-bottom-1 duration-150">
       <div className="space-y-1">
         <h2 className="text-xl font-bold tracking-tight">
           Set the strategy for this audit
@@ -906,7 +961,7 @@ function BatchStep({
   };
 
   return (
-    <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <section className="space-y-6 animate-in fade-in slide-in-from-bottom-1 duration-150">
       <div className="space-y-1">
         <h2 className="text-xl font-bold tracking-tight">Review &amp; submit</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">

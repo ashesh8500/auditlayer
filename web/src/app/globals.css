@@ -203,11 +203,11 @@
   }
 }
 
-/* ── Scroll-reveal animations ── */
+/* ── Scroll-reveal animations (landing only; keep short) ── */
 @keyframes reveal-up {
   from {
     opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -216,7 +216,7 @@
 }
 
 .animate-reveal {
-  animation: reveal-up 0.6s ease-out both;
+  animation: reveal-up 0.35s ease-out both;
 }
 
 @supports (animation-timeline: view()) {
@@ -236,14 +236,71 @@
   }
 }
 
-/* Page transition — subtle fade for route changes */
+/* Page transition — snappy enough that tooling feels instant */
 @keyframes page-in {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(2px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 .animate-page-in {
-  animation: page-in 0.3s ease-out both;
+  animation: page-in 120ms ease-out both;
+}
+
+/* Skeleton shimmer while routes / panels load */
+@keyframes alm-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.alm-skeleton {
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--muted) 85%, transparent) 0%,
+    color-mix(in oklab, var(--muted) 55%, white) 45%,
+    color-mix(in oklab, var(--muted) 85%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: alm-shimmer 1.05s ease-in-out infinite;
+}
+
+/* Top navigation progress — makes slow RSC navigations feel intentional */
+.alm-nav-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  height: 2px;
+  width: 0;
+  pointer-events: none;
+  background: var(--accent);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--accent) 55%, transparent);
+}
+
+.alm-nav-progress--active {
+  width: 72%;
+  transition: width 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.alm-nav-progress--done {
+  width: 100%;
+  opacity: 0;
+  transition:
+    width 120ms ease-out,
+    opacity 180ms ease-out 40ms;
+}
+
+/* Pressed / pending link feedback */
+.alm-pressable {
+  transition:
+    transform 80ms ease-out,
+    opacity 80ms ease-out,
+    background-color 120ms ease-out,
+    color 120ms ease-out,
+    border-color 120ms ease-out;
+}
+.alm-pressable:active {
+  transform: translateY(1px) scale(0.98);
 }
 
 /* Respect user motion preferences */
@@ -252,5 +309,8 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  .alm-skeleton {
+    animation: none;
   }
 }

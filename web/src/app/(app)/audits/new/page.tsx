@@ -41,17 +41,6 @@ export default async function NewAuditPage({
 
   const plan = effectivePlanForProfile(profile as never);
   const { subjects } = await listSubjectsForUser();
-  const channelsBySubject: Record<string, ChannelSummary[]> = {};
-  const briefsBySubject: Record<string, LivingBriefVersion[]> = {};
-  await Promise.all(
-    subjects.map(async (subject) => {
-      channelsBySubject[subject.id] = await listChannelsForSubject(subject.id);
-      briefsBySubject[subject.id] = await listBriefVersionsForSubject(
-        subject.id,
-        subject.type,
-      );
-    }),
-  );
 
   const initialSubjectId =
     subjectParam &&
@@ -60,8 +49,23 @@ export default async function NewAuditPage({
       ? subjectParam
       : undefined;
 
+  // Only preload the selected subject — other subjects load on pick (snappy TTFB).
+  const channelsBySubject: Record<string, ChannelSummary[]> = {};
+  const briefsBySubject: Record<string, LivingBriefVersion[]> = {};
+  if (initialSubjectId) {
+    const subject = subjects.find((s) => s.id === initialSubjectId);
+    if (subject) {
+      const [channels, briefs] = await Promise.all([
+        listChannelsForSubject(subject.id),
+        listBriefVersionsForSubject(subject.id, subject.type),
+      ]);
+      channelsBySubject[subject.id] = channels;
+      briefsBySubject[subject.id] = briefs;
+    }
+  }
+
   return (
-    <main className="alm-shell py-8 sm:py-12">
+    <main className="alm-shell py-8 sm:py-12 animate-page-in">
       <div className="mx-auto mb-8 max-w-2xl border-b border-border pb-6">
         <p className="alm-kicker">New audit</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">

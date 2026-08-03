@@ -134,7 +134,7 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
             role="tab"
             aria-selected={activeTab === tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-3 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px sm:px-4 ${
+            className={`px-3 py-2.5 text-sm font-medium border-b-2 transition-colors duration-100 -mb-px sm:px-4 ${
               activeTab === tab
                 ? "border-[color:var(--accent)] text-[color:var(--accent)]"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -643,7 +643,7 @@ function ScoresTab({ scores }: { scores: ScoreEvidence[] }) {
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
               {dim.score != null ? (
                 <div
-                  className="h-full rounded-full bg-[color:var(--accent)] transition-[width] duration-700"
+                  className={`h-full rounded-full bg-[color:var(--accent)] transition-[width] duration-300`}
                   style={{ width: `${(dim.score / dim.maxScore) * 100}%` }}
                 />
               ) : (

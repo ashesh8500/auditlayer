@@ -31,10 +31,16 @@ import {
 } from "@/lib/intelligence/api";
 import { canonicalizeWebsiteLocator } from "@/lib/intelligence/channel-locator";
 import { contentToKernelPayload } from "@/lib/intelligence/brief-project";
+import {
+  listBriefVersionsForSubject,
+  listChannelsForSubject,
+} from "@/lib/intelligence/subjects";
 import type {
   BatchSubmission,
   ChannelPlatform,
+  ChannelSummary,
   LivingBriefContent,
+  LivingBriefVersion,
   SubjectType,
 } from "@/lib/intelligence/types";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -329,6 +335,48 @@ export async function saveLivingBriefVersionAction(input: {
     return {
       ok: false,
       error: err instanceof Error ? err.message : "Could not save Living Brief.",
+    };
+  }
+}
+
+export async function loadSubjectWizardContextAction(input: {
+  subjectId: string;
+}): Promise<
+  | {
+      ok: true;
+      channels: ChannelSummary[];
+      briefs: LivingBriefVersion[];
+    }
+  | { ok: false; error: string }
+> {
+  if (!UUID_RE.test(input.subjectId)) {
+    return { ok: false, error: "Invalid subject." };
+  }
+  try {
+    await requireProfile();
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    const { data: subject } = await supabase
+      .from("subjects")
+      .select("id, subject_type")
+      .eq("id", input.subjectId)
+      .maybeSingle();
+    if (!subject) {
+      return { ok: false, error: "Subject not found." };
+    }
+    const [channels, briefs] = await Promise.all([
+      listChannelsForSubject(input.subjectId),
+      listBriefVersionsForSubject(
+        input.subjectId,
+        subject.subject_type as SubjectType,
+      ),
+    ]);
+    return { ok: true, channels, briefs };
+  } catch (err) {
+    return {
+      ok: false,
+      error:
+        err instanceof Error ? err.message : "Could not load subject channels.",
     };
   }
 }
