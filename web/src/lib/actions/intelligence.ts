@@ -388,16 +388,18 @@ export async function loadSubjectWizardContextAction(input: {
 }
 
 /**
- * Record a customer decision (accept/reject) on a recommendation through the
- * canonical `decisions` ledger.
+ * Record a customer decision (accept/reject/modify) on a recommendation
+ * through the canonical `decisions` ledger.
  *
  * One owner/admin-checked action → one authoritative `record_decision` call
- * for valid submissions. Duplicate, stale, unsupported (including `modified`),
- * malformed, and unauthorized submissions produce zero writes. The RPC itself
- * validates recommendation→subject linkage as the authoritative backstop.
+ * for valid submissions. Duplicate, stale, unsupported (superseded/garbage),
+ * missing-note (modified without a refinement note), malformed, and
+ * unauthorized submissions produce zero writes. The RPC itself validates
+ * recommendation→subject linkage as the authoritative backstop.
  *
- * `modified` is intentionally unsupported: the `decisions.decision` CHECK
- * constraint admits accepted/rejected/superseded, and `recommendation_outcomes`
+ * The decisions vocabulary is accepted/rejected/modified/superseded (additive
+ * migration 20260807150000_decision_vocabulary_modified.sql). `modified`
+ * requires a bounded non-empty refinement note. `recommendation_outcomes`
  * requires an observation window (it is the outcomes ledger, not the decision
  * ledger). See web/artifacts/recommendation-decisions-contract.json.
  */
@@ -460,7 +462,7 @@ export async function recordRecommendationDecisionAction(input: {
       }
       return {
         ok: false,
-        error: recommendationDecisionPlanError(plan, input.decision),
+        error: recommendationDecisionPlanError(plan),
       };
     }
 

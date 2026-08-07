@@ -311,22 +311,23 @@ export async function rpcRecordLivingBriefVersion(
 // decision per recommendation; the client never mutates authoritative state.
 //
 // The kernel `decisions.decision` CHECK constraint admits
-// accepted/rejected/superseded. The customer surface intentionally exposes
-// accepted/rejected only. `modified` is NOT representable without widening
-// that kernel ledger (and `recommendation_outcomes` requires an observation
-// window and is the outcomes ledger, not the decision ledger) — see
-// web/artifacts/recommendation-decisions-contract.json.
+// accepted/rejected/modified/superseded (widened by the additive migration
+// 20260807150000_decision_vocabulary_modified.sql). The customer surface
+// exposes accepted/rejected/modified; `modified` requires a bounded non-empty
+// refinement note. `superseded` remains a kernel/worker transition value that
+// stays honest in the projection. `recommendation_outcomes` requires an
+// observation window and is the outcomes ledger, not the decision ledger —
+// see web/artifacts/recommendation-decisions-contract.json.
 // ===========================================================================
 
 /** Decisions a customer can authoritatively record through the existing ledger. */
-export type RecommendationDecisionValue = "accepted" | "rejected";
+export type RecommendationDecisionValue = "accepted" | "rejected" | "modified";
 
 export const RECOMMENDATION_DECISION_VALUES: readonly RecommendationDecisionValue[] =
-  ["accepted", "rejected"] as const;
+  ["accepted", "rejected", "modified"] as const;
 
 /** Ledger vocabulary values that exist in the schema but are NOT customer-operable here. */
 export const UNSUPPORTED_RECOMMENDATION_DECISIONS: readonly string[] = [
-  "modified",
   "superseded",
 ] as const;
 
@@ -403,6 +404,7 @@ export function projectLatestDecision(
 export type RecommendationDecisionDisplayState =
   | "actionable" // proposed + no durable decision → decision controls
   | "accepted" // durable accepted decision
+  | "modified" // durable modified decision — refinement requested with a note
   | "rejected_suppressed" // durable rejected — suppressed until new evidence
   | "decided_other"; // superseded/terminal status without an open decision
 
@@ -412,6 +414,7 @@ export function recommendationDecisionDisplayState(rec: {
 }): RecommendationDecisionDisplayState {
   if (rec.decision?.decision === "rejected") return "rejected_suppressed";
   if (rec.decision?.decision === "accepted") return "accepted";
+  if (rec.decision?.decision === "modified") return "modified";
   if (rec.decision) return "decided_other"; // superseded/unknown ledger state
   if (rec.status === "proposed") return "actionable";
   return "decided_other";
@@ -440,6 +443,7 @@ export type RecommendationDecisionPlan =
         | "wrong_subject"
         | "unauthorized"
         | "unsupported"
+        | "missing_note"
         | "duplicate"
         | "stale";
       decisionId?: string;
@@ -486,6 +490,11 @@ export function planRecommendationDecision(
   if (!isSupportedRecommendationDecision(input.decision)) {
     return { action: "noop", reason: "unsupported" };
   }
+  // `modified` is a refinement request: it must carry a bounded non-empty
+  // note describing what should change. Blank refinement notes never write.
+  if (input.decision === "modified" && note.length === 0) {
+    return { action: "noop", reason: "missing_note" };
+  }
   const prior = input.existingDecisions.find(
     (d) => d.target_id === input.recommendationId,
   );
@@ -511,7 +520,6 @@ export function planRecommendationDecision(
 /** Customer-safe, opaque error copy for a noop plan (never leaks internals). */
 export function recommendationDecisionPlanError(
   plan: Extract<RecommendationDecisionPlan, { action: "noop" }>,
-  requestedDecision: string,
 ): string {
   switch (plan.reason) {
     case "not_configured":
@@ -524,9 +532,9 @@ export function recommendationDecisionPlanError(
     case "unauthorized":
       return "Recommendation not found.";
     case "unsupported":
-      return requestedDecision === "modified"
-        ? "Modifying a recommendation isn't supported yet — you can accept or reject it."
-        : "That decision isn't supported.";
+      return "That decision isn't supported.";
+    case "missing_note":
+      return "Please add a note explaining what should change.";
     case "stale":
       return "This recommendation was already decided.";
     case "duplicate":

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   Eye,
+  FileEdit,
   FileText,
   GitBranch,
   History,
@@ -25,6 +26,7 @@ import {
 import { resolveBriefProposalAction } from "@/lib/actions/intelligence";
 import { recordRecommendationDecisionAction } from "@/lib/actions/intelligence";
 import {
+  RECOMMENDATION_DECISION_NOTE_MAX,
   recommendationDecisionDisplayState,
   type RecommendationDecisionValue,
 } from "@/lib/intelligence/api";
@@ -125,6 +127,7 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
   const decideRecommendation = (
     id: string,
     decision: RecommendationDecisionValue,
+    note?: string,
   ) => {
     setRecommendationError(null);
     setResolvingRecId(id);
@@ -133,6 +136,7 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
         subjectId,
         recommendationId: id,
         decision,
+        note,
       });
       setResolvingRecId(null);
       if (!result.ok) {
@@ -143,7 +147,7 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
         ...prev,
         [id]: {
           decision: result.decision,
-          note: "",
+          note: note ?? "",
           decidedBy: "",
           decidedAt: new Date().toISOString(),
         },
@@ -817,8 +821,15 @@ function RecommendationsTab({
   error: string | null;
   resolving: boolean;
   resolvingId: string | null;
-  onDecide: (id: string, decision: RecommendationDecisionValue) => void;
+  onDecide: (
+    id: string,
+    decision: RecommendationDecisionValue,
+    note?: string,
+  ) => void;
 }) {
+  const [refiningId, setRefiningId] = useState<string | null>(null);
+  const [refineNote, setRefineNote] = useState("");
+
   if (recommendations.length === 0) {
     return (
       <EmptyState
@@ -840,6 +851,20 @@ function RecommendationsTab({
     };
   });
 
+  const startRefine = (id: string) => {
+    setRefiningId(id);
+    setRefineNote("");
+  };
+
+  const submitRefine = (id: string) => {
+    const note = refineNote.trim();
+    if (note.length === 0 || note.length > RECOMMENDATION_DECISION_NOTE_MAX) {
+      return;
+    }
+    setRefiningId(null);
+    onDecide(id, "modified", note);
+  };
+
   return (
     <section>
       <div className="mb-4 flex items-center gap-2">
@@ -848,8 +873,9 @@ function RecommendationsTab({
         <Badge tone="neutral">{recommendations.length}</Badge>
       </div>
       <p className="mb-4 text-sm text-muted-foreground">
-        Accept a recommendation to keep it active, or reject it — rejected
-        advice stays suppressed until new evidence supports it again.
+        Accept a recommendation to keep it active, reject it to suppress it, or
+        refine it with a note — rejected advice stays suppressed until new
+        evidence supports it again.
       </p>
       {error && (
         <p role="alert" className="mb-3 text-sm text-[color:var(--red)]">
@@ -881,6 +907,12 @@ function RecommendationsTab({
               {state === "accepted" && decision && (
                 <p className="mt-2 text-xs text-[color:var(--green)]">
                   You accepted this
+                  {decision.note ? ` — ${decision.note}` : ""}.
+                </p>
+              )}
+              {state === "modified" && decision && (
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  You asked to refine this
                   {decision.note ? ` — ${decision.note}` : ""}.
                 </p>
               )}
@@ -916,6 +948,71 @@ function RecommendationsTab({
                   )}
                   Reject
                 </Button>
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  disabled={resolving}
+                  aria-label={`Refine recommendation: ${rec.text}`}
+                  onClick={() => startRefine(rec.id)}
+                >
+                  {resolving && resolvingId === rec.id ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <FileEdit className="size-4" />
+                  )}
+                  Refine
+                </Button>
+              </div>
+            )}
+            {state === "actionable" && refiningId === rec.id && (
+              <div className="w-full rounded-lg border border-border bg-muted/40 p-3">
+                <label
+                  htmlFor={`refine-note-${rec.id}`}
+                  className="block text-xs font-semibold text-foreground"
+                >
+                  What should change?
+                </label>
+                <textarea
+                  id={`refine-note-${rec.id}`}
+                  value={refineNote}
+                  onChange={(e) => setRefineNote(e.target.value)}
+                  maxLength={RECOMMENDATION_DECISION_NOTE_MAX}
+                  rows={3}
+                  className="mt-2 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-[color:var(--accent)]"
+                />
+                <p className="mt-1 text-right font-mono text-[10px] text-muted-foreground">
+                  {refineNote.length}/{RECOMMENDATION_DECISION_NOTE_MAX}
+                </p>
+                <div className="mt-2 flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="outline"
+                    disabled={resolving}
+                    onClick={() => setRefiningId(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="lg"
+                    disabled={
+                      resolving ||
+                      refineNote.trim().length === 0 ||
+                      refineNote.trim().length > RECOMMENDATION_DECISION_NOTE_MAX
+                    }
+                    aria-label={`Save refinement for recommendation: ${rec.text}`}
+                    onClick={() => submitRefine(rec.id)}
+                  >
+                    {resolving && resolvingId === rec.id ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <FileEdit className="size-4" />
+                    )}
+                    Save refinement
+                  </Button>
+                </div>
               </div>
             )}
           </li>

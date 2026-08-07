@@ -10,51 +10,71 @@ import {
   type PurchasablePlan,
 } from "@/lib/stripe";
 import { isSupabaseAdminConfigured, siteUrl } from "@/lib/env";
+import {
+  runCheckoutIntent,
+  type CheckoutIntentDeps,
+  type CheckoutProfile,
+  type CheckoutStripeBoundary,
+  type ProfileLinkResult,
+} from "@/lib/checkout-intent";
 
 /**
- * Start a Stripe Checkout session for a self-serve plan upgrade. Plan/billing
- * columns on `profiles` are NEVER written from the browser — only the webhook
- * (service-role) reconciles them. Here we only persist `stripe_customer_id`
- * via the service-role client so the webhook can map events back to the user.
+ * Production wiring for the canonical checkout-intent orchestration
+ * (`runCheckoutIntent` in `web/src/lib/checkout-intent.ts`). The real Stripe
+ * client satisfies `CheckoutStripeBoundary` structurally (both `create`
+ * methods accept a `RequestOptions`-shaped `{ idempotencyKey }`), so this is a
+ * pass-through of the canonical client — NOT a provider wrapper. The service-
+ * role `profiles` update writes ONLY `stripe_customer_id` and is verified to
+ * have affected the intended row before any checkout session is requested.
+ * Plan/subscription columns are NEVER written from the browser — only the
+ * webhook (service-role) reconciles them.
+ */
+const checkoutDeps: CheckoutIntentDeps = {
+  getProfile: async (): Promise<CheckoutProfile> => {
+    const profile = await requireProfile();
+    return {
+      id: profile.id,
+      email: profile.email,
+      stripe_customer_id: profile.stripe_customer_id,
+    };
+  },
+  getStripe: (): CheckoutStripeBoundary | null => {
+    const stripe = getStripe();
+    return stripe as CheckoutStripeBoundary | null;
+  },
+  getPriceId: (plan) => priceIdForPlan(plan),
+  isSupabaseAdminConfigured,
+  linkCustomer: async (
+    profileId: string,
+    customerId: string,
+  ): Promise<ProfileLinkResult> => {
+    const { data, error } = await createAdminClient()
+      .from("profiles")
+      .update({ stripe_customer_id: customerId })
+      .eq("id", profileId)
+      .select("id")
+      .maybeSingle();
+    return {
+      data: (data as { id: string } | null) ?? null,
+      error: error ? { message: error.message } : null,
+    };
+  },
+  siteUrl,
+};
+
+/**
+ * Start a Stripe Checkout session for a self-serve plan upgrade.
+ *
+ * One deterministic checkout intent: the same profile+plan+offer-contract
+ * version yields the same non-secret Stripe idempotency keys, existing
+ * customer links are reused, the service-role profile-link update is verified
+ * before any session is requested, and every failure returns a bounded
+ * recovery redirect (never success). `profiles.plan` is never written here;
+ * the webhook (service-role) reconciles entitlements after payment.
  */
 export async function startCheckout(plan: PurchasablePlan): Promise<void> {
-  const profile = await requireProfile();
-  const stripe = getStripe();
-  const priceId = priceIdForPlan(plan);
-
-  if (!stripe || !priceId) {
-    redirect("/dashboard?billing=unconfigured");
-  }
-
-  let customerId = profile.stripe_customer_id;
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: profile.email ?? undefined,
-      metadata: { profile_id: profile.id },
-    });
-    customerId = customer.id;
-    if (isSupabaseAdminConfigured()) {
-      await createAdminClient()
-        .from("profiles")
-        .update({ stripe_customer_id: customerId })
-        .eq("id", profile.id);
-    }
-  }
-
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: customerId,
-    line_items: [{ price: priceId, quantity: 1 }],
-    client_reference_id: profile.id,
-    metadata: { profile_id: profile.id, plan },
-    subscription_data: { metadata: { profile_id: profile.id, plan } },
-    success_url: `${siteUrl()}/dashboard?billing=success`,
-    cancel_url: `${siteUrl()}/dashboard?billing=cancelled`,
-    allow_promotion_codes: true,
-  });
-
-  if (!session.url) redirect("/dashboard?billing=error");
-  redirect(session.url);
+  const result = await runCheckoutIntent(plan, checkoutDeps);
+  redirect(result.url);
 }
 
 /** Form-action wrappers (avoid `.bind` typing friction in server components). */

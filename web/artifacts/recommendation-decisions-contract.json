@@ -1,8 +1,8 @@
 {
   "contract": "recommendation-decisions",
-  "version": "1.0.0",
-  "status": "partial",
-  "summary": "Customer-owned recommendation decisions exposed through the canonical Subject Home boundary: one owner/admin-checked server action writes exactly one authoritative decisions-ledger call; the read model projects the latest durable decision. accepted/rejected are fully operable; modified is explicitly unsupported by the existing schema and must NOT be fabricated.",
+  "version": "1.1.0",
+  "status": "verified",
+  "summary": "Customer-owned recommendation decisions exposed through the canonical Subject Home boundary: one owner/admin-checked server action writes exactly one authoritative decisions-ledger call; the read model projects the latest durable decision. accepted/rejected/modified are fully operable; modified requires a bounded non-empty refinement note and is recorded through the same record_decision RPC (additive migration 20260807150000_decision_vocabulary_modified.sql widened the decisions.decision CHECK). superseded remains honest in the projection and is never fabricated as success.",
   "object": {
     "ledger": "decisions",
     "writeRpc": "record_decision",
@@ -16,20 +16,23 @@
       "p_note"
     ],
     "targetType": "recommendation",
-    "targetLinkage": "record_decision validates recommendation -> intelligence_run -> subject (kernel-owned); product layer pre-checks the same linkage and fails closed with zero writes"
+    "targetLinkage": "record_decision validates recommendation -> intelligence_run -> subject (kernel-owned); product layer pre-checks the same linkage and fails closed with zero writes",
+    "vocabularyMigration": "20260807150000_decision_vocabulary_modified.sql (additive; later than W013 reserved 20260807140000)"
   },
   "decisionLedger": {
-    "schemaVocabulary": ["accepted", "rejected", "superseded"],
-    "supportedCustomerDecisions": ["accepted", "rejected"],
-    "unsupportedCustomerDecision": "modified",
-    "unsupportedReason": "decisions.decision CHECK constraint (kernel migration 20260723020611_alm_intelligence_kernel.sql) admits only accepted/rejected/superseded. recommendation_outcomes admits accepted/rejected/modified but requires a bounded observation window (window_start/window_end) and is the outcomes ledger for efficacy observation, NOT the decision ledger; using it as a substitute decision ledger without an observation window is prohibited.",
+    "schemaVocabulary": ["accepted", "rejected", "modified", "superseded"],
+    "supportedCustomerDecisions": ["accepted", "rejected", "modified"],
+    "unsupportedCustomerDecision": "superseded",
+    "unsupportedReason": "superseded is a kernel/worker transition value; it stays honest in the projection (display state decided_other) and is never mapped to accepted/free/success. recommendation_outcomes admits accepted/rejected/modified but requires a bounded observation window (window_start/window_end) and is the outcomes ledger for efficacy observation, NOT the decision ledger; using it as a substitute decision ledger without an observation window is prohibited.",
+    "modifiedNoteBound": "non-empty trimmed note, max 500 characters (RECOMMENDATION_DECISION_NOTE_MAX)",
     "supersededHandling": "superseded remains honest in the projection (display state decided_other); never mapped to accepted/free/success."
   },
   "writeSemantics": {
     "validSubmission": "exactly one allowlisted record_decision RPC call",
+    "modified": "exactly one record_decision RPC call with p_decision='modified' and the bounded refinement note; blank note -> zero writes (missing_note); oversized note -> zero writes (malformed)",
     "duplicate": "zero writes; idempotent ok with the existing decision id",
     "stale": "zero writes; bounded error",
-    "unsupported": "zero writes; modified returns an explicit partial message, never success",
+    "unsupported": "zero writes; superseded/garbage returns an explicit unsupported message, never success",
     "malformed": "zero writes (invalid uuids, note > 500 chars)",
     "unauthorized": "zero writes; opaque 'Recommendation not found.' (no existence leak)",
     "wrongSubject": "zero writes; product pre-check plus kernel RPC backstop",
@@ -37,20 +40,16 @@
   },
   "projection": {
     "latestDecision": "decisions rows ordered by created_at desc, then id desc; first row per target wins (deterministic regardless of query order)",
+    "modifiedProjection": "a durable modified decision projects as display state 'modified' with its refinement note and no further decision controls",
     "rejectedSuppression": "a recommendation whose latest durable decision is rejected is suppressed from actionable surfaces (Overview active list and Recommendations tab) until a NEW recommendation row with new evidence/run exists; rejection recurrence is tied to the durable decision",
     "clientState": "client mirrors a decision ONLY after the server action confirms the write; the decisions ledger remains the authoritative source and the read model re-projects on every load"
   },
   "experience": {
-    "controls": "Accept/Reject buttons rendered only for proposed recommendations with no durable decision",
-    "loading": "both controls disabled while a decision is pending; spinner on the active control",
-    "errorRecovery": "bounded role=alert error; cleared on the next attempt",
-    "accessibility": "native button elements with text labels and aria-labels",
-    "targetSize": "size=lg (h-11 = 44px) decision controls in a flex-wrap container for the 390px composition"
-  },
-  "missingAuthority": {
-    "owner": "kernel migrations (supabase/migrations/) and generated Supabase types (web/src/lib/supabase/types.ts)",
-    "change": "add 'modified' to the decisions.decision CHECK constraint via an additive kernel-owned migration, refresh generated types, then re-open the product surface",
-    "correctionPath": "kernel-owned ALM card; the product adapter already routes through the one-call path and would enable modified without a second store"
+    "controls": "Accept/Reject/Refine buttons rendered only for proposed recommendations with no durable decision; Refine opens a bounded note input (maxLength 500) with Save refinement / Cancel",
+    "loading": "all decision controls disabled while a decision is pending; spinner on the active control",
+    "errorRecovery": "bounded role=alert error; cleared on the next attempt; the refinement form stays open so the note can be corrected and retried",
+    "accessibility": "native button elements with text labels and aria-labels; labeled textarea for the refinement note",
+    "targetSize": "size=lg (h-11 = 44px) decision and refinement controls in flex-wrap containers for the 390px composition"
   },
   "fixtureNote": "Fixtures prove software contracts only; they do not prove live RLS behavior, creator efficacy, retention, conversion, or business impact. network_calls=0, provider_calls=0."
 }

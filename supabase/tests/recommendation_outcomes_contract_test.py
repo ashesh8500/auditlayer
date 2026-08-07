@@ -79,10 +79,24 @@ def main() -> int:
     candidates = [p for p in files if p.name == EXPECTED_FILE]
     require(len(candidates) == 1, f"expected exactly one {EXPECTED_FILE}")
     migration = candidates[0]
+    m = version_re.match(migration.name)
+    require(m is not None, f"unparseable migration filename: {migration.name}")
+    outcome_idx = files.index(migration)
+    later_sql = "\n".join(
+        p.read_text(encoding="utf-8").lower() for p in files[outcome_idx + 1 :]
+    )
     check(
-        "0.1 migration is the newest file",
-        migration == files[-1],
-        f"expected latest={migration.name}, got {files[-1].name}",
+        "0.1 outcome ledger is not superseded or rewritten by a later migration",
+        migration in files
+        and not lower_matches(
+            later_sql,
+            r"drop\s+table\s+(if\s+exists\s+)?public\.recommendation_outcomes",
+        )
+        and not lower_matches(
+            later_sql,
+            r"create\s+table\s+(if\s+not\s+exists\s+)?public\.recommendation_outcomes",
+        ),
+        f"expected {migration.name} contract intact at head",
     )
 
     sql = migration.read_text(encoding="utf-8")

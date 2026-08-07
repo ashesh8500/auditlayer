@@ -150,11 +150,15 @@ export type RecommendationStatus =
 
 /**
  * Decision values the `decisions` ledger can authoritatively hold for a
- * recommendation. The customer surface writes accepted/rejected only;
+ * recommendation. The customer surface writes accepted/rejected/modified;
  * superseded may appear from kernel/worker transitions and stays honest in
  * the projection (never mapped to accept/free/success).
  */
-export type RecommendationLedgerDecision = "accepted" | "rejected" | "superseded";
+export type RecommendationLedgerDecision =
+  | "accepted"
+  | "rejected"
+  | "modified"
+  | "superseded";
 
 /** Latest durable customer decision for a recommendation, projected server-side. */
 export interface RecommendationDecision {

@@ -43,31 +43,53 @@ describe("RecommendationsTab — decision controls (static contract)", () => {
     expect(setIndex).toBeGreaterThan(confirmIndex);
   });
 
-  it("renders Accept and Reject controls with keyboard-accessible naming", () => {
+  it("renders Accept, Reject, and Refine controls with keyboard-accessible naming", () => {
     expect(src).toContain('onClick={() => onDecide(rec.id, "accepted")}');
     expect(src).toContain('onClick={() => onDecide(rec.id, "rejected")}');
+    expect(src).toContain('onClick={() => submitRefine(rec.id)}');
     expect(src).toMatch(/Accept\s*<\/Button>/);
     expect(src).toMatch(/Reject\s*<\/Button>/);
+    expect(src).toMatch(/Refine\s*<\/Button>/);
     expect(src).toContain('aria-label={`Accept recommendation: ${rec.text}`}');
     expect(src).toContain('aria-label={`Reject recommendation: ${rec.text}`}');
+    expect(src).toContain('aria-label={`Refine recommendation: ${rec.text}`}');
     expect(src).toContain('type="button"');
   });
 
-  it("disables both controls while a decision is pending (no double submit)", () => {
+  it("opens a bounded refinement note input and submits modified with the note", () => {
+    expect(src).toContain('onClick={() => startRefine(rec.id)}');
+    expect(src).toContain("What should change?");
+    expect(src).toContain("maxLength={RECOMMENDATION_DECISION_NOTE_MAX}");
+    expect(src).toContain("onDecide(id, \"modified\", note)");
+    expect(src).toContain("refineNote.trim().length === 0");
+    // Cancel path closes the form without writing.
+    expect(src).toContain("Cancel");
+  });
+
+  it("disables the decision controls while a decision is pending (no double submit)", () => {
     const disabledMatches = src.match(/disabled=\{resolving\}/g) ?? [];
-    expect(disabledMatches.length).toBeGreaterThanOrEqual(2);
+    expect(disabledMatches.length).toBeGreaterThanOrEqual(3);
   });
 
   it("keeps controls at >=44px on the 390px composition (size=lg → h-11)", () => {
     // Button size="lg" maps to h-11 (44px) in the shared Button primitive.
     const acceptIndex = src.indexOf('onClick={() => onDecide(rec.id, "accepted")}');
-    const rejectIndex = src.indexOf('onClick={() => onDecide(rec.id, "rejected")}');
+    const refineIndex = src.indexOf('onClick={() => startRefine(rec.id)}');
+    const submitIndex = src.indexOf('onClick={() => submitRefine(rec.id)}');
     const beforeAccept = src.slice(0, acceptIndex);
-    const between = src.slice(acceptIndex, rejectIndex);
+    const between = src.slice(acceptIndex, refineIndex);
     expect(beforeAccept.lastIndexOf('size="lg"')).toBeGreaterThan(
       beforeAccept.lastIndexOf("RecommendationsTab"),
     );
     expect(between).toContain('size="lg"');
+    // The Refine control itself and the Save refinement button are 44px.
+    const refineButtonBlock = src.slice(acceptIndex, refineIndex + 300);
+    expect(refineButtonBlock).toContain('size="lg"');
+    const submitButtonBlock = src.slice(
+      Math.max(0, submitIndex - 500),
+      submitIndex + 100,
+    );
+    expect(submitButtonBlock).toContain('size="lg"');
     // The controls container wraps at narrow widths (390px composition).
     expect(src).toContain('flex w-full flex-wrap gap-2 sm:w-auto');
   });
@@ -86,6 +108,12 @@ describe("RecommendationsTab — decision controls (static contract)", () => {
     );
     expect(controlsBlock).toContain('onDecide(rec.id, "accepted")');
     expect(controlsBlock).toContain('onDecide(rec.id, "rejected")');
+    expect(controlsBlock).toContain("submitRefine(rec.id)");
+  });
+
+  it("shows honest refinement-requested copy for a durable modified decision", () => {
+    expect(src).toContain('state === "modified" && decision');
+    expect(src).toContain("You asked to refine this");
   });
 
   it("surfaces bounded errors and recovers on the next attempt", () => {
@@ -120,7 +148,7 @@ describe("recordRecommendationDecisionAction — one owner-checked authoritative
     expect(src).toContain("planRecommendationDecision");
   });
 
-  it("never maps unknown/modified to success (unsupported path is explicit)", () => {
+  it("routes every decision through the fail-closed planner (never success without a plan)", () => {
     expect(src).toContain("planRecommendationDecision");
     expect(src).toContain("recommendationDecisionPlanError");
   });

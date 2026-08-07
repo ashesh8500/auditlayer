@@ -1,0 +1,62 @@
+{
+  "contract": "checkout-intent-contract",
+  "version": "1.0.0",
+  "program": "P11/P12 · C14/C15 · F7/F9 · D3/D4/D8",
+  "idea": "ALM-I-022: make checkout intent creation idempotent and recoverable",
+  "object": "authenticated profile + purchasable offer → reusable Stripe customer linkage → idempotent checkout session → bounded redirect/recovery state (web/src/lib/actions/billing.ts::startCheckout)",
+  "authority": {
+    "pricing": "web/src/lib/offer-pricing.ts priceIdForPlan (starter/pro only)",
+    "offer_version": "web/src/lib/offer-contract.ts OFFER_CONTRACT_VERSION (1.0.0)",
+    "profiles_link": "service-role profiles.stripe_customer_id update; affected row verified before any session request",
+    "entitlements": "webhook reconciliation (W013 stripe-reconciliation.ts + reconcile_stripe_subscription) remains authoritative after payment; checkout never writes profiles.plan",
+    "dashboard": "existing /dashboard?billing=success|cancelled|unconfigured|error query vocabulary is the only redirect/recovery surface"
+  },
+  "idempotency": {
+    "scheme": "SHA-256 over domain-separated versioned input: checkout-intent:<scheme_version>:<scope>:<profileId>:<plan>:<offerVersion>",
+    "scheme_version": "1.0.0",
+    "customer_prefix": "alm_cus_",
+    "session_prefix": "alm_ses_",
+    "key_hex_length": 64,
+    "offer_version_source": "offer-contract",
+    "inputs": ["stable profile id", "purchasable plan", "canonical offer version"],
+    "excluded_inputs": ["email", "customer secret", "raw metadata", "wall clock", "random"],
+    "determinism": "same profile+plan+offer version yields the same bounded non-secret customer/session keys"
+  },
+  "call_matrix": {
+    "existing_customer_reuse": "customer_calls=0 link_calls=0 session_calls=1",
+    "first_creation": "customer_calls=1 link_calls=1 session_calls=1 (customer key on customer create, session key on session create)",
+    "duplicate_retry": "identical session idempotency key across retries; customer key identical after interrupted first attempt; at most one logical customer and one logical checkout session at the adapter boundary",
+    "profile_link_failure": "update error/no affected row/link throw → session_calls=0, bounded error recovery",
+    "invalid_cases": "missing stripe/price/unsupported plan/admin unconfigured → provider_calls=0, bounded unconfigured recovery",
+    "provider_failures": "customer/session throw or missing session URL → bounded error recovery, never success"
+  },
+  "recovery": {
+    "unconfigured": "/dashboard?billing=unconfigured",
+    "error": "/dashboard?billing=error",
+    "codes": [
+      "missing_stripe",
+      "missing_price",
+      "unsupported_plan",
+      "admin_unconfigured",
+      "profile_link_failed",
+      "profile_link_no_row",
+      "customer_failed",
+      "session_failed",
+      "missing_session_url"
+    ],
+    "never_success_on_failure": true,
+    "unknown_never_free": true
+  },
+  "write_invariant": "service-role profiles update writes only stripe_customer_id (never plan/subscription_status); affected-row verification before any checkout session; no billing store, no client plan authority, no alternate provider, no extra intake step",
+  "w013_authority": "W013 webhook/reconciliation remains authoritative after payment; checkout intent does not repair or duplicate it",
+  "network_calls": 0,
+  "payment_calls": 0,
+  "customer_mutations": 0,
+  "provider_calls": 0,
+  "no_environment_path": true,
+  "no_timestamp": true,
+  "no_customer_data": true,
+  "no_secret_values": true,
+  "no_raw_profile_payload": true,
+  "fixture_note": "Recording fixtures prove adapter call shape and fail-closed behavior only; they do not prove live Stripe replay, payment success, conversion, database isolation, or willingness to pay."
+}

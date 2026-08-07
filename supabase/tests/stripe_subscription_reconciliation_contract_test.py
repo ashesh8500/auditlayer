@@ -5,7 +5,9 @@ No live database is contacted, nothing is deployed, and no customer data is
 touched.  This test reads the migration file under supabase/migrations/ and
 asserts the software contract statically:
 
-  - the new migration is the newest additive migration;
+  - the new migration is present, migrations remain ordered, and no later
+    migration drops or recreates the receipt table (later additive waves may
+    legitimately supersede the newest-file position);
   - the append-only `provider_event_receipts` table exists, keyed by provider
     event id, with typed bounded columns, a digest-length bound, plan/status/
     command/outcome allowlists, a unique (provider, provider_event_id)
@@ -92,10 +94,22 @@ def main() -> int:
     candidates = [p for p in files if p.name == EXPECTED_FILE]
     require(len(candidates) == 1, f"expected exactly one {EXPECTED_FILE}")
     migration = candidates[0]
+    stripe_idx = files.index(migration)
+    later_sql = "\n".join(
+        p.read_text(encoding="utf-8").lower() for p in files[stripe_idx + 1 :]
+    )
     check(
-        "0.1 migration is the newest file",
-        migration == files[-1],
-        f"expected latest={migration.name}, got {files[-1].name}",
+        "0.1 receipt ledger is not superseded or rewritten by a later migration",
+        migration in files
+        and not lower_matches(
+            later_sql,
+            r"drop\s+table\s+(if\s+exists\s+)?public\.provider_event_receipts",
+        )
+        and not lower_matches(
+            later_sql,
+            r"create\s+table\s+(if\s+not\s+exists\s+)?public\.provider_event_receipts",
+        ),
+        f"expected {migration.name} contract intact at head",
     )
 
     sql = migration.read_text(encoding="utf-8")
@@ -455,8 +469,8 @@ def main() -> int:
         migration.name,
     )
     check(
-        "9.2 migration count advanced additively (45 files)",
-        len(files) == 45,
+        "9.2 migration count advanced additively (>= 45 files)",
+        len(files) >= 45,
         f"got {len(files)} files",
     )
 

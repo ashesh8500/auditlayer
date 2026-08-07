@@ -110,7 +110,7 @@ async function executePlan(
       }
       return {
         ok: false,
-        error: recommendationDecisionPlanError(plan, requestedDecision),
+        error: recommendationDecisionPlanError(plan),
       };
     }
     const decisionId = await rpcRecordDecision(client, plan.call);
@@ -182,6 +182,25 @@ describe("rpcRecordDecision (one authoritative ledger call)", () => {
     expect(client.calls[0]!.args.p_note).toBe("");
   });
 
+  it("records a modified refinement with its note in the same single-call shape", async () => {
+    const client = recordingAdminClient();
+    const id = await rpcRecordDecision(client, {
+      subjectId: SUBJECT_ID,
+      userId: OWNER_ID,
+      targetType: "recommendation",
+      targetId: REC_ID,
+      decision: "modified",
+      note: "Tighten the niche to metabolic health",
+    });
+    expect(id).toBe(DECISION_ID);
+    expect(client.calls).toHaveLength(1);
+    expect(client.calls[0]!.name).toBe("record_decision");
+    expect(client.calls[0]!.args.p_decision).toBe("modified");
+    expect(client.calls[0]!.args.p_note).toBe(
+      "Tighten the niche to metabolic health",
+    );
+  });
+
   it("surfaces a ledger persistence failure as an error, never success", async () => {
     const client = recordingAdminClient({
       rpcError: { message: "connection terminated" },
@@ -228,6 +247,42 @@ describe("planRecommendationDecision matrix", () => {
       writes: 1,
     },
     {
+      name: "owner modified with refinement note → one write",
+      overrides: {
+        decision: "modified",
+        note: "Make it specific to cold plunge frequency",
+      },
+      plan: "write",
+      decision: "modified",
+      writes: 1,
+    },
+    {
+      name: "admin modified with refinement note on another user's subject → one write",
+      overrides: {
+        profile: { id: ADMIN_ID, role: "admin" },
+        subject: { id: SUBJECT_ID, user_id: OTHER_ID },
+        decision: "modified",
+        note: "Adjust the posting cadence recommendation",
+      },
+      plan: "write",
+      decision: "modified",
+      writes: 1,
+    },
+    {
+      name: "modified without a refinement note → zero writes",
+      overrides: { decision: "modified", note: "   " },
+      plan: "noop",
+      reason: "missing_note",
+      writes: 0,
+    },
+    {
+      name: "modified with an oversized refinement note → zero writes",
+      overrides: { decision: "modified", note: "x".repeat(501) },
+      plan: "noop",
+      reason: "malformed",
+      writes: 0,
+    },
+    {
       name: "admin accept on a subject owned by another user → one write",
       overrides: {
         profile: { id: ADMIN_ID, role: "admin" },
@@ -264,13 +319,6 @@ describe("planRecommendationDecision matrix", () => {
       overrides: { subject: null },
       plan: "noop",
       reason: "subject_not_found",
-      writes: 0,
-    },
-    {
-      name: "modified is explicitly unsupported → zero writes",
-      overrides: { decision: "modified" },
-      plan: "noop",
-      reason: "unsupported",
       writes: 0,
     },
     {
@@ -384,8 +432,8 @@ describe("planRecommendationDecision matrix", () => {
     }
   });
 
-  it("covers the declared matrix size (16 rows: accepted, rejected, modified, duplicate, stale, unsupported, malformed, unauthorized, linkage, persistence)", () => {
-    expect(matrix.length).toBeGreaterThanOrEqual(12);
+  it("covers the declared matrix size (accepted, rejected, modified, missing-note, duplicate, stale, unsupported, malformed, unauthorized, linkage, persistence)", () => {
+    expect(matrix.length).toBeGreaterThanOrEqual(16);
   });
 });
 
@@ -413,17 +461,21 @@ describe("persistence failure is never success", () => {
 // ---------------------------------------------------------------------------
 
 describe("decision allowlist", () => {
-  it("admits accepted and rejected only", () => {
-    expect(RECOMMENDATION_DECISION_VALUES).toEqual(["accepted", "rejected"]);
+  it("admits accepted, rejected, and modified (modified requires a note at plan time)", () => {
+    expect(RECOMMENDATION_DECISION_VALUES).toEqual([
+      "accepted",
+      "rejected",
+      "modified",
+    ]);
     expect(isSupportedRecommendationDecision("accepted")).toBe(true);
     expect(isSupportedRecommendationDecision("rejected")).toBe(true);
-    expect(isSupportedRecommendationDecision("modified")).toBe(false);
+    expect(isSupportedRecommendationDecision("modified")).toBe(true);
     expect(isSupportedRecommendationDecision("superseded")).toBe(false);
     expect(isSupportedRecommendationDecision("")).toBe(false);
   });
 
-  it("names modified/superseded as known-but-unsupported (never silently mapped)", () => {
-    expect(UNSUPPORTED_RECOMMENDATION_DECISIONS).toContain("modified");
+  it("names superseded as known-but-not-customer-operable (never silently mapped)", () => {
+    expect(UNSUPPORTED_RECOMMENDATION_DECISIONS).not.toContain("modified");
     expect(UNSUPPORTED_RECOMMENDATION_DECISIONS).toContain("superseded");
   });
 });
@@ -481,6 +533,21 @@ describe("projectLatestDecision (deterministic read-model projection)", () => {
     expect(map[REC_ID]?.decision).toBe("superseded");
   });
 
+  it("projects a modified refinement decision with its note", () => {
+    const map = projectLatestDecision([
+      {
+        id: "d-11",
+        target_id: REC_ID,
+        decision: "modified",
+        note: "Tighten the niche to metabolic health",
+        user_id: OWNER_ID,
+        created_at: "2026-08-05T00:00:00.000Z",
+      },
+    ]);
+    expect(map[REC_ID]?.decision).toBe("modified");
+    expect(map[REC_ID]?.note).toBe("Tighten the niche to metabolic health");
+  });
+
   it("carries note/decidedBy/decidedAt for the durable decision", () => {
     const map = projectLatestDecision([
       {
@@ -530,6 +597,15 @@ describe("recommendationDecisionDisplayState", () => {
     ).toBe("accepted");
   });
 
+  it("marks modified decisions as refinement-requested (no controls)", () => {
+    expect(
+      recommendationDecisionDisplayState({
+        status: "proposed",
+        decision: { decision: "modified", note: "Tighten the niche", decidedBy: OWNER_ID, decidedAt: "t" },
+      }),
+    ).toBe("modified");
+  });
+
   it("never surfaces controls for terminal/superseded states", () => {
     expect(
       recommendationDecisionDisplayState({ status: "in_progress", decision: null }),
@@ -563,18 +639,27 @@ describe("recommendationDecisionDisplayState", () => {
 // ---------------------------------------------------------------------------
 
 describe("recommendationDecisionPlanError (bounded, opaque, no leaks)", () => {
-  it("explicitly names modified as unsupported (partial, never success)", () => {
+  it("explains that modified requires a refinement note (missing_note is a bounded error)", () => {
     const plan = planRecommendationDecision(
-      planInput({ decision: "modified" }),
+      planInput({ decision: "modified", note: "" }),
     );
     expect(plan.action).toBe("noop");
     if (plan.action !== "noop") return;
-    expect(recommendationDecisionPlanError(plan, "modified")).toMatch(
-      /isn't supported yet/i,
+    expect(plan.reason).toBe("missing_note");
+    expect(recommendationDecisionPlanError(plan)).toMatch(
+      /note explaining what should change/i,
     );
-    expect(recommendationDecisionPlanError(plan, "modified")).toMatch(
-      /accept or reject/i,
-    );
+  });
+
+  it("keeps superseded/garbage opaque as unsupported (never success)", () => {
+    for (const decision of ["superseded", "maybe"]) {
+      const plan = planRecommendationDecision(planInput({ decision }));
+      expect(plan.action).toBe("noop");
+      if (plan.action !== "noop") continue;
+      expect(recommendationDecisionPlanError(plan)).toBe(
+        "That decision isn't supported.",
+      );
+    }
   });
 
   it("is opaque for unauthorized/not-found/wrong-subject (no existence leak)", () => {
@@ -587,7 +672,7 @@ describe("recommendationDecisionPlanError (bounded, opaque, no leaks)", () => {
       const plan = planRecommendationDecision(planInput(overrides));
       expect(plan.action).toBe("noop");
       if (plan.action !== "noop") continue;
-      const message = recommendationDecisionPlanError(plan, "accepted");
+      const message = recommendationDecisionPlanError(plan);
       expect(message).toBe("Recommendation not found.");
       expect(message).not.toMatch(/owner|admin|permission|subject id|uuid/i);
     }
@@ -599,7 +684,7 @@ describe("recommendationDecisionPlanError (bounded, opaque, no leaks)", () => {
 // ---------------------------------------------------------------------------
 
 describe("recommendation-decisions contract artifact", () => {
-  it("is a versioned static contract that declares the partial boundary", () => {
+  it("is a versioned static contract that declares the verified vocabulary", () => {
     const raw = readFileSync(
       join(process.cwd(), "artifacts", "recommendation-decisions-contract.json"),
       "utf8",
@@ -609,18 +694,28 @@ describe("recommendation-decisions contract artifact", () => {
       version: string;
       status: string;
       decisionLedger: {
+        schemaVocabulary: string[];
         supportedCustomerDecisions: string[];
         unsupportedCustomerDecision: string;
       };
     };
     expect(artifact.contract).toBe("recommendation-decisions");
-    expect(artifact.version).toBe("1.0.0");
-    expect(artifact.status).toBe("partial");
+    expect(artifact.version).toBe("1.1.0");
+    expect(artifact.status).toBe("verified");
+    expect(artifact.decisionLedger.schemaVocabulary).toEqual([
+      "accepted",
+      "rejected",
+      "modified",
+      "superseded",
+    ]);
     expect(artifact.decisionLedger.supportedCustomerDecisions).toEqual([
       "accepted",
       "rejected",
+      "modified",
     ]);
-    expect(artifact.decisionLedger.unsupportedCustomerDecision).toBe("modified");
+    expect(artifact.decisionLedger.unsupportedCustomerDecision).toBe(
+      "superseded",
+    );
   });
 });
 
