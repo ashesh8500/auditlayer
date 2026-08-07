@@ -8,6 +8,14 @@ from .continuity import (
     ContinuityPacket,
     compile_continuity_packet,
 )
+from .coverage import (
+    ANSWER_KIND_LABELS,
+    ANSWER_KINDS,
+    DATA_NEEDED_MARKER,
+    coverage_summary,
+    validate_answer_coverage,
+    validate_evidence_registry,
+)
 from .evidence import EvidenceValidationError, normalize_evidence
 from .inference import HermesStructuredAnalysisModel
 from .ledger import (
@@ -48,8 +56,11 @@ from .validation import validate_channel_analysis
 from .website import WebsiteCollectionError, WebsiteCollector, WebsiteResponse
 
 __all__ = [
+    "ANSWER_KIND_LABELS",
+    "ANSWER_KINDS",
     "BoundedIntelligenceRuntime",
     "CacheKeyParts",
+    "DATA_NEEDED_MARKER",
     "maybe_commit_subject_ledger",
     "resolve_subject_context",
     "ChannelInput",
@@ -80,6 +91,7 @@ __all__ = [
     "build_ledger_commit",
     "commit_ledger_batch",
     "compile_continuity_packet",
+    "coverage_summary",
     "ensure_subject_home",
     "evidence_upsert_rows",
     "finalize_payload",
@@ -91,5 +103,7 @@ __all__ = [
     "rebuild_subject_home",
     "recommendation_ledger_rows",
     "score_ledger_rows",
+    "validate_answer_coverage",
     "validate_channel_analysis",
+    "validate_evidence_registry",
 ]

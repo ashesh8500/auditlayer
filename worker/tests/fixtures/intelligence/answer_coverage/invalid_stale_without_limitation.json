@@ -1,0 +1,224 @@
+{
+  "evidence": {
+    "ev-bottleneck-analysis": {
+      "confidence": "high",
+      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence_id": "ev-bottleneck-analysis",
+      "expires_at": "2026-08-22T00:00:00Z",
+      "limitations": [],
+      "observed_at": "2026-07-22T00:00:00Z",
+      "source_type": "connected_api"
+    },
+    "ev-ig-content-mix": {
+      "confidence": "high",
+      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence_id": "ev-ig-content-mix",
+      "expires_at": "2026-08-21T00:00:00Z",
+      "limitations": [],
+      "observed_at": "2026-07-21T00:00:00Z",
+      "source_type": "connected_api"
+    },
+    "ev-ig-profile-metrics": {
+      "confidence": "authoritative",
+      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence_id": "ev-ig-profile-metrics",
+      "expires_at": "2026-08-20T00:00:00Z",
+      "limitations": [],
+      "observed_at": "2026-07-20T00:00:00Z",
+      "source_type": "connected_api"
+    },
+    "ev-milestone-trend": {
+      "confidence": "medium",
+      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence_id": "ev-milestone-trend",
+      "expires_at": "2026-08-24T00:00:00Z",
+      "limitations": [
+        "Projection assumes current cadence."
+      ],
+      "observed_at": "2026-07-24T00:00:00Z",
+      "source_type": "methodology"
+    },
+    "ev-money-move": {
+      "confidence": "high",
+      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence_id": "ev-money-move",
+      "expires_at": "2026-08-25T00:00:00Z",
+      "limitations": [],
+      "observed_at": "2026-07-25T00:00:00Z",
+      "source_type": "connected_api"
+    },
+    "ev-peer-benchmark": {
+      "confidence": "medium",
+      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence_id": "ev-peer-benchmark",
+      "expires_at": "2026-08-23T00:00:00Z",
+      "limitations": [
+        "Peer metrics are public best-effort snapshots."
+      ],
+      "observed_at": "2026-07-23T00:00:00Z",
+      "source_type": "connected_api"
+    },
+    "ev-stale-metrics": {
+      "confidence": "high",
+      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence_id": "ev-stale-metrics",
+      "expires_at": "2026-07-01T00:00:00Z",
+      "limitations": [],
+      "observed_at": "2026-06-01T00:00:00Z",
+      "source_type": "connected_api"
+    }
+  },
+  "payload": {
+    "answers": {
+      "better_peers": {
+        "answer_kind": "better_peers",
+        "claims": [
+          {
+            "claim_kind": "comparison",
+            "evidence_ids": [
+              "ev-peer-benchmark"
+            ],
+            "peer_reference": "peer-a",
+            "statement": "Peer A publishes 4.5 posts/week at 5.2% engagement."
+          }
+        ],
+        "headline": "Headline",
+        "limitations": [
+          "Peer metrics are public best-effort snapshots."
+        ],
+        "state": "answered",
+        "summary": "Same-tier peers outpace on cadence and lab B-roll depth."
+      },
+      "blockers": {
+        "answer_kind": "blockers",
+        "claims": [
+          {
+            "claim_kind": "finding",
+            "evidence_ids": [
+              "ev-bottleneck-analysis",
+              "ev-peer-benchmark"
+            ],
+            "statement": "2.1 posts/week versus 4+ peer median."
+          },
+          {
+            "claim_kind": "score_rationale",
+            "evidence_ids": [
+              "ev-bottleneck-analysis"
+            ],
+            "score_dimension": "reach",
+            "statement": "Reach score of 41 reflects thin distribution."
+          }
+        ],
+        "headline": "Headline",
+        "limitations": [],
+        "state": "answered",
+        "summary": "Inconsistent cadence and uneven Reel distribution cap reach."
+      },
+      "current_state": {
+        "answer_kind": "current_state",
+        "claims": [
+          {
+            "claim_kind": "metric",
+            "evidence_ids": [
+              "ev-stale-metrics"
+            ],
+            "statement": "12.4K followers as of the latest snapshot.",
+            "unit": "followers",
+            "value": 12400
+          },
+          {
+            "claim_kind": "metric",
+            "evidence_ids": [
+              "ev-ig-profile-metrics",
+              "ev-ig-content-mix"
+            ],
+            "statement": "4.8% engagement rate over 30 days.",
+            "unit": "percent",
+            "value": 4.8
+          },
+          {
+            "claim_kind": "finding",
+            "evidence_ids": [
+              "ev-ig-content-mix"
+            ],
+            "statement": "Carousel-first mix with weekly Reels."
+          }
+        ],
+        "headline": "Headline",
+        "limitations": [],
+        "state": "answered",
+        "summary": "12.4K followers, 4.8% engagement, carousel-first content engine."
+      },
+      "milestone_path": {
+        "answer_kind": "milestone_path",
+        "claims": [
+          {
+            "claim_kind": "metric",
+            "evidence_ids": [
+              "ev-milestone-trend",
+              "ev-ig-profile-metrics"
+            ],
+            "statement": "20K followers in ~14 weeks at current cadence.",
+            "unit": "weeks",
+            "value": 14
+          }
+        ],
+        "headline": "Headline",
+        "limitations": [
+          "Projection assumes current posting cadence."
+        ],
+        "state": "answered",
+        "summary": "20K in ~14 weeks at current cadence; ~8 weeks at 4x/week."
+      },
+      "money_move": {
+        "answer_kind": "money_move",
+        "claims": [
+          {
+            "claim_kind": "recommendation",
+            "evidence_ids": [
+              "ev-money-move",
+              "ev-ig-content-mix"
+            ],
+            "horizon": "next_quarter",
+            "statement": "Launch $249 cohort anchored to paper breakdowns."
+          }
+        ],
+        "headline": "Headline",
+        "limitations": [],
+        "state": "answered",
+        "summary": "Cohort offer built on the demonstrated research-breakdown engine."
+      },
+      "next_week_actions": {
+        "answer_kind": "next_week_actions",
+        "claims": [
+          {
+            "claim_kind": "recommendation",
+            "evidence_ids": [
+              "ev-ig-content-mix",
+              "ev-bottleneck-analysis"
+            ],
+            "horizon": "this_week",
+            "statement": "Publish a paper-breakdown carousel Tuesday."
+          },
+          {
+            "claim_kind": "recommendation",
+            "evidence_ids": [
+              "ev-bottleneck-analysis",
+              "ev-peer-benchmark"
+            ],
+            "horizon": "this_week",
+            "statement": "Film behind-the-lab Reel for Thursday."
+          }
+        ],
+        "headline": "Headline",
+        "limitations": [],
+        "state": "answered",
+        "summary": "Ship one paper carousel and one behind-the-lab Reel."
+      }
+    },
+    "brief_version": 4,
+    "evidence_snapshot_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "schema_version": "1.0",
+    "subject_id": "11111111-1111-4111-8111-111111111111"
+  }
+}

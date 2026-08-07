@@ -198,5 +198,7 @@ export interface CustomerAuditStatus {
   terminal: CustomerAuditTerminal | null;
   message: string;
   startedAt: string | null;
+  /** Newest meaningful customer-safe progress reference (falls back to startedAt). */
+  lastProgressAt: string | null;
   estimatedCompletion: string | null;
 }

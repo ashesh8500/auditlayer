@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 
 import { validateBatch } from "./batch";
-import { projectCustomerStatus } from "./client-status";
+import { projectCustomerStatus, serializeStatus, hydrateStatus } from "./client-status";
 import { stubPrepareAndSubmitBatch } from "./api";
 import { fixtureChannels, fixtureSubjects } from "./fixtures";
 import type { BatchSubmission } from "./types";
@@ -69,6 +69,77 @@ describe("ALM user stories (logical e2e)", () => {
     const ready = projectCustomerStatus("ready", [], new Date().toISOString());
     expect(ready.terminal).toBe("ready");
     expect(ready.phase).toBe("finalizing");
+  });
+
+  it("story: leave-and-return resume keeps the same truthful state (C8/D4)", () => {
+    const now = Date.parse("2026-08-07T12:00:00.000Z");
+    const at = (offsetMs: number) => new Date(now + offsetMs).toISOString();
+
+    // Creator leaves while the run is fresh (analyzing, recent progress).
+    const events = [
+      {
+        phase: "researching",
+        event_type: "research_started",
+        detail: null,
+        created_at: at(-2 * 60 * 1000),
+      },
+    ];
+    const atLeave = projectCustomerStatus("running", events, at(-20 * 60 * 1000), {
+      staleThresholdMs: 10 * 60 * 1000,
+      nowMs: now,
+    });
+    expect(atLeave.phase).toBe("analyzing");
+
+    // Serialized + hydrated state survives the round trip identically.
+    const restored = hydrateStatus(serializeStatus(atLeave));
+    expect(restored).toEqual(atLeave);
+
+    // Returning later with the same events still projects honestly.
+    const onReturn = projectCustomerStatus("running", events, at(-20 * 60 * 1000), {
+      staleThresholdMs: 10 * 60 * 1000,
+      nowMs: now + 5 * 60 * 1000,
+    });
+    expect(onReturn.phase).toBe("analyzing");
+
+    // Returning much later shows Delayed — a stalled run never pretends to progress.
+    const muchLater = projectCustomerStatus("running", events, at(-20 * 60 * 1000), {
+      staleThresholdMs: 10 * 60 * 1000,
+      nowMs: now + 15 * 60 * 1000,
+    });
+    expect(muchLater.phase).toBe("delayed");
+  });
+
+  it("story: a delayed run is not masked by heartbeat/cache/retry noise (C7/C8)", () => {
+    const now = Date.parse("2026-08-07T12:00:00.000Z");
+    const at = (offsetMs: number) => new Date(now + offsetMs).toISOString();
+
+    const delayed = projectCustomerStatus(
+      "running",
+      [
+        {
+          phase: "running",
+          event_type: "heartbeat",
+          detail: null,
+          created_at: at(-30 * 1000),
+        },
+        {
+          phase: "running",
+          event_type: "cache_hit",
+          detail: null,
+          created_at: at(-20 * 1000),
+        },
+        {
+          phase: "running",
+          event_type: "retry_attempt",
+          detail: "attempt 3",
+          created_at: at(-10 * 1000),
+        },
+      ],
+      at(-25 * 60 * 1000),
+      { staleThresholdMs: 10 * 60 * 1000, nowMs: now },
+    );
+    expect(delayed.phase).toBe("delayed");
+    expect(JSON.stringify(delayed)).not.toMatch(/heartbeat|cache|retry|attempt/i);
   });
 
   it("story: subject home live data shape is enough to leave fixtures", () => {
