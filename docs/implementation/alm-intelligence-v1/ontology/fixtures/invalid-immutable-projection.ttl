@@ -1,0 +1,9 @@
+@prefix alm: <https://auditlayer.com/ontology/alm#> .
+
+# INVALID fixture — invariant: immutable_projection (ReportVersionShape).
+# A ReportVersion asserted as an Audit. Reports are immutable audience
+# projections of a pinned run; conflating the projection with the queue/billing
+# unit breaks the projection boundary (and the report never replaces the
+# Subject). SQL enforces UPDATE/DELETE rejection; SHACL enforces the typed
+# projection disjointness.
+alm:rep1 a alm:ReportVersion, alm:Audit .

@@ -132,7 +132,7 @@ export default async function AccountsPage() {
             return (
               <li
                 key={account.id}
-                className="rounded-[var(--radius)] border border-border bg-card p-5 shadow-[var(--shadow)]"
+                className="alm-panel rounded-[var(--radius)] p-5"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">

@@ -1,0 +1,9 @@
+@prefix alm: <https://auditlayer.com/ontology/alm#> .
+
+# INVALID fixture — invariant: recommendation_decision (RecommendationShape).
+# A Recommendation in a decided state ("accepted") with no backing ClientDecision.
+# Every accepted/rejected/superseded/implemented recommendation must be resolved
+# by exactly one ClientDecision via alm:decidesOn; rejected advice must not
+# revive without new evidence (temporal policy, SQL twin Q3 authoritative).
+alm:rec1 a alm:Recommendation ;
+    alm:recommendationStatus "accepted" .

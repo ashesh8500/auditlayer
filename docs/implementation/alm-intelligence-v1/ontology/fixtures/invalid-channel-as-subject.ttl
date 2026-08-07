@@ -1,0 +1,9 @@
+@prefix alm: <https://auditlayer.com/ontology/alm#> .
+
+# INVALID fixture — invariant: channel_as_subject (ChannelShape).
+# A Channel is asserted as a Subject. A channel is one presence (instagram,
+# website, ...) owned by a durable Subject; it must never itself be the Subject.
+alm:ch1 a alm:Channel, alm:Subject ;
+    alm:channelType "instagram" ;
+    alm:locator "handle" ;
+    alm:managed true .

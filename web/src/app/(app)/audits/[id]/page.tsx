@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ExperienceBanner } from "@/components/ui/experience-banner";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -81,18 +82,19 @@ export default async function AuditDetailPage({
       </header>
 
       {limitations.length > 0 && (
-        <section className="mt-6 rounded-[var(--radius)] border-l-[3px] border-[color:var(--blue)] bg-[color:var(--blue-muted)] px-4 py-3">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--blue)]">
-            Data collection notes
-          </h2>
-          <ul className="mt-2 space-y-1.5">
+        <ExperienceBanner
+          tone="info"
+          title="Data collection notes"
+          className="mt-6"
+        >
+          <ul className="space-y-1.5">
             {limitations.map((l) => (
               <li key={l} className="text-xs text-[color:var(--blue)]">
                 {l}
               </li>
             ))}
           </ul>
-        </section>
+        </ExperienceBanner>
       )}
 
       <div className="mt-8">
@@ -163,7 +165,7 @@ async function ReadyReport({
       </div>
 
       {(versionRows ?? []).length > 0 && (
-        <section className="rounded-[var(--radius)] border border-border bg-card p-5 shadow-[var(--shadow)]">
+        <section className="alm-panel rounded-[var(--radius)] p-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="alm-kicker">Version history</p>

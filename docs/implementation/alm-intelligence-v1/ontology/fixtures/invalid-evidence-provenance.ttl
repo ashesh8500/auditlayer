@@ -1,0 +1,9 @@
+@prefix alm: <https://auditlayer.com/ontology/alm#> .
+
+# INVALID fixture — invariant: evidence_provenance (EvidenceItemShape).
+# Evidence without observed_at and with an undersized content hash. Every
+# EvidenceItem must carry full provenance: content_hash (>= 16 chars),
+# observed_at (xsd:dateTime), and an allowlisted source_type.
+alm:ev1 a alm:EvidenceItem ;
+    alm:contentHash "short" ;
+    alm:sourceType "public_web" .

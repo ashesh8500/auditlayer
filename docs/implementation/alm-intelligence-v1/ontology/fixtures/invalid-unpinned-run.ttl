@@ -1,0 +1,7 @@
+@prefix alm: <https://auditlayer.com/ontology/alm#> .
+
+# INVALID fixture — invariant: unpinned_run (IntelligenceRunShape).
+# An IntelligenceRun without any pins. Every run must pin the Living Brief
+# version, the evidence snapshot, and all contract versions (methodology,
+# expertise pack, prompt, model config, output schema).
+alm:run1 a alm:IntelligenceRun .

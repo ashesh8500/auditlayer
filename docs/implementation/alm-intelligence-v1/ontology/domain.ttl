@@ -8,11 +8,33 @@
 
 # AuditLayer Longitudinal Intelligence — domain ontology (OWL 2 RL / RDFS).
 # Postgres remains system of record. This file documents meaning for CI and agents.
-# Version: 1.0
+# Version: 1.1 — explicit bounded core vocabulary. Core classes are designated with
+# alm:coreClass and answer the six competency questions / fail-closed invariants;
+# subject specializations, claim subtypes, the AI index, and secondary taxonomies
+# are explicitly non-core (alm:nonCoreClass). validate_ontology.py machine-checks
+# the boundary (core <= 24, exact partition of declared classes).
 
 alm: a owl:Ontology ;
     rdfs:label "AuditLayer ALM Ontology" ;
-    owl:versionInfo "1.0" .
+    owl:versionInfo "1.1" ;
+    alm:coreClass alm:Subject, alm:Channel, alm:WorkspaceRelationship,
+        alm:ConnectedRelationship, alm:ManagedRelationship, alm:ObservedTarget,
+        alm:LivingBriefVersion, alm:BriefProposal, alm:EvidenceItem,
+        alm:EvidenceSnapshot, alm:IntelligenceRun, alm:Score, alm:Finding,
+        alm:Recommendation, alm:ClientDecision, alm:ReportVersion, alm:Audit,
+        alm:Claim ;
+    alm:nonCoreClass alm:Person, alm:Creator, alm:Brand, alm:Organization,
+        alm:Project, alm:Observation, alm:Interpretation, alm:RecommendationClaim,
+        alm:DecisionClaim, alm:EmbeddingModel, alm:EvidenceEmbedding,
+        alm:NicheConcept, alm:OfferType, alm:PeerRelation .
+
+alm:coreClass a owl:AnnotationProperty ;
+    rdfs:label "core vocabulary class" ;
+    rdfs:comment "Explicit bounded-core designation. Core classes answer the competency questions and fail-closed invariants; everything else is a specialization or secondary taxonomy." .
+
+alm:nonCoreClass a owl:AnnotationProperty ;
+    rdfs:label "non-core vocabulary class" ;
+    rdfs:comment "Explicit designation outside the bounded core: subject specialization, claim subtype, AI index, or secondary taxonomy." .
 
 ##############################################################################
 # Core nouns

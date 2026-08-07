@@ -1,0 +1,7 @@
+@prefix alm: <https://auditlayer.com/ontology/alm#> .
+
+# INVALID fixture — invariant: managed_vs_observed (ObservedTargetShape).
+# An ObservedTarget is asserted as a ManagedRelationship. One-off public audit
+# targets must never appear as managed workspace property; only connected or
+# explicitly promoted relationships may be managed.
+alm:target1 a alm:ObservedTarget, alm:ManagedRelationship .

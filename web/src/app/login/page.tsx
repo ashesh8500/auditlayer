@@ -38,7 +38,7 @@ export default async function LoginPage({
       <section className="flex items-center justify-center px-4 py-10 sm:px-8">
       <div className="w-full max-w-md animate-page-in">
         <Brand className="mb-8 lg:hidden" />
-        <div className="border border-border bg-card p-6 shadow-[var(--shadow-md)] sm:p-8">
+        <div className="alm-panel p-6 shadow-[var(--shadow-md)] sm:p-8">
           <div className="mb-7">
             <p className="alm-kicker">{trial ? "Trial access" : "Secure access"}</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-foreground">{trial ? "Claim your trial" : "Welcome back"}</h1>

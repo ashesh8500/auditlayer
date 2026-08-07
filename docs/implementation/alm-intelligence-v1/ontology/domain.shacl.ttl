@@ -155,7 +155,7 @@ alm:ScoreShape a sh:NodeShape ;
     ] .
 
 ##############################################################################
-# Recommendation lifecycle
+# Recommendation lifecycle — decided recommendations must be decision-backed
 ##############################################################################
 
 alm:RecommendationShape a sh:NodeShape ;
@@ -164,7 +164,65 @@ alm:RecommendationShape a sh:NodeShape ;
         sh:path alm:recommendationStatus ;
         sh:in ( "proposed" "accepted" "rejected" "implemented" "superseded" ) ;
         sh:minCount 1 ;
+    ] ;
+    # Fail closed: a Recommendation in a decided state (accepted/rejected/
+    # superseded/implemented) must be resolved by at least one ClientDecision
+    # via alm:decidesOn. Expressed as a SPARQL-based constraint (core SHACL):
+    # pyshacl's sh:condition gating is vacuous for target-less shapes. Rejected
+    # advice must not revive without new evidence (temporal policy; SQL twin Q3
+    # remains authoritative for revival).
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Decided recommendations must be backed by a ClientDecision via alm:decidesOn." ;
+        sh:select """
+            SELECT $this ?status
+            WHERE {
+                $this alm:recommendationStatus ?status .
+                FILTER(?status IN ("accepted", "rejected", "superseded", "implemented"))
+                FILTER NOT EXISTS { ?decision alm:decidesOn $this . }
+            }
+        """ ;
     ] .
+
+##############################################################################
+# Observed target — never a managed/connected workspace relationship
+##############################################################################
+
+alm:ObservedTargetShape a sh:NodeShape ;
+    sh:targetClass alm:ObservedTarget ;
+    sh:not [ sh:class alm:ManagedRelationship ] ;
+    sh:not [ sh:class alm:ConnectedRelationship ] .
+
+##############################################################################
+# Client decision — typed decidesOn contract (exactly one target). The sh:class
+# range check is satisfied by rdfs:range entailment under RDFS inference; the
+# enforceable fail-closed direction is RecommendationShape's inverse decidesOn.
+# The Q3 SQL twin (decisions.target_type = 'recommendation') stays authoritative.
+##############################################################################
+
+alm:ClientDecisionShape a sh:NodeShape ;
+    sh:targetClass alm:ClientDecision ;
+    sh:property [
+        sh:path alm:decidesOn ;
+        sh:class alm:Recommendation ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] .
+
+##############################################################################
+# Report version — immutable audience projection of a pinned run; never the
+# queue/billing unit (Audit) and never the Subject itself. SQL enforces the
+# UPDATE/DELETE rejection; SHACL enforces the typed projection boundary.
+##############################################################################
+
+alm:ReportVersionShape a sh:NodeShape ;
+    sh:targetClass alm:ReportVersion ;
+    sh:property [
+        sh:path alm:producedBy ;
+        sh:class alm:IntelligenceRun ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:not [ sh:class alm:Audit ] ;
+    sh:not [ sh:class alm:Subject ] .
 
 ##############################################################################
 # Embedding — secondary index only; model + dims required

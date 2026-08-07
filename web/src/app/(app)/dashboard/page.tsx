@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Filter, Plus, SlidersHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ExperienceBanner, type ExperienceBannerTone } from "@/components/ui/experience-banner";
 import { InstagramConnect } from "@/components/instagram-connect";
 import { StatusBadge } from "@/components/status-badge";
 import { requireProfile } from "@/lib/auth";
@@ -24,17 +25,17 @@ import {
 
 export const metadata = { title: "Reports — AuditLayerMedia" };
 
-const BILLING_MESSAGES: Record<string, { tone: string; text: string }> = {
+const BILLING_MESSAGES: Record<string, { tone: ExperienceBannerTone; text: string }> = {
   success: {
-    tone: "var(--green)",
+    tone: "success",
     text: "Subscription active — your new plan limits apply immediately.",
   },
-  cancelled: { tone: "var(--amber)", text: "Checkout cancelled. No charge was made." },
+  cancelled: { tone: "warning", text: "Checkout cancelled. No charge was made." },
   unconfigured: {
-    tone: "var(--amber)",
+    tone: "warning",
     text: "Billing isn't configured yet. Reach out and we'll sort it.",
   },
-  error: { tone: "var(--red)", text: "Something went wrong starting checkout." },
+  error: { tone: "danger", text: "Something went wrong starting checkout." },
 };
 
 // All known audit statuses for filter pills
@@ -128,16 +129,9 @@ export default async function DashboardPage({
   return (
     <main className="alm-shell py-8 sm:py-12 animate-page-in">
       {billingMsg && (
-        <div
-          className="mb-6 rounded-[var(--radius)] border px-4 py-3 text-sm"
-          style={{
-            borderColor: `color-mix(in oklch, ${billingMsg.tone}, transparent 70%)`,
-            background: `color-mix(in oklch, ${billingMsg.tone}, transparent 92%)`,
-            color: billingMsg.tone,
-          }}
-        >
+        <ExperienceBanner tone={billingMsg.tone} className="mb-6">
           {billingMsg.text}
-        </div>
+        </ExperienceBanner>
       )}
 
       <div className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-7">
@@ -186,7 +180,7 @@ export default async function DashboardPage({
 
       {/* Usage + plan */}
       <section className="mt-6 grid gap-4 sm:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-[var(--radius)] border border-border bg-card p-5">
+        <div className="alm-panel rounded-[var(--radius)] p-5 shadow-none">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
               Audit usage
@@ -215,7 +209,7 @@ export default async function DashboardPage({
           </p>
         </div>
 
-        <div className="rounded-[var(--radius)] border border-border bg-card p-5">
+        <div className="alm-panel rounded-[var(--radius)] p-5 shadow-none">
           <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Plan
           </span>
@@ -340,7 +334,7 @@ export default async function DashboardPage({
                   <li key={audit.id}>
                     <Link
                       href={`/audits/${audit.id}`}
-                      className="group flex flex-col rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-[color:var(--accent)]/50 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5"
+                      className="group alm-panel flex flex-col rounded-xl p-5 shadow-none transition-all duration-200 hover:border-[color:var(--accent)]/50 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">

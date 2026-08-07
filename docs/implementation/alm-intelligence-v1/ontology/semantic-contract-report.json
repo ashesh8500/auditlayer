@@ -1,0 +1,201 @@
+{
+  "artifact": "alm-semantic-contract-report",
+  "authority": "postgres_supabase",
+  "authority_note": "Supabase Postgres and typed application contracts remain the system of record. This ontology is a CI-only semantic projection; it never acts as a runtime graph authority and no graph service is introduced.",
+  "competency_questions": [
+    {
+      "id": "Q1",
+      "sql_tables": [
+        "evidence"
+      ],
+      "title": "What is still believed about this Subject since last quarter?"
+    },
+    {
+      "id": "Q2",
+      "sql_tables": [
+        "intelligence_runs",
+        "scores"
+      ],
+      "title": "What changed in evidence vs only in brief/lens?"
+    },
+    {
+      "id": "Q3",
+      "sql_tables": [
+        "decisions",
+        "intelligence_runs",
+        "recommendations"
+      ],
+      "title": "Which recommendations did the client reject (and must not revive)?"
+    },
+    {
+      "id": "Q4",
+      "sql_tables": [
+        "findings",
+        "intelligence_runs",
+        "living_brief_versions"
+      ],
+      "title": "Where do intended positioning and public perception diverge?"
+    },
+    {
+      "id": "Q5",
+      "sql_tables": [
+        "accounts",
+        "audits",
+        "subject_channels",
+        "subjects"
+      ],
+      "title": "Which channels are Managed vs Observed for this tenant?"
+    },
+    {
+      "id": "Q6",
+      "sql_tables": [
+        "intelligence_runs",
+        "scores"
+      ],
+      "title": "Why did Branding score move +N since the last run?"
+    }
+  ],
+  "core_classes": [
+    "Audit",
+    "BriefProposal",
+    "Channel",
+    "Claim",
+    "ClientDecision",
+    "ConnectedRelationship",
+    "EvidenceItem",
+    "EvidenceSnapshot",
+    "Finding",
+    "IntelligenceRun",
+    "LivingBriefVersion",
+    "ManagedRelationship",
+    "ObservedTarget",
+    "Recommendation",
+    "ReportVersion",
+    "Score",
+    "Subject",
+    "WorkspaceRelationship"
+  ],
+  "counts": {
+    "competency_queries": 6,
+    "core_classes": 18,
+    "declared_classes": 32,
+    "invalid_fixtures": 6,
+    "non_core_classes": 14,
+    "shacl_invariants": 13,
+    "sparql_blocks": 2,
+    "sql_drift": 0,
+    "sql_twin_blocks": 6,
+    "valid_fixtures": 1
+  },
+  "invalid_fixtures": [
+    {
+      "conforms": false,
+      "expected_conforms": false,
+      "file": "invalid-managed-observed.ttl",
+      "invariant": "managed_vs_observed",
+      "shape": "ObservedTargetShape",
+      "summary": "An ObservedTarget asserted as a ManagedRelationship \u2014 one-off public audit targets must never appear as managed workspace property."
+    },
+    {
+      "conforms": false,
+      "expected_conforms": false,
+      "file": "invalid-channel-as-subject.ttl",
+      "invariant": "channel_as_subject",
+      "shape": "ChannelShape",
+      "summary": "A Channel asserted as a Subject \u2014 a channel is one presence of a durable Subject and must never itself be the Subject."
+    },
+    {
+      "conforms": false,
+      "expected_conforms": false,
+      "file": "invalid-unpinned-run.ttl",
+      "invariant": "unpinned_run",
+      "shape": "IntelligenceRunShape",
+      "summary": "An IntelligenceRun without brief/evidence-snapshot/version pins \u2014 every run pins all contract versions."
+    },
+    {
+      "conforms": false,
+      "expected_conforms": false,
+      "file": "invalid-evidence-provenance.ttl",
+      "invariant": "evidence_provenance",
+      "shape": "EvidenceItemShape",
+      "summary": "Evidence missing observed_at and carrying an undersized content hash \u2014 every EvidenceItem needs full provenance."
+    },
+    {
+      "conforms": false,
+      "expected_conforms": false,
+      "file": "invalid-recommendation-decision.ttl",
+      "invariant": "recommendation_decision",
+      "shape": "RecommendationShape",
+      "summary": "A Recommendation in a decided state (accepted) with no backing ClientDecision \u2014 decided recommendations must be resolved by exactly one decision via alm:decidesOn; rejected advice must not revive without new evidence (temporal policy, SQL twin Q3)."
+    },
+    {
+      "conforms": false,
+      "expected_conforms": false,
+      "file": "invalid-immutable-projection.ttl",
+      "invariant": "immutable_projection",
+      "shape": "ReportVersionShape",
+      "summary": "A ReportVersion asserted as an Audit \u2014 reports are immutable audience projections of a pinned run, never the queue/billing unit."
+    }
+  ],
+  "limitations": [
+    "Postgres (Supabase) remains system of record; this projection is CI-only documentation, never a runtime graph authority.",
+    "Immutability and append-only enforcement (UPDATE/DELETE rejection) are SQL-enforced closed-world policies; SHACL cannot express them, so they are drift-asserted against docs/architecture-contract.md and reported UNKNOWN-in-SHACL.",
+    "Rejected recommendation non-revival is temporal SQL/application policy; SHACL covers only the typed decision-on-recommendation relationship.",
+    "Fixtures verify semantic/software consistency only; they do not prove customer efficacy, model calibration, or production database state."
+  ],
+  "non_core_classes": [
+    "Brand",
+    "Creator",
+    "DecisionClaim",
+    "EmbeddingModel",
+    "EvidenceEmbedding",
+    "Interpretation",
+    "NicheConcept",
+    "Observation",
+    "OfferType",
+    "Organization",
+    "PeerRelation",
+    "Person",
+    "Project",
+    "RecommendationClaim"
+  ],
+  "ontology_version": "1.1",
+  "passed": true,
+  "sql_drift_names": [],
+  "sql_enforced_invariants": [
+    {
+      "documented_in_contract": true,
+      "drift_checked": true,
+      "name": "living_brief_versions_immutable",
+      "shacl_expressible": false,
+      "table": "living_brief_versions"
+    },
+    {
+      "documented_in_contract": true,
+      "drift_checked": true,
+      "name": "evidence_snapshots_immutable",
+      "shacl_expressible": false,
+      "table": "evidence_snapshots"
+    },
+    {
+      "documented_in_contract": true,
+      "drift_checked": true,
+      "name": "evidence_append_only",
+      "shacl_expressible": false,
+      "table": "evidence"
+    }
+  ],
+  "sql_twin_tables": [
+    "accounts",
+    "audits",
+    "decisions",
+    "evidence",
+    "findings",
+    "intelligence_runs",
+    "living_brief_versions",
+    "recommendations",
+    "scores",
+    "subject_channels",
+    "subjects"
+  ]
+}
