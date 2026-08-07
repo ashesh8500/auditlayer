@@ -1,5 +1,6 @@
 import "server-only";
 
+import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import type {
@@ -48,10 +49,12 @@ export async function listSubjectsForUser(): Promise<{
   }
 
   try {
+    const profile = await requireProfile();
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("subjects")
       .select("id, name, subject_type, created_at")
+      .eq("user_id", profile.id)
       .order("created_at", { ascending: false });
 
     if (error || !data) {
@@ -216,11 +219,13 @@ export async function getSubjectHomeBundle(
   if (!isSupabaseConfigured()) return null;
 
   try {
+    const profile = await requireProfile();
     const supabase = await createClient();
     const { data: row, error } = await supabase
       .from("subjects")
       .select("id, name, subject_type, created_at")
       .eq("id", subjectId)
+      .eq("user_id", profile.id)
       .maybeSingle();
     if (error || !row) return null;
     if (String(row.name).startsWith("Archived · ")) return null;
