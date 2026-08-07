@@ -1,0 +1,48 @@
+{
+  "clock": "real_monotonic_bounded",
+  "generated_by": "worker/tests/test_intelligence_runtime_cancellation.py",
+  "live_provider": false,
+  "model": "blocking_fake_transport_events",
+  "per_call_ceiling_seconds": 150.0,
+  "provider_calls": 0,
+  "scenarios": {
+    "inflight_all_blocked": {
+      "cancellation_tip_present": true,
+      "cancellation_unknown_labeled": true,
+      "channel_calls": 3,
+      "deadline_exceeded": true,
+      "failure_code": "run_deadline_exceeded",
+      "inflight_unknown": 3,
+      "queued_cancelled": 1,
+      "scenario": "inflight_all_blocked",
+      "stages_completed": 0,
+      "status": "failed",
+      "synthesis_calls": 0,
+      "timeout_capped_to_budget": true
+    },
+    "inflight_with_completed_sibling": {
+      "cancellation_tip_present": true,
+      "channel_calls": 3,
+      "deadline_exceeded": true,
+      "failure_code": "run_deadline_exceeded",
+      "in_flight_stage_absent": true,
+      "inflight_unknown": 1,
+      "queued_cancelled": 1,
+      "scenario": "inflight_with_completed_sibling",
+      "sibling_preserved": true,
+      "stages_completed": 2,
+      "status": "failed",
+      "synthesis_calls": 0
+    },
+    "resume_completed_sibling": {
+      "cache_mode": "resume",
+      "channel_calls": 2,
+      "resumed_calls_total": 2,
+      "scenario": "resume_completed_sibling",
+      "stages_completed": 4,
+      "status": "succeeded",
+      "synthesis_calls": 1
+    }
+  },
+  "schema_version": "1.0"
+}

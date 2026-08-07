@@ -1004,6 +1004,7 @@ def test_telemetry_to_dict_has_all_required_keys() -> None:
         "synthesis_calls", "correction_calls", "tokens_in", "tokens_out",
         "cost_usd", "evidence_items", "stage_timings", "model", "provider",
         "deadline_seconds", "deadline_exceeded",
+        "queued_cancelled", "inflight_unknown", "cancellation_tip",
     }
     assert set(data) == required
 

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 import hashlib
 import threading
@@ -193,6 +193,9 @@ class RuntimeTelemetry:
     provider: str = "deepseek"
     deadline_seconds: float | None = None
     deadline_exceeded: bool = False
+    queued_cancelled: int = 0
+    inflight_unknown: int = 0
+    cancellation_tip: str | None = None
 
     def add(self, response: ModelResponse) -> None:
         self.tokens_in += max(0, int(response.tokens_in))
@@ -222,6 +225,9 @@ class RuntimeTelemetry:
             "provider": self.provider,
             "deadline_seconds": self.deadline_seconds,
             "deadline_exceeded": self.deadline_exceeded,
+            "queued_cancelled": self.queued_cancelled,
+            "inflight_unknown": self.inflight_unknown,
+            "cancellation_tip": self.cancellation_tip,
         }
 
 
@@ -436,6 +442,13 @@ def _prior_evidence_hashes(prior_result: Mapping[str, Any] | None) -> tuple[str,
     return None
 
 
+_INFLIGHT_UNKNOWN_TIP = (
+    "In-flight provider transport termination cannot be proven inside this "
+    "process; classify as UNKNOWN and probe with an adapter/process-isolation "
+    "check before claiming cancellation."
+)
+
+
 class BoundedIntelligenceRuntime:
     """Deterministic controller around stateless typed model calls."""
 
@@ -499,6 +512,32 @@ class BoundedIntelligenceRuntime:
     def _deadline_expired(self, run_deadline: float | None) -> bool:
         return run_deadline is not None and (run_deadline - self.clock()) <= 0
 
+    def _remaining_budget(self, run_deadline: float | None) -> float | None:
+        """Seconds left on the total run deadline, or ``None`` without one."""
+        if run_deadline is None:
+            return None
+        return run_deadline - self.clock()
+
+    def _capped_policy(self, run_deadline: float | None) -> InferencePolicy:
+        """Cap the cooperative transport timeout to the remaining run budget.
+
+        The per-call ``timeout_seconds`` ceiling stays authoritative when no
+        total deadline is configured. Under a total deadline the effective
+        timeout is ``min(policy.timeout_seconds, remaining)`` so an in-flight
+        cooperative transport cannot hold the run past its declared budget.
+        When the remaining budget is already spent (only reachable at a
+        rounding boundary, because submission is preceded by a deadline check)
+        the cap is floored at one microsecond so the policy stays valid and
+        the transport fails fast instead of holding the run open.
+        """
+        remaining = self._remaining_budget(run_deadline)
+        if remaining is None:
+            return self.policy
+        timeout = min(self.policy.timeout_seconds, max(remaining, 1e-6))
+        if timeout == self.policy.timeout_seconds:
+            return self.policy
+        return replace(self.policy, timeout_seconds=timeout)
+
     def _raise_deadline(self, telemetry: RuntimeTelemetry) -> None:
         telemetry.deadline_exceeded = True
         raise RunDeadlineExceeded(
@@ -519,6 +558,7 @@ class BoundedIntelligenceRuntime:
         results: dict[str, Mapping[str, Any]],
         failures: list[Exception],
         processed: set[Future[ModelResponse]],
+        run_deadline: float | None = None,
     ) -> None:
         """Validate, correct, persist, and cache one completed channel result.
 
@@ -550,7 +590,7 @@ class BoundedIntelligenceRuntime:
                     original_payload,
                     invalid_payload=response.payload if response is not None else {},
                     error=str(exc),
-                    policy=self.policy,
+                    policy=self._capped_policy(run_deadline),
                 )
                 telemetry.add(correction)
                 validated = validate_channel_analysis(
@@ -570,6 +610,55 @@ class BoundedIntelligenceRuntime:
             failures.append(exc)
         finally:
             processed.add(future)
+
+    def _contain_deadline_batch(
+        self,
+        futures: Mapping[Future[ModelResponse], tuple[ChannelInput, str, dict[str, Any]]],
+        processed: set[Future[ModelResponse]],
+        *,
+        request: IntelligenceRunRequest,
+        telemetry: RuntimeTelemetry,
+        results: dict[str, Mapping[str, Any]],
+        failures: list[Exception],
+        run_deadline: float | None,
+    ) -> None:
+        """Preserve completed channels and classify the rest at the deadline.
+
+        Channels that already completed before the terminal decision are
+        persisted so they survive a later resume. Futures that never started
+        are confirmed cancelled. Futures still running cannot be proven
+        stopped from Python: they are classified UNKNOWN with a correction
+        tip, never as cancelled, and their late output is never processed.
+        """
+        # Preserve every channel that already completed so successful stages
+        # survive the deadline failure.
+        for other in futures:
+            if other not in processed and other.done():
+                self._process_channel_future(
+                    other,
+                    futures[other],
+                    request=request,
+                    telemetry=telemetry,
+                    results=results,
+                    failures=failures,
+                    processed=processed,
+                    run_deadline=run_deadline,
+                )
+        # Classify and contain the remainder without processing late output.
+        for other in futures:
+            if other in processed or other.done():
+                continue
+            if other.cancel():
+                telemetry.queued_cancelled += 1
+            elif other.running():
+                telemetry.inflight_unknown += 1
+            else:
+                # Not done, not running, and cancel failed: the work item is
+                # queued but already claimed by a worker, so its termination
+                # cannot be proven either.
+                telemetry.inflight_unknown += 1
+        if telemetry.inflight_unknown:
+            telemetry.cancellation_tip = _INFLIGHT_UNKNOWN_TIP
 
     def _run(
         self,
@@ -698,6 +787,10 @@ class BoundedIntelligenceRuntime:
                         Future[ModelResponse], tuple[ChannelInput, str, dict[str, Any]]
                     ] = {}
                     processed: set[Future[ModelResponse]] = set()
+                    # Cooperative transports receive a timeout no larger than
+                    # the remaining total run budget, so an already-running call
+                    # cannot hold the run past its declared deadline.
+                    batch_policy = self._capped_policy(run_deadline)
                     for channel, cache_key in batch:
                         payload = {
                             "schema_version": "1.0",
@@ -714,40 +807,54 @@ class BoundedIntelligenceRuntime:
                         if len(canonical_json(payload).encode("utf-8")) > 200_000:
                             raise RuntimePolicyError("channel inference projection exceeds 200000 bytes")
                         futures[pool.submit(
-                            self.model.analyze_channel, payload, policy=self.policy
+                            self.model.analyze_channel, payload, policy=batch_policy
                         )] = (channel, cache_key, payload)
                         telemetry.channel_calls += 1
-                    for future in as_completed(futures):
-                        self._process_channel_future(
-                            future,
-                            futures[future],
+                    # Wait on the running batch with the remaining total
+                    # budget so an in-flight call cannot outlive the deadline.
+                    remaining_futures: set[Future[ModelResponse]] = set(futures)
+                    while remaining_futures and not deadline_hit:
+                        if self._deadline_expired(run_deadline):
+                            deadline_hit = True
+                            break
+                        done, remaining_futures = wait(
+                            remaining_futures,
+                            timeout=self._remaining_budget(run_deadline),
+                            return_when=FIRST_COMPLETED,
+                        )
+                        for future in done:
+                            self._process_channel_future(
+                                future,
+                                futures[future],
+                                request=request,
+                                telemetry=telemetry,
+                                results=results,
+                                failures=failures,
+                                processed=processed,
+                                run_deadline=run_deadline,
+                            )
+                            if self._deadline_expired(run_deadline):
+                                deadline_hit = True
+                                break
+                        if not done and remaining_futures:
+                            # The cooperative wait consumed the remaining
+                            # budget with no completion: the total deadline is
+                            # the binding bound on this in-flight call.
+                            deadline_hit = True
+                    if deadline_hit:
+                        self._contain_deadline_batch(
+                            futures,
+                            processed,
                             request=request,
                             telemetry=telemetry,
                             results=results,
                             failures=failures,
-                            processed=processed,
+                            run_deadline=run_deadline,
                         )
-                        if self._deadline_expired(run_deadline):
-                            deadline_hit = True
-                            # Preserve every channel that already completed so
-                            # successful stages survive the deadline failure.
-                            for other in futures:
-                                if other not in processed and other.done():
-                                    self._process_channel_future(
-                                        other,
-                                        futures[other],
-                                        request=request,
-                                        telemetry=telemetry,
-                                        results=results,
-                                        failures=failures,
-                                        processed=processed,
-                                    )
-                            # Cancel queued work; in-flight provider calls are
-                            # bounded by the per-call policy timeout and cannot be
-                            # forcibly cancelled through the current adapter.
-                            for other in futures:
-                                other.cancel()
-                            self._raise_deadline(telemetry)
+                        # Channels still queued for a later batch were never
+                        # submitted: their cancellation is confirmed.
+                        telemetry.queued_cancelled += len(pending)
+                        self._raise_deadline(telemetry)
                     if failures:
                         break
                 if failures:
@@ -798,7 +905,7 @@ class BoundedIntelligenceRuntime:
                 response: ModelResponse | None = None
                 try:
                     response = self.model.synthesize(
-                        synthesis_payload, policy=self.policy
+                        synthesis_payload, policy=self._capped_policy(run_deadline)
                     )
                     telemetry.add(response)
                     synthesis = _validate_synthesis(response.payload, all_evidence_ids)
@@ -813,7 +920,7 @@ class BoundedIntelligenceRuntime:
                         synthesis_payload,
                         invalid_payload=response.payload if response is not None else {},
                         error=str(exc),
-                        policy=self.policy,
+                        policy=self._capped_policy(run_deadline),
                     )
                     telemetry.add(correction)
                     synthesis = _validate_synthesis(

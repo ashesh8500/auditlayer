@@ -88,6 +88,10 @@ class HermesStructuredAnalysisModel:
                 f"{self.client.api_base}/chat/completions",
                 headers=self.client._headers(),
                 json=wire_payload,
+                # The per-call ceiling is ``policy.timeout_seconds``. Under a
+                # total run deadline the bounded runtime caps that value to the
+                # remaining run budget before calling, so this transport
+                # cooperatively fails fast instead of holding the run open.
                 timeout=min(policy.timeout_seconds, 150.0),
             )
             response.raise_for_status()
