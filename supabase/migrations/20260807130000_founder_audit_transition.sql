@@ -92,7 +92,7 @@ begin
     regexp_replace(
       regexp_replace(
         coalesce(p_note, ''),
-        E'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', 'g'
+        E'[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]', '', 'g'
       ),
       E'[ \t\r\n]+', ' ', 'g'
     ),
