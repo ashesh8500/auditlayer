@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { getAuditForViewer } from "@/lib/audit-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured } from "@/lib/env";
+import {
+  auditAccessGate,
+  redactStorageError,
+  resolveReportVersionRequest,
+} from "@/lib/access-boundary";
 
 /** Same-origin HTML report for iframe viewing and download. */
 export async function GET(
@@ -10,26 +15,32 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
+
+  // Canonical access decision BEFORE any service-role client or download.
   const access = await getAuditForViewer(id);
-  if ("error" in access) {
-    const status =
-      access.error === "unauthorized"
-        ? 401
-        : access.error === "forbidden"
-          ? 403
-          : 404;
-    return NextResponse.json({ error: access.error }, { status });
+  const gate = auditAccessGate(access);
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
 
-  const { audit } = access;
+  const { audit } = access as { audit: { id: string; user_id: string; handle: string; status: string; report_path: string | null } };
+
   const versionParameter = new URL(request.url).searchParams.get("version");
   const requestedVersion = versionParameter === null ? null : Number(versionParameter);
-  if (
-    requestedVersion !== null &&
-    (!Number.isInteger(requestedVersion) || requestedVersion <= 0)
-  ) {
-    return NextResponse.json({ error: "Invalid report version" }, { status: 400 });
+
+  // Version requests are validated and kept scoped to the authorized audit.
+  const versionRequest = resolveReportVersionRequest({
+    requestedVersion,
+    auditId: id,
+    authorizedAuditId: audit.id,
+  });
+  if (!versionRequest.ok) {
+    return NextResponse.json(
+      { error: versionRequest.reason === "invalid" ? "Invalid report version" : "Report version not found" },
+      { status: versionRequest.reason === "invalid" ? 400 : 404 },
+    );
   }
+
   if (audit.status !== "ready" || !audit.report_path) {
     return NextResponse.json({ error: "Report not ready" }, { status: 404 });
   }
@@ -39,12 +50,12 @@ export async function GET(
 
   const admin = createAdminClient();
   let reportPath = audit.report_path;
-  if (requestedVersion !== null) {
+  if (versionRequest.version > 0) {
     const { data: versionRow, error: versionError } = await (admin as any)
       .from("audit_report_versions")
       .select("report_path")
-      .eq("audit_id", id)
-      .eq("version", requestedVersion)
+      .eq("audit_id", audit.id)
+      .eq("version", versionRequest.version)
       .maybeSingle();
     if (versionError || !versionRow?.report_path) {
       return NextResponse.json({ error: "Report version not found" }, { status: 404 });
@@ -56,15 +67,17 @@ export async function GET(
     .download(reportPath);
 
   if (error || !data) {
+    // Storage errors can echo object paths; never let a private path or
+    // credential reach client output.
     return NextResponse.json(
-      { error: error?.message ?? "Download failed" },
+      { error: redactStorageError(error?.message) },
       { status: 500 },
     );
   }
 
   const html = await data.text();
   const download = new URL(request.url).searchParams.get("download") === "1";
-  const versionSuffix = requestedVersion !== null ? `-v${requestedVersion}` : "";
+  const versionSuffix = versionRequest.version > 0 ? `-v${versionRequest.version}` : "";
   const filename = `${audit.handle.replace(/[^a-z0-9_-]+/gi, "-")}-audit${versionSuffix}.html`;
 
   return new NextResponse(html, {

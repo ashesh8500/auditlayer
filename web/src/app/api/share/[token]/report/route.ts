@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAuditForShare, incrementShareView } from "@/lib/share-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured } from "@/lib/env";
+import { redactStorageError, shareAccessGate } from "@/lib/access-boundary";
 
 /**
  * GET /api/share/[token]/report
@@ -11,6 +12,9 @@ import { isSupabaseAdminConfigured } from "@/lib/env";
  *   1. Link is valid (not revoked, not expired)
  *   2. Audit is ready
  *   3. Email mode: session must be verified
+ *
+ * The canonical share decision (`getAuditForShare`) runs BEFORE any
+ * service-role download.
  */
 export async function GET(
   _request: Request,
@@ -19,22 +23,9 @@ export async function GET(
   const { token } = await context.params;
   const access = await getAuditForShare(token);
 
-  if ("error" in access) {
-    const status =
-      access.error === "not_found"
-        ? 404
-        : access.error === "revoked" || access.error === "expired"
-          ? 410
-          : 403;
-    return NextResponse.json({ error: access.error }, { status });
-  }
-
-  // Email mode but not verified
-  if ("needsVerification" in access && access.needsVerification) {
-    return NextResponse.json(
-      { error: "Email verification required" },
-      { status: 403 }
-    );
+  const gate = shareAccessGate(access);
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
 
   if (!isSupabaseAdminConfigured()) {
@@ -47,11 +38,13 @@ export async function GET(
   const admin = createAdminClient();
   const { data, error } = await admin.storage
     .from("reports")
-    .download(access.audit.report_path!);
+    .download((access as { audit: { report_path: string } }).audit.report_path);
 
   if (error || !data) {
+    // Storage errors can echo object paths; never let a private path or
+    // credential reach client output.
     return NextResponse.json(
-      { error: error?.message ?? "Download failed" },
+      { error: redactStorageError(error?.message) },
       { status: 500 }
     );
   }

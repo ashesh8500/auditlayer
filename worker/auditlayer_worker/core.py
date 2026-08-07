@@ -137,7 +137,9 @@ INSTAGRAM_LIMITATION = (
 # v1.1 — Rich visual renderers matching golden report: score colors (green/amber/red),
 #        metric grid with status colors, sw-card labels from item titles,
 #        rounded data tables, per-section item guidance in prompt
-PROMPT_VERSION = "1.1"
+# v1.2 — Add canonical print CSS to the master skeleton; broken print support now
+#        fails closed in the deterministic quality gate
+PROMPT_VERSION = "1.2"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework

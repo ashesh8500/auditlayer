@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAuditForViewer } from "@/lib/audit-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured } from "@/lib/env";
+import { auditAccessGate, redactStorageError } from "@/lib/access-boundary";
 
 /**
  * GET /api/audits/[id]/read
@@ -15,19 +16,15 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
-  const access = await getAuditForViewer(id);
 
-  if ("error" in access) {
-    const status =
-      access.error === "unauthorized"
-        ? 401
-        : access.error === "forbidden"
-          ? 403
-          : 404;
-    return NextResponse.json({ error: access.error }, { status });
+  // Canonical access decision BEFORE any service-role client or download.
+  const access = await getAuditForViewer(id);
+  const gate = auditAccessGate(access);
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
 
-  const { audit } = access;
+  const { audit } = access as { audit: { status: string; report_path: string | null } };
   if (audit.status !== "ready" || !audit.report_path) {
     return NextResponse.json({ error: "Report not ready" }, { status: 404 });
   }
@@ -45,8 +42,10 @@ export async function GET(
     .download(audit.report_path);
 
   if (error || !data) {
+    // Storage errors can echo object paths; never let a private path or
+    // credential reach client output.
     return NextResponse.json(
-      { error: error?.message ?? "Download failed" },
+      { error: redactStorageError(error?.message) },
       { status: 500 }
     );
   }
