@@ -113,6 +113,21 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
       });
     }
 
+    // Customer product routes are owner-scoped even for founder/admin profiles.
+    // The broad admin RLS policy exists for explicit founder operations; it must
+    // not let an admin submit audits against another user's workspace subject.
+    // Check before creating any entitled audit so a rejected batch cannot leave
+    // orphaned audit rows behind.
+    const { data: ownedSubject, error: subjectError } = await admin
+      .from("subjects")
+      .select("id")
+      .eq("id", subjectId)
+      .eq("user_id", profile.id)
+      .maybeSingle();
+    if (subjectError || !ownedSubject) {
+      return { ok: false, mode: "live", error: "Subject not found." };
+    }
+
     const { count } = await admin
       .from("audits")
       .select("id", { count: "exact", head: true })
@@ -359,13 +374,14 @@ export async function loadSubjectWizardContextAction(input: {
     return { ok: false, error: "Invalid subject." };
   }
   try {
-    await requireProfile();
+    const profile = await requireProfile();
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
     const { data: subject } = await supabase
       .from("subjects")
       .select("id, subject_type")
       .eq("id", input.subjectId)
+      .eq("user_id", profile.id)
       .maybeSingle();
     if (!subject) {
       return { ok: false, error: "Subject not found." };
