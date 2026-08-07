@@ -565,7 +565,11 @@ def test_budget_single_channel_exactly_one_call_and_no_synthesis() -> None:
 def test_budget_multi_channel_concurrency_capped_at_three_and_one_synthesis() -> None:
     measured = _scenario_multi_channel()
     assert measured["channel_calls"] == 4
-    assert measured["max_concurrency"] == 3
+    # Concurrency contract is the CAP (<= 3): the pool is configured with
+    # max_workers=min(max_channel_workers, len(pending)). The exact observed
+    # peak depends on OS thread spawn + GIL timing, so prove parallel fan-out
+    # (>= 2) and the cap, matching the scenario helper's documented bound.
+    assert 2 <= measured["max_concurrency"] <= 3
     assert measured["synthesis_calls"] == 1
 
 

@@ -8,10 +8,12 @@ has live scores/runs instead of fixtures. Failures here never fail the audit.
 from __future__ import annotations
 
 import hashlib
-from typing import Any
+from typing import Any, Mapping
 
 from ..core import AuditRecord, PROMPT_VERSION
 from ..observability import log_event
+from .runtime import RuntimeTelemetry
+from .telemetry_persistence import project_intelligence_run
 
 
 def resolve_subject_context(gateway: Any, audit_id: str) -> dict[str, Any] | None:
@@ -75,10 +77,18 @@ def maybe_commit_subject_ledger(
     cache_mode: str,
     model: str,
     sink: Any | None = None,
+    telemetry: RuntimeTelemetry | Mapping[str, Any] | None = None,
 ) -> str | None:
     """Create snapshot + intelligence run + score row for a batched audit.
 
     Returns the intelligence_run id when committed, else None.
+
+    When a ``RuntimeTelemetry`` (or allowlisted telemetry mapping) is supplied,
+    the finalize payload is projected through the canonical telemetry-to-
+    persistence contract; otherwise the raw report-pipeline arguments are
+    wrapped into an honest partial telemetry mapping and projected through the
+    same boundary, so status/cache/token/cost normalization has exactly one
+    canonical owner.
     """
     ctx = resolve_subject_context(gateway, audit.id)
     if ctx is None:
@@ -161,17 +171,30 @@ def maybe_commit_subject_ledger(
                 ]
             )
 
-        writer.finalize_intelligence_run(
-            {
-                "p_run_id": run_id,
-                "p_status": "completed",
-                "p_latency_ms": int(wall_clock_seconds * 1000),
-                "p_tokens_in": tokens_in,
-                "p_tokens_out": tokens_out,
-                "p_cost_usd": cost_usd,
-                "p_cache_mode": cache_mode,
+        if telemetry is not None:
+            telemetry_source: RuntimeTelemetry | Mapping[str, Any] = telemetry
+            latency_ms: int | None = None  # derive from telemetry stage timings
+        else:
+            # Honest partial mapping from report-pipeline arguments: only fields
+            # the pipeline actually knows are present; absent fields stay absent
+            # so the contract records them as null-origin rather than inventing
+            # values. The report wall clock is the best available latency here.
+            telemetry_source = {
+                "status": "succeeded",
+                "cache_mode": cache_mode,
+                "tokens_in": tokens_in,
+                "tokens_out": tokens_out,
+                "cost_usd": cost_usd,
+                "model": model,
             }
+            latency_ms = int(wall_clock_seconds * 1000)
+
+        projection = project_intelligence_run(
+            telemetry_source,
+            run_id=run_id,
+            latency_ms=latency_ms,
         )
+        writer.finalize_intelligence_run(projection.payload)
         gateway.set_intelligence_run_progress(
             run_id, "succeeded", detail=f"audit={audit.id}"
         )

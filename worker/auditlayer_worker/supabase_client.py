@@ -21,6 +21,22 @@ def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Stage-timing whitelist for private report-attempt telemetry. Hoisted to module
+# level so the intelligence telemetry-persistence contract can drift-test the
+# adapter: report stages are the only keys ``finish_report_generation_run`` may
+# persist, and runtime stage keys are never representable here.
+ALLOWED_REPORT_STAGE_TIMINGS = frozenset(
+    {
+        "research",
+        "connected_metrics",
+        "analysis",
+        "validation",
+        "format_correction",
+        "postprocess",
+    }
+)
+
+
 @dataclass
 class AppSettings:
     hermes_model: str
@@ -284,18 +300,10 @@ class SupabaseGateway:
         error_code: str | None = None,
     ) -> None:
         """Finish an attempt with aggregate, non-customer telemetry only."""
-        allowed_stages = {
-            "research",
-            "connected_metrics",
-            "analysis",
-            "validation",
-            "format_correction",
-            "postprocess",
-        }
         safe_timings = {
             key: round(max(0.0, float(value)), 3)
             for key, value in (stage_timings or {}).items()
-            if key in allowed_stages
+            if key in ALLOWED_REPORT_STAGE_TIMINGS
         }
         fields = {
             "status": status,

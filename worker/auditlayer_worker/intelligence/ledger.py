@@ -34,6 +34,7 @@ from uuid import UUID
 from .change_classifier import CHANGE_KINDS, UNKNOWN_CHANGE
 from .evidence import EvidenceValidationError, normalize_evidence
 from .runtime import CompletedIntelligenceRun, RuntimeTelemetry
+from .telemetry_persistence import INTELLIGENCE_RUN_STATUS_VOCABULARY
 
 
 class LedgerCommitError(ValueError):
@@ -442,24 +443,29 @@ def finalize_payload(
     status: str = "completed",
     latency_ms: int | None = None,
 ) -> dict[str, Any]:
-    """Build ``finalize_intelligence_run`` arguments from allowlisted telemetry."""
+    """Build ``finalize_intelligence_run`` arguments from allowlisted telemetry.
+
+    Normalization is delegated to the canonical telemetry-to-persistence
+    boundary (``intelligence.telemetry_persistence``), so status/cache/token/
+    cost/timing rules live in exactly one place and unsupported fields are
+    inspectable there. The payload shape and status vocabulary are unchanged.
+    """
 
     run = _uuid(run_id, "run_id")
-    if status not in {"completed", "failed", "running"}:
+    if status not in INTELLIGENCE_RUN_STATUS_VOCABULARY:
         raise LedgerCommitError("finalize status is invalid")
-    data = telemetry.to_dict() if isinstance(telemetry, RuntimeTelemetry) else dict(telemetry)
-    stage_timings = data.get("stage_timings") or {}
-    if latency_ms is None:
-        latency_ms = round(sum(float(value) for value in stage_timings.values()) * 1000)
-    return {
-        "p_run_id": run,
-        "p_status": status,
-        "p_latency_ms": max(0, int(latency_ms)),
-        "p_tokens_in": max(0, int(data.get("tokens_in") or 0)),
-        "p_tokens_out": max(0, int(data.get("tokens_out") or 0)),
-        "p_cost_usd": round(max(0.0, float(data.get("cost_usd") or 0.0)), 6),
-        "p_cache_mode": data.get("cache_mode"),
-    }
+    from .telemetry_persistence import TelemetryPersistenceError, project_intelligence_run
+
+    try:
+        projection = project_intelligence_run(
+            telemetry,
+            run_id=run,
+            status=status,
+            latency_ms=latency_ms,
+        )
+    except TelemetryPersistenceError as exc:
+        raise LedgerCommitError(str(exc)) from exc
+    return projection.payload
 
 
 def _channel_type_index(result: Mapping[str, Any]) -> tuple[dict[str, str], dict[str, str]]:
