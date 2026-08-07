@@ -413,6 +413,11 @@ def proposal_ledger_rows(
         reason = proposal.get("reason")
         if not isinstance(reason, str) or not reason.strip():
             raise LedgerCommitError(f"proposals[{index}].reason is required")
+        fingerprint = proposal.get("semantic_fingerprint")
+        if not isinstance(fingerprint, str) or len(fingerprint) != 64:
+            raise LedgerCommitError(
+                f"proposals[{index}].semantic_fingerprint is required (64 hex chars)"
+            )
         rows.append(
             {
                 "subject_id": subject_id,
@@ -424,6 +429,7 @@ def proposal_ledger_rows(
                 "evidence_ids": list(evidence_ids),
                 "reason": " ".join(reason.split()),
                 "proposal_id": proposal.get("proposal_id"),
+                "semantic_fingerprint": fingerprint,
             }
         )
     return rows

@@ -26,6 +26,7 @@ from auditlayer_worker.intelligence import (
     normalize_evidence,
     rebuild_subject_home,
 )
+from auditlayer_worker.intelligence.validation import context_proposal_fingerprint
 
 SUBJECT_ID = "11111111-1111-4111-8111-111111111111"
 SNAPSHOT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -215,6 +216,21 @@ def test_ledger_commit_shapes_match_kernel_rpcs() -> None:
                 "evidence_ids": [evidence["evidence_id"]],
                 "reason": "Comments skew operator language",
                 "status": "proposed",
+                "semantic_fingerprint": context_proposal_fingerprint(
+                    {
+                        "schema_version": "1.0",
+                        "proposal_id": PROPOSAL_ID,
+                        "subject_id": SUBJECT_ID,
+                        "base_version": 2,
+                        "path": "/audience/primary",
+                        "operation": "replace",
+                        "proposed_value": "operators",
+                        "evidence_ids": [evidence["evidence_id"]],
+                        "reason": "Comments skew operator language",
+                        "status": "proposed",
+                    },
+                    subject_id=SUBJECT_ID,
+                ),
             },
         ),
     )
@@ -380,3 +396,189 @@ def test_continuity_feeds_runtime_rejection_suppression() -> None:
     writer = MemoryLedgerWriter()
     commit_ledger_batch(writer, batch)
     assert writer.recommendations[0]["recommendation_ref"] == "new-rec"
+
+
+# ===================================================================
+# Living Brief proposal semantics — continuity + runtime suppression
+# ===================================================================
+
+
+def test_continuity_packet_carries_rejected_proposal_fingerprints() -> None:
+    """Rejected proposals contribute evidence-linked fingerprints so an
+    unchanged-evidence proposal cannot recur through the continuity packet."""
+    packet = compile_continuity_packet(
+        subject_id=SUBJECT_ID,
+        brief_version=2,
+        subject_context=_context(),
+        channel_ids=[CHANNEL_ID],
+        prior_rejected_proposals=[
+            {"semantic_fingerprint": "a" * 64},
+            {"semantic_fingerprint": "b" * 64},
+            {"semantic_fingerprint": "a" * 64},  # deduplicated
+            {"path": "/goals/0"},  # no fingerprint -> skipped, not invented
+        ],
+    )
+    assert packet.rejected_proposal_fingerprints == frozenset({"a" * 64, "b" * 64})
+    assert "a" * 64 in packet.to_dict()["rejected_proposal_fingerprints"]
+
+
+def test_continuity_inputs_project_rejected_proposal_fingerprints() -> None:
+    packet = ContinuityInputs(
+        subject_id=SUBJECT_ID,
+        brief_version=2,
+        subject_context=_context(),
+        channel_ids=[CHANNEL_ID],
+        prior_rejected_proposals=[{"fingerprint": "c" * 64}],
+    ).compile()
+    assert packet.rejected_proposal_fingerprints == frozenset({"c" * 64})
+
+
+def test_continuity_rejects_malformed_rejected_proposals() -> None:
+    with pytest.raises(ContinuityError, match="must be a non-empty string"):
+        compile_continuity_packet(
+            subject_id=SUBJECT_ID,
+            brief_version=2,
+            subject_context=_context(),
+            channel_ids=[CHANNEL_ID],
+            prior_rejected_proposals=[{"semantic_fingerprint": 42}],  # type: ignore[list-item]
+        )
+
+
+def test_runtime_suppresses_recurring_rejected_proposal() -> None:
+    """A proposal whose evidence-linked fingerprint was already rejected is
+    dropped at assembly, mirroring the recommendation suppression path."""
+    evidence = _evidence()
+    proposal = {
+        "schema_version": "1.0",
+        "proposal_id": PROPOSAL_ID,
+        "subject_id": SUBJECT_ID,
+        "base_version": 2,
+        "path": "/goals/0",
+        "operation": "add",
+        "proposed_value": "retention",
+        "evidence_ids": [evidence["evidence_id"]],
+        "reason": "Observed retention signal",
+        "status": "proposed",
+    }
+    rejected = context_proposal_fingerprint(proposal, subject_id=SUBJECT_ID)
+
+    class ProposalModel:
+        def analyze_channel(self, payload, *, policy):
+            return ModelResponse(
+                payload={
+                    "schema_version": "1.0",
+                    "channel_type": "instagram",
+                    "evidence_coverage": {
+                        "used": [evidence["evidence_id"]],
+                        "unavailable": [],
+                    },
+                    "findings": [],
+                    "recommendations": [],
+                    "context_update_proposals": [proposal],
+                    "limitations": [],
+                },
+                tokens_in=1,
+                tokens_out=1,
+            )
+
+        def synthesize(self, payload, *, policy):  # pragma: no cover
+            raise AssertionError("single-channel must skip synthesis")
+
+    runtime = BoundedIntelligenceRuntime(model=ProposalModel())
+    request = IntelligenceRunRequest(
+        run_id=RUN_ID,
+        subject_id=SUBJECT_ID,
+        brief_version=2,
+        evidence_snapshot_id=SNAPSHOT_ID,
+        subject_context=_context(),
+        channels=(
+            ChannelInput(
+                channel_id=CHANNEL_ID,
+                channel_type="instagram",
+                evidence=(evidence,),
+            ),
+        ),
+        methodology_version="moat-1",
+        expertise_pack_version="wellness-1",
+        prompt_version="1.0",
+        model_config_hash="c" * 64,
+        rejected_proposal_fingerprints=frozenset({rejected}),
+    )
+    completed = runtime.run(request)
+    assert completed.context_update_proposals == ()
+
+
+def test_runtime_keeps_new_evidence_proposal_after_rejection() -> None:
+    """New evidence changes the fingerprint, so the same semantic edit is
+    admissible again and survives the assembly filter."""
+    evidence = _evidence()
+    extra_evidence = _evidence(suffix="z")
+    base_proposal = {
+        "schema_version": "1.0",
+        "proposal_id": PROPOSAL_ID,
+        "subject_id": SUBJECT_ID,
+        "base_version": 2,
+        "path": "/goals/0",
+        "operation": "add",
+        "proposed_value": "retention",
+        "evidence_ids": [evidence["evidence_id"]],
+        "reason": "Observed retention signal",
+        "status": "proposed",
+    }
+    rejected = context_proposal_fingerprint(base_proposal, subject_id=SUBJECT_ID)
+    fresh_proposal = dict(base_proposal)
+    fresh_proposal["evidence_ids"] = [
+        evidence["evidence_id"],
+        extra_evidence["evidence_id"],
+    ]
+
+    class NewEvidenceModel:
+        def analyze_channel(self, payload, *, policy):
+            return ModelResponse(
+                payload={
+                    "schema_version": "1.0",
+                    "channel_type": "instagram",
+                    "evidence_coverage": {
+                        "used": [
+                            evidence["evidence_id"],
+                            extra_evidence["evidence_id"],
+                        ],
+                        "unavailable": [],
+                    },
+                    "findings": [],
+                    "recommendations": [],
+                    "context_update_proposals": [fresh_proposal],
+                    "limitations": [],
+                },
+                tokens_in=1,
+                tokens_out=1,
+            )
+
+        def synthesize(self, payload, *, policy):  # pragma: no cover
+            raise AssertionError("single-channel must skip synthesis")
+
+    runtime = BoundedIntelligenceRuntime(model=NewEvidenceModel())
+    request = IntelligenceRunRequest(
+        run_id=RUN_ID,
+        subject_id=SUBJECT_ID,
+        brief_version=2,
+        evidence_snapshot_id=SNAPSHOT_ID,
+        subject_context=_context(),
+        channels=(
+            ChannelInput(
+                channel_id=CHANNEL_ID,
+                channel_type="instagram",
+                evidence=(evidence, extra_evidence),
+            ),
+        ),
+        methodology_version="moat-1",
+        expertise_pack_version="wellness-1",
+        prompt_version="1.0",
+        model_config_hash="c" * 64,
+        rejected_proposal_fingerprints=frozenset({rejected}),
+    )
+    completed = runtime.run(request)
+    assert len(completed.context_update_proposals) == 1
+    assert (
+        completed.context_update_proposals[0]["semantic_fingerprint"] != rejected
+    )

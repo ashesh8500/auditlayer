@@ -3,14 +3,131 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
+import re
 from typing import Any, Mapping
 from uuid import UUID
 
-from .evidence import EvidenceValidationError
+from .evidence import EvidenceValidationError, canonical_json
 
 
 CHANNEL_TYPES = frozenset({"instagram", "website", "youtube", "tiktok", "x", "linkedin"})
 CONFIDENCE_LEVELS = frozenset({"low", "medium", "high"})
+
+# ---------------------------------------------------------------------------
+# Living Brief proposal path policy.
+#
+# A model may only propose RFC 6901 JSON Pointer diffs into the editable
+# Living Brief vocabulary.  The vocabulary is the set of top-level fields that
+# live inside a ``living_brief_versions`` row and are not user-authoritative:
+#
+#   proposable  : identity, audience, positioning, offers, goals,
+#                 constraints, experiments
+#   protected   : identity (including vision), positioning, goals, constraints
+#                 -> acceptance requires an owner-scoped explicit confirmation
+#   unprotected : audience, offers, experiments
+#                 -> acceptance does not require explicit confirmation
+#
+# ``decisions`` is deliberately NOT proposable: decisions are user authority
+# recorded through the decisions ledger, never rewritten by model output.
+# ``channels``/``subject_id``/``version``/``subject_type`` are metadata or
+# separate tables and fail closed.  Anything outside the vocabulary fails
+# closed so a model can never broaden its own mutation surface.
+# ---------------------------------------------------------------------------
+BRIEF_TOP_LEVEL_FIELDS = frozenset(
+    {
+        "identity",
+        "audience",
+        "positioning",
+        "offers",
+        "goals",
+        "constraints",
+        "experiments",
+    }
+)
+PROTECTED_BRIEF_FIELDS = frozenset({"identity", "positioning", "goals", "constraints"})
+UNPROTECTED_BRIEF_FIELDS = BRIEF_TOP_LEVEL_FIELDS - PROTECTED_BRIEF_FIELDS
+MAX_BRIEF_PATH_LENGTH = 512
+MAX_BRIEF_PATH_TOKENS = 8
+
+PROTECTED_BRIEF_CODE = "protected_brief_path_requires_confirmation"
+STALE_BASE_CODE = "stale_base_version"
+REJECTED_SAME_EVIDENCE_CODE = "proposal_rejected_same_evidence"
+OUTSIDE_VOCABULARY_CODE = "brief_path_outside_vocabulary"
+
+
+def brief_path_top_field(path: str) -> str:
+    """Return the top-level Living Brief field of an RFC 6901 pointer.
+
+    Raises ``EvidenceValidationError`` with a stable code when the path is not
+    a bounded RFC 6901 pointer or names a field outside the proposal
+    vocabulary.
+    """
+    if not isinstance(path, str) or not path.startswith("/"):
+        raise EvidenceValidationError(f"{OUTSIDE_VOCABULARY_CODE}: path must be a JSON Pointer starting with /")
+    if len(path) > MAX_BRIEF_PATH_LENGTH:
+        raise EvidenceValidationError(
+            f"{OUTSIDE_VOCABULARY_CODE}: path exceeds {MAX_BRIEF_PATH_LENGTH} characters"
+        )
+    tokens = path[1:].split("/")
+    if len(tokens) > MAX_BRIEF_PATH_TOKENS:
+        raise EvidenceValidationError(
+            f"{OUTSIDE_VOCABULARY_CODE}: path exceeds {MAX_BRIEF_PATH_TOKENS} tokens"
+        )
+    for token in tokens:
+        # RFC 6901: the only valid escapes are ~0 (tilde) and ~1 (slash).
+        # A bare ~ or ~ followed by any other character is invalid.
+        if re.search(r"~(?:[^01]|$)", token):
+            raise EvidenceValidationError(
+                f"{OUTSIDE_VOCABULARY_CODE}: invalid RFC 6901 escape in path"
+            )
+    top = tokens[0]
+    if top not in BRIEF_TOP_LEVEL_FIELDS:
+        raise EvidenceValidationError(
+            f"{OUTSIDE_VOCABULARY_CODE}: {path!r} targets {top!r}, which is not in the "
+            f"Living Brief proposal vocabulary {sorted(BRIEF_TOP_LEVEL_FIELDS)}"
+        )
+    return top
+
+
+def is_protected_brief_path(path: str) -> bool:
+    """True when the path targets a protected Living Brief field.
+
+    Protected fields (identity including vision, positioning, goals,
+    constraints) require an owner-scoped explicit confirmation before their
+    proposals may be accepted.  Paths outside the vocabulary raise.
+    """
+    return brief_path_top_field(path) in PROTECTED_BRIEF_FIELDS
+
+
+def brief_path_policy(path: str) -> str:
+    """Return ``"protected"`` or ``"unprotected"`` for a proposable path.
+
+    Raises ``EvidenceValidationError`` (stable code
+    ``brief_path_outside_vocabulary``) for non-brief or non-proposable paths.
+    """
+    return "protected" if is_protected_brief_path(path) else "unprotected"
+
+
+def context_proposal_fingerprint(proposal: Mapping[str, Any], *, subject_id: str) -> str:
+    """Deterministic evidence-linked semantic fingerprint for one proposal.
+
+    The fingerprint binds the proposal's semantic content (path, operation,
+    proposed value) to its ordered evidence set.  A rejected proposal cannot
+    recur while its evidence set is unchanged; adding or removing an evidence
+    ID changes the fingerprint and makes the proposal admissible again.
+    """
+    evidence_ids = sorted(
+        str(item) for item in (proposal.get("evidence_ids") or [])
+    )
+    payload = {
+        "subject_id": str(subject_id),
+        "path": str(proposal.get("path")),
+        "operation": str(proposal.get("operation")),
+        "proposed_value": proposal.get("proposed_value"),
+        "evidence_ids": evidence_ids,
+    }
+    return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
 
 
 def _string_list(value: Any, field: str, *, max_items: int | None = None) -> list[str]:
@@ -95,6 +212,7 @@ def validate_context_proposals(
     evidence_ids: set[str],
     subject_id: str,
     base_version: int,
+    rejected_fingerprints: frozenset[str] = frozenset(),
 ) -> list[dict[str, Any]]:
     if not isinstance(value, list) or len(value) > 20:
         raise EvidenceValidationError("context_update_proposals must contain at most 20 items")
@@ -103,7 +221,7 @@ def validate_context_proposals(
     allowed = {
         "schema_version", "proposal_id", "subject_id", "base_version", "path",
         "operation", "proposed_value", "evidence_ids", "reason", "status",
-        "decided_by", "decided_at",
+        "decided_by", "decided_at", "semantic_fingerprint",
     }
     for index, proposal in enumerate(value):
         if not isinstance(proposal, Mapping) or set(proposal) - allowed:
@@ -130,7 +248,25 @@ def validate_context_proposals(
             raise EvidenceValidationError(f"context_update_proposals[{index}] violates contract")
         refs = _string_list(proposal.get("evidence_ids"), "proposal.evidence_ids")
         _known_references(refs, evidence_ids, "proposal.evidence_ids")
-        result.append(deepcopy(dict(proposal)))
+        # Fail closed on paths outside the Living Brief proposal vocabulary.
+        # This is what prevents a model proposal from rewriting identity,
+        # positioning, goals, or constraints without the protected gate, and
+        # from ever touching decisions/channels/metadata that the model does
+        # not own.
+        path = proposal["path"]
+        brief_path_top_field(path)
+        # Evidence-linked semantic fingerprint: a rejected proposal cannot
+        # recur while its evidence set is unchanged.  New evidence changes the
+        # fingerprint, so the same semantic edit becomes admissible again.
+        fingerprint = context_proposal_fingerprint(proposal, subject_id=subject_id)
+        if fingerprint in rejected_fingerprints:
+            raise EvidenceValidationError(
+                f"{REJECTED_SAME_EVIDENCE_CODE}: proposal {proposal_id} at {path!r} "
+                "was rejected without new evidence"
+            )
+        normalized = deepcopy(dict(proposal))
+        normalized["semantic_fingerprint"] = fingerprint
+        result.append(normalized)
     return result
 
 
@@ -141,6 +277,7 @@ def validate_channel_analysis(
     expected_channel_type: str,
     subject_id: str | None = None,
     brief_version: int | None = None,
+    rejected_fingerprints: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
     """Validate channel-analysis-v1 plus cross-document evidence integrity."""
 
@@ -182,6 +319,7 @@ def validate_channel_analysis(
             evidence_ids=evidence_ids,
             subject_id=subject_id or "",
             base_version=brief_version or 0,
+            rejected_fingerprints=rejected_fingerprints,
         )
         if proposals
         else []

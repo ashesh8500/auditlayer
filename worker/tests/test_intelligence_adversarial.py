@@ -780,6 +780,218 @@ def test_proposal_rejects_invalid_operation() -> None:
 
 
 # ===================================================================
+# Living Brief proposal path policy and semantic fingerprints
+# ===================================================================
+
+
+def _proposal_payload(
+    *,
+    path: str = "/goals/0",
+    operation: str = "add",
+    proposed_value: object = "goal",
+    evidence_ids: list[str] | None = None,
+    proposal_id: str = "99999999-9999-4999-8999-999999999999",
+) -> dict[str, Any]:
+    return {
+        "schema_version": "1.0",
+        "proposal_id": proposal_id,
+        "subject_id": SUBJECT_ID,
+        "base_version": 2,
+        "path": path,
+        "operation": operation,
+        "proposed_value": proposed_value,
+        "evidence_ids": evidence_ids or [],
+        "reason": "needed",
+        "status": "proposed",
+    }
+
+
+def test_proposal_path_outside_vocabulary_fails_closed() -> None:
+    """Paths outside the Living Brief vocabulary must fail closed.
+
+    The model may only propose RFC 6901 diffs into the editable brief fields.
+    Decisions are user authority, channels live in a separate table, and
+    metadata is not a brief field — none of them are proposable.
+    """
+    evidence_id = _evidence(CH_IDS[0], "x")["evidence_id"]
+    for path in (
+        "/decisions/0",
+        "/channels/0",
+        "/subject_id",
+        "/version",
+        "/subject_type",
+        "/schema_version",
+        "/name",
+        "/unknown_field/0",
+    ):
+        with pytest.raises(EvidenceValidationError, match="brief_path_outside_vocabulary"):
+            validate_context_proposals(
+                [_proposal_payload(path=path)],
+                evidence_ids={evidence_id},
+                subject_id=SUBJECT_ID,
+                base_version=2,
+            )
+
+
+def test_proposal_path_accepts_only_proposable_vocabulary() -> None:
+    """Every proposable top-level brief field is accepted for any operation."""
+    evidence_id = _evidence(CH_IDS[0], "x")["evidence_id"]
+    for path in (
+        "/identity/vision",
+        "/identity/name",
+        "/audience/primary",
+        "/positioning/statement",
+        "/offers/-",
+        "/goals/0",
+        "/constraints/0",
+        "/experiments/-",
+    ):
+        validated = validate_context_proposals(
+            [_proposal_payload(path=path)],
+            evidence_ids={evidence_id},
+            subject_id=SUBJECT_ID,
+            base_version=2,
+        )
+        assert validated[0]["path"] == path
+
+
+def test_brief_path_policy_classifies_protected_and_unprotected() -> None:
+    """Identity (including vision), positioning, goals, constraints are
+    protected; audience, offers, experiments are unprotected."""
+    from auditlayer_worker.intelligence.validation import (
+        is_protected_brief_path,
+        brief_path_policy,
+    )
+
+    for protected in (
+        "/identity/vision",
+        "/identity/name",
+        "/positioning/statement",
+        "/goals/0",
+        "/constraints/0",
+    ):
+        assert is_protected_brief_path(protected)
+        assert brief_path_policy(protected) == "protected"
+    for unprotected in (
+        "/audience/primary",
+        "/offers/-",
+        "/experiments/-",
+    ):
+        assert not is_protected_brief_path(unprotected)
+        assert brief_path_policy(unprotected) == "unprotected"
+
+
+def test_brief_path_rejects_invalid_rfc6901_escapes() -> None:
+    from auditlayer_worker.intelligence.validation import brief_path_top_field
+
+    for path in ("/goals/~2bad", "/goals/~~", "/goals/0~"):
+        with pytest.raises(EvidenceValidationError, match="invalid RFC 6901"):
+            brief_path_top_field(path)
+
+
+def test_proposal_fingerprint_is_evidence_linked_and_deterministic() -> None:
+    """The semantic fingerprint binds path/operation/value to the evidence
+    set: unchanged evidence yields the same fingerprint, new evidence yields a
+    different one (new-evidence allowance), and a different value differs."""
+    from auditlayer_worker.intelligence.validation import context_proposal_fingerprint
+
+    evidence_id = _evidence(CH_IDS[0], "x")["evidence_id"]
+    proposal = _proposal_payload(
+        path="/goals/0",
+        operation="replace",
+        proposed_value={"text": "retention"},
+        evidence_ids=[evidence_id],
+    )
+    same = context_proposal_fingerprint(proposal, subject_id=SUBJECT_ID)
+    assert len(same) == 64
+    assert context_proposal_fingerprint(proposal, subject_id=SUBJECT_ID) == same
+
+    # New evidence changes the fingerprint -> proposal becomes admissible.
+    other_evidence = _evidence(CH_IDS[1], "y")["evidence_id"]
+    new_evidence = dict(proposal)
+    new_evidence["evidence_ids"] = [evidence_id, other_evidence]
+    assert context_proposal_fingerprint(new_evidence, subject_id=SUBJECT_ID) != same
+
+    # Evidence set order must not matter (sorted canonical set).
+    reordered = dict(proposal)
+    reordered["evidence_ids"] = [other_evidence, evidence_id]
+    assert context_proposal_fingerprint(reordered, subject_id=SUBJECT_ID) == context_proposal_fingerprint(
+        new_evidence, subject_id=SUBJECT_ID
+    )
+
+    # Different proposed value changes the fingerprint.
+    changed_value = dict(proposal)
+    changed_value["proposed_value"] = {"text": "acquisition"}
+    assert context_proposal_fingerprint(changed_value, subject_id=SUBJECT_ID) != same
+
+    # Different subject changes the fingerprint (tenant isolation).
+    assert context_proposal_fingerprint(proposal, subject_id="33333333-3333-4333-8333-333333333333") != same
+
+
+def test_proposal_rejected_same_evidence_is_suppressed() -> None:
+    """A proposal whose evidence-linked fingerprint was already rejected fails
+    closed while its evidence set is unchanged."""
+    from auditlayer_worker.intelligence.validation import context_proposal_fingerprint
+
+    evidence_id = _evidence(CH_IDS[0], "x")["evidence_id"]
+    proposal = _proposal_payload(
+        path="/goals/0",
+        operation="replace",
+        proposed_value={"text": "retention"},
+        evidence_ids=[evidence_id],
+    )
+    fingerprint = context_proposal_fingerprint(proposal, subject_id=SUBJECT_ID)
+    with pytest.raises(EvidenceValidationError, match="proposal_rejected_same_evidence"):
+        validate_context_proposals(
+            [proposal],
+            evidence_ids={evidence_id},
+            subject_id=SUBJECT_ID,
+            base_version=2,
+            rejected_fingerprints=frozenset({fingerprint}),
+        )
+
+
+def test_proposal_new_evidence_is_admissible_after_rejection() -> None:
+    """Genuinely new evidence changes the fingerprint, so the same semantic
+    edit is admissible again."""
+    from auditlayer_worker.intelligence.validation import context_proposal_fingerprint
+
+    evidence_id = _evidence(CH_IDS[0], "x")["evidence_id"]
+    old_evidence = _evidence(CH_IDS[1], "y")["evidence_id"]
+    proposal = _proposal_payload(
+        path="/goals/0",
+        operation="replace",
+        proposed_value={"text": "retention"},
+        evidence_ids=[old_evidence],
+    )
+    rejected = context_proposal_fingerprint(proposal, subject_id=SUBJECT_ID)
+
+    fresh = dict(proposal)
+    fresh["evidence_ids"] = [old_evidence, evidence_id]  # genuinely new evidence
+    validated = validate_context_proposals(
+        [fresh],
+        evidence_ids={old_evidence, evidence_id},
+        subject_id=SUBJECT_ID,
+        base_version=2,
+        rejected_fingerprints=frozenset({rejected}),
+    )
+    assert validated[0]["semantic_fingerprint"] != rejected
+
+
+def test_validated_proposal_carries_semantic_fingerprint() -> None:
+    """Validation attaches the deterministic fingerprint to each proposal so
+    the ledger boundary can persist it without recomputing."""
+    evidence_id = _evidence(CH_IDS[0], "x")["evidence_id"]
+    validated = validate_context_proposals(
+        [_proposal_payload(proposal_id="99999999-9999-4999-8999-999999999999")],
+        evidence_ids={evidence_id},
+        subject_id=SUBJECT_ID,
+        base_version=2,
+    )
+    assert len(validated[0]["semantic_fingerprint"]) == 64
+
+
+# ===================================================================
 # Telemetry completeness and non-leakage
 # ===================================================================
 
@@ -791,6 +1003,7 @@ def test_telemetry_to_dict_has_all_required_keys() -> None:
         "status", "failure_code", "cache_mode", "channel_calls",
         "synthesis_calls", "correction_calls", "tokens_in", "tokens_out",
         "cost_usd", "evidence_items", "stage_timings", "model", "provider",
+        "deadline_seconds", "deadline_exceeded",
     }
     assert set(data) == required
 

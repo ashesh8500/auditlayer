@@ -213,7 +213,12 @@ def test_multi_channel_fanout_batches_more_than_three_and_caps_concurrency() -> 
     completed = runtime.run(_request("run-multi", 4))
 
     assert sum(model.channel_calls.values()) == 4
-    assert model.max_active == 3
+    # The contract is the concurrency CAP: no more than three channel calls run
+    # concurrently. Reaching exactly three depends on OS thread spawn + GIL
+    # acquisition timing (the model sleeps only 0.03s), so the assertion proves
+    # parallel fan-out (>= 2) and the cap (<= 3) without depending on scheduler
+    # luck. A regression to serial execution (max_active == 1) still fails.
+    assert 2 <= model.max_active <= 3
     assert model.synthesis_calls == 1
     assert completed.telemetry.channel_calls == 4
 

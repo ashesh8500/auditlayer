@@ -60,6 +60,10 @@
         "superseded"
       ]
     },
+    "semantic_fingerprint": {
+      "type": "string",
+      "description": "Computed by the worker: sha256 over canonical subject_id, path, operation, proposed_value, and sorted evidence_ids. Binds a proposal to its evidence set so unchanged-evidence rejection cannot recur."
+    },
     "decided_by": {
       "type": [
         "string",

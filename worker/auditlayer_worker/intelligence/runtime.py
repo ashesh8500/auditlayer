@@ -28,6 +28,15 @@ class RuntimePolicyError(ValueError):
     """A run attempts to exceed a locked inference/runtime boundary."""
 
 
+class RunDeadlineExceeded(RuntimeError):
+    """The deterministic total intelligence-run deadline was exceeded.
+
+    Distinct from a per-call provider timeout: the run refused to start
+    further stage work after its total wall-clock budget was exhausted.
+    Completed stages remain persisted and reusable by a later attempt.
+    """
+
+
 @dataclass(frozen=True)
 class InferencePolicy:
     provider: str = "deepseek"
@@ -96,6 +105,7 @@ class IntelligenceRunRequest:
     score_dimensions: tuple[str, ...] = ()
     rejected_recommendation_ids: frozenset[str] = frozenset()
     rejected_recommendation_fingerprints: frozenset[str] = frozenset()
+    rejected_proposal_fingerprints: frozenset[str] = frozenset()
     prior_scores: Mapping[str, float | None] = field(default_factory=dict)
     prior_result: Mapping[str, Any] | None = None
 
@@ -181,6 +191,8 @@ class RuntimeTelemetry:
     stage_timings: dict[str, float] = field(default_factory=dict)
     model: str = "deepseek-v4-flash"
     provider: str = "deepseek"
+    deadline_seconds: float | None = None
+    deadline_exceeded: bool = False
 
     def add(self, response: ModelResponse) -> None:
         self.tokens_in += max(0, int(response.tokens_in))
@@ -208,6 +220,8 @@ class RuntimeTelemetry:
             },
             "model": self.model,
             "provider": self.provider,
+            "deadline_seconds": self.deadline_seconds,
+            "deadline_exceeded": self.deadline_exceeded,
         }
 
 
@@ -219,6 +233,8 @@ class CompletedIntelligenceRun:
 
 
 def _normalized_failure(exc: BaseException) -> str:
+    if isinstance(exc, RunDeadlineExceeded):
+        return "run_deadline_exceeded"
     if isinstance(exc, TimeoutError):
         return "inference_timeout"
     if isinstance(exc, EvidenceValidationError):
@@ -431,17 +447,21 @@ class BoundedIntelligenceRuntime:
         stage_store: StageStore | None = None,
         analysis_cache: AnalysisCache | None = None,
         max_channel_workers: int = 3,
+        deadline_seconds: float | None = None,
         telemetry_sink: Callable[[Mapping[str, Any]], None] | None = None,
         clock: Callable[[], float] = time.monotonic,
         now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     ) -> None:
         if max_channel_workers < 1 or max_channel_workers > 3:
             raise RuntimePolicyError("channel concurrency must be between one and three")
+        if deadline_seconds is not None and deadline_seconds <= 0:
+            raise RuntimePolicyError("total run deadline must be positive")
         self.model = model
         self.policy = policy or InferencePolicy()
         self.stage_store = stage_store or MemoryStageStore()
         self.analysis_cache = analysis_cache or MemoryAnalysisCache()
         self.max_channel_workers = max_channel_workers
+        self.deadline_seconds = deadline_seconds
         self.telemetry_sink = telemetry_sink
         self.clock = clock
         self.now = now
@@ -449,9 +469,15 @@ class BoundedIntelligenceRuntime:
     def run(self, request: IntelligenceRunRequest) -> CompletedIntelligenceRun:
         telemetry = RuntimeTelemetry(model=self.policy.model, provider=self.policy.provider)
         telemetry.evidence_items = sum(len(channel.evidence) for channel in request.channels)
+        telemetry.deadline_seconds = self.deadline_seconds
+        run_deadline: float | None = (
+            self.clock() + self.deadline_seconds
+            if self.deadline_seconds is not None
+            else None
+        )
         attempt_started = self.clock()
         try:
-            return self._run(request, telemetry)
+            return self._run(request, telemetry, run_deadline)
         except Exception as exc:
             telemetry.status = "failed"
             telemetry.failure_code = _normalized_failure(exc)
@@ -470,8 +496,86 @@ class BoundedIntelligenceRuntime:
                 self.telemetry_sink(telemetry.to_dict())
             raise
 
+    def _deadline_expired(self, run_deadline: float | None) -> bool:
+        return run_deadline is not None and (run_deadline - self.clock()) <= 0
+
+    def _raise_deadline(self, telemetry: RuntimeTelemetry) -> None:
+        telemetry.deadline_exceeded = True
+        raise RunDeadlineExceeded(
+            "total intelligence-run deadline exceeded before further stage work"
+        )
+
+    def _check_deadline(self, run_deadline: float | None, telemetry: RuntimeTelemetry) -> None:
+        if self._deadline_expired(run_deadline):
+            self._raise_deadline(telemetry)
+
+    def _process_channel_future(
+        self,
+        future: Future[ModelResponse],
+        context: tuple[ChannelInput, str, dict[str, Any]],
+        *,
+        request: IntelligenceRunRequest,
+        telemetry: RuntimeTelemetry,
+        results: dict[str, Mapping[str, Any]],
+        failures: list[Exception],
+        processed: set[Future[ModelResponse]],
+    ) -> None:
+        """Validate, correct, persist, and cache one completed channel result.
+
+        Never raises: bounded stage errors are retained in ``failures`` so a
+        sibling failure cannot destroy independently successful channels.
+        """
+        channel, cache_key, original_payload = context
+        try:
+            evidence_ids = {str(item["evidence_id"]) for item in channel.evidence}
+            response: ModelResponse | None = None
+            try:
+                response = future.result()
+                telemetry.add(response)
+                validated = validate_channel_analysis(
+                    response.payload,
+                    evidence_ids=evidence_ids,
+                    expected_channel_type=channel.channel_type,
+                    subject_id=request.subject_id,
+                    brief_version=request.brief_version,
+                )
+            except (EvidenceValidationError, ValueError) as exc:
+                if isinstance(exc, RuntimePolicyError):
+                    raise
+                correct = getattr(self.model, "correct_channel", None)
+                if not callable(correct):
+                    raise
+                telemetry.correction_calls += 1
+                correction = correct(
+                    original_payload,
+                    invalid_payload=response.payload if response is not None else {},
+                    error=str(exc),
+                    policy=self.policy,
+                )
+                telemetry.add(correction)
+                validated = validate_channel_analysis(
+                    correction.payload,
+                    evidence_ids=evidence_ids,
+                    expected_channel_type=channel.channel_type,
+                    subject_id=request.subject_id,
+                    brief_version=request.brief_version,
+                )
+            stage = ChannelStage(cache_key=cache_key, analysis=validated)
+            # Persist every independently successful channel before
+            # propagating a sibling failure.
+            self.stage_store.save_channel(request.run_id, channel.channel_id, stage)
+            self.analysis_cache.put(cache_key, validated)
+            results[channel.channel_id] = validated
+        except Exception as exc:  # retain first bounded stage error
+            failures.append(exc)
+        finally:
+            processed.add(future)
+
     def _run(
-        self, request: IntelligenceRunRequest, telemetry: RuntimeTelemetry
+        self,
+        request: IntelligenceRunRequest,
+        telemetry: RuntimeTelemetry,
+        run_deadline: float | None,
     ) -> CompletedIntelligenceRun:
         _validate_uuid(request.subject_id, "subject_id")
         _validate_uuid(request.evidence_snapshot_id, "evidence_snapshot_id")
@@ -492,6 +596,8 @@ class BoundedIntelligenceRuntime:
             for channel in request.channels
         )
 
+        # The total run deadline fails closed before any stage work begins.
+        self._check_deadline(run_deadline, telemetry)
         started = self.clock()
         projection = project_subject_context(
             request.subject_context, channel_ids=channel_ids
@@ -574,83 +680,80 @@ class BoundedIntelligenceRuntime:
         )
         analysis_started = self.clock()
         if pending:
-            with ThreadPoolExecutor(
+            # No channel work may begin once the total run deadline is spent.
+            self._check_deadline(run_deadline, telemetry)
+            failures: list[Exception] = []
+            deadline_hit = False
+            pool = ThreadPoolExecutor(
                 max_workers=min(self.max_channel_workers, len(pending)),
                 thread_name_prefix="intelligence-channel",
-            ) as pool:
-                futures: dict[
-                    Future[ModelResponse], tuple[ChannelInput, str, dict[str, Any]]
-                ] = {}
-                for channel, cache_key in pending:
-                    payload = {
-                        "schema_version": "1.0",
-                        "subject_context": projection,
-                        "methodology_version": request.methodology_version,
-                        "expertise_pack_version": request.expertise_pack_version,
-                        "prior_state": deepcopy(prior_state),
-                        "channel": {
-                            "channel_id": channel.channel_id,
-                            "channel_type": channel.channel_type,
-                            "evidence": deepcopy(list(channel.evidence)),
-                        },
-                    }
-                    if len(canonical_json(payload).encode("utf-8")) > 200_000:
-                        raise RuntimePolicyError("channel inference projection exceeds 200000 bytes")
-                    futures[pool.submit(
-                        self.model.analyze_channel, payload, policy=self.policy
-                    )] = (channel, cache_key, payload)
-                    telemetry.channel_calls += 1
-                failures: list[Exception] = []
-                for future in as_completed(futures):
-                    channel, cache_key, original_payload = futures[future]
-                    try:
-                        evidence_ids = {
-                            str(item["evidence_id"]) for item in channel.evidence
+            )
+            try:
+                while pending and not deadline_hit:
+                    # Submit at most one worker-sized batch at a time so a total
+                    # deadline can stop queued stage work before it is submitted.
+                    batch = pending[: self.max_channel_workers]
+                    pending = pending[self.max_channel_workers :]
+                    futures: dict[
+                        Future[ModelResponse], tuple[ChannelInput, str, dict[str, Any]]
+                    ] = {}
+                    processed: set[Future[ModelResponse]] = set()
+                    for channel, cache_key in batch:
+                        payload = {
+                            "schema_version": "1.0",
+                            "subject_context": projection,
+                            "methodology_version": request.methodology_version,
+                            "expertise_pack_version": request.expertise_pack_version,
+                            "prior_state": deepcopy(prior_state),
+                            "channel": {
+                                "channel_id": channel.channel_id,
+                                "channel_type": channel.channel_type,
+                                "evidence": deepcopy(list(channel.evidence)),
+                            },
                         }
-                        response: ModelResponse | None = None
-                        try:
-                            response = future.result()
-                            telemetry.add(response)
-                            validated = validate_channel_analysis(
-                                response.payload,
-                                evidence_ids=evidence_ids,
-                                expected_channel_type=channel.channel_type,
-                                subject_id=request.subject_id,
-                                brief_version=request.brief_version,
-                            )
-                        except (EvidenceValidationError, ValueError) as exc:
-                            if isinstance(exc, RuntimePolicyError):
-                                raise
-                            correct = getattr(self.model, "correct_channel", None)
-                            if not callable(correct):
-                                raise
-                            telemetry.correction_calls += 1
-                            correction = correct(
-                                original_payload,
-                                invalid_payload=response.payload if response is not None else {},
-                                error=str(exc),
-                                policy=self.policy,
-                            )
-                            telemetry.add(correction)
-                            validated = validate_channel_analysis(
-                                correction.payload,
-                                evidence_ids=evidence_ids,
-                                expected_channel_type=channel.channel_type,
-                                subject_id=request.subject_id,
-                                brief_version=request.brief_version,
-                            )
-                        stage = ChannelStage(cache_key=cache_key, analysis=validated)
-                        # Persist every independently successful channel before
-                        # propagating a sibling failure.
-                        self.stage_store.save_channel(
-                            request.run_id, channel.channel_id, stage
+                        if len(canonical_json(payload).encode("utf-8")) > 200_000:
+                            raise RuntimePolicyError("channel inference projection exceeds 200000 bytes")
+                        futures[pool.submit(
+                            self.model.analyze_channel, payload, policy=self.policy
+                        )] = (channel, cache_key, payload)
+                        telemetry.channel_calls += 1
+                    for future in as_completed(futures):
+                        self._process_channel_future(
+                            future,
+                            futures[future],
+                            request=request,
+                            telemetry=telemetry,
+                            results=results,
+                            failures=failures,
+                            processed=processed,
                         )
-                        self.analysis_cache.put(cache_key, validated)
-                        results[channel.channel_id] = validated
-                    except Exception as exc:  # retain first bounded stage error
-                        failures.append(exc)
+                        if self._deadline_expired(run_deadline):
+                            deadline_hit = True
+                            # Preserve every channel that already completed so
+                            # successful stages survive the deadline failure.
+                            for other in futures:
+                                if other not in processed and other.done():
+                                    self._process_channel_future(
+                                        other,
+                                        futures[other],
+                                        request=request,
+                                        telemetry=telemetry,
+                                        results=results,
+                                        failures=failures,
+                                        processed=processed,
+                                    )
+                            # Cancel queued work; in-flight provider calls are
+                            # bounded by the per-call policy timeout and cannot be
+                            # forcibly cancelled through the current adapter.
+                            for other in futures:
+                                other.cancel()
+                            self._raise_deadline(telemetry)
+                    if failures:
+                        break
                 if failures:
                     raise failures[0]
+            finally:
+                pool.shutdown(wait=not deadline_hit, cancel_futures=True)
         telemetry.stage_timings["channel_analysis"] = self.clock() - analysis_started
 
         ordered = [results[channel.channel_id] for channel in channels]
@@ -661,6 +764,8 @@ class BoundedIntelligenceRuntime:
         }
         synthesis: Mapping[str, Any] | None = None
         if len(ordered) > 1:
+            # No synthesis may begin once the total run deadline is spent.
+            self._check_deadline(run_deadline, telemetry)
             synthesis_started = self.clock()
             synthesis_key = hashlib.sha256(
                 canonical_json(
@@ -784,6 +889,17 @@ class BoundedIntelligenceRuntime:
             ],
             lambda item: str(item["proposal_id"]),
         )
+        # Unchanged-evidence recurrence suppression: proposals whose
+        # evidence-linked semantic fingerprint was already rejected are
+        # dropped at assembly, mirroring the recommendation path.  The
+        # validator already fails closed when the rejected set is threaded
+        # into channel validation; this is the deterministic second gate.
+        context_update_proposals = [
+            proposal
+            for proposal in context_update_proposals
+            if str(proposal.get("semantic_fingerprint") or "")
+            not in request.rejected_proposal_fingerprints
+        ]
         limitation_values = {
             str(item)
             for channel in ordered

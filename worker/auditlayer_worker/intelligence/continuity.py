@@ -58,6 +58,7 @@ class ContinuityPacket:
     open_recommendations: tuple[Mapping[str, Any], ...]
     rejected_recommendation_ids: frozenset[str]
     rejected_recommendation_fingerprints: frozenset[str]
+    rejected_proposal_fingerprints: frozenset[str]
     decisions: tuple[Mapping[str, Any], ...]
     change_cause_hint: str
     prior_state_hash: str
@@ -75,6 +76,7 @@ class ContinuityPacket:
             "rejected_recommendation_fingerprints": sorted(
                 self.rejected_recommendation_fingerprints
             ),
+            "rejected_proposal_fingerprints": sorted(self.rejected_proposal_fingerprints),
             "decisions": [deepcopy(dict(row)) for row in self.decisions],
             "change_cause_hint": self.change_cause_hint,
             "prior_state_hash": self.prior_state_hash,
@@ -204,6 +206,36 @@ def _normalize_decisions(rows: Sequence[Mapping[str, Any]] | None) -> list[dict[
     return result
 
 
+def _normalize_rejected_proposals(
+    rows: Sequence[Mapping[str, Any]] | None,
+) -> set[str]:
+    """Collect evidence-linked semantic fingerprints of rejected proposals.
+
+    Each row is a projection of a durable rejection record; the fingerprint is
+    the deterministic evidence-linked identity that prevents a proposal from
+    recurring while its evidence set is unchanged.  Rows without a usable
+    fingerprint are skipped — a missing fingerprint cannot be invented here.
+    """
+    if rows is None:
+        return set()
+    if not isinstance(rows, Sequence):
+        raise ContinuityError("prior_rejected_proposals must be a sequence")
+    fingerprints: set[str] = set()
+    for index, row in enumerate(rows):
+        if not isinstance(row, Mapping):
+            raise ContinuityError(f"prior_rejected_proposals[{index}] must be an object")
+        fingerprint = row.get("semantic_fingerprint") or row.get("fingerprint")
+        if fingerprint is None:
+            continue
+        fingerprint = _string(fingerprint, f"prior_rejected_proposals[{index}].fingerprint", max_length=128)
+        fingerprints.add(fingerprint)
+    if len(fingerprints) > MAX_REJECTED:
+        raise ContinuityError(
+            f"at most {MAX_REJECTED} rejected proposal fingerprints allowed"
+        )
+    return fingerprints
+
+
 def _change_cause_hint(
     *,
     brief_version: int,
@@ -233,6 +265,7 @@ def compile_continuity_packet(
     prior_scores: Sequence[Mapping[str, Any]] | Mapping[str, Any] | None = None,
     prior_recommendations: Sequence[Mapping[str, Any]] | None = None,
     prior_decisions: Sequence[Mapping[str, Any]] | None = None,
+    prior_rejected_proposals: Sequence[Mapping[str, Any]] | None = None,
     prior_result: Mapping[str, Any] | None = None,
     methodology_version: str | None = None,
     explicit_rejected_ids: Sequence[str] | None = None,
@@ -243,6 +276,8 @@ def compile_continuity_packet(
     Precedence for suppression: explicit rejects ∪ decisions(rejected) ∪
     recommendation rows already marked rejected. Open recommendations stay
     available for model context but never rewrite Living Brief identity.
+    Rejected proposals contribute evidence-linked semantic fingerprints so an
+    unchanged-evidence proposal cannot recur.
     """
 
     normalized_subject = _uuid(subject_id, "subject_id")
@@ -262,6 +297,7 @@ def compile_continuity_packet(
     open_recs, rejected_ids, rejected_fps = _normalize_recommendations(
         prior_recommendations, field="prior_recommendations"
     )
+    rejected_proposal_fps = _normalize_rejected_proposals(prior_rejected_proposals)
     decisions = _normalize_decisions(prior_decisions)
     for decision in decisions:
         if decision["decision"] == "rejected" and decision["target_type"] == "recommendation":
@@ -311,6 +347,7 @@ def compile_continuity_packet(
         "open_recommendations": open_recs,
         "rejected_recommendation_ids": sorted(rejected_ids),
         "rejected_recommendation_fingerprints": sorted(rejected_fps),
+        "rejected_proposal_fingerprints": sorted(rejected_proposal_fps),
         "decisions": decisions,
         "change_cause_hint": cause,
         "prior_state_hash": prior_state_hash,
@@ -325,6 +362,7 @@ def compile_continuity_packet(
         open_recommendations=tuple(open_recs),
         rejected_recommendation_ids=frozenset(rejected_ids),
         rejected_recommendation_fingerprints=frozenset(rejected_fps),
+        rejected_proposal_fingerprints=frozenset(rejected_proposal_fps),
         decisions=tuple(decisions),
         change_cause_hint=cause,
         prior_state_hash=prior_state_hash,
@@ -343,6 +381,7 @@ class ContinuityInputs:
     prior_scores: Sequence[Mapping[str, Any]] | Mapping[str, Any] = field(default_factory=dict)
     prior_recommendations: Sequence[Mapping[str, Any]] = field(default_factory=tuple)
     prior_decisions: Sequence[Mapping[str, Any]] = field(default_factory=tuple)
+    prior_rejected_proposals: Sequence[Mapping[str, Any]] = field(default_factory=tuple)
     prior_result: Mapping[str, Any] | None = None
     methodology_version: str | None = None
     explicit_rejected_ids: Sequence[str] = field(default_factory=tuple)
@@ -357,6 +396,7 @@ class ContinuityInputs:
             prior_scores=self.prior_scores,
             prior_recommendations=self.prior_recommendations,
             prior_decisions=self.prior_decisions,
+            prior_rejected_proposals=self.prior_rejected_proposals,
             prior_result=self.prior_result,
             methodology_version=self.methodology_version,
             explicit_rejected_ids=self.explicit_rejected_ids,

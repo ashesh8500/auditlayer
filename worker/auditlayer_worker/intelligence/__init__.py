@@ -49,6 +49,7 @@ from .runtime import (
     MemoryAnalysisCache,
     MemoryStageStore,
     ModelResponse,
+    RunDeadlineExceeded,
     RuntimePolicyError,
     RuntimeTelemetry,
 )
@@ -60,18 +61,42 @@ from .subject_homes import (
     rebuild_subject_home,
 )
 from .validation import validate_channel_analysis
+from .validation import (
+    BRIEF_TOP_LEVEL_FIELDS,
+    OUTSIDE_VOCABULARY_CODE,
+    PROTECTED_BRIEF_CODE,
+    PROTECTED_BRIEF_FIELDS,
+    REJECTED_SAME_EVIDENCE_CODE,
+    STALE_BASE_CODE,
+    UNPROTECTED_BRIEF_FIELDS,
+    brief_path_policy,
+    brief_path_top_field,
+    context_proposal_fingerprint,
+    is_protected_brief_path,
+)
 from .website import WebsiteCollectionError, WebsiteCollector, WebsiteResponse
 
 __all__ = [
     "ANSWER_KIND_LABELS",
     "ANSWER_KINDS",
+    "BRIEF_TOP_LEVEL_FIELDS",
     "BoundedIntelligenceRuntime",
     "CacheKeyParts",
     "CHANGE_KINDS",
     "DATA_NEEDED_MARKER",
     "UNKNOWN_CHANGE",
+    "OUTSIDE_VOCABULARY_CODE",
+    "PROTECTED_BRIEF_CODE",
+    "PROTECTED_BRIEF_FIELDS",
+    "REJECTED_SAME_EVIDENCE_CODE",
+    "STALE_BASE_CODE",
+    "UNPROTECTED_BRIEF_FIELDS",
     "maybe_commit_subject_ledger",
     "resolve_subject_context",
+    "brief_path_policy",
+    "brief_path_top_field",
+    "context_proposal_fingerprint",
+    "is_protected_brief_path",
     "ChangeMetadata",
     "ChannelInput",
     "CompletedIntelligenceRun",
@@ -92,6 +117,7 @@ __all__ = [
     "MemoryLedgerWriter",
     "MemoryStageStore",
     "ModelResponse",
+    "RunDeadlineExceeded",
     "RuntimePolicyError",
     "RuntimeTelemetry",
     "SubjectHomeError",
