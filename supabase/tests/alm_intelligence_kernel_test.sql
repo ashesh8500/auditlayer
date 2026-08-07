@@ -616,11 +616,12 @@ begin
         "subject_id": "' || _subject_id || '",
         "base_version": 1,
         "intelligence_run_id": "' || gen_random_uuid() || '",
-        "path": "/test",
+        "path": "/identity/name",
         "operation": "add",
         "proposed_value": {},
         "evidence_ids": [],
-        "reason": "test"
+        "reason": "test",
+        "semantic_fingerprint": "0000000000000000000000000000000000000000000000000000000000000000"
       }]')::jsonb
     );
     raise exception 'create_context_update_proposals should have rejected invalid run id';
@@ -1233,6 +1234,7 @@ declare
   _prop_ids uuid[];
   _prop_id uuid;
   _hash text := coalesce(nullif(current_setting('alm.smoke_evidence_hash', true), ''), 'smoke');
+  _evidence_id uuid;
   _base_version integer;
 begin
   select id into _subject_id from public.subjects where user_id = _uid limit 1;
@@ -1241,6 +1243,10 @@ begin
   select max(version) into _base_version
   from public.living_brief_versions
   where subject_id = _subject_id;
+  select id into _evidence_id
+  from public.evidence
+  where subject_id = _subject_id and content_hash = _hash
+  limit 1;
 
   _prop_ids := array(select public.create_context_update_proposals(
     ('[{
@@ -1250,8 +1256,9 @@ begin
       "path": "/audience/demographics",
       "operation": "add",
       "proposed_value": {"key": "also 18-24"},
-      "evidence_ids": ["' || _hash || '"],
-      "reason": "demographic shift"
+      "evidence_ids": ["' || _evidence_id || '"],
+      "reason": "demographic shift",
+      "semantic_fingerprint": "1111111111111111111111111111111111111111111111111111111111111111"
     }]')::jsonb
   ));
 

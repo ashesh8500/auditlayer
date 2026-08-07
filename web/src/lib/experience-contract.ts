@@ -891,8 +891,8 @@ function scanBanner(files: string[], webRoot: string): RuleReport {
   const exceptions: Finding[] = [];
   const exceptionIds = new Set<string>();
 
-  // Banner-like surfaces: color-mix tone boxes, border-l-[3px] notices, or
-  // bg-[color:var(--*-muted)] + border combos that are not ExperienceBanner.
+  // Banner-like surfaces: color-mix tone boxes, three-pixel left-border notices,
+  // or muted CSS-variable backgrounds with borders that are not ExperienceBanner.
   const BANNER_RE = /(color-mix\(in oklch|border-l-\[3px\])/g;
   for (const file of files) {
     const rel = relative(webRoot, file);
