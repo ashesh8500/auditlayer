@@ -15,7 +15,7 @@ Status vocabulary: `proposed → in_flight → done`; `parked` is explicit. The 
 | done | P3 · C1/C6 · F1 | Create an honest-null report quality regression harness | Golden structural fixtures verify six answers, limitation language, strengths, priorities, and print-safe HTML while explicitly avoiding subjective efficacy claims; diffs are inspectable | product |
 | proposed | P4 · C3 · F1 | Audit niche and account-type misclassification paths | At least 30 sanitized/public test cases stratified by creator/company/expert/general-media and platform report accuracy, class balance, abstentions, and error categories; no recommendation when type is unknown | research |
 | done | P5 · C4/C9 | Build Living Brief protected-field proposal semantics | Tests prove model output can only propose diffs; identity/vision/goals/constraints require explicit confirmation; version history remains immutable; rejected proposals stay rejected absent new evidence | engineering |
-| proposed | P7 · F3/F6 | Build founder-facing release-evidence packet generation | One local command emits code/commit/test/preview/migration/production-state distinctions and rollback checklist from real local state; it cannot deploy or approve production | devops |
+| in_flight | P7 · F3/F6 | Build founder-facing release-evidence packet generation | One local command emits code/commit/test/preview/migration/production-state distinctions and rollback checklist from real local state; it cannot deploy or approve production | devops |
 
 ## Founder-brief expansion — 2026-08-07
 
@@ -36,3 +36,9 @@ Status vocabulary: `proposed → in_flight → done`; `parked` is explicit. The 
 - Prefer a different underdeveloped program when the last four completed cards cluster in one area.
 - Every idea names a baseline, observed or fixture-backed evidence, an honest-null clause, and a no-production safety boundary.
 - Append new ideas; do not rewrite history to make the queue look cleaner.
+
+## Evidence-gap replenishment — 2026-08-07 W006
+
+| Status | Tag | Idea | Baseline / evidence | Expected composition | Capability preflight | Check / honest null / safety | Type |
+|---|---|---|---|---|---|---|---|
+| proposed | P6 · F4/F9 · D3/D4/D8 | Prove in-flight inference cancellation containment | ALM-I-010 verified total-deadline and pending-stage cancellation, but its ledger verdict explicitly leaves already-running provider-call cancellation to the per-call timeout boundary | Extend the canonical bounded runtime and telemetry policy; preserve completed stages and existing DeepSeek-only policy; add no second scheduler or provider wrapper | Python, uv, existing runtime budget fixture, and a deterministic blocking fake transport must be present; no provider credential or network source is required | A mock-only test starts an in-flight call, crosses the total deadline, proves bounded return/cancel classification, preserves completed artifacts, records zero live provider calls, and leaves an uncooperative transport as UNKNOWN with a correction tip; no service, customer data, deployment, or live tokens | reliability |
