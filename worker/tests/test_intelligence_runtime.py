@@ -174,6 +174,12 @@ def test_single_channel_uses_one_call_and_skips_synthesis() -> None:
     assert completed.telemetry.channel_calls == 1
     assert completed.telemetry.synthesis_calls == 0
     evidence_id = _request("unused").channels[0].evidence[0]["evidence_id"]
+    # No prior result exists: the canonical classifier must not silently
+    # default to evidence. A first run is honest UNKNOWN with a tip.
+    first_run_tip = (
+        "No prior result exists; this is a first run, not an audit-to-audit "
+        "delta. Attribution requires a pinned prior result."
+    )
     assert completed.result["scores"] == [
         {
             "dimension": "profile_clarity",
@@ -182,7 +188,8 @@ def test_single_channel_uses_one_call_and_skips_synthesis() -> None:
             "methodology_version": "moat-1",
             "previous_value": None,
             "delta": None,
-            "change_cause": "evidence",
+            "change_cause": "unknown",
+            "change_correction_tip": first_run_tip,
         },
         {
             "dimension": "audience_fit",
@@ -191,9 +198,11 @@ def test_single_channel_uses_one_call_and_skips_synthesis() -> None:
             "methodology_version": "moat-1",
             "previous_value": None,
             "delta": None,
-            "change_cause": "evidence",
+            "change_cause": "unknown",
+            "change_correction_tip": first_run_tip,
         },
     ]
+    assert first_run_tip in completed.result["limitations"]
     assert {item["id"] for item in completed.result["recommendations"]} == {"rec-instagram"}
 
 

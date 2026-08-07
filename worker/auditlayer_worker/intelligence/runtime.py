@@ -13,6 +13,7 @@ from typing import Any, Callable, Mapping, Protocol
 from uuid import UUID
 
 from .cache import CacheKeyParts, build_analysis_cache_key
+from .change_classifier import UNKNOWN_CHANGE, ChangeMetadata, classify_change
 from .evidence import EvidenceValidationError, canonical_json, normalize_evidence
 from .projection import PROJECTION_VERSION, project_subject_context
 from .validation import (
@@ -352,6 +353,7 @@ def _scores(
     methodology_version: str,
     prior_scores: Mapping[str, float | None],
     change_cause: str,
+    change_correction_tip: str | None = None,
 ) -> list[dict[str, Any]]:
     scores: list[dict[str, Any]] = []
     for dimension in dimensions:
@@ -382,6 +384,7 @@ def _scores(
                     else None
                 ),
                 "change_cause": change_cause,
+                "change_correction_tip": change_correction_tip,
             }
         )
     return scores
@@ -398,17 +401,23 @@ def _deduplicate(rows: list[dict[str, Any]], key: Callable[[dict[str, Any]], str
     return result
 
 
-def _change_cause(request: IntelligenceRunRequest) -> str:
-    prior = request.prior_result
-    if not isinstance(prior, Mapping):
-        return "evidence"
-    if prior.get("prior_correction") is True:
-        return "prior_correction"
-    if prior.get("methodology_version") not in {None, request.methodology_version}:
-        return "methodology"
-    if prior.get("brief_version") not in {None, request.brief_version}:
-        return "brief_lens"
-    return "evidence"
+def _prior_evidence_hashes(prior_result: Mapping[str, Any] | None) -> tuple[str, ...] | None:
+    """Pinned prior evidence content hashes, or ``None`` when absent.
+
+    A missing or malformed ``evidence_hashes`` value is treated as absent so
+    the evidence cause cannot be silently supported; the canonical classifier
+    then returns UNKNOWN with a correction tip naming the missing metadata.
+    """
+    if not isinstance(prior_result, Mapping):
+        return None
+    value = prior_result.get("evidence_hashes")
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)) and all(
+        isinstance(hash_value, str) and hash_value for hash_value in value
+    ):
+        return tuple(str(hash_value) for hash_value in value)
+    return None
 
 
 class BoundedIntelligenceRuntime:
@@ -734,6 +743,15 @@ class BoundedIntelligenceRuntime:
             for channel in channels
             for item in channel.evidence
         }
+        change_classification = classify_change(
+            ChangeMetadata(
+                prior_result=request.prior_result,
+                prior_evidence_hashes=_prior_evidence_hashes(request.prior_result),
+                current_evidence_hashes=tuple(evidence_hashes.values()),
+                current_brief_version=request.brief_version,
+                current_methodology_version=request.methodology_version,
+            )
+        )
         recommendations = channel_recommendations + (
             deepcopy(synthesis["recommendations"]) if synthesis is not None else []
         )
@@ -766,17 +784,23 @@ class BoundedIntelligenceRuntime:
             ],
             lambda item: str(item["proposal_id"]),
         )
-        limitations = sorted(
-            {
-                str(item)
-                for channel in ordered
-                for item in channel.get("limitations", [])
-            }
-            | {
-                str(item)
-                for item in (synthesis.get("limitations", []) if synthesis is not None else [])
-            }
-        )
+        limitation_values = {
+            str(item)
+            for channel in ordered
+            for item in channel.get("limitations", [])
+        } | {
+            str(item)
+            for item in (synthesis.get("limitations", []) if synthesis is not None else [])
+        }
+        if (
+            change_classification.cause == UNKNOWN_CHANGE
+            and change_classification.correction_tip
+        ):
+            # Honest UNKNOWN is durable: the correction tip rides the existing
+            # limitation path so deterministic callers and UI surfaces can see
+            # why no cause was attributed.
+            limitation_values.add(change_classification.correction_tip)
+        limitations = sorted(limitation_values)
         change_explanations = (
             deepcopy(synthesis["change_explanations"])
             if synthesis is not None
@@ -793,7 +817,8 @@ class BoundedIntelligenceRuntime:
                 dimensions=request.score_dimensions,
                 methodology_version=request.methodology_version,
                 prior_scores=request.prior_scores,
-                change_cause=_change_cause(request),
+                change_cause=change_classification.cause,
+                change_correction_tip=change_classification.correction_tip,
             ),
             "findings": findings,
             "recommendations": recommendations,

@@ -18,6 +18,11 @@ import { SampleReportPreview } from "@/components/sample-report-preview";
 import { TestimonialCarousel } from "@/components/testimonial-carousel";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
+import {
+  deriveBlueprintCopy,
+  deriveEnterpriseCopy,
+  derivePublicPricing,
+} from "@/lib/offer-contract";
 
 const REPORT_ANSWERS = [
   ["01", "Diagnosis", "Where the account stands across content, growth, engagement, brand, and conversion — plus the structural issue limiting reach, trust, or audience action."],
@@ -26,39 +31,16 @@ const REPORT_ANSWERS = [
   ["04", "Revenue move", "The commercial action that fits the audience and current maturity, timed to land when trust and engagement are strongest."],
 ] as const;
 
-const PRICING = [
-  {
-    name: "Pulse",
-    price: "Free",
-    cadence: "",
-    note: "One focused decision-ready diagnostic",
-    features: ["Six-dimension score", "Primary constraint", "Three immediate moves"],
-    cta: "Run a Free Pulse Audit",
-    featured: false,
-  },
-  {
-    name: "Starter",
-    price: "$30",
-    cadence: "/ month",
-    note: "5 complete reports per month",
-    features: ["15-section intelligence report", "Same-tier peer benchmarking", "7-day and 90-day plans", "One refinement"],
-    cta: "Choose Starter",
-    featured: true,
-  },
-  {
-    name: "Pro",
-    price: "$50",
-    cadence: "/ month",
-    note: "15 extended reports per month",
-    features: ["Everything in Starter", "Extended content diagnosis", "Competitor deep-dives", "Two refinements"],
-    cta: "Choose Pro",
-    featured: false,
-  },
-] as const;
-
 export default async function Home() {
   const user = await getSession();
   if (user) redirect("/accounts");
+
+  // Pricing surface is a projection of the canonical offer contract
+  // (`src/lib/offer-contract.ts`); the landing keeps no second static plan
+  // table. Contract promises classified `unknown` are never rendered here.
+  const PRICING = derivePublicPricing();
+  const ENTERPRISE = deriveEnterpriseCopy();
+  const BLUEPRINT = deriveBlueprintCopy();
 
   return (
     <PublicShell>
@@ -173,16 +155,16 @@ export default async function Home() {
                 <div className="flex items-center justify-between"><h3 className="text-xl font-semibold">{tier.name}</h3>{tier.featured && <span className="font-mono text-xs uppercase tracking-widest text-[color:var(--teal-on-forest)]">Most popular</span>}</div>
                 <div className="mt-9"><b className="font-mono text-4xl">{tier.price}</b><span className={`text-xs ${tier.featured ? "text-white/60" : "text-muted-foreground"}`}>{tier.cadence}</span><p className={`mt-2 text-xs ${tier.featured ? "text-white/60" : "text-muted-foreground"}`}>{tier.note}</p></div>
                 <ul className="mt-8 flex-1 space-y-3">{tier.features.map(feature => <li key={feature} className={`flex gap-2 text-sm ${tier.featured ? "text-white/80" : "text-muted-foreground"}`}><Check className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />{feature}</li>)}</ul>
-                <Button asChild variant={tier.featured ? "secondary" : "outline"} className="mt-8 min-h-11 w-full"><Link href="/login">{tier.cta}</Link></Button>
+                <Button asChild variant={tier.featured ? "secondary" : "outline"} className="mt-8 min-h-11 w-full"><Link href={tier.href}>{tier.cta}</Link></Button>
               </article>)}
             </div>
             <div className="mt-6 flex flex-col items-start justify-between gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
               <div>
-                <p className="text-sm font-semibold">Companies and agencies</p>
-                <p className="mt-1 text-xs text-muted-foreground">Custom engagements with hands-on onboarding, scoped to your portfolio and operating rhythm.</p>
+                <p className="text-sm font-semibold">{ENTERPRISE.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{ENTERPRISE.blurb}</p>
               </div>
               <Button asChild variant="outline" className="min-h-10 shrink-0 px-4">
-                <Link href="/enterprise">Enterprise <ArrowRight className="size-4" /></Link>
+                <Link href={ENTERPRISE.href}>{ENTERPRISE.cta} <ArrowRight className="size-4" /></Link>
               </Button>
             </div>
           </div>
@@ -229,18 +211,9 @@ export default async function Home() {
 
             <div className="grid border-x border-b border-border bg-[color:var(--forest)] text-white lg:grid-cols-[1.2fr_0.8fr]">
               <div className="p-6 sm:p-8 lg:p-10">
-                <p className="font-mono text-xs uppercase tracking-[0.12em] text-[color:var(--teal-on-forest)]">Your 15-section launch foundation</p>
+                <p className="font-mono text-xs uppercase tracking-[0.12em] text-[color:var(--teal-on-forest)]">{BLUEPRINT.features[0]}</p>
                 <div className="mt-7 grid gap-x-10 gap-y-4 sm:grid-cols-2">
-                  {[
-                    "Niche and positioning audit",
-                    "Competitive landscape",
-                    "Content pillar architecture",
-                    "Profile optimization checklist",
-                    "Visual identity framework",
-                    "Brand voice and format mix",
-                    "Month-one content calendar",
-                    "Launch readiness and blind spots",
-                  ].map((item) => (
+                  {BLUEPRINT.features.slice(1).map((item) => (
                     <div key={item} className="flex gap-3 text-sm text-white/75">
                       <Check className="mt-0.5 size-4 shrink-0 text-[color:var(--teal-on-forest)]" />
                       <span>{item}</span>
@@ -251,11 +224,11 @@ export default async function Home() {
               <div className="flex flex-col justify-between border-t border-white/15 p-6 sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
                 <div>
                   <p className="text-sm text-white/60">One-time strategy</p>
-                  <p className="mt-3 font-mono text-5xl font-semibold tracking-[-0.05em]">$79</p>
-                  <p className="mt-4 text-sm leading-6 text-white/65">A complete pre-launch foundation and 90-day roadmap. No subscription.</p>
+                  <p className="mt-3 font-mono text-5xl font-semibold tracking-[-0.05em]">{BLUEPRINT.price}</p>
+                  <p className="mt-4 text-sm leading-6 text-white/65">{BLUEPRINT.note}</p>
                 </div>
                 <Button asChild variant="secondary" className="mt-8 min-h-11 w-full">
-                  <Link href="/support?topic=blueprint">Get the Blueprint <ArrowRight className="size-4" /></Link>
+                  <Link href={BLUEPRINT.href}>{BLUEPRINT.cta} <ArrowRight className="size-4" /></Link>
                 </Button>
               </div>
             </div>

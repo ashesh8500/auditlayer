@@ -31,15 +31,13 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 from uuid import UUID
 
+from .change_classifier import CHANGE_KINDS, UNKNOWN_CHANGE
 from .evidence import EvidenceValidationError, normalize_evidence
 from .runtime import CompletedIntelligenceRun, RuntimeTelemetry
 
 
 class LedgerCommitError(ValueError):
     """A ledger commit payload violates the kernel RPC contract."""
-
-
-CHANGE_KINDS = frozenset({"evidence", "brief_lens", "methodology", "prior_correction"})
 
 
 def _uuid(value: str, field_name: str) -> str:
@@ -251,7 +249,18 @@ def score_ledger_rows(
         if not isinstance(methodology_version, str) or not methodology_version.strip():
             raise LedgerCommitError(f"scores[{index}].methodology_version is required")
         change_kind = score.get("change_cause") or score.get("change_kind")
-        if change_kind is not None and change_kind not in CHANGE_KINDS:
+        if change_kind == UNKNOWN_CHANGE:
+            # Honest UNKNOWN is projected through the nullable persistence
+            # path: the kernel change_kind CHECK constraint is unchanged, so
+            # UNKNOWN serializes as NULL and the correction tip is required
+            # here so callers cannot drop the explanation at the boundary.
+            correction_tip = score.get("change_correction_tip")
+            if not isinstance(correction_tip, str) or not correction_tip.strip():
+                raise LedgerCommitError(
+                    f"scores[{index}].change_correction_tip is required for UNKNOWN change attribution"
+                )
+            change_kind = None
+        elif change_kind is not None and change_kind not in CHANGE_KINDS:
             raise LedgerCommitError(f"scores[{index}].change_kind is invalid")
         previous_value = score.get("previous_value")
         if previous_value is not None and (

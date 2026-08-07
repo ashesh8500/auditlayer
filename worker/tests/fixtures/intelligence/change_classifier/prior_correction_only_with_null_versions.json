@@ -1,0 +1,22 @@
+{
+  "expected": {
+    "cause": "prior_correction",
+    "correction_tip_present": false,
+    "supported_causes": [
+      "prior_correction"
+    ]
+  },
+  "metadata": {
+    "current_brief_version": 2,
+    "current_evidence_hashes": [
+      "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh1"
+    ],
+    "current_methodology_version": "moat-1",
+    "prior_evidence_hashes": null,
+    "prior_result": {
+      "brief_version": null,
+      "methodology_version": null,
+      "prior_correction": true
+    }
+  }
+}

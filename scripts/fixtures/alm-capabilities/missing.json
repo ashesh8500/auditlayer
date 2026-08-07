@@ -1,0 +1,15 @@
+{
+  "name": "missing",
+  "description": "Missing-credential fixture environment: worker, Instagram, preview-login secret, and DeepSeek policy variables are absent. Magic link still satisfies the Supabase token_hash template alternative; Google OAuth and public routes remain ready. The preflight must block exactly the affected capabilities, leave unrelated states intact, and never emit values.",
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://example.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "anon-key-placeholder",
+    "NEXT_PUBLIC_SITE_URL": "https://auditlayermedia.com",
+    "AUTH_EMAIL_FROM": "AuditLayer <noreply@auditlayermedia.com>",
+    "PREVIEW_TEST_USER_EMAIL": "preview-tester@auditlayermedia.com",
+    "PREVIEW_TEST_USER_PASSWORD": "preview-password-placeholder",
+    "HERMES_MAX_ITERATIONS": "3",
+    "HERMES_MODE": "inprocess",
+    "VERCEL_ENV": "preview"
+  }
+}

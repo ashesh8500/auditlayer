@@ -1,0 +1,25 @@
+{
+  "name": "production",
+  "description": "Production-posture fixture environment: every required variable is present but VERCEL_ENV=production. Preview-only test login must be rejected by policy (fail closed) while all other repository capabilities remain ready. External/live verification remains UNKNOWN.",
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://example.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "anon-key-placeholder",
+    "NEXT_PUBLIC_SITE_URL": "https://auditlayermedia.com",
+    "SUPABASE_SERVICE_ROLE_KEY": "service-role-placeholder",
+    "SUPABASE_URL": "https://example.supabase.co",
+    "RESEND_API_KEY": "re_placeholder",
+    "AUTH_EMAIL_FROM": "AuditLayer <noreply@auditlayermedia.com>",
+    "INSTAGRAM_APP_ID": "1624742575301528",
+    "INSTAGRAM_APP_SECRET": "instagram-secret-placeholder",
+    "PREVIEW_TEST_USER_EMAIL": "preview-tester@auditlayermedia.com",
+    "PREVIEW_TEST_USER_PASSWORD": "preview-password-placeholder",
+    "PREVIEW_TEST_LOGIN_SECRET": "preview-login-secret-placeholder",
+    "HERMES_API_KEY": "hermes-api-key-placeholder",
+    "HERMES_MODEL": "deepseek-v4-flash",
+    "HERMES_PROVIDER": "deepseek",
+    "HERMES_MAX_ITERATIONS": "3",
+    "HERMES_MODE": "inprocess",
+    "AUDITLAYER_GENERATOR": "hermes",
+    "VERCEL_ENV": "production"
+  }
+}

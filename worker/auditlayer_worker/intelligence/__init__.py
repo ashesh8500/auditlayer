@@ -2,6 +2,13 @@
 
 from .bridge import maybe_commit_subject_ledger, resolve_subject_context
 from .cache import CacheKeyParts, build_analysis_cache_key
+from .change_classifier import (
+    CHANGE_KINDS,
+    UNKNOWN_CHANGE,
+    ChangeMetadata,
+    DeltaClassification,
+    classify_change,
+)
 from .continuity import (
     ContinuityError,
     ContinuityInputs,
@@ -60,14 +67,18 @@ __all__ = [
     "ANSWER_KINDS",
     "BoundedIntelligenceRuntime",
     "CacheKeyParts",
+    "CHANGE_KINDS",
     "DATA_NEEDED_MARKER",
+    "UNKNOWN_CHANGE",
     "maybe_commit_subject_ledger",
     "resolve_subject_context",
+    "ChangeMetadata",
     "ChannelInput",
     "CompletedIntelligenceRun",
     "ContinuityError",
     "ContinuityInputs",
     "ContinuityPacket",
+    "DeltaClassification",
     "EvidenceValidationError",
     "HermesStructuredAnalysisModel",
     "InferencePolicy",
@@ -89,6 +100,7 @@ __all__ = [
     "WebsiteResponse",
     "build_analysis_cache_key",
     "build_ledger_commit",
+    "classify_change",
     "commit_ledger_batch",
     "compile_continuity_packet",
     "coverage_summary",
