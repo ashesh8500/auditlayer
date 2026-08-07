@@ -54,9 +54,31 @@ def test_initial_report_finalization_uses_atomic_rpc() -> None:
                 "p_prompt_version": "1.1",
                 "p_template_version": "master-skeleton-v1",
                 "p_agent_bundle_version": "1.0.0",
+                "p_intelligence_run_id": None,
             },
         )
     ]
+
+
+def test_initial_report_finalization_carries_pinned_intelligence_run() -> None:
+    gateway, client = _gateway(1)
+
+    version = gateway.finalize_initial_report(
+        audit_id="audit-1",
+        delivery_status="ready",
+        report_path="audit-1/revisions/random.html",
+        prompt_version="1.1",
+        agent_bundle_version="1.0.0",
+        intelligence_run_id="33333333-3333-4333-8333-333333333333",
+    )
+
+    assert version == 1
+    name, params = client.calls[0]
+    assert name == "finalize_initial_report"
+    assert (
+        params["p_intelligence_run_id"]
+        == "33333333-3333-4333-8333-333333333333"
+    )
 
 
 def test_refinement_finalization_delegates_version_allocation_to_database() -> None:
@@ -78,4 +100,5 @@ def test_refinement_finalization_delegates_version_allocation_to_database() -> N
     assert params["p_refinement_id"] == "refinement-1"
     assert params["p_report_path"].endswith("unique.html")
     assert params["p_agent_bundle_version"] == "1.0.0"
+    assert params["p_intelligence_run_id"] is None
     assert "p_version" not in params

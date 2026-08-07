@@ -165,4 +165,74 @@ describe("AuditLayerMedia MCP service", () => {
       service.buildCreatorContext("account-one", "monthly_content_strategy", "audit-one"),
     ).resolves.toMatchObject({ connected_metrics: null });
   });
+
+  it("projects legacy audits as UNKNOWN provenance instead of prompt-as-methodology", async () => {
+    const service = createMcpService("user-one", repository());
+
+    const artifacts = await service.listArtifacts("account-one", 10);
+    const artifact = artifacts.artifacts[0];
+    // The old conflation (methodology_version = prompt_version) is gone.
+    expect("methodology_version" in artifact).toBe(false);
+    expect(artifact.prompt_version).toBe("1.1");
+    expect(artifact.provenance).toMatchObject({ status: "unknown" });
+    if (artifact.provenance.status === "unknown") {
+      expect(artifact.provenance.correction_tip.length).toBeGreaterThan(10);
+    }
+  });
+
+  it("projects a pinned manifest with the exact seven-field vocabulary", async () => {
+    const pinnedRepository = repository();
+    const base = pinnedRepository.getAudit as (
+      userId: string,
+      accountId: string,
+      auditId: string,
+    ) => Promise<any>;
+    pinnedRepository.getAudit = async (userId, accountId, auditId) => {
+      const audit = await base(userId, accountId, auditId);
+      return audit
+        ? {
+            ...audit,
+            intelligence_provenance: {
+              intelligence_run_id: "33333333-3333-4333-8333-333333333333",
+              living_brief_version: 3,
+              evidence_snapshot_id: "22222222-2222-4222-8222-222222222222",
+              methodology_version: "alm-bridge-v1",
+              expertise_pack_version: "social-media-audit",
+              prompt_version: "1.1",
+              model_config_hash: "abc123def456",
+              output_schema_version: "1.0",
+            },
+          }
+        : null;
+    };
+    const service = createMcpService("user-one", pinnedRepository);
+
+    const artifact = await service.getArtifact("account-one", "audit-one");
+    expect(artifact.provenance).toEqual({
+      status: "pinned",
+      manifest_version: "1.0",
+      intelligence_run_id: "33333333-3333-4333-8333-333333333333",
+      manifest: {
+        living_brief_version: 3,
+        evidence_snapshot_id: "22222222-2222-4222-8222-222222222222",
+        methodology_version: "alm-bridge-v1",
+        expertise_pack_version: "social-media-audit",
+        prompt_version: "1.1",
+        model_config_hash: "abc123def456",
+        output_schema_version: "1.0",
+      },
+    });
+    // prompt_version is projected under its own name, never as methodology.
+    expect("methodology_version" in artifact).toBe(false);
+    expect(artifact.prompt_version).toBe("1.1");
+  });
+
+  it("keeps owner scoping intact when attaching provenance", async () => {
+    const pinnedRepository = repository();
+    const service = createMcpService("user-two", pinnedRepository);
+
+    await expect(service.getArtifact("account-one", "audit-one")).rejects.toThrow(
+      "Account not found",
+    );
+  });
 });

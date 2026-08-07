@@ -17,6 +17,12 @@ import {
   type CheckoutStripeBoundary,
   type ProfileLinkResult,
 } from "@/lib/checkout-intent";
+import {
+  runBillingPortal,
+  type BillingPortalDeps,
+  type BillingPortalProfile,
+  type BillingPortalStripeBoundary,
+} from "@/lib/billing-portal";
 
 /**
  * Production wiring for the canonical checkout-intent orchestration
@@ -86,19 +92,34 @@ export async function startProCheckout(): Promise<void> {
   await startCheckout("pro");
 }
 
+/**
+ * Production wiring for the canonical billing-portal orchestration
+ * (`runBillingPortal` in `web/src/lib/billing-portal.ts`). The real Stripe
+ * client satisfies `BillingPortalStripeBoundary` structurally (its
+ * `billingPortal.sessions.create` accepts these params and resolves a session
+ * with `url`), so this is a pass-through of the canonical client — NOT a
+ * provider wrapper. The portal path never writes `profiles.plan`,
+ * subscription columns, or receipts; only the webhook (service-role)
+ * reconciles entitlements, and Stripe stays authoritative for portal sessions
+ * and subscription facts.
+ */
+const billingPortalDeps: BillingPortalDeps = {
+  getProfile: async (): Promise<BillingPortalProfile> => {
+    const profile = await requireProfile();
+    return {
+      id: profile.id,
+      stripe_customer_id: profile.stripe_customer_id,
+    };
+  },
+  getStripe: (): BillingPortalStripeBoundary | null => {
+    const stripe = getStripe();
+    return stripe as BillingPortalStripeBoundary | null;
+  },
+  siteUrl,
+};
+
 /** Open the Stripe Customer Portal for managing an existing subscription. */
 export async function openBillingPortal(): Promise<void> {
-  const profile = await requireProfile();
-  const stripe = getStripe();
-
-  if (!stripe || !profile.stripe_customer_id) {
-    redirect("/dashboard?billing=unconfigured");
-  }
-
-  const session = await stripe.billingPortal.sessions.create({
-    customer: profile.stripe_customer_id,
-    return_url: `${siteUrl()}/dashboard`,
-  });
-
-  redirect(session.url);
+  const result = await runBillingPortal(billingPortalDeps);
+  redirect(result.url);
 }

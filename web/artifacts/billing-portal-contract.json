@@ -1,0 +1,53 @@
+{
+  "contract": "billing-portal-contract",
+  "version": "1.0.0",
+  "program": "P11/P12 · C14/C15 · F7/F9 · D3/D4/D8",
+  "idea": "ALM-I-026: bound billing portal recovery",
+  "object": "web/src/lib/actions/billing.ts::openBillingPortal + stored Stripe customer link + canonical /dashboard?billing= recovery vocabulary + one recording Stripe boundary",
+  "authority": {
+    "portal_sessions": "Stripe billingPortal.sessions.create is authoritative for portal sessions and subscription facts",
+    "entitlements": "webhook reconciliation (W013 stripe-reconciliation.ts + reconcile_stripe_subscription) remains authoritative after payment; the portal never writes profiles.plan/subscription/receipts",
+    "profiles": "profiles is authoritative only for the current customer link; presence and local shape are validated, live existence is never claimed",
+    "dashboard": "existing /dashboard?billing=success|cancelled|unconfigured|error query vocabulary is the only redirect/recovery surface"
+  },
+  "call_matrix": {
+    "configured_success": "session_calls=1 redirect(session.url)",
+    "missing_stripe": "session_calls=0 recover(unconfigured/missing_stripe)",
+    "missing_customer_link": "session_calls=0 recover(unconfigured/missing_customer_link)",
+    "stale_customer_link": "session_calls=0 recover(unconfigured/stale_customer_link)",
+    "unsafe_return_url": "session_calls=0 recover(error/unsafe_return_url)",
+    "portal_session_failed": "session_calls=1 recover(error/portal_session_failed)",
+    "missing_session_url": "session_calls=1 recover(error/missing_session_url)",
+    "unsafe_session_url": "session_calls=1 recover(error/unsafe_session_url)",
+    "repeated_valid_submission": "one session call per invocation; no dedup claim (provider replay UNKNOWN)",
+    "repeated_failing_submission": "every invocation returns the same bounded recovery; never success"
+  },
+  "recovery": {
+    "unconfigured": "/dashboard?billing=unconfigured",
+    "error": "/dashboard?billing=error",
+    "codes": [
+      "missing_stripe",
+      "missing_customer_link",
+      "stale_customer_link",
+      "unsafe_return_url",
+      "portal_session_failed",
+      "missing_session_url",
+      "unsafe_session_url"
+    ],
+    "never_success_on_failure": true
+  },
+  "unknown": {
+    "live_customer_existence": "UNKNOWN — fixtures cannot observe whether the stored customer still exists at Stripe",
+    "provider_replay_idempotency": "UNKNOWN — fixtures cannot observe Stripe replay/idempotency for repeated portal sessions"
+  },
+  "network_calls": 0,
+  "payment_calls": 0,
+  "customer_mutations": 0,
+  "provider_calls": 0,
+  "no_environment_path": true,
+  "no_timestamp": true,
+  "no_customer_data": true,
+  "no_secret_values": true,
+  "no_url_secret": true,
+  "fixture_note": "Recording fixtures prove adapter call shape and fail-closed recovery semantics only; they do not prove live customer existence, provider idempotency, billing conversion, or entitlement correctness."
+}

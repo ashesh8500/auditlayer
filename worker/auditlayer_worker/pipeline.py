@@ -503,9 +503,41 @@ class GenerationPipeline:
             event_type="quality_passed" if quality.passed else "quality_blocked",
         )
 
+        overall_score = _extract_overall_score(final_html)
+
         report_path = None
+        intelligence_run_id = None
         if gateway is not None and persist_report:
             report_path, _ = gateway.upload_report(audit.id, final_html, version=1)
+            # Subject-batched audits also commit a minimal intelligence ledger so
+            # Subject home can leave fixture mode. Commit BEFORE finalization so
+            # the immutable report version can pin the returned run id. The
+            # bridge is best-effort: failure leaves provenance UNKNOWN and never
+            # fails the paid report path.
+            if quality.passed:
+                try:
+                    from .intelligence.bridge import maybe_commit_subject_ledger
+
+                    intelligence_run_id = maybe_commit_subject_ledger(
+                        gateway,
+                        audit,
+                        overall_score=overall_score,
+                        research_cache=result.research_cache or "",
+                        tokens_in=result.tokens_in,
+                        tokens_out=result.tokens_out,
+                        cost_usd=cost.total_usd,
+                        wall_clock_seconds=time.monotonic() - started_at,
+                        cache_mode=cache_mode,
+                        model=result.model,
+                        sink=sink,
+                    )
+                except Exception as bridge_exc:  # noqa: BLE001
+                    log_event(
+                        "intelligence_bridge_import_or_call_failed",
+                        level="warning",
+                        audit_id=audit.id,
+                        error_type=type(bridge_exc).__name__,
+                    )
             try:
                 gateway.update_audit(
                     audit.id,
@@ -526,6 +558,7 @@ class GenerationPipeline:
                     prompt_version=PROMPT_VERSION,
                     template_version="master-skeleton-v1",
                     agent_bundle_version=bundle_version,
+                    intelligence_run_id=intelligence_run_id,
                 )
             except Exception as exc:
                 try:
@@ -613,7 +646,6 @@ class GenerationPipeline:
             )
 
         # Link audit to account and write progression data.
-        overall_score = _extract_overall_score(final_html)
         if gateway is not None and persist_report and audit.user_id:
             _link_account_and_progression(
                 gateway,
@@ -623,33 +655,6 @@ class GenerationPipeline:
                 research_cache=result.research_cache,
                 research_refreshed=not reused_account_cache,
             )
-
-        # Subject-batched audits also commit a minimal intelligence ledger so
-        # Subject home can leave fixture mode. Never fail the paid report path.
-        if gateway is not None and persist_report and quality.passed:
-            try:
-                from .intelligence.bridge import maybe_commit_subject_ledger
-
-                maybe_commit_subject_ledger(
-                    gateway,
-                    audit,
-                    overall_score=overall_score,
-                    research_cache=result.research_cache or "",
-                    tokens_in=result.tokens_in,
-                    tokens_out=result.tokens_out,
-                    cost_usd=cost.total_usd,
-                    wall_clock_seconds=time.monotonic() - started_at,
-                    cache_mode=cache_mode,
-                    model=result.model,
-                    sink=sink,
-                )
-            except Exception as bridge_exc:  # noqa: BLE001
-                log_event(
-                    "intelligence_bridge_import_or_call_failed",
-                    level="warning",
-                    audit_id=audit.id,
-                    error_type=type(bridge_exc).__name__,
-                )
 
         stage_timings = dict(result.stage_timings)
         stage_timings["postprocess"] = round(

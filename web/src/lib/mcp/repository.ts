@@ -2,6 +2,7 @@ import "server-only";
 
 import { WORKSPACE_ACCOUNT_STATUSES } from "@/lib/account-ownership";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { ReportProvenanceSource } from "@/lib/report-provenance";
 
 import type {
   AccountRecord,
@@ -93,7 +94,13 @@ export function createSupabaseMcpRepository(): McpRepository {
         .eq("id", auditId)
         .maybeSingle();
       if (error) throw new Error(`Could not read artifact: ${error.message}`);
-      return (data as AuditRecord | null) ?? null;
+      const audit = (data as AuditRecord | null) ?? null;
+      if (!audit) return null;
+      // Attach the pinned canonical intelligence run when the newest report
+      // version references one. Absence/error yields null → the projection
+      // emits explicit UNKNOWN provenance; it never blocks retrieval.
+      audit.intelligence_provenance = await readReportProvenance(admin, auditId);
+      return audit;
     },
 
     async getReportText(userId, audit) {
@@ -111,4 +118,50 @@ export function createSupabaseMcpRepository(): McpRepository {
       return reportHtmlToText(await data.text());
     },
   };
+}
+
+/**
+ * Read the newest report version's pinned canonical intelligence run.
+ *
+ * Returns null when the audit has no report version, no intelligence_run_id,
+ * the run row is absent, or the query fails — the projection then emits
+ * explicit UNKNOWN provenance. This is a bounded, defensive read that never
+ * blocks artifact retrieval and never reads report prose into canonical state.
+ */
+async function readReportProvenance(
+  admin: any,
+  auditId: string,
+): Promise<ReportProvenanceSource | null> {
+  try {
+    const { data: versionRow, error: versionError } = await admin
+      .from("audit_report_versions")
+      .select("intelligence_run_id")
+      .eq("audit_id", auditId)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (versionError || !versionRow?.intelligence_run_id) return null;
+
+    const { data: run, error: runError } = await admin
+      .from("intelligence_runs")
+      .select(
+        "id,brief_version,evidence_snapshot_id,methodology_version,expertise_pack_version,prompt_version,model_config_hash,output_schema_version",
+      )
+      .eq("id", versionRow.intelligence_run_id)
+      .maybeSingle();
+    if (runError || !run) return null;
+
+    return {
+      intelligence_run_id: String(run.id),
+      living_brief_version: run.brief_version,
+      evidence_snapshot_id: String(run.evidence_snapshot_id),
+      methodology_version: String(run.methodology_version),
+      expertise_pack_version: String(run.expertise_pack_version),
+      prompt_version: String(run.prompt_version),
+      model_config_hash: String(run.model_config_hash),
+      output_schema_version: String(run.output_schema_version),
+    };
+  } catch {
+    return null;
+  }
 }

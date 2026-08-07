@@ -1,3 +1,6 @@
+import type { ReportProvenanceSource } from "../report-provenance";
+import { projectReportProvenance } from "../report-provenance";
+
 export type AccountRecord = {
   id: string;
   handle: string;
@@ -38,6 +41,7 @@ export type AuditRecord = {
   prompt_version: string | null;
   report_path?: string | null;
   research_cache?: unknown;
+  intelligence_provenance?: ReportProvenanceSource | null;
 };
 
 export interface McpRepository {
@@ -134,7 +138,8 @@ export function createMcpService(userId: string, repository: McpRepository) {
           goal: audit.goal,
           created_at: audit.created_at,
           updated_at: audit.updated_at,
-          methodology_version: audit.prompt_version,
+          prompt_version: audit.prompt_version,
+          provenance: projectReportProvenance(audit.intelligence_provenance),
         })),
         progression,
       };
@@ -158,7 +163,8 @@ export function createMcpService(userId: string, repository: McpRepository) {
         goal: audit.goal,
         created_at: audit.created_at,
         updated_at: audit.updated_at,
-        methodology_version: audit.prompt_version,
+        prompt_version: audit.prompt_version,
+        provenance: projectReportProvenance(audit.intelligence_provenance),
         content: reportText.slice(0, 50000),
       };
     },
@@ -181,7 +187,8 @@ export function createMcpService(userId: string, repository: McpRepository) {
         sourceArtifact = {
           id: audit.id,
           type: audit.report_type ?? "audit",
-          methodology_version: audit.prompt_version,
+          prompt_version: audit.prompt_version,
+          provenance: projectReportProvenance(audit.intelligence_provenance),
           content: content?.slice(0, 30000) ?? null,
         };
       }
