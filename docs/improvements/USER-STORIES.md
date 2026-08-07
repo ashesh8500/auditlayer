@@ -14,6 +14,11 @@ Every queue idea must tag at least one story and one improvement program from `V
 - **C8 — Recover gracefully:** As a creator, I can leave and return without losing a valid run, and a delayed run never pretends to be progressing.
 - **C9 — Control recommendations:** As a creator, I can accept, reject, or refine recommendations; rejected advice does not recur without new evidence.
 - **C10 — Protect my work:** As a creator, my brief, reports, evidence, and channels remain private to my workspace.
+- **C11 — Fit my organization:** As an individual, small business, brand, or enterprise, I can model the subjects, channels, offers, teams, and goals that actually describe me rather than being forced into a creator-handle abstraction.
+- **C12 — Use it anywhere:** As a partner, I can understand and act through a coherent, accessible interface on phone and desktop with predictable navigation, controls, loading, error, and recovery states.
+- **C13 — Use intelligence beyond one report:** As a partner, I can inspect the living evidence, decisions, experiments, and changes that produced a report without treating a PDF or HTML artifact as the only truth.
+- **C14 — Buy the right depth:** As a buyer, plan and price differences correspond to deterministic product value and clear entitlements rather than marketing labels or arbitrary section counts.
+- **C15 — Know when the system is uncertain:** As a partner, a missing capability, stale source, or failed dependency is disclosed as a bounded limitation and recovery path rather than masked by simulated progress or substitute output.
 
 ## Founder / operator
 
@@ -23,6 +28,10 @@ Every queue idea must tag at least one story and one improvement program from `V
 - **F4 — Bound cost and latency:** As a founder, I can see whether the deterministic runtime respected call, token, cost, and deadline budgets.
 - **F5 — Preserve history:** As a founder, I can prove which evidence, brief, methodology, prompt, model configuration, and schema produced any report version.
 - **F6 — Release safely:** As Ashesh, I can review local tests, preview evidence, migration safety, rollback steps, and production smoke results before explicitly approving promotion.
+- **F7 — Learn what sells honestly:** As Narin and Ashesh, we can connect offers, pricing, onboarding friction, acceptance, retention, and observed outcomes without inventing causal certainty.
+- **F8 — Govern the whole product:** As founders, we can see whether improvements compose across product, design, intelligence, commercial promises, runtime, and operations instead of optimizing isolated pages or features.
+- **F9 — See system health:** As Ashesh, I can inspect performance budgets, dependency health, queue state, worker capability, failures, retries, and release evidence through durable artifacts and concise operator views.
+- **F10 — Change hosting safely:** As Ashesh, I can replace or relocate a deployment component through explicit interfaces, migration checks, canaries, and rollback without rewriting domain truth.
 
 ## Developer / system
 
@@ -31,3 +40,7 @@ Every queue idea must tag at least one story and one improvement program from `V
 - **D3 — Fail closed:** As the system, missing evidence, invalid output, permission uncertainty, or stale state produces a structured limitation or rejection rather than a fabricated fallback.
 - **D4 — Resume idempotently:** As the system, successful stages survive retry and duplicate requests do not duplicate authoritative writes.
 - **D5 — Learn honestly:** As the system, recommendation outcomes can be analyzed only when linkage, timing, coverage, and confounding limits are explicit.
+- **D6 — Decline low-value work:** As the assigner, I can create zero cards when confidence, evidence, composition, or capacity is inadequate and record the reason.
+- **D7 — Check capability first:** As the system, required commands, credentials, permissions, model features, sources, and worktree bases are verified before dispatch without exposing secrets.
+- **D8 — Leave evidence:** As a developer or release gate, I produce machine-readable checks, before/after measurements, verdicts, changed paths, and correction or rollback tips for every consequential change.
+- **D9 — Promote safely:** As the release system, only preview-verified, migration-compatible, rollback-ready work reaches a bounded production canary; failed post-deploy checks stop or roll back.

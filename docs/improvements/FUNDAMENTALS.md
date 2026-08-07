@@ -16,7 +16,16 @@ These principles govern every autonomous improvement card and outrank local conv
 12. **No synthetic proof.** Fixtures may verify software contracts; they do not establish customer efficacy, model calibration, or business impact.
 13. **Elegance is operational stability.** Prefer canonical modules, typed structures, explicit invariants, minimal duplicate loops, concise interfaces, and correction tips.
 14. **Founder-operable, customer-calm.** Internal complexity should become clear recovery information for founders and restrained, truthful progress for customers.
-15. **No production mutations from this loop.** Worktree code, docs, fixtures, and local tests only. Deployment and live migrations require an explicit independent release approval.
+15. **Ordinary workers do not mutate production.** Worktree code, docs, fixtures, and local tests only. Promotion belongs to a separate release gate.
+16. **Intelligence is canonical; reports are projections.** Reports, dashboards, exports, and summaries are audience-specific accessibility layers over versioned intelligence. Never recover canonical state by scraping presentation prose.
+17. **User value and commercial value co-evolve.** Product, pricing, plans, onboarding, and sales promises are hypotheses tied to actual partner needs, deterministic entitlements, delivery cost, and observed outcomes.
+18. **UI quality is correctness.** Consistency, hierarchy, responsive behavior, accessibility, tap targets, loading/error states, color, spacing, and radii determine whether intelligence is usable; they are not ornamental afterthoughts.
+19. **Agency includes choosing not to act.** The assigner may create zero cards when evidence, expected composition, capacity, or confidence is insufficient. Throughput is not the objective.
+20. **Capability precedes assignment.** Verify required commands, credentials, permissions, source data, model features, and worktree state without exposing secrets. A missing capability becomes a precise block or parked idea, not a workaround loop or a substitute feature.
+21. **Fail early and contain blast radius.** Invalid state, uncertain permission, missing migration, provider/auth failure, or unverified production dependency stops before consequential mutation. Preserve artifacts and emit a structured recovery tip.
+22. **Observability produces durable artifacts.** Every card leaves machine-readable checks, measured before/after evidence, verdicts, changed paths, and correction or rollback information. Logs alone are not an outcome.
+23. **Simplicity is an architectural constraint.** Prefer shared primitives, bounded contexts, canonical interfaces, and explicit state machines over parallel wrappers, route-local vocabularies, and spaghetti accumulation.
+24. **Production promotion is evidence-gated.** The independent release gate requires a clean integration state, local verification, preview evidence, migration compatibility, rollback readiness, a bounded canary, and post-deploy live verification. Any failed gate rolls back or stops; permission to deploy is not permission to guess.
 
 ## Required card check
 

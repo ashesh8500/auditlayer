@@ -17,6 +17,19 @@ Status vocabulary: `proposed → in_flight → done`; `parked` is explicit. The 
 | proposed | P5 · C4/C9 | Build Living Brief protected-field proposal semantics | Tests prove model output can only propose diffs; identity/vision/goals/constraints require explicit confirmation; version history remains immutable; rejected proposals stay rejected absent new evidence | engineering |
 | proposed | P7 · F3/F6 | Build founder-facing release-evidence packet generation | One local command emits code/commit/test/preview/migration/production-state distinctions and rollback checklist from real local state; it cannot deploy or approve production | devops |
 
+## Founder-brief expansion — 2026-08-07
+
+| Status | Tag | Idea | Check | Type |
+|---|---|---|---|---|
+| proposed | P9 · C11/C13 · F8 | Surface a minimal brand-intelligence semantic contract | A versioned vocabulary with fewer than 25 core classes, SHACL/typed invariants, five competency queries, and valid/invalid fixtures answers partner/subject/evidence/decision/outcome questions without introducing a graph service or competing with SQL authority | architecture |
+| proposed | P10 · C12 · F1/F8 | Establish a real multi-route experience baseline | Desktop and 390px captures of public, auth, account, audit, report, support, privacy, loading, empty, error, and delayed states produce a ranked system-first defect map; auxiliary vision findings are grounded in images and mechanical accessibility/overflow checks | design-research |
+| proposed | P10 · C12 · D2 | Enforce shared product-experience primitives | Static and component tests measure token, panel, header, button, banner, empty/loading/error-state, tap-target, radius, and hardcoded-color conformance across product routes; the check reports coverage and exceptions rather than claiming subjective perfection | frontend |
+| proposed | P11 · C14 · F7 | Define evidence-backed offer and pricing contracts | Current plans, entitlements, runtime outputs, delivery costs, promises, and observed funnel events map to versioned offer hypotheses; unsupported distinctions fail a parity test and empirical gaps render unknown rather than fabricated demand | product |
+| proposed | P3 · C1/C13 · F5 | Make reports explicit projections of canonical intelligence | A fixture-backed projection contract proves report sections, dashboard summaries, and exports derive from one pinned evidence/brief/method bundle and cannot be parsed back into canonical state; old immutable reports remain retrievable | architecture |
+| proposed | P12 · C12/C15 · F4/F9 | Measure end-to-end responsiveness and runtime budgets | Reproducible local/preview measurements separate browser rendering, Vercel route time, Supabase round trips, worker queue time, evidence acquisition, inference, and rendering; each budget has a baseline, target, and honest unavailable state | performance |
+| proposed | P12 · C15 · F9 · D7 | Build an authentication and capability preflight matrix | Deterministic checks cover supported login methods, OAuth/env presence without secret disclosure, callback/deletion/support requirements, worker commands, model features, migrations, and failure/recovery states; missing capability blocks before mutation | reliability |
+| proposed | P12 · F6/F10 · D8/D9 | Prove portable interfaces and release containment | An architecture contract names every Vercel/Supabase/Hetzner interface, health probe, dependency, migration order, canary, and rollback; a dry-run release fixture fails closed on missing preconditions and emits a machine-readable evidence packet | devops |
+
 ## Replenishment rules
 
 - Read the latest ledger rows, `VISION.md`, `FUNDAMENTALS.md`, `USER-STORIES.md`, current canonical implementation packet, and repository test gaps.
