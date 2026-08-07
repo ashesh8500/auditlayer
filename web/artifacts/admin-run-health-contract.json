@@ -1,0 +1,82 @@
+{
+  "contract": "admin-run-health",
+  "version": "1.0.0",
+  "providerCalls": 0,
+  "delayedThresholdMs": 600000,
+  "owners": {
+    "report_generation_run": {
+      "statusVocabulary": [
+        "running",
+        "ready",
+        "needs_review",
+        "failed",
+        "blocked",
+        "crashed"
+      ],
+      "allowlistedHealthFields": [
+        "id",
+        "audit_id",
+        "status",
+        "error_code",
+        "cache_mode",
+        "evidence_items",
+        "started_at",
+        "finished_at",
+        "updated_at"
+      ],
+      "ownerNote": "Private report-attempt telemetry; report-pipeline status vocabulary. Never conjoined with intelligence-run vocabulary."
+    },
+    "intelligence_run": {
+      "statusVocabulary": [
+        "running",
+        "completed",
+        "failed"
+      ],
+      "allowlistedHealthFields": [
+        "id",
+        "subject_id",
+        "status",
+        "cache_mode",
+        "latency_ms",
+        "created_at",
+        "updated_at"
+      ],
+      "ownerNote": "Subject-domain run truth; intelligence-run status vocabulary. Never conjoined with report-attempt vocabulary."
+    }
+  },
+  "cacheModeVocabulary": [
+    "fresh",
+    "reused",
+    "resume"
+  ],
+  "unsupportedSignals": {
+    "total_deadline": "UNKNOWN",
+    "cancellation": "UNKNOWN",
+    "correctionTips": {
+      "total_deadline": "Total-deadline state is not persisted on report_generation_runs or intelligence_runs (no deadline column; ALM-I-015 marks deadline_seconds/deadline_exceeded unsupported). Observe deadline enforcement in worker runtime-budget telemetry; no founder action exists on run records.",
+      "cancellation": "Cancellation state is not persisted on either run record (no cancellation column). In-flight provider-call cancellation is bounded by the worker per-call timeout; transport-level cancellation cannot be proven from run records."
+    }
+  },
+  "fixtureCases": [
+    "ready",
+    "running",
+    "delayed",
+    "failed",
+    "crashed",
+    "resumed",
+    "empty",
+    "contradictory",
+    "deadline-UNKNOWN",
+    "cancellation-UNKNOWN"
+  ],
+  "joinBehavior": "No cross-record join. report_generation_runs.audit_id→audits and intelligence_runs.subject_id→subjects are separate owners; the audit→batch→subject path (audit_batches/batch_audits) is many-to-many and is not inferred.",
+  "redactionExcludes": [
+    "handles",
+    "emails",
+    "evidence bodies",
+    "stage payload values",
+    "raw exceptions",
+    "credentials",
+    "tracebacks"
+  ]
+}

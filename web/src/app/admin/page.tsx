@@ -12,6 +12,12 @@ import {
   type Platform,
 } from "@/lib/domain";
 import { needsFounderAction } from "@/lib/admin-review";
+import {
+  projectRunHealth,
+  type IntelligenceRunHealthRow,
+  type ReportRunHealthRow,
+} from "@/lib/admin-run-health";
+import { AdminRunHealth } from "@/components/admin-run-health";
 import { OnboardingSelect } from "./onboarding-select";
 
 type AdminAuditRow = {
@@ -69,6 +75,32 @@ export default async function AdminHome({
       .order("created_at", { ascending: false })
       .limit(40),
   ]);
+
+  // ALM-I-016: bounded founder run-health projection. Query ONLY the
+  // allowlisted health fields of the two authoritative run records; the
+  // projection keeps the report-attempt and intelligence-run vocabularies
+  // distinct and adds no mutation, route, or schema.
+  const [{ data: reportRunRows }, { data: intelligenceRunRows }] =
+    await Promise.all([
+      admin
+        .from("report_generation_runs")
+        .select(
+          "id, audit_id, status, error_code, cache_mode, evidence_items, started_at, finished_at, updated_at",
+        )
+        .order("started_at", { ascending: false })
+        .limit(12),
+      admin
+        .from("intelligence_runs")
+        .select(
+          "id, subject_id, status, cache_mode, latency_ms, created_at, updated_at",
+        )
+        .order("created_at", { ascending: false })
+        .limit(12),
+    ]);
+  const runHealth = projectRunHealth({
+    reportAttempts: (reportRunRows ?? []) as ReportRunHealthRow[],
+    intelligenceRuns: (intelligenceRunRows ?? []) as IntelligenceRunHealthRow[],
+  });
 
   const clients = (profiles ?? []) as AdminClientRow[];
   const filteredClients = searchLower
@@ -131,6 +163,9 @@ export default async function AdminHome({
           </ul>
         </section>
       )}
+
+      {/* Run health (ALM-I-016) — server-only founder projection */}
+      <AdminRunHealth bundle={runHealth} />
 
       {/* Audits */}
       <section className="mt-8">
