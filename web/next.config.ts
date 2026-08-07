@@ -1,7 +1,15 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const nextConfig: NextConfig = {};
+const webRoot = path.dirname(fileURLToPath(import.meta.url));
+
+const nextConfig: NextConfig = {
+  turbopack: {
+    root: webRoot,
+  },
+};
 
 const sourceMapUploadConfigured = Boolean(
   process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT,
