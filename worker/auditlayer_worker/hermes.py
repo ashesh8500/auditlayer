@@ -231,7 +231,11 @@ def validate_hermes(client: HermesClient, model: str) -> HermesValidationResult:
                 {"role": "user", "content": "Return OK."},
             ],
             model=model,
-            max_tokens=8,
+            # Reasoning providers may spend the first tokens internally before
+            # emitting the two-character health response. Keep this bounded but
+            # large enough that a healthy provider cannot be misclassified as
+            # truncated or empty.
+            max_tokens=256,
             temperature=0,
             stream=False,
         )

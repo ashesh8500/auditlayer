@@ -27,7 +27,9 @@ export function NavigationProgress() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const routeKey = `${pathname}?${searchParams?.toString() ?? ""}`;
-  const [phase, setPhase] = useState<"idle" | "start" | "done">("idle");
+  const [phase, setPhase] = useState<"idle" | "start" | "done">(
+    () => (navigating ? "start" : "idle"),
+  );
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -35,7 +37,6 @@ export function NavigationProgress() {
       if (active) setPhase("start");
     };
     listeners.add(onProg);
-    if (navigating) setPhase("start");
     return () => {
       listeners.delete(onProg);
     };
@@ -66,7 +67,7 @@ export function NavigationProgress() {
       ) {
         return;
       }
-      setPhase("start");
+      emit(true);
     };
 
     document.addEventListener("click", onClick, true);
@@ -74,12 +75,15 @@ export function NavigationProgress() {
   }, []);
 
   useEffect(() => {
-    if (phase === "idle") return;
-    setPhase("done");
+    if (!navigating) return;
     emit(false);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setPhase("idle"), 180);
+    const frame = requestAnimationFrame(() => {
+      setPhase("done");
+      timer.current = setTimeout(() => setPhase("idle"), 180);
+    });
     return () => {
+      cancelAnimationFrame(frame);
       if (timer.current) clearTimeout(timer.current);
     };
   }, [routeKey]);
