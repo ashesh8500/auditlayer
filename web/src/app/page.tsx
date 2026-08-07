@@ -18,6 +18,7 @@ import { SampleReportPreview } from "@/components/sample-report-preview";
 import { TestimonialCarousel } from "@/components/testimonial-carousel";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
+import { PUBLIC_BRAND_KICKER } from "@/lib/brand-positioning";
 import {
   deriveBlueprintCopy,
   deriveEnterpriseCopy,
@@ -47,7 +48,7 @@ export default async function Home() {
       <main>
         <section className="alm-shell grid min-h-[calc(100vh-4rem)] items-center gap-10 py-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:py-20">
           <div className="max-w-xl">
-            <p className="alm-kicker">Competitive intelligence for health, wellness, and expert-led brands</p>
+            <p className="alm-kicker">{PUBLIC_BRAND_KICKER}</p>
             <h1 className="mt-5 text-[clamp(3.2rem,8vw,6.9rem)] font-semibold leading-[0.86] tracking-[-0.075em]">
               Know what to do <span className="text-[color:var(--accent)]">next.</span>
             </h1>

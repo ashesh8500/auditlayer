@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+
+import { PUBLIC_METADATA_DESCRIPTION } from "@/lib/brand-positioning";
+
 import "./globals.css";
 
 // Keep DB-bound server rendering beside the Singapore Supabase project.
@@ -22,8 +25,7 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://auditlayermedia.com",
   ),
   title: "AuditLayerMedia — Social media competitive intelligence",
-  description:
-    "Evidence-led social media audits for health, wellness, and expert-led brands. See the constraint, competitive context, and next actions.",
+  description: PUBLIC_METADATA_DESCRIPTION,
   openGraph: {
     type: "website",
     siteName: "AuditLayerMedia",

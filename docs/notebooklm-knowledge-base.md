@@ -52,11 +52,11 @@ Every report ends with a **"Powered by AuditLayerMedia" badge** — black rounde
 
 ### Domain Calibration
 
-AuditLayerMedia is not generic analytics. The methodology is calibrated by domain expertise — specifically in biohacking, health, wellness, and evidence-based content. This means:
+AuditLayerMedia is a general-purpose brand and social media management company, not a health-or-wellness-only product. Its methodology avoids one-size-fits-all analytics by calibrating to each account type, niche, market, scale, goal, and evidence sensitivity. Biohacking, health, wellness, and evidence-based content are areas of founder expertise within that broader system. This means:
 
 - **Engagement rate benchmarks are calibrated per account type** — a PhD researcher's 2% ER means something different from a lifestyle influencer's 2%
 - **Format priority is niche-specific** — in biohacking, Podcasts > Reels > Paper breakdowns; in CPG, Reels > Carousels > Static
-- **Credential filtering** — evidence-based accounts are scored on citation quality, not just virality
+- **Evidence-sensitive scoring** — claims-heavy accounts are assessed on source quality, not just virality; this is not an admission gate
 - **Audience segmentation** — each niche has distinct audience segments with different content needs and trust signals
 - **Monetization patterns vary by business model** — product-owning creators need different monetization architecture than brand-deal-dependent creators
 

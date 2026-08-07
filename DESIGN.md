@@ -63,7 +63,7 @@ components:
 
 ## Overview
 
-AuditLayerMedia is a social media competitive intelligence platform for health, longevity, and premium wellness creators. The visual identity bridges scientific and clinical authority (reminiscent of medical research journals or high-end laboratory reports) with the seamless interactivity of modern SaaS platforms. 
+AuditLayerMedia is a general-purpose brand and social media management and competitive-intelligence platform for creators, teams, businesses, and established organizations. The visual identity combines editorial authority and research-grade clarity with the seamless interactivity of modern SaaS platforms; it must work across industries rather than signal that the product is limited to health or wellness.
 
 The aesthetic is characterized by a warm-white background, crisp dark-ink typography, a calming and precise teal accent color, and structural section dividers.
 

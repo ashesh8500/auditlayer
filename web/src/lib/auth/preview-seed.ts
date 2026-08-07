@@ -123,9 +123,9 @@ const DEMO_SUBJECTS: Array<{
 const ALM_BRIEF: DemoBrief = {
   identity: {
     summary:
-      "AuditLayerMedia is the research desk for evidence-based biohacking, health, and wellness creators. We turn public social signal into a clear next move — not another vanity dashboard.",
+      "AuditLayerMedia is a brand and social media intelligence desk for creators, teams, businesses, and established organizations. We turn public and approved account signals into a clear next move — not another vanity dashboard.",
     vision:
-      "Be the place serious wellness creators check before they post, pitch, or raise.",
+      "Be the place partners check before they publish, pitch, launch, or invest in growth.",
     voice:
       "Calm, clinical, and human. Credible like a lab note; readable like a founder brief.",
     success_criteria:
@@ -133,11 +133,11 @@ const ALM_BRIEF: DemoBrief = {
   },
   audience: {
     summary:
-      "Evidence-minded biohacking, med-tech, and wellness creators — and the media managers who run their channels.",
+      "Individuals, creators, media teams, businesses, established brands, and enterprises across industries.",
   },
   positioning: {
     summary:
-      "Domain-calibrated audits with same-tier peers and a Living Brief that remembers your story between reports.",
+      "Context-calibrated intelligence with valid peers and a Living Brief that remembers each partner's story between reports.",
   },
   offers: [
     "Pulse — a free snapshot of where you stand",

@@ -10,7 +10,7 @@ The product spec captures what was validated through the interactive demo and vi
 
 ## Product Vision
 
-AuditLayer generates deep, structured social media competitive intelligence reports for evidence-based creators in biohacking, health, and wellness. Users enter a handle, answer 3 quick questions, and receive a beautiful downloadable HTML report. No signup wall, no dashboard hell — just the audit. Reports answer six specific questions: (1) Where you're at, (2) What's holding you back, (3) Who's doing it better, (4) What to post next week, (5) When you'll hit the next milestone, (6) The money move.
+AuditLayer is a general-purpose brand and social media management and competitive-intelligence product for individuals, creators, teams, businesses, brands, and enterprises. Users configure a subject and its channels, answer a short set of questions, and receive a structured, downloadable HTML report calibrated to their account type, niche, market, scale, and goal. Health, wellness, and biohacking are supported verticals with founder expertise—not eligibility requirements. Reports answer six specific questions: (1) Where you're at, (2) What's holding you back, (3) Who's doing it better, (4) What to post next week, (5) When you'll hit the next milestone, (6) The money move.
 
 ---
 
@@ -190,12 +190,12 @@ Result: self-contained HTML report saved, viewer rendered
 
 ---
 
-## Niche Strategy: Evidence-Based Biohacking
+## Vertical Calibration Example: Evidence-Based Biohacking
 
-### Credential Filter
-AuditLayer only audits **evidence-based biohacking accounts** — creators with verifiable credentials (PhD, MD, NP, researcher, RD). The filter is: can this person cite the paper behind the protocol? This excludes influencer-biohackers who repeat protocols without understanding root cause.
+This section records one strong calibration domain; it does not define the product's total market. AuditLayer accepts general brand and social media work across industries. The same calibration mechanism adapts benchmarks, peers, evidence expectations, formats, and recommendations to each partner's context.
 
-**"AuditLayer audited" becomes a trust signal.** Creators who pass the credential filter get a badge they can display. This builds AuditLayer's reputation as the auditor of record in the biohacking space — the report you get when credentials matter.
+### Evidence-sensitive calibration
+For claims in clinical, scientific, financial, or other evidence-sensitive domains, reports should evaluate source quality and state limitations explicitly. This is an analysis rule, not an account-admission gate.
 
 ### Biohacking Audience Segments
 Not one monolithic audience — distinct segments with different content needs:
@@ -225,7 +225,7 @@ Existing tools and their gaps:
 | QuickInsight | Fast metrics dashboards | No strategy depth, no content calendars |
 | Luesco | Influencer analytics | No biohacking/health/wellness calibration |
 
-**AuditLayer's differentiated position:** None of these produce client-facing HTML reports calibrated by niche. None give growth timelines specific to biohacking/health creators. None have domain expertise in the biohacking content space. AuditLayer's moat is not the technology — it's **domain calibration**. Generic tools treat a science account and a fashion account the same way. Narin's knowledge of biohacking benchmarks, audience psychology, and content formats is what makes the reports credible.
+**AuditLayer's differentiated position:** The product produces client-facing HTML reports calibrated to account type, niche, market, scale, and objective. A science account, fashion label, local service business, creator, and enterprise brand should not receive the same benchmarks or strategic framing. Founder expertise in biohacking, health, and wellness strengthens those verticals without limiting the platform to them.
 
 ---
 
@@ -233,8 +233,8 @@ Existing tools and their gaps:
 
 1. **Three questions, not five** — handle + goal + optional context. Less friction, higher completion. The goal selection determines which of the six audit outputs receives the most weight.
 2. **Peer auto-suggest, never free-choice** — users can't pick their own comparables. The system selects 3 same-tier peers. Custom comparisons are a Pro upsell. This prevents the aspirational-comparison demoralization problem.
-3. **Credential filter as moat** — only evidence-based biohacking accounts (PhD, MD, NP, researcher). "AuditLayer audited" becomes a trust signal that generic tools can't replicate.
-4. **Domain calibration over generic analytics** — the reports are better not because the technology is better, but because Narin calibrates what "good" looks like in biohacking/health/wellness. Generic tools don't know that a 2% engagement rate is excellent for a PhD researcher but average for a fitness influencer.
+3. **Broad eligibility, contextual calibration** — individuals, creators, teams, businesses, brands, and enterprises may use the product; calibration adapts by account type, niche, market, scale, and evidence sensitivity.
+4. **Contextual calibration over one-size-fits-all analytics** — the reports are better because they establish what “good” means for this specific partner rather than applying one generic benchmark. Founder expertise in health and wellness remains available where relevant.
 5. **Chat scoped to sections** — users refine reports, not access the system; prevents prompt injection and config exposure
 6. **Quality over cost** — token budgets are generous to preserve report depth; the $3/audit cap is a safety net, not a target
 7. **Single CX22 for pilot** — no multi-node scaling until demand requires it

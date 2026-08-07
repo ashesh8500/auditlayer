@@ -4,6 +4,8 @@
 
 AuditLayerMedia becomes the longitudinal brand-intelligence system for people and organizations that partner with us: individual creators, experts, small businesses, established brands, and enterprises. It turns changing evidence into an evolving strategic model, inspectable decisions, measurable experiments, and useful interfaces that improve over time.
 
+This is a general-use brand and social media management system. Health, wellness, biohacking, and expert-led work are domain competencies—not eligibility criteria or the product's market boundary. Every autonomous wave must preserve broad positioning while calibrating analysis to the specific partner, niche, market, scale, and goal.
+
 The intelligence model is authoritative. Reports are immutable, meeting-ready accessibility projections of that intelligence for a particular audience, purpose, and point in time; they are not the canonical state themselves.
 
 The mission is not to add generic SaaS surface area or generate more prose. It is to improve the composition:

@@ -10,7 +10,7 @@ Guidelines for AI agents (Hermes, Claude Code, Codex, Cursor) working on this re
 
 ## What This Repo Is
 
-AuditLayer is a social media competitive intelligence platform for evidence-based biohacking, health, and wellness creators. It generates deep, structured HTML audit reports calibrated by domain expertise. The product is the report — a beautiful, self-contained HTML file that answers six questions: Where you're at, What's holding you back, Who's doing it better, What to post next week, When you hit the next milestone, The money move.
+AuditLayer is a general-purpose brand and social media management and competitive-intelligence platform for individuals, creators, teams, businesses, established brands, and enterprises. It generates deep, structured HTML audit reports calibrated to each account type, niche, market, scale, and goal. Health, wellness, and biohacking are areas of founder expertise and optional domain calibration—not a restriction on who the product serves. The product is the report — a beautiful, self-contained HTML file that answers six questions: Where you're at, What's holding you back, Who's doing it better, What to post next week, When you hit the next milestone, The money move.
 
 **Founders:** Ashesh Kaji (tech/infra) + Narin (domain — biohacking, med-tech, wellness, content strategy)
 
@@ -54,7 +54,7 @@ Result: self-contained HTML in Supabase Storage; served through authorized app r
 ## Design Philosophy
 
 1. **Reports are the product.** Every decision serves report quality. The HTML report is what clients pay for — it must look like it came from a research institution.
-2. **Domain calibration over generic analytics.** The technology isn't the differentiator. Narin's knowledge of biohacking benchmarks, audience psychology, and content formats is.
+2. **Contextual calibration over one-size-fits-all analytics.** Account type, niche, market, scale, audience psychology, and content formats shape the analysis. Founder expertise in health, wellness, and biohacking is a calibration asset, not the product boundary.
 3. **Three screens max.** Handle input → goal selection → beautiful report. Not a dashboard, not a platform, not a SaaS app with 14 nav items.
 4. **Static over dynamic.** Reports are self-contained HTML files that survive offline, in email, in print.
 5. **No signup wall.** First audit is free. Paywall after that. Let the report sell itself.

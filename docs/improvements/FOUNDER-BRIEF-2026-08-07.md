@@ -6,6 +6,8 @@ This document normalizes Ashesh Kaji's voice brief into durable product and oper
 
 AuditLayerMedia should grow beyond a report generator into the brand-intelligence home for anyone who partners with the company: individuals, creators, small businesses, brands, and enterprises.
 
+AuditLayerMedia is a general-use brand and social media management company. Health, wellness, biohacking, and expert-led brands are valuable areas of founder experience, but they are not the market boundary. Product copy, plans, fixtures, autonomous ideas, and release decisions must not present those verticals as the only customers. Calibration should adapt to each partner's account type, niche, market, scale, and goals.
+
 The system should help a partner understand:
 
 - what is known and where it came from;
