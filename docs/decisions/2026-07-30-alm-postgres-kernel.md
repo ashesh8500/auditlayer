@@ -1,7 +1,7 @@
 # Decision: Supabase Postgres remains SoR; additive ALM kernel + pgvector index
 
-**Date:** 2026-07-30  
-**Status:** Accepted  
+**Date:** 2026-07-30
+**Status:** Accepted
 **Amends:** `docs/implementation/alm-intelligence-v1/DECISIONS.md`, `NON_GOALS.md`
 
 ## Context

@@ -559,4 +559,3 @@ class SupabaseLedgerWriter:
                 "p_cache_mode": payload.get("p_cache_mode"),
             },
         ).execute()
-
