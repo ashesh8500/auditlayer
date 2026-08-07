@@ -20,6 +20,21 @@ Every queue idea must tag at least one story and one improvement program from `V
 - **C14 — Buy the right depth:** As a buyer, plan and price differences correspond to deterministic product value and clear entitlements rather than marketing labels or arbitrary section counts.
 - **C15 — Know when the system is uncertain:** As a partner, a missing capability, stale source, or failed dependency is disclosed as a bounded limitation and recovery path rather than masked by simulated progress or substitute output.
 
+## Buyer and organization owner
+
+- **O1 — Establish my boundary:** As a buyer, I can create an individual or organization workspace and understand what it owns.
+- **O2 — Invite safely:** As an organization owner, I can invite, resend, revoke, remove, and transfer ownership without sharing credentials.
+- **O3 — Assign least privilege:** As an owner, I can grant only the access each teammate needs and preview what that role can do.
+- **O4 — Understand seats:** As a buyer, I can distinguish purchased, assigned, invited, available, and over-limit seats.
+- **O5 — Preserve continuity:** As an owner, membership changes do not orphan subjects, reports, decisions, billing, or audit history.
+
+## Member and collaborator
+
+- **M1 — Enter the right workspace:** As a member, accepting an invitation lands me in the intended organization without exposing another tenant.
+- **M2 — Collaborate with attribution:** As a member, my recommendation decisions, notes, and approvals are attributed to me.
+- **M3 — Know my limits:** As a member, unavailable actions explain the required role rather than failing ambiguously.
+- **M4 — Leave safely:** As a member, leaving or being removed revokes access without deleting organization intelligence.
+
 ## Founder / operator
 
 - **F1 — Verify quality:** As Narin, I can review whether report framing, peers, strengths, limitations, and recommendations match the verified niche and account type.
@@ -32,6 +47,11 @@ Every queue idea must tag at least one story and one improvement program from `V
 - **F8 — Govern the whole product:** As founders, we can see whether improvements compose across product, design, intelligence, commercial promises, runtime, and operations instead of optimizing isolated pages or features.
 - **F9 — See system health:** As Ashesh, I can inspect performance budgets, dependency health, queue state, worker capability, failures, retries, and release evidence through durable artifacts and concise operator views.
 - **F10 — Change hosting safely:** As Ashesh, I can replace or relocate a deployment component through explicit interfaces, migration checks, canaries, and rollback without rewriting domain truth.
+- **F11 — Sell a real story:** As a founder, I can choose a prospect type and show a verified workflow with explicit limitations.
+- **F12 — Operate the offer:** As a founder, I can issue a trial or custom access package and see its redemption, entitlement, seat, and expiry state.
+- **F13 — See funnel truth:** As a founder, I can inspect acquisition, activation, value, conversion, and retention events with coverage and unknowns.
+- **F14 — Follow up coherently:** As a founder, I can see the last verified product/commercial event and record the next human action without inventing customer intent.
+- **F15 — Learn from objections:** As a founder, I can classify a loss, delay, or support issue using bounded reason codes plus optional notes and preserve uncertainty.
 
 ## Developer / system
 

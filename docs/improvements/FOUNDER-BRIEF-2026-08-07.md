@@ -45,6 +45,20 @@ Commercial learning must remain honest:
 - preserve consultative enterprise discovery where requirements are genuinely bespoke;
 - treat pricing and positioning as versioned hypotheses with observable checks.
 
+### Product-majority directive
+
+For the next six autonomous waves after this brief, at least two of every three available implementation slots should serve customer-visible or founder-commercial outcomes. Priority areas are:
+
+- identity, tenancy, organization workspaces, members, roles, invitations, and revocation;
+- seats as a real access and commercial concept rather than a synonym for users, accounts, trial uses, or subjects;
+- founder-operable offers, entitlements, trials, and account follow-up;
+- persona-specific sales stories backed by actual routes, behaviors, and evidence;
+- acquisition → activation → value → conversion → retention tracking with coverage and honest unknowns.
+
+Engineering and reliability work remains admissible when it directly unlocks or protects one of those outcomes. The assigner should create zero cards rather than fill a wave with unrelated internal work.
+
+`PRODUCT-GROWTH-PORTFOLIO.md` is the maturity tracker and allocation contract for this directive.
+
 ## Engineering intent
 
 The entire repository is in scope for examination: product, web, worker, intelligence contracts, reports, database, authentication, performance, infrastructure, operations, and release mechanics.
