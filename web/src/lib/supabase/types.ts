@@ -1425,7 +1425,12 @@ export type Database = {
           last_scraped: string | null
           niche: string
           platform: string
+          relationship_evidence: Json
+          relationship_status: string
+          source_observed_at: string | null
+          source_url: string
           top_format: string
+          verification_status: string
         }
         Insert: {
           avg_comments?: number
@@ -1438,7 +1443,12 @@ export type Database = {
           last_scraped?: string | null
           niche: string
           platform?: string
+          relationship_evidence?: Json
+          relationship_status?: string
+          source_observed_at?: string | null
+          source_url?: string
           top_format?: string
+          verification_status?: string
         }
         Update: {
           avg_comments?: number
@@ -1451,7 +1461,12 @@ export type Database = {
           last_scraped?: string | null
           niche?: string
           platform?: string
+          relationship_evidence?: Json
+          relationship_status?: string
+          source_observed_at?: string | null
+          source_url?: string
           top_format?: string
+          verification_status?: string
         }
         Relationships: [
           {

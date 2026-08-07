@@ -1046,23 +1046,49 @@ WORKER_SYSTEM_PROMPT = (
 # ---------------------------------------------------------------------------
 
 
-def _format_benchmark_cache(benchmarks: list[dict] | None) -> str:
-    """Format cached wellness_benchmarks + peer_graph data as a prompt block."""
+def _format_benchmark_cache(
+    benchmarks: list[dict] | None,
+    *,
+    now: datetime | None = None,
+) -> str:
+    """Format cached wellness_benchmarks + peer_graph data as a prompt block.
+
+    Peers pass through the deterministic same-tier peer-validity auditor
+    (intelligence.peer_validity) before projection: only admissible candidate
+    leads are listed, each with its deterministic rationale and source age.
+    Data-needed/rejected rows render as bounded ``Data needed``/correction
+    summaries — never as valid peer lines, fabricated zeros, or
+    collaborator/competitor framing when the relationship is unknown.
+    ``now`` is injectable for deterministic tests; production uses the current
+    UTC time.
+    """
     if not benchmarks:
         return "No cached benchmark data available."
+
+    from .intelligence.peer_validity import audit_benchmark_cache
+
+    report = audit_benchmark_cache(benchmarks, now=now)  # type: ignore[arg-type]
+    # Flat rows are ordered by benchmark; rebuild the per-benchmark view.
+    per_benchmark_rows: list[list] = [[] for _ in report.benchmarks]
+    cursor = 0
+    for index, bm in enumerate(report.benchmarks):
+        count = len(bm.get("peers") or [])
+        per_benchmark_rows[index] = report.rows[cursor : cursor + count]
+        cursor += count
 
     lines: list[str] = []
     lines.append(
         "The following niche benchmarks and peer data are pre-loaded from the "
         "MOAT database as candidate research leads, not authoritative evidence. "
-        "Web-verify every selected peer and any metric before stating it in the "
-        "report; cite the source and observation date. Discard rows that are stale, "
-        "incomplete, or fail the same-tier comparison criteria."
+        "Deterministic same-tier peer-validity checks already ran; only "
+        "admissible candidates appear below, each with a rationale and source "
+        "age. Web-verify every selected peer and any metric before stating it "
+        "in the report; cite the source and observation date. Live handle "
+        "validity is UNKNOWN offline — never claim a peer exists without a "
+        "fresh public verification."
     )
 
-    peer_handles_seen: set[str] = set()
-
-    for bm in benchmarks:
+    for index, bm in enumerate(report.benchmarks):
         niche = bm.get("niche", "unknown")
         bracket = bm.get("followers_bracket", "unknown")
         eng = bm.get("avg_engagement", 0)
@@ -1080,22 +1106,38 @@ def _format_benchmark_cache(benchmarks: list[dict] | None) -> str:
         )
 
         peers = bm.get("peers", [])
-        if peers:
-            lines.append(f"  Cached peers ({len(peers)}):")
-            for p in peers:
-                handle = p.get("handle", "")
-                if handle in peer_handles_seen:
-                    continue
-                peer_handles_seen.add(handle)
+        if not peers:
+            lines.append("  (no cached peers for this niche × bracket)")
+            continue
+
+        admissible = [v for v in per_benchmark_rows[index] if v.admissible]
+        if admissible:
+            lines.append(f"  Cached peers ({len(admissible)} admissible):")
+            for verdict in admissible:
+                likes, comments, top_format = verdict.metrics or (0, 0, "mixed")
                 lines.append(
-                    f"    @{handle} — {p.get('followers', 0):,} followers, "
-                    f"{p.get('avg_likes', 0):,} avg likes, "
-                    f"{p.get('avg_comments', 0):,} avg comments, "
-                    f"top format: {p.get('top_format', 'mixed')}, "
-                    f"platform: {p.get('platform', 'instagram')}"
+                    f"    @{verdict.normalized_handle} — "
+                    f"{verdict.followers:,} followers, "
+                    f"{likes:,} avg likes, "
+                    f"{comments:,} avg comments, "
+                    f"top format: {top_format or 'mixed'}, "
+                    f"platform: {verdict.platform}"
+                )
+                lines.append(
+                    f"      [peer-validity] {verdict.rationale}"
                 )
         else:
-            lines.append("  (no cached peers for this niche × bracket)")
+            lines.append("  Cached peers: none admissible")
+
+        rejected = [v for v in per_benchmark_rows[index] if not v.admissible]
+        for verdict in rejected:
+            code = verdict.reason_code or "PEER_UNKNOWN"
+            tip = verdict.correction_tip or "review the cached peer row"
+            label = "Data needed" if verdict.classification == "data_needed" else "Rejected"
+            lines.append(
+                f"      [{label}] @{verdict.normalized_handle or verdict.handle} "
+                f"— {code}: {tip}"
+            )
 
     return "\n".join(lines)
 
