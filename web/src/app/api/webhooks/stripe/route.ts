@@ -1,15 +1,27 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type Stripe from "stripe";
 
-import { getStripe, planForPriceId } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
+import {
+  reduceStripeSubscriptionEvent,
+  type StripeReconciliationCommand,
+  type StripeReconciliationResult,
+  type StripeSubscriptionSnapshot,
+} from "@/lib/stripe-reconciliation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured } from "@/lib/env";
-import type { Plan } from "@/lib/domain";
 
 /**
- * Stripe webhook. Verifies the signature against the raw body and reconciles
- * `profiles` plan/subscription/Stripe columns via the SERVICE-ROLE client.
- * This is the ONLY path allowed to mutate those columns — the browser cannot.
+ * Stripe webhook. Verifies the signature against the raw body, reduces each
+ * supported event to one typed commercial command, and submits it to the
+ * service-role-only atomic RPC `reconcile_stripe_subscription` — the ONLY
+ * path allowed to mutate `profiles` plan/subscription/Stripe columns. The
+ * browser cannot; a direct profile update no longer exists here.
+ *
+ * Idempotency, ordering, manual-access precedence, and atomicity live in the
+ * RPC. Every invalid/duplicate/stale/unknown path returns bounded correction
+ * data and performs zero profile mutations. No raw Stripe/customer payload is
+ * ever logged or stored.
  */
 export async function POST(request: NextRequest) {
   const stripe = getStripe();
@@ -37,85 +49,142 @@ export async function POST(request: NextRequest) {
 
   try {
     switch (event.type) {
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const result = reduceStripeSubscriptionEvent({
+          eventId: event.id,
+          eventType: event.type,
+          eventCreated: event.created,
+          subscription: subscriptionSnapshot(
+            subscription,
+            subscription.metadata?.profile_id ?? null,
+          ),
+        });
+        return await reconcileResult(result);
+      }
       case "checkout.session.completed": {
-        const session = event.data.object;
+        const session = event.data.object as Stripe.Checkout.Session;
         const subscriptionId =
           typeof session.subscription === "string"
             ? session.subscription
             : session.subscription?.id;
-        if (subscriptionId) {
-          const subscription =
-            await stripe.subscriptions.retrieve(subscriptionId);
-          await applySubscription(subscription, session.client_reference_id);
+        if (!subscriptionId) {
+          return NextResponse.json({
+            received: true,
+            outcome: { applied: false, code: "no_subscription" },
+          });
         }
-        break;
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const result = reduceStripeSubscriptionEvent({
+          eventId: event.id,
+          eventType: event.type,
+          eventCreated: event.created,
+          subscription: subscriptionSnapshot(
+            subscription,
+            session.client_reference_id ??
+              subscription.metadata?.profile_id ??
+              null,
+          ),
+        });
+        return await reconcileResult(result);
       }
-      case "customer.subscription.created":
-      case "customer.subscription.updated":
-      case "customer.subscription.deleted": {
-        await applySubscription(event.data.object);
-        break;
+      default: {
+        return NextResponse.json({
+          received: true,
+          outcome: {
+            applied: false,
+            code: "unsupported_event_type",
+            eventType: event.type,
+          },
+        });
       }
-      default:
-        break;
     }
   } catch (err) {
+    // Bounded handler error — never echo the raw payload or customer data.
     const message = err instanceof Error ? err.message : "handler_error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  return NextResponse.json({ received: true });
 }
 
-async function applySubscription(
+function subscriptionSnapshot(
   subscription: Stripe.Subscription,
-  profileIdHint?: string | null,
-): Promise<void> {
-  const admin = createAdminClient();
-
+  profileId: string | null | undefined,
+): StripeSubscriptionSnapshot {
   const item = subscription.items?.data?.[0];
   const priceId = item?.price?.id;
-  const plan: Plan =
-    subscription.status === "canceled"
-      ? "free"
-      : planForPriceId(priceId ?? null);
-
   // current_period_end lives on the subscription item in recent API versions.
   const periodEndUnix =
     (item as { current_period_end?: number } | undefined)
       ?.current_period_end ??
     (subscription as unknown as { current_period_end?: number })
       .current_period_end;
-  const currentPeriodEnd = periodEndUnix
-    ? new Date(periodEndUnix * 1000).toISOString()
-    : null;
-
   const customerId =
     typeof subscription.customer === "string"
       ? subscription.customer
-      : subscription.customer.id;
-  const profileId =
-    subscription.metadata?.profile_id ?? profileIdHint ?? undefined;
-
-  const update = {
-    plan,
-    subscription_status: subscription.status,
-    stripe_customer_id: customerId,
-    stripe_subscription_id: subscription.id,
-    current_period_end: currentPeriodEnd,
-    onboarding_status:
-      subscription.status === "active" || subscription.status === "trialing"
-        ? "paid"
-        : subscription.status,
+      : subscription.customer?.id;
+  return {
+    id: subscription.id,
+    customerId: customerId ?? "",
+    status: subscription.status,
+    priceId: priceId ?? null,
+    currentPeriodEndEpoch: periodEndUnix ?? null,
+    profileId: profileId ?? null,
   };
+}
 
-  // Prefer matching by the known profile id; fall back to the Stripe customer.
-  if (profileId) {
-    await admin.from("profiles").update(update).eq("id", profileId);
-  } else {
-    await admin
-      .from("profiles")
-      .update(update)
-      .eq("stripe_customer_id", customerId);
+async function reconcileResult(
+  result: StripeReconciliationResult,
+): Promise<NextResponse> {
+  if (result.kind === "correction") {
+    // Reducer-level rejection: no RPC call, zero mutations, bounded data.
+    return NextResponse.json({
+      received: true,
+      outcome: {
+        applied: false,
+        code: result.code,
+        message: result.message,
+      },
+    });
   }
+  return applyCommand(result.command);
+}
+
+async function applyCommand(
+  command: StripeReconciliationCommand,
+): Promise<NextResponse> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("reconcile_stripe_subscription", {
+    p_event_id: command.eventId,
+    p_event_type: command.eventType,
+    p_event_created: command.eventCreated,
+    p_subscription_id: command.subscriptionId,
+    p_customer_id: command.customerId,
+    p_profile_id: command.profileId,
+    p_status: command.status,
+    p_plan: command.plan,
+    p_current_period_end_epoch: command.currentPeriodEndEpoch,
+    p_digest: command.digest,
+  });
+
+  if (error) {
+    return NextResponse.json(
+      { error: "reconciliation_failed", code: error.code ?? "persistence_failed" },
+      { status: 500 },
+    );
+  }
+
+  const outcome = data as {
+    applied: boolean;
+    code: string;
+    profile_id?: string | null;
+    plan?: string | null;
+    status?: string | null;
+  } | null;
+
+  return NextResponse.json({
+    received: true,
+    outcome: outcome ?? { applied: false, code: "missing_result" },
+  });
 }

@@ -1531,6 +1531,68 @@ export type Database = {
           },
         ]
       }
+      provider_event_receipts: {
+        Row: {
+          applied: boolean
+          command_type: string
+          created_at: string
+          current_period_end_epoch: number | null
+          customer_id: string
+          digest: string
+          id: string
+          outcome_code: string
+          plan: string
+          profile_id: string
+          provider: string
+          provider_created_epoch: number
+          provider_event_id: string
+          subscription_id: string
+          subscription_status: string
+        }
+        Insert: {
+          applied: boolean
+          command_type: string
+          created_at?: string
+          current_period_end_epoch?: number | null
+          customer_id: string
+          digest: string
+          id?: string
+          outcome_code?: string
+          plan: string
+          profile_id: string
+          provider?: string
+          provider_created_epoch: number
+          provider_event_id: string
+          subscription_id: string
+          subscription_status: string
+        }
+        Update: {
+          applied?: boolean
+          command_type?: string
+          created_at?: string
+          current_period_end_epoch?: number | null
+          customer_id?: string
+          digest?: string
+          id?: string
+          outcome_code?: string
+          plan?: string
+          profile_id?: string
+          provider?: string
+          provider_created_epoch?: number
+          provider_event_id?: string
+          subscription_id?: string
+          subscription_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_event_receipts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recommendations: {
         Row: {
           channel_type: string | null
@@ -2160,6 +2222,21 @@ export type Database = {
         Returns: number
       }
       reap_stale_running: { Args: { cutoff_minutes?: number }; Returns: number }
+      reconcile_stripe_subscription: {
+        Args: {
+          p_customer_id: string
+          p_current_period_end_epoch?: number | null
+          p_digest: string
+          p_event_created: number
+          p_event_id: string
+          p_event_type: string
+          p_plan: string
+          p_profile_id?: string | null
+          p_status: string
+          p_subscription_id: string
+        }
+        Returns: Json
+      }
       record_decision: {
         Args: {
           p_decision: string

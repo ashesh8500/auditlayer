@@ -5,7 +5,8 @@ No live database is contacted, nothing is deployed, and no customer data is
 touched.  This test reads the migration file under supabase/migrations/ and
 asserts the software contract statically:
 
-  - the new migration is the newest additive migration;
+  - the migration is present and the additive migration set remains ordered
+    (later additive waves may append newer migrations);
   - the `founder_transition_audit` RPC is SECURITY DEFINER with a fixed
     search_path, locks the current audit row (`for update`), and compares the
     locked status before writing (compare-and-transition);
@@ -87,9 +88,9 @@ def main() -> int:
     require(len(candidates) == 1, f"expected exactly one {EXPECTED_FILE}")
     migration = candidates[0]
     check(
-        "0.1 migration is the newest file",
-        migration == files[-1],
-        f"expected latest={migration.name}, got {files[-1].name}",
+        "0.1 migration is present and migrations remain ordered",
+        migration in files and versions == sorted(versions),
+        f"expected ordered migration set containing {migration.name}",
     )
 
     sql = migration.read_text(encoding="utf-8")

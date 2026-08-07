@@ -36,10 +36,17 @@ export function priceIdForPlan(plan: PurchasablePlan): string | undefined {
   }
 }
 
-/** Reverse-map a Stripe price id back to our plan enum (for webhooks). */
-export function planForPriceId(priceId: string | null | undefined): Plan {
-  if (!priceId) return "free";
+/**
+ * Reverse-map a Stripe price id back to the purchasable plan it unlocks.
+ * Returns `null` for an absent or unknown price id: an unknown price must
+ * surface as explicit unsupported (ALM-I-020), never a silent downgrade to
+ * `free`. The webhook reconciliation reducer treats `null` as an
+ * UNKNOWN-price correction and refuses to mutate the entitlement projection.
+ */
+export function planForPriceId(
+  priceId: string | null | undefined,
+): PurchasablePlan | null {
   if (priceId === process.env.STRIPE_PRICE_PRO) return "pro";
   if (priceId === process.env.STRIPE_PRICE_STARTER) return "starter";
-  return "free";
+  return null;
 }
