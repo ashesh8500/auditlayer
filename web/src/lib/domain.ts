@@ -19,6 +19,23 @@ export type AuditStatus =
   | "blocked"
   | "failed";
 
+// Application-level event vocabulary; SQL stores this as validated text.
+// Keep this outside generated Supabase types so schema regeneration is exact.
+export type AuditEventPhase =
+  | "intake"
+  | "queued"
+  | "approved"
+  | "started"
+  | "researching"
+  | "metrics"
+  | "peers"
+  | "scoring"
+  | "composing"
+  | "uploaded"
+  | "succeeded"
+  | "failed"
+  | "refinement";
+
 export type Plan = "free" | "starter" | "pro" | "enterprise";
 
 export type AccountType = "standard" | "trial" | "comp";

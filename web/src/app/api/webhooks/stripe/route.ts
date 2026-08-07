@@ -155,16 +155,19 @@ async function applyCommand(
   command: StripeReconciliationCommand,
 ): Promise<NextResponse> {
   const admin = createAdminClient();
+  // Supabase's generated RPC types do not model PostgreSQL's nullable input
+  // parameters. The SQL contract explicitly accepts NULL for the optional
+  // profile hint and current-period end, so preserve those runtime values.
   const { data, error } = await admin.rpc("reconcile_stripe_subscription", {
     p_event_id: command.eventId,
     p_event_type: command.eventType,
     p_event_created: command.eventCreated,
     p_subscription_id: command.subscriptionId,
     p_customer_id: command.customerId,
-    p_profile_id: command.profileId,
+    p_profile_id: command.profileId as string,
     p_status: command.status,
     p_plan: command.plan,
-    p_current_period_end_epoch: command.currentPeriodEndEpoch,
+    p_current_period_end_epoch: command.currentPeriodEndEpoch as number,
     p_digest: command.digest,
   });
 

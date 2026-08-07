@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured, siteUrl } from "@/lib/env";
-import type { AuditEventPhase, Json } from "@/lib/supabase/types";
+import type { AuditEventPhase } from "@/lib/domain";
+import type { Json } from "@/lib/supabase/types";
 import {
   executeFounderTransition,
   type FounderTransitionAction,

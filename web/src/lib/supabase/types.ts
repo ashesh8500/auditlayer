@@ -6,22 +6,6 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-// Application-level event vocabulary; SQL stores this as validated text.
-export type AuditEventPhase =
-  | "intake"
-  | "queued"
-  | "approved"
-  | "started"
-  | "researching"
-  | "metrics"
-  | "peers"
-  | "scoring"
-  | "composing"
-  | "uploaded"
-  | "succeeded"
-  | "failed"
-  | "refinement"
-
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -337,6 +321,7 @@ export type Database = {
           changed_section: string | null
           created_at: string
           id: string
+          intelligence_run_id: string | null
           prompt_version: string | null
           report_path: string
           source_refinement_id: string | null
@@ -352,6 +337,7 @@ export type Database = {
           changed_section?: string | null
           created_at?: string
           id?: string
+          intelligence_run_id?: string | null
           prompt_version?: string | null
           report_path: string
           source_refinement_id?: string | null
@@ -367,6 +353,7 @@ export type Database = {
           changed_section?: string | null
           created_at?: string
           id?: string
+          intelligence_run_id?: string | null
           prompt_version?: string | null
           report_path?: string
           source_refinement_id?: string | null
@@ -379,6 +366,13 @@ export type Database = {
             columns: ["audit_id"]
             isOneToOne: false
             referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_report_versions_intelligence_run_id_fkey"
+            columns: ["intelligence_run_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_runs"
             referencedColumns: ["id"]
           },
           {
@@ -547,6 +541,7 @@ export type Database = {
           path: string
           proposed_value: Json
           reason: string
+          semantic_fingerprint: string | null
           status: string
           subject_id: string
         }
@@ -562,6 +557,7 @@ export type Database = {
           path: string
           proposed_value: Json
           reason?: string
+          semantic_fingerprint?: string | null
           status?: string
           subject_id: string
         }
@@ -577,6 +573,7 @@ export type Database = {
           path?: string
           proposed_value?: Json
           reason?: string
+          semantic_fingerprint?: string | null
           status?: string
           subject_id?: string
         }
@@ -1608,6 +1605,73 @@ export type Database = {
           },
         ]
       }
+      recommendation_outcomes: {
+        Row: {
+          confounding_notes: Json
+          created_at: string
+          created_by: string | null
+          decision_state: string
+          evidence_ids: Json
+          id: string
+          outcome_data: Json
+          outcome_summary: string
+          recommendation_id: string
+          subject_id: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          confounding_notes?: Json
+          created_at?: string
+          created_by?: string | null
+          decision_state: string
+          evidence_ids?: Json
+          id?: string
+          outcome_data?: Json
+          outcome_summary?: string
+          recommendation_id: string
+          subject_id: string
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          confounding_notes?: Json
+          created_at?: string
+          created_by?: string | null
+          decision_state?: string
+          evidence_ids?: Json
+          id?: string
+          outcome_data?: Json
+          outcome_summary?: string
+          recommendation_id?: string
+          subject_id?: string
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_outcomes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendation_outcomes_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "recommendations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendation_outcomes_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recommendations: {
         Row: {
           channel_type: string | null
@@ -1695,6 +1759,67 @@ export type Database = {
             columns: ["audit_id"]
             isOneToOne: false
             referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rejected_context_proposals: {
+        Row: {
+          evidence_ids: Json
+          id: string
+          operation: string
+          path: string
+          proposal_id: string
+          proposed_value: Json
+          rejected_at: string
+          rejected_by: string | null
+          semantic_fingerprint: string
+          subject_id: string
+        }
+        Insert: {
+          evidence_ids?: Json
+          id?: string
+          operation: string
+          path: string
+          proposal_id: string
+          proposed_value: Json
+          rejected_at?: string
+          rejected_by?: string | null
+          semantic_fingerprint: string
+          subject_id: string
+        }
+        Update: {
+          evidence_ids?: Json
+          id?: string
+          operation?: string
+          path?: string
+          proposal_id?: string
+          proposed_value?: Json
+          rejected_at?: string
+          rejected_by?: string | null
+          semantic_fingerprint?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rejected_context_proposals_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "context_update_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rejected_context_proposals_rejected_by_fkey"
+            columns: ["rejected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rejected_context_proposals_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
         ]
@@ -2090,6 +2215,24 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_brief_pointer: {
+        Args: {
+          p_base: Json
+          p_operation: string
+          p_path: string
+          p_value: Json
+        }
+        Returns: Json
+      }
+      apply_brief_pointer_inner: {
+        Args: {
+          p_base: Json
+          p_operation: string
+          p_tokens: string[]
+          p_value: Json
+        }
+        Returns: Json
+      }
       approve_operator_job: {
         Args: { p_approved: boolean; p_job_id: string }
         Returns: undefined
@@ -2110,6 +2253,8 @@ export type Database = {
           detail: string
         }[]
       }
+      brief_path_is_protected: { Args: { p_path: string }; Returns: boolean }
+      brief_path_tokens: { Args: { p_path: string }; Returns: string[] }
       claim_next_queued: { Args: { worker_id: string }; Returns: Json }
       claim_next_refinement: { Args: { worker_id: string }; Returns: Json }
       create_audit_batch: {
@@ -2141,6 +2286,7 @@ export type Database = {
           p_agent_bundle_version: string
           p_audit_id: string
           p_delivery_status: string
+          p_intelligence_run_id?: string
           p_prompt_version: string
           p_report_path: string
           p_template_version: string
@@ -2165,6 +2311,7 @@ export type Database = {
           p_audit_id: string
           p_change_summary: string
           p_changed_section: string
+          p_intelligence_run_id?: string
           p_prompt_version: string
           p_refinement_id: string
           p_report_path: string
@@ -2239,14 +2386,14 @@ export type Database = {
       reap_stale_running: { Args: { cutoff_minutes?: number }; Returns: number }
       reconcile_stripe_subscription: {
         Args: {
+          p_current_period_end_epoch: number
           p_customer_id: string
-          p_current_period_end_epoch?: number | null
           p_digest: string
           p_event_created: number
           p_event_id: string
           p_event_type: string
           p_plan: string
-          p_profile_id?: string | null
+          p_profile_id: string
           p_status: string
           p_subscription_id: string
         }
@@ -2282,6 +2429,21 @@ export type Database = {
         }
         Returns: string
       }
+      record_recommendation_outcome: {
+        Args: {
+          p_confounding_notes?: Json
+          p_decision_state: string
+          p_evidence_ids?: Json
+          p_outcome_data?: Json
+          p_outcome_summary?: string
+          p_recommendation_id: string
+          p_subject_id: string
+          p_user_id: string
+          p_window_end: string
+          p_window_start: string
+        }
+        Returns: string
+      }
       record_recommendations: {
         Args: { p_recommendations: Json }
         Returns: undefined
@@ -2302,7 +2464,12 @@ export type Database = {
         Returns: string
       }
       resolve_context_update_proposal: {
-        Args: { p_proposal_id: string; p_status: string; p_user_id: string }
+        Args: {
+          p_explicit_confirmation?: boolean
+          p_proposal_id: string
+          p_status: string
+          p_user_id: string
+        }
         Returns: undefined
       }
       set_intelligence_run_progress: {

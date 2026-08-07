@@ -21,7 +21,7 @@
  * migration success, or founder comprehension.
  */
 
-import type { AuditEventPhase } from "@/lib/supabase/types";
+import type { AuditEventPhase } from "@/lib/domain";
 
 // ---------------------------------------------------------------------------
 // Canonical audit status vocabulary (mirrors docs/architecture-contract.md and

@@ -13,8 +13,7 @@ import {
 
 import { createClient } from "@/lib/supabase/client";
 import { StatusBadge } from "@/components/status-badge";
-import type { AuditEventPhase } from "@/lib/supabase/types";
-import type { AuditStatus } from "@/lib/domain";
+import type { AuditEventPhase, AuditStatus } from "@/lib/domain";
 import { MAX_RETRIES, retryStatusLabel } from "@/lib/domain";
 
 export interface TimelineEvent {
