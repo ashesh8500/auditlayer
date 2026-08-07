@@ -1,0 +1,450 @@
+{
+  "schema_version": "1.0.0",
+  "artifact": "audit-lifecycle-contract",
+  "canonical_audit_states": [
+    "draft",
+    "queued",
+    "running",
+    "ready",
+    "needs_review",
+    "blocked",
+    "failed"
+  ],
+  "authoritative_owner": {
+    "id": "worker_core_enum",
+    "path": "worker/auditlayer_worker/core.py",
+    "kind": "python_enum",
+    "symbol": "AuditStatus"
+  },
+  "mirrors": [
+    {
+      "id": "arch_contract_enum",
+      "path": "docs/architecture-contract.md",
+      "kind": "markdown_enum",
+      "heading": "Audit status"
+    },
+    {
+      "id": "web_domain_type",
+      "path": "web/src/lib/domain.ts",
+      "kind": "ts_type_union",
+      "symbol": "AuditStatus"
+    }
+  ],
+  "producers": [
+    {
+      "id": "worker_core_intake",
+      "path": "worker/auditlayer_worker/core.py",
+      "kind": "python_enum_refs",
+      "symbol": "AuditStatus",
+      "expected": ["queued", "needs_review", "blocked"],
+      "note": "evaluate_intake produces the founder-gating status before queue admission."
+    },
+    {
+      "id": "worker_pipeline",
+      "path": "worker/auditlayer_worker/pipeline.py",
+      "kind": "python_enum_refs",
+      "symbol": "AuditStatus",
+      "expected": ["failed", "blocked", "ready", "needs_review"]
+    },
+    {
+      "id": "admin_actions",
+      "path": "web/src/lib/actions/admin.ts",
+      "kind": "ts_update_status",
+      "expected": ["ready"],
+      "note": "W010: approve/requeue/block delegate to the canonical founder transition matrix and founder_transition_audit RPC (declared below); admin.ts retains only the direct uploadManualReport ready write."
+    },
+    {
+      "id": "founder_transition_matrix",
+      "path": "web/src/lib/admin-audit-transitions.ts",
+      "kind": "ts_matrix_target_literals",
+      "symbol": "FOUNDER_TRANSITION_MATRIX",
+      "expected": ["queued", "blocked"],
+      "note": "W010 canonical founder transition matrix: approve/requeue target queued, block targets blocked."
+    },
+    {
+      "id": "founder_transition_rpc",
+      "path": "supabase/migrations/20260807130000_founder_audit_transition.sql",
+      "kind": "sql_rpc_target_status",
+      "expected": ["queued", "blocked"],
+      "note": "W010 compare-and-transition RPC writes queued (approve/requeue) or blocked (block) exactly once under a locked row."
+    },
+    {
+      "id": "sql_claim",
+      "path": "supabase/migrations/0016_claim_rpc.sql",
+      "kind": "sql_status_literals",
+      "expected": ["queued", "running"]
+    },
+    {
+      "id": "sql_reaper",
+      "path": "supabase/migrations/0018_stale_running_reaper.sql",
+      "kind": "sql_status_literals",
+      "expected": ["running", "failed", "queued"]
+    },
+    {
+      "id": "sql_retry",
+      "path": "supabase/migrations/20260719011616_atomic_pdf_and_retry_claims.sql",
+      "kind": "sql_status_literals",
+      "expected": ["failed", "blocked", "queued"]
+    },
+    {
+      "id": "sql_defaults",
+      "path": "supabase/migrations/0001_init.sql",
+      "kind": "sql_default_status",
+      "table": "audits",
+      "expected": ["queued"]
+    }
+  ],
+  "consumers": [
+    {
+      "id": "client_status_active",
+      "path": "web/src/lib/intelligence/client-status.ts",
+      "kind": "ts_string_array",
+      "symbol": "ACTIVE",
+      "expected": ["queued", "running"],
+      "projection": "customer"
+    },
+    {
+      "id": "client_status_terminal",
+      "path": "web/src/lib/intelligence/client-status.ts",
+      "kind": "ts_string_array",
+      "symbol": "TERMINAL",
+      "expected": ["ready", "failed", "blocked", "needs_review"],
+      "projection": "customer"
+    },
+    {
+      "id": "customer_terminal_type",
+      "path": "web/src/lib/intelligence/types.ts",
+      "kind": "ts_type_union",
+      "symbol": "CustomerAuditTerminal",
+      "expected": ["ready", "failed", "blocked", "needs_review"],
+      "projection": "customer"
+    },
+    {
+      "id": "admin_review",
+      "path": "web/src/lib/admin-review.ts",
+      "kind": "ts_string_set",
+      "symbol": "FOUNDER_ACTION_STATUSES",
+      "expected": ["needs_review", "blocked", "failed"],
+      "projection": "founder"
+    },
+    {
+      "id": "audit_actions_ui",
+      "path": "web/src/lib/admin-audit-transitions.ts",
+      "kind": "ts_matrix_status_keys",
+      "symbol": "FOUNDER_TRANSITION_MATRIX",
+      "expected": ["needs_review", "blocked", "failed", "ready", "queued", "running"],
+      "projection": "founder",
+      "note": "W010: the founder UI acts through canTransition over the canonical transition matrix; the matrix status keys are the founder-actionable audit states."
+    },
+    {
+      "id": "dashboard_filters",
+      "path": "web/src/app/(app)/dashboard/page.tsx",
+      "kind": "ts_string_array",
+      "symbol": "FILTERABLE_STATUSES",
+      "expected": ["all", "running", "ready", "queued", "failed", "needs_review", "draft", "blocked"],
+      "extra_allowed": ["all"],
+      "projection": "customer"
+    },
+    {
+      "id": "dashboard_active",
+      "path": "web/src/app/(app)/dashboard/page.tsx",
+      "kind": "ts_status_includes",
+      "expected": ["queued", "running", "needs_review"],
+      "projection": "customer"
+    },
+    {
+      "id": "refinements_gate",
+      "path": "web/src/lib/actions/refinements.ts",
+      "kind": "ts_status_comparisons",
+      "expected": ["ready"],
+      "projection": "customer"
+    },
+    {
+      "id": "shares_gate",
+      "path": "web/src/lib/actions/shares.ts",
+      "kind": "ts_status_comparisons",
+      "expected": ["ready"],
+      "projection": "customer"
+    },
+    {
+      "id": "mcp_gate",
+      "path": "web/src/lib/mcp/service.ts",
+      "kind": "ts_status_comparisons",
+      "expected": ["ready"],
+      "projection": "customer"
+    },
+    {
+      "id": "share_access_gate",
+      "path": "web/src/lib/share-access.ts",
+      "kind": "ts_status_comparisons",
+      "expected": ["ready"],
+      "projection": "customer"
+    },
+    {
+      "id": "audits_action",
+      "path": "web/src/lib/actions/audits.ts",
+      "kind": "ts_status_comparisons",
+      "expected": ["queued"],
+      "projection": "customer"
+    },
+    {
+      "id": "progress_route",
+      "path": "web/src/app/api/audits/[id]/progress/route.ts",
+      "kind": "ts_progress_route",
+      "expected_audit": ["ready", "failed", "blocked", "needs_review"],
+      "expected_progress": ["succeeded", "failed", "delayed", "preparing", "analyzing", "finalizing"],
+      "projection": "customer"
+    },
+    {
+      "id": "supabase_types_audits",
+      "path": "web/src/lib/supabase/types.ts",
+      "kind": "ts_generated_untyped",
+      "field": "status",
+      "expected": [],
+      "note": "Generated Supabase types keep audits.status as plain string; SQL is the schema authority and app code validates literals."
+    }
+  ],
+  "separate_vocabularies": [
+    {
+      "id": "report_generation_runs",
+      "owner": "private report-attempt telemetry (service-role)",
+      "literals": ["running", "ready", "needs_review", "failed", "blocked", "crashed"],
+      "distinctive": ["crashed"],
+      "sources": [
+        {
+          "path": "supabase/migrations/20260723120000_report_generation_runtime_metrics.sql",
+          "kind": "sql_check_constraint",
+          "column": "status"
+        },
+        {
+          "path": "worker/auditlayer_worker/intelligence/telemetry_persistence.py",
+          "kind": "python_tuple",
+          "symbol": "REPORT_RUN_STATUS_VOCABULARY"
+        }
+      ]
+    },
+    {
+      "id": "intelligence_runs",
+      "owner": "subject-domain run truth (kernel ledger)",
+      "literals": ["running", "completed", "failed"],
+      "distinctive": ["completed"],
+      "sources": [
+        {
+          "path": "supabase/migrations/20260723020611_alm_intelligence_kernel.sql",
+          "kind": "sql_check_constraint",
+          "table": "intelligence_runs"
+        },
+        {
+          "path": "worker/auditlayer_worker/intelligence/telemetry_persistence.py",
+          "kind": "python_tuple",
+          "symbol": "INTELLIGENCE_RUN_STATUS_VOCABULARY"
+        }
+      ]
+    },
+    {
+      "id": "audit_batches",
+      "owner": "atomic batch submission queue (kernel ledger)",
+      "literals": ["pending", "processing", "completed", "failed"],
+      "distinctive": ["pending", "processing", "completed"],
+      "sources": [
+        {
+          "path": "supabase/migrations/20260723020611_alm_intelligence_kernel.sql",
+          "kind": "sql_check_constraint",
+          "table": "audit_batches"
+        }
+      ]
+    },
+    {
+      "id": "intelligence_run_progress",
+      "owner": "customer progress projection (allowlisted states)",
+      "literals": ["preparing", "analyzing", "finalizing", "delayed", "succeeded", "failed"],
+      "distinctive": ["preparing", "analyzing", "finalizing", "delayed", "succeeded"],
+      "sources": [
+        {
+          "path": "supabase/migrations/20260730201000_alm_intelligence_ai_storage.sql",
+          "kind": "sql_check_constraint",
+          "column": "customer_state"
+        }
+      ]
+    },
+    {
+      "id": "audit_events_phase",
+      "owner": "audit_events.phase timeline (live stream)",
+      "literals": [
+        "intake", "queued", "approved", "started", "researching", "metrics",
+        "peers", "scoring", "composing", "uploaded", "succeeded", "failed",
+        "refinement"
+      ],
+      "distinctive": [
+        "intake", "approved", "started", "researching", "metrics", "peers",
+        "scoring", "composing", "uploaded", "succeeded", "refinement"
+      ],
+      "sources": [
+        {
+          "path": "worker/auditlayer_worker/core.py",
+          "kind": "python_tuple",
+          "symbol": "PHASES"
+        },
+        {
+          "path": "web/src/lib/supabase/types.ts",
+          "kind": "ts_type_union",
+          "symbol": "AuditEventPhase"
+        },
+        {
+          "path": "docs/architecture-contract.md",
+          "kind": "markdown_phases"
+        }
+      ]
+    },
+    {
+      "id": "refinements",
+      "owner": "refinement queue (refinements.status)",
+      "literals": ["queued", "running", "done", "failed"],
+      "distinctive": ["done"],
+      "sources": [
+        {
+          "path": "supabase/migrations/0001_init.sql",
+          "kind": "sql_default_status",
+          "table": "refinements"
+        },
+        {
+          "path": "supabase/migrations/0016_claim_rpc.sql",
+          "kind": "sql_status_literals",
+          "note": "claim_next_refinement shares queued -> running on the refinements table; literals identical to the audits claim so the table is the owner."
+        },
+        {
+          "path": "worker/auditlayer_worker/worker.py",
+          "kind": "python_status_strings",
+          "expected": ["failed"]
+        },
+        {
+          "path": "web/src/components/report-viewer.tsx",
+          "kind": "ts_receiver_status_comparisons",
+          "receiver": "r",
+          "expected": ["done", "failed"]
+        }
+      ]
+    },
+    {
+      "id": "operator_jobs",
+      "owner": "operator control plane (operator_jobs.status)",
+      "literals": ["queued", "running", "completed", "failed", "cancelled"],
+      "distinctive": ["completed", "cancelled"],
+      "sources": [
+        {
+          "path": "supabase/migrations/20260721170127_alm_operator_control_plane.sql",
+          "kind": "sql_check_constraint",
+          "table": "operator_jobs"
+        },
+        {
+          "path": "web/src/lib/actions/operator.ts",
+          "kind": "ts_object_status_literals",
+          "expected": ["running", "queued", "failed"]
+        }
+      ]
+    },
+    {
+      "id": "operator_threads",
+      "owner": "operator control plane (operator_threads.status)",
+      "literals": ["active", "archived"],
+      "distinctive": ["active", "archived"],
+      "sources": [
+        {
+          "path": "supabase/migrations/20260721170127_alm_operator_control_plane.sql",
+          "kind": "sql_check_constraint",
+          "table": "operator_threads"
+        }
+      ]
+    },
+    {
+      "id": "operator_incidents",
+      "owner": "operator control plane (operator_incidents.status)",
+      "literals": ["open", "triaged", "resolved", "ignored"],
+      "distinctive": ["open", "triaged", "resolved", "ignored"],
+      "sources": [
+        {
+          "path": "supabase/migrations/20260721170127_alm_operator_control_plane.sql",
+          "kind": "sql_check_constraint",
+          "table": "operator_incidents"
+        }
+      ]
+    },
+    {
+      "id": "context_update_proposals",
+      "owner": "Living Brief proposal ledger (context_update_proposals.status)",
+      "literals": ["proposed", "accepted", "rejected", "superseded"],
+      "distinctive": ["proposed", "accepted", "rejected", "superseded"],
+      "sources": [
+        {
+          "path": "supabase/migrations/20260723020611_alm_intelligence_kernel.sql",
+          "kind": "sql_check_constraint",
+          "table": "context_update_proposals"
+        }
+      ]
+    },
+    {
+      "id": "recommendations",
+      "owner": "recommendation ledger (recommendations.status)",
+      "literals": ["proposed", "accepted", "rejected", "implemented", "superseded"],
+      "distinctive": ["proposed", "accepted", "rejected", "implemented", "superseded"],
+      "sources": [
+        {
+          "path": "supabase/migrations/20260723020611_alm_intelligence_kernel.sql",
+          "kind": "sql_check_constraint",
+          "table": "recommendations"
+        }
+      ]
+    },
+    {
+      "id": "onboarding_status",
+      "owner": "profiles.onboarding_status (founder pipeline)",
+      "literals": [
+        "lead", "login_requested", "audit_requested", "active", "needs_founder_review",
+        "paid", "report_ready", "refinement_requested", "blocked", "churn_risk"
+      ],
+      "distinctive": [
+        "lead", "login_requested", "audit_requested", "active", "needs_founder_review",
+        "paid", "report_ready", "refinement_requested", "churn_risk"
+      ],
+      "sources": [
+        {
+          "path": "web/src/lib/actions/admin.ts",
+          "kind": "ts_string_set",
+          "symbol": "ONBOARDING_STATUSES"
+        },
+        {
+          "path": "supabase/migrations/0001_init.sql",
+          "kind": "sql_default_status",
+          "table": "profiles",
+          "column": "onboarding_status"
+        }
+      ]
+    },
+    {
+      "id": "runtime_telemetry",
+      "owner": "bounded runtime telemetry (RuntimeTelemetry.status)",
+      "literals": ["succeeded", "failed", "running"],
+      "distinctive": ["succeeded"],
+      "sources": [
+        {
+          "path": "worker/auditlayer_worker/intelligence/runtime.py",
+          "kind": "python_status_strings",
+          "expected": ["succeeded", "failed"]
+        },
+        {
+          "path": "worker/auditlayer_worker/intelligence/telemetry_persistence.py",
+          "kind": "python_map_keys",
+          "symbols": ["RUNTIME_STATUS_TO_INTELLIGENCE", "RUNTIME_STATUS_TO_REPORT"]
+        }
+      ]
+    }
+  ],
+  "conflation_guards": ["crashed", "completed", "succeeded", "delayed"],
+  "excluded_sources": [
+    {
+      "id": "legacy_domain",
+      "path": "legacy/src/auditlayer/domain.py",
+      "reason": "Archived v1 reference only; production audit lifecycle is owned by worker core, web domain, and static migrations."
+    }
+  ]
+}

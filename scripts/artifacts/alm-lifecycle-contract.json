@@ -1,0 +1,760 @@
+{
+  "artifact": "audit-lifecycle-contract",
+  "canonical_audit_states": [
+    "draft",
+    "queued",
+    "running",
+    "ready",
+    "needs_review",
+    "blocked",
+    "failed"
+  ],
+  "correction_tips": [
+    "missing source: restore the declared construct at the exact manifest path or update the manifest; never drop a producer/consumer silently",
+    "unmapped literal: map the literal to a canonical audit state or declare an explicit separate-vocabulary owner with its source path",
+    "duplicate owner: exactly one authoritative AuditStatus enum owns the canonical seven-state set; mirrors must equal it exactly",
+    "vocabulary conflation: crashed/completed/succeeded/delayed and other separate-vocabulary literals must never appear where an audits.status literal is required",
+    "unsafe customer projection: customer-visible surfaces may expose only canonical audit states and the allowlisted intelligence_run_progress customer states",
+    "source drift: the extracted literal set diverged from the versioned manifest; reconcile the verified source before updating the manifest"
+  ],
+  "failures": [],
+  "projection_coverage": {
+    "blocked": [
+      "customer",
+      "founder"
+    ],
+    "draft": [
+      "customer"
+    ],
+    "failed": [
+      "customer",
+      "founder"
+    ],
+    "needs_review": [
+      "customer",
+      "founder"
+    ],
+    "queued": [
+      "customer",
+      "founder"
+    ],
+    "ready": [
+      "customer",
+      "founder"
+    ],
+    "running": [
+      "customer",
+      "founder"
+    ]
+  },
+  "provider_calls": 0,
+  "schema_version": "1.0.0",
+  "separate_vocabularies": [
+    {
+      "distinctive": [
+        "crashed"
+      ],
+      "id": "report_generation_runs",
+      "literals": [
+        "blocked",
+        "crashed",
+        "failed",
+        "needs_review",
+        "ready",
+        "running"
+      ],
+      "owner": "private report-attempt telemetry (service-role)",
+      "status": "ok"
+    },
+    {
+      "distinctive": [
+        "completed"
+      ],
+      "id": "intelligence_runs",
+      "literals": [
+        "completed",
+        "failed",
+        "running"
+      ],
+      "owner": "subject-domain run truth (kernel ledger)",
+      "status": "ok"
+    },
+    {
+      "distinctive": [
+        "completed",
+        "pending",
+        "processing"
+      ],
+      "id": "audit_batches",
+      "literals": [
+        "completed",
+        "failed",
+        "pending",
+        "processing"
+      ],
+      "owner": "atomic batch submission queue (kernel ledger)",
+      "status": "ok"
+    },
+    {
+      "distinctive": [
+        "analyzing",
+        "delayed",
+        "finalizing",
+        "preparing",
+        "succeeded"
+      ],
+      "id": "intelligence_run_progress",
+      "literals": [
+        "analyzing",
+        "delayed",
+        "failed",
+        "finalizing",
+        "preparing",
+        "succeeded"
+      ],
+      "owner": "customer progress projection (allowlisted states)",
+      "status": "ok"
+    },
+    {
+      "distinctive": [
+        "approved",
+        "composing",
+        "intake",
+        "metrics",
+        "peers",
+        "refinement",
+        "researching",
+        "scoring",
+        "started",
+        "succeeded",
+        "uploaded"
+      ],
+      "id": "audit_events_phase",
+      "literals": [
+        "approved",
+        "composing",
+        "failed",
+        "intake",
+        "metrics",
+        "peers",
+        "queued",
+        "refinement",
+        "researching",
+        "scoring",
+        "started",
+        "succeeded",
+        "uploaded"
+      ],
+      "owner": "audit_events.phase timeline (live stream)",
+      "status": "ok"
+    },
+    {
+      "distinctive": [
+        "done"
+      ],
+      "id": "refinements",
+      "literals": [
+        "done",
+        "failed",
+        "queued",
+        "running"
+      ],
+      "owner": "refinement queue (refinements.status)",
+      "status": "ok"
+    },
+    {
+      "distinctive": [
+        "cancelled",
+        "completed"
+      ],
+      "id": "operator_jobs",
+      "literals": [
+        "cancelled",
+        "completed",
+        "failed",
+        "queued",
+        "running"
+      ],
+      "owner": "operator control plane (operator_jobs.status)",
+      "status": "ok"
+    },
+    {
+      "distinctive": [
+        "active",
+        "archived"
+      ],
+      "id": "operator_threads",
+      "literals": [
+        "active",
+        "archived"
+      ],
+      "owner": "operator control plane (operator_threads.status)",
+      "status": "ok"
+    },
+    {
+      "distinctive": [
+        "ignored",
+        "open",
+        "resolved",
+        "triaged"
+      ],
+      "id": "operator_incidents",
+      "literals": [
+        "ignored",
+        "open",
+        "resolved",
+        "triaged"
+      ],
+      "owner": "operator control plane (operator_incidents.status)",
+      "status": "ok"
+    },
+    {
+      "distinctive": [
+        "accepted",
+        "proposed",
+        "rejected",
+        "superseded"
+      ],
+      "id": "context_update_proposals",
+      "literals": [
+        "accepted",
+        "proposed",
+        "rejected",
+        "superseded"
+      ],
+      "owner": "Living Brief proposal ledger (context_update_proposals.status)",
+      "status": "ok"
+    },
+    {
+      "distinctive": [
+        "accepted",
+        "implemented",
+        "proposed",
+        "rejected",
+        "superseded"
+      ],
+      "id": "recommendations",
+      "literals": [
+        "accepted",
+        "implemented",
+        "proposed",
+        "rejected",
+        "superseded"
+      ],
+      "owner": "recommendation ledger (recommendations.status)",
+      "status": "ok"
+    },
+    {
+      "distinctive": [
+        "active",
+        "audit_requested",
+        "churn_risk",
+        "lead",
+        "login_requested",
+        "needs_founder_review",
+        "paid",
+        "refinement_requested",
+        "report_ready"
+      ],
+      "id": "onboarding_status",
+      "literals": [
+        "active",
+        "audit_requested",
+        "blocked",
+        "churn_risk",
+        "lead",
+        "login_requested",
+        "needs_founder_review",
+        "paid",
+        "refinement_requested",
+        "report_ready"
+      ],
+      "owner": "profiles.onboarding_status (founder pipeline)",
+      "status": "ok"
+    },
+    {
+      "distinctive": [
+        "succeeded"
+      ],
+      "id": "runtime_telemetry",
+      "literals": [
+        "failed",
+        "running",
+        "succeeded"
+      ],
+      "owner": "bounded runtime telemetry (RuntimeTelemetry.status)",
+      "status": "ok"
+    }
+  ],
+  "sources": [
+    {
+      "expected": [
+        "blocked",
+        "draft",
+        "failed",
+        "needs_review",
+        "queued",
+        "ready",
+        "running"
+      ],
+      "extracted": [
+        "blocked",
+        "draft",
+        "failed",
+        "needs_review",
+        "queued",
+        "ready",
+        "running"
+      ],
+      "id": "worker_core_enum",
+      "kind": "python_enum",
+      "path": "worker/auditlayer_worker/core.py",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "blocked",
+        "draft",
+        "failed",
+        "needs_review",
+        "queued",
+        "ready",
+        "running"
+      ],
+      "extracted": [
+        "blocked",
+        "draft",
+        "failed",
+        "needs_review",
+        "queued",
+        "ready",
+        "running"
+      ],
+      "id": "arch_contract_enum",
+      "kind": "markdown_enum",
+      "note": "mirror of the authoritative enum",
+      "path": "docs/architecture-contract.md",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "blocked",
+        "draft",
+        "failed",
+        "needs_review",
+        "queued",
+        "ready",
+        "running"
+      ],
+      "extracted": [
+        "blocked",
+        "draft",
+        "failed",
+        "needs_review",
+        "queued",
+        "ready",
+        "running"
+      ],
+      "id": "web_domain_type",
+      "kind": "ts_type_union",
+      "note": "mirror of the authoritative enum",
+      "path": "web/src/lib/domain.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "blocked",
+        "needs_review",
+        "queued"
+      ],
+      "extracted": [
+        "blocked",
+        "needs_review",
+        "queued"
+      ],
+      "id": "worker_core_intake",
+      "kind": "python_enum_refs",
+      "note": "producer; projection=none",
+      "path": "worker/auditlayer_worker/core.py",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "blocked",
+        "failed",
+        "needs_review",
+        "ready"
+      ],
+      "extracted": [
+        "blocked",
+        "failed",
+        "needs_review",
+        "ready"
+      ],
+      "id": "worker_pipeline",
+      "kind": "python_enum_refs",
+      "note": "producer; projection=none",
+      "path": "worker/auditlayer_worker/pipeline.py",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "ready"
+      ],
+      "extracted": [
+        "ready"
+      ],
+      "id": "admin_actions",
+      "kind": "ts_update_status",
+      "note": "producer; projection=none",
+      "path": "web/src/lib/actions/admin.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "blocked",
+        "queued"
+      ],
+      "extracted": [
+        "blocked",
+        "queued"
+      ],
+      "id": "founder_transition_matrix",
+      "kind": "ts_matrix_target_literals",
+      "note": "producer; projection=none",
+      "path": "web/src/lib/admin-audit-transitions.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "blocked",
+        "queued"
+      ],
+      "extracted": [
+        "blocked",
+        "queued"
+      ],
+      "id": "founder_transition_rpc",
+      "kind": "sql_rpc_target_status",
+      "note": "producer; projection=none",
+      "path": "supabase/migrations/20260807130000_founder_audit_transition.sql",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "queued",
+        "running"
+      ],
+      "extracted": [
+        "queued",
+        "running"
+      ],
+      "id": "sql_claim",
+      "kind": "sql_status_literals",
+      "note": "producer; projection=none",
+      "path": "supabase/migrations/0016_claim_rpc.sql",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "failed",
+        "queued",
+        "running"
+      ],
+      "extracted": [
+        "failed",
+        "queued",
+        "running"
+      ],
+      "id": "sql_reaper",
+      "kind": "sql_status_literals",
+      "note": "producer; projection=none",
+      "path": "supabase/migrations/0018_stale_running_reaper.sql",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "blocked",
+        "failed",
+        "queued"
+      ],
+      "extracted": [
+        "blocked",
+        "failed",
+        "queued"
+      ],
+      "id": "sql_retry",
+      "kind": "sql_status_literals",
+      "note": "producer; projection=none",
+      "path": "supabase/migrations/20260719011616_atomic_pdf_and_retry_claims.sql",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "queued"
+      ],
+      "extracted": [
+        "queued"
+      ],
+      "id": "sql_defaults",
+      "kind": "sql_default_status",
+      "note": "producer; projection=none",
+      "path": "supabase/migrations/0001_init.sql",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "queued",
+        "running"
+      ],
+      "extracted": [
+        "queued",
+        "running"
+      ],
+      "id": "client_status_active",
+      "kind": "ts_string_array",
+      "note": "consumer; projection=customer",
+      "path": "web/src/lib/intelligence/client-status.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "blocked",
+        "failed",
+        "needs_review",
+        "ready"
+      ],
+      "extracted": [
+        "blocked",
+        "failed",
+        "needs_review",
+        "ready"
+      ],
+      "id": "client_status_terminal",
+      "kind": "ts_string_array",
+      "note": "consumer; projection=customer",
+      "path": "web/src/lib/intelligence/client-status.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "blocked",
+        "failed",
+        "needs_review",
+        "ready"
+      ],
+      "extracted": [
+        "blocked",
+        "failed",
+        "needs_review",
+        "ready"
+      ],
+      "id": "customer_terminal_type",
+      "kind": "ts_type_union",
+      "note": "consumer; projection=customer",
+      "path": "web/src/lib/intelligence/types.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "blocked",
+        "failed",
+        "needs_review"
+      ],
+      "extracted": [
+        "blocked",
+        "failed",
+        "needs_review"
+      ],
+      "id": "admin_review",
+      "kind": "ts_string_set",
+      "note": "consumer; projection=founder",
+      "path": "web/src/lib/admin-review.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "blocked",
+        "failed",
+        "needs_review",
+        "queued",
+        "ready",
+        "running"
+      ],
+      "extracted": [
+        "blocked",
+        "failed",
+        "needs_review",
+        "queued",
+        "ready",
+        "running"
+      ],
+      "id": "audit_actions_ui",
+      "kind": "ts_matrix_status_keys",
+      "note": "consumer; projection=founder",
+      "path": "web/src/lib/admin-audit-transitions.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "all",
+        "blocked",
+        "draft",
+        "failed",
+        "needs_review",
+        "queued",
+        "ready",
+        "running"
+      ],
+      "extracted": [
+        "all",
+        "blocked",
+        "draft",
+        "failed",
+        "needs_review",
+        "queued",
+        "ready",
+        "running"
+      ],
+      "id": "dashboard_filters",
+      "kind": "ts_string_array",
+      "note": "consumer; projection=customer",
+      "path": "web/src/app/(app)/dashboard/page.tsx",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "needs_review",
+        "queued",
+        "running"
+      ],
+      "extracted": [
+        "needs_review",
+        "queued",
+        "running"
+      ],
+      "id": "dashboard_active",
+      "kind": "ts_status_includes",
+      "note": "consumer; projection=customer",
+      "path": "web/src/app/(app)/dashboard/page.tsx",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "ready"
+      ],
+      "extracted": [
+        "ready"
+      ],
+      "id": "refinements_gate",
+      "kind": "ts_status_comparisons",
+      "note": "consumer; projection=customer",
+      "path": "web/src/lib/actions/refinements.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "ready"
+      ],
+      "extracted": [
+        "ready"
+      ],
+      "id": "shares_gate",
+      "kind": "ts_status_comparisons",
+      "note": "consumer; projection=customer",
+      "path": "web/src/lib/actions/shares.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "ready"
+      ],
+      "extracted": [
+        "ready"
+      ],
+      "id": "mcp_gate",
+      "kind": "ts_status_comparisons",
+      "note": "consumer; projection=customer",
+      "path": "web/src/lib/mcp/service.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "ready"
+      ],
+      "extracted": [
+        "ready"
+      ],
+      "id": "share_access_gate",
+      "kind": "ts_status_comparisons",
+      "note": "consumer; projection=customer",
+      "path": "web/src/lib/share-access.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "queued"
+      ],
+      "extracted": [
+        "queued"
+      ],
+      "id": "audits_action",
+      "kind": "ts_status_comparisons",
+      "note": "consumer; projection=customer",
+      "path": "web/src/lib/actions/audits.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [
+        "analyzing",
+        "blocked",
+        "delayed",
+        "failed",
+        "finalizing",
+        "needs_review",
+        "preparing",
+        "ready",
+        "succeeded"
+      ],
+      "extracted": [
+        "analyzing",
+        "blocked",
+        "delayed",
+        "failed",
+        "finalizing",
+        "needs_review",
+        "preparing",
+        "ready",
+        "succeeded"
+      ],
+      "id": "progress_route",
+      "kind": "ts_progress_route",
+      "note": "consumer; projection=customer; progress vocabulary verified separately",
+      "path": "web/src/app/api/audits/[id]/progress/route.ts",
+      "status": "ok"
+    },
+    {
+      "expected": [],
+      "extracted": [],
+      "id": "supabase_types_audits",
+      "kind": "ts_generated_untyped",
+      "note": "consumer; projection=none",
+      "path": "web/src/lib/supabase/types.ts",
+      "status": "ok"
+    }
+  ],
+  "summary": {
+    "assertions": 66,
+    "consumers": 14,
+    "producers": 9,
+    "projections": [
+      "customer",
+      "founder"
+    ],
+    "separate_vocabularies": 13,
+    "sources": 26,
+    "states": 7,
+    "status": "passed"
+  },
+  "unknown_cases": []
+}

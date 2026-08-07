@@ -37,6 +37,7 @@ test-intake-parity:
 check-v2: web-check worker-check
 
 alm-check:
+	python3 scripts/check_audit_lifecycle_contract.py --output /tmp/alm-lifecycle-contract.json
 	python3 docs/implementation/alm-intelligence-v1/ontology/validate_ontology.py
 	cd worker && uv run pytest tests/test_intelligence_*.py -q
 	cd web && (command -v pnpm >/dev/null && pnpm exec vitest run src/lib/intelligence || npx --yes pnpm@10 exec vitest run src/lib/intelligence)

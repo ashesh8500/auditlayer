@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0.0",
+  "artifact": "fixture-missing-source",
+  "canonical_audit_states": [
+    "draft", "queued", "running", "ready", "needs_review", "blocked", "failed"
+  ],
+  "authoritative_owner": {
+    "id": "worker_core_enum",
+    "path": "sources/core.py",
+    "kind": "python_enum",
+    "symbol": "AuditStatus"
+  },
+  "mirrors": [
+    {
+      "id": "web_domain_type",
+      "path": "sources/domain.ts",
+      "kind": "ts_type_union",
+      "symbol": "AuditStatus"
+    }
+  ],
+  "producers": [
+    {
+      "id": "admin_actions",
+      "path": "sources/missing-admin.ts",
+      "kind": "ts_update_status",
+      "expected": ["queued", "blocked", "ready"]
+    }
+  ],
+  "consumers": [],
+  "separate_vocabularies": [],
+  "conflation_guards": ["crashed", "completed", "succeeded", "delayed"],
+  "excluded_sources": []
+}
