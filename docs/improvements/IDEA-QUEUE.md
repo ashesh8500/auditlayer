@@ -15,7 +15,7 @@ Status vocabulary: `proposed → in_flight → done`; `parked` is explicit. The 
 | done | P3 · C1/C6 · F1 | Create an honest-null report quality regression harness | Golden structural fixtures verify six answers, limitation language, strengths, priorities, and print-safe HTML while explicitly avoiding subjective efficacy claims; diffs are inspectable | product |
 | proposed | P4 · C3 · F1 | Audit niche and account-type misclassification paths | At least 30 sanitized/public test cases stratified by creator/company/expert/general-media and platform report accuracy, class balance, abstentions, and error categories; no recommendation when type is unknown | research |
 | done | P5 · C4/C9 | Build Living Brief protected-field proposal semantics | Tests prove model output can only propose diffs; identity/vision/goals/constraints require explicit confirmation; version history remains immutable; rejected proposals stay rejected absent new evidence | engineering |
-| in_flight | P7 · F3/F6 | Build founder-facing release-evidence packet generation | One local command emits code/commit/test/preview/migration/production-state distinctions and rollback checklist from real local state; it cannot deploy or approve production | devops |
+| done | P7 · F3/F6 | Build founder-facing release-evidence packet generation | One local command emits code/commit/test/preview/migration/production-state distinctions and rollback checklist from real local state; it cannot deploy or approve production | devops |
 
 ## Founder-brief expansion — 2026-08-07
 

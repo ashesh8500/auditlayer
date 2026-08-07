@@ -1,0 +1,26 @@
+{
+  "name": "ahead-of-origin",
+  "description": "Local HEAD is one commit ahead of the origin reference with a clean worktree. integrated_local must be BLOCKED and name the exact ahead count.",
+  "git": {
+    "head": "8a53c6552820caf51dec15bd89924b206ff42fa6",
+    "head_time": "2026-08-07T09:05:09Z",
+    "branch": "improve/alm-recursive-2026-08-07",
+    "upstream": "origin/improve/alm-recursive-2026-08-07",
+    "upstream_head": "b93ced209f8ef593e5a23e86586cbb1245810eaa",
+    "ahead": 1,
+    "behind": 0,
+    "porcelain": [],
+    "mission_origin_head": "b93ced209f8ef593e5a23e86586cbb1245810eaa"
+  },
+  "checks": {
+    "migrations_static": {
+      "state": "ready",
+      "detail": "migration contract OK: 43 files, latest=20260807120000"
+    },
+    "capability_preflight": {
+      "state": "ready",
+      "detail": "8/8 ready, 0 blocked, external 8 unknown",
+      "blocked_capabilities": []
+    }
+  }
+}

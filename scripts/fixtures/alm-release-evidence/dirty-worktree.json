@@ -1,0 +1,29 @@
+{
+  "name": "dirty-worktree",
+  "description": "Dirty local state: the worktree carries uncommitted changes. integrated_local must be BLOCKED and name the exact porcelain entries.",
+  "git": {
+    "head": "b93ced209f8ef593e5a23e86586cbb1245810eaa",
+    "head_time": "2026-08-07T08:30:00Z",
+    "branch": "improve/alm-recursive-2026-08-07",
+    "upstream": "origin/improve/alm-recursive-2026-08-07",
+    "upstream_head": "b93ced209f8ef593e5a23e86586cbb1245810eaa",
+    "ahead": 0,
+    "behind": 0,
+    "porcelain": [
+      " M web/src/lib/domain.ts",
+      "?? scripts/uncommitted-new.py"
+    ],
+    "mission_origin_head": "b93ced209f8ef593e5a23e86586cbb1245810eaa"
+  },
+  "checks": {
+    "migrations_static": {
+      "state": "ready",
+      "detail": "migration contract OK: 43 files, latest=20260807120000"
+    },
+    "capability_preflight": {
+      "state": "ready",
+      "detail": "8/8 ready, 0 blocked, external 8 unknown",
+      "blocked_capabilities": []
+    }
+  }
+}
