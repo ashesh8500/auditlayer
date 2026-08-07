@@ -15,6 +15,7 @@ import {
   uploadManualReport,
   type AdminActionState,
 } from "@/lib/actions/admin";
+import { canTransition } from "@/lib/admin-audit-transitions";
 
 const initial: AdminActionState = { status: "idle" };
 
@@ -45,8 +46,12 @@ export function AuditActions({
     initial,
   );
 
-  const canApprove = status === "needs_review" || status === "blocked";
-  const canRequeue = status === "failed" || status === "ready";
+  // Client controls are presentation projections of the canonical transition
+  // matrix. They are never mutation authority — the server action re-validates
+  // every transition against the locked database row.
+  const canApprove = canTransition("approve", status).allowed;
+  const canRequeue = canTransition("requeue", status).allowed;
+  const canBlock = canTransition("block", status).allowed;
 
   return (
     <div className="space-y-5">
@@ -99,7 +104,7 @@ export function AuditActions({
             type="submit"
             size="sm"
             variant="destructive"
-            disabled={blocking}
+            disabled={blocking || !canBlock}
             className="mt-3 w-full"
           >
             {blocking && <Loader2 className="size-4 animate-spin" />}

@@ -1,0 +1,46 @@
+{
+  "contract": "founder-audit-transition-contract",
+  "version": "1.0.0",
+  "program": "P7/P12 · C15 · F2/F3/F9 · D2/D3/D8",
+  "idea": "ALM-I-017: make founder recovery transitions state-safe and auditable",
+  "authority": "founder_transition_audit (SECURITY DEFINER, fixed search_path=public, service_role execute only)",
+  "action_matrix": {
+    "approve": {
+      "needs_review": { "to": "queued", "event_type": "audit_approved", "phase": "approved" },
+      "blocked": { "to": "queued", "event_type": "audit_approved", "phase": "approved" }
+    },
+    "requeue": {
+      "failed": { "to": "queued", "event_type": "audit_requeued", "phase": "queued" },
+      "ready": { "to": "queued", "event_type": "audit_requeued", "phase": "queued" }
+    },
+    "block": {
+      "needs_review": { "to": "blocked", "event_type": "audit_blocked", "phase": "failed" },
+      "queued": { "to": "blocked", "event_type": "audit_blocked", "phase": "failed" },
+      "running": { "to": "blocked", "event_type": "audit_blocked", "phase": "failed" }
+    }
+  },
+  "rejected_block_sources": ["ready", "failed", "blocked", "draft"],
+  "write_invariant": "one audits.status update + exactly one matching audit_events insert, same transaction",
+  "zero_write_rejections": [
+    "unauthorized",
+    "unsupported_action",
+    "audit_not_found",
+    "invalid_transition",
+    "stale_status",
+    "note_required"
+  ],
+  "note_bounds": {
+    "max_length": 500,
+    "block_min_length": 4,
+    "redaction": "control characters stripped, whitespace collapsed, trimmed"
+  },
+  "actor": "profiles.role = 'admin' validated inside the RPC; event actor recorded as admin:<actor_id>",
+  "client_controls": "presentation projections of the action matrix; never mutation authority",
+  "provider_calls": 0,
+  "no_live_mutation": true,
+  "no_environment_path": true,
+  "no_timestamp": true,
+  "no_customer_data": true,
+  "no_secret_values": true,
+  "no_note_payloads": true
+}

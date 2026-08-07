@@ -2095,6 +2095,15 @@ export type Database = {
         }
         Returns: number
       }
+      founder_transition_audit: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_audit_id: string
+          p_note?: string
+        }
+        Returns: Json
+      }
       get_benchmarks: {
         Args: { p_bracket: string; p_niche: string }
         Returns: Json

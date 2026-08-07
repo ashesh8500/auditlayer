@@ -7,6 +7,11 @@ import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured, siteUrl } from "@/lib/env";
 import type { AuditEventPhase, Json } from "@/lib/supabase/types";
+import {
+  executeFounderTransition,
+  type FounderTransitionAction,
+  type TransitionRpcCall,
+} from "@/lib/admin-audit-transitions";
 
 export interface AdminActionState {
   status: "idle" | "ok" | "error";
@@ -37,84 +42,70 @@ async function logEvent(
     .insert({ audit_id: auditId, actor: "admin", event_type: eventType, phase, detail });
 }
 
+/**
+ * Run one founder recovery transition through the canonical compare-and-
+ * transition RPC (`founder_transition_audit`). The database validates the
+ * founder actor, locks the current audit row, re-validates the transition
+ * against the typed matrix, bounds/redacts the note, changes status exactly
+ * once, and inserts exactly one matching founder `audit_events` row in the
+ * same transaction. Client-observed status is never mutation authority; the
+ * RPC compares against the locked row and rejects stale/duplicate submissions
+ * with zero writes.
+ */
+async function runFounderTransition(
+  action: FounderTransitionAction,
+  formData: FormData,
+  successMessage: string,
+): Promise<AdminActionState> {
+  const actor = await requireAdmin();
+  if (!isSupabaseAdminConfigured())
+    return { status: "error", message: "Not configured." };
+
+  const auditId = String(formData.get("auditId") ?? "");
+  if (!auditId) return { status: "error", message: "Audit id is required." };
+  const note = String(formData.get("note") ?? "");
+
+  const admin = createAdminClient();
+  const rpc: TransitionRpcCall = async (args) => {
+    const { data, error } = await admin.rpc("founder_transition_audit", args);
+    return { data, error };
+  };
+
+  const result = await executeFounderTransition(rpc, {
+    action,
+    auditId,
+    actorId: actor.id,
+    note,
+  });
+
+  if (!result.ok) return { status: "error", message: result.message };
+
+  revalidatePath(`/admin/audits/${auditId}`);
+  return { status: "ok", message: successMessage };
+}
+
 /** Approve a needs_review/blocked audit -> queue it for the worker. */
 export async function approveAudit(
   _prev: AdminActionState,
   formData: FormData,
 ): Promise<AdminActionState> {
-  await requireAdmin();
-  if (!isSupabaseAdminConfigured())
-    return { status: "error", message: "Not configured." };
-
-  const auditId = String(formData.get("auditId") ?? "");
-  const note = String(formData.get("note") ?? "").trim();
-  const admin = createAdminClient();
-
-  const { error } = await admin
-    .from("audits")
-    .update({ status: "queued" })
-    .eq("id", auditId);
-  if (error) return { status: "error", message: error.message };
-
-  await logEvent(auditId, "audit_approved", "approved", note || "Approved by founder");
-  revalidatePath(`/admin/audits/${auditId}`);
-  return { status: "ok", message: "Audit approved and queued." };
+  return runFounderTransition("approve", formData, "Audit approved and queued.");
 }
 
-/** Re-queue a failed audit for another generation attempt. */
+/** Re-queue a failed or completed audit for another generation attempt. */
 export async function requeueAudit(
   _prev: AdminActionState,
   formData: FormData,
 ): Promise<AdminActionState> {
-  await requireAdmin();
-  if (!isSupabaseAdminConfigured())
-    return { status: "error", message: "Not configured." };
-
-  const auditId = String(formData.get("auditId") ?? "");
-  const admin = createAdminClient();
-  const { error } = await admin
-    .from("audits")
-    .update({ status: "queued" })
-    .eq("id", auditId);
-  if (error) return { status: "error", message: error.message };
-
-  await logEvent(auditId, "audit_requeued", "queued", "Re-queued by founder");
-  revalidatePath(`/admin/audits/${auditId}`);
-  return { status: "ok", message: "Audit re-queued." };
+  return runFounderTransition("requeue", formData, "Audit re-queued.");
 }
 
+/** Block an actionable audit (needs_review/queued/running) with a founder note. */
 export async function blockAudit(
   _prev: AdminActionState,
   formData: FormData,
 ): Promise<AdminActionState> {
-  await requireAdmin();
-  if (!isSupabaseAdminConfigured())
-    return { status: "error", message: "Not configured." };
-
-  const auditId = String(formData.get("auditId") ?? "");
-  const note = String(formData.get("note") ?? "").trim();
-  if (note.length < 4)
-    return { status: "error", message: "Blocking requires a clear note." };
-
-  const admin = createAdminClient();
-  const { data: existing } = await admin
-    .from("audits")
-    .select("admin_notes")
-    .eq("id", auditId)
-    .maybeSingle();
-  const admin_notes = [existing?.admin_notes, `Blocked: ${note}`]
-    .filter(Boolean)
-    .join("\n");
-
-  const { error } = await admin
-    .from("audits")
-    .update({ status: "blocked", admin_notes })
-    .eq("id", auditId);
-  if (error) return { status: "error", message: error.message };
-
-  await logEvent(auditId, "audit_blocked", "failed", note);
-  revalidatePath(`/admin/audits/${auditId}`);
-  return { status: "ok", message: "Audit blocked." };
+  return runFounderTransition("block", formData, "Audit blocked.");
 }
 
 export async function addAuditNote(
