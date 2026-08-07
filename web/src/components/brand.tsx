@@ -34,7 +34,9 @@ export function Brand({
         priority
       />
       {showName && (
-        <span className={cn("text-sm", nameClassName)}>AuditLayerMedia</span>
+        <span className={cn("text-sm", nameClassName)}>
+          AuditLayerMedia<span aria-hidden="true" className="text-[color:var(--accent)]">.</span>
+        </span>
       )}
     </Link>
   );
