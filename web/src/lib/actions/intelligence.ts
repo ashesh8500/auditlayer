@@ -21,13 +21,19 @@ import {
 import { isSupabaseAdminConfigured } from "@/lib/env";
 import {
   buildBatchIdempotencyKey,
+  planRecommendationDecision,
+  recommendationDecisionPlanError,
+  recommendationSubjectIdFromRow,
   rpcCreateSubject,
   rpcLinkSubjectChannel,
+  rpcRecordDecision,
   rpcRecordLivingBriefVersion,
   rpcResolveContextUpdateProposal,
   rpcSubmitAuditBatch,
   stubPrepareAndSubmitBatch,
+  type DecisionLedgerRow,
   type PrepareBatchOutcome,
+  type RecommendationDecisionValue,
 } from "@/lib/intelligence/api";
 import { canonicalizeWebsiteLocator } from "@/lib/intelligence/channel-locator";
 import { contentToKernelPayload } from "@/lib/intelligence/brief-project";
@@ -377,6 +383,97 @@ export async function loadSubjectWizardContextAction(input: {
       ok: false,
       error:
         err instanceof Error ? err.message : "Could not load subject channels.",
+    };
+  }
+}
+
+/**
+ * Record a customer decision (accept/reject) on a recommendation through the
+ * canonical `decisions` ledger.
+ *
+ * One owner/admin-checked action → one authoritative `record_decision` call
+ * for valid submissions. Duplicate, stale, unsupported (including `modified`),
+ * malformed, and unauthorized submissions produce zero writes. The RPC itself
+ * validates recommendation→subject linkage as the authoritative backstop.
+ *
+ * `modified` is intentionally unsupported: the `decisions.decision` CHECK
+ * constraint admits accepted/rejected/superseded, and `recommendation_outcomes`
+ * requires an observation window (it is the outcomes ledger, not the decision
+ * ledger). See web/artifacts/recommendation-decisions-contract.json.
+ */
+export async function recordRecommendationDecisionAction(input: {
+  subjectId: string;
+  recommendationId: string;
+  decision: string;
+  note?: string;
+}): Promise<
+  | { ok: true; decisionId: string; decision: RecommendationDecisionValue }
+  | { ok: false; error: string }
+> {
+  if (!isSupabaseAdminConfigured()) {
+    return { ok: false, error: "Could not save that decision right now." };
+  }
+
+  try {
+    const profile = await requireProfile();
+    const admin = createAdminClient();
+
+    const { data: subject } = await admin
+      .from("subjects")
+      .select("id, user_id")
+      .eq("id", input.subjectId)
+      .maybeSingle();
+
+    const { data: rec } = await admin
+      .from("recommendations")
+      .select("id, intelligence_runs(subject_id)")
+      .eq("id", input.recommendationId)
+      .maybeSingle();
+
+    const { data: existingRows } = await admin
+      .from("decisions")
+      .select("id, target_id, decision, note, user_id, created_at")
+      .eq("target_type", "recommendation")
+      .eq("target_id", input.recommendationId)
+      .eq("user_id", profile.id);
+
+    const plan = planRecommendationDecision({
+      subjectId: input.subjectId,
+      recommendationId: input.recommendationId,
+      decision: input.decision,
+      note: input.note,
+      configured: true,
+      profile: { id: profile.id, role: profile.role },
+      subject: subject ?? null,
+      recommendationSubjectId: recommendationSubjectIdFromRow(rec),
+      existingDecisions: (existingRows ?? []) as DecisionLedgerRow[],
+    });
+
+    if (plan.action === "noop") {
+      if (plan.reason === "duplicate" && plan.decisionId) {
+        // Idempotent retry of an already-recorded decision: zero writes.
+        return {
+          ok: true,
+          decisionId: plan.decisionId,
+          decision: input.decision as RecommendationDecisionValue,
+        };
+      }
+      return {
+        ok: false,
+        error: recommendationDecisionPlanError(plan, input.decision),
+      };
+    }
+
+    const decisionId = await rpcRecordDecision(admin, plan.call);
+    revalidatePath(`/subjects/${input.subjectId}`);
+    revalidatePath("/subjects");
+
+    return { ok: true, decisionId, decision: plan.call.decision };
+  } catch (err) {
+    return {
+      ok: false,
+      error:
+        err instanceof Error ? err.message : "Could not record that decision.",
     };
   }
 }

@@ -23,6 +23,11 @@ import {
   briefPathLabel,
 } from "@/components/intelligence/living-brief-view";
 import { resolveBriefProposalAction } from "@/lib/actions/intelligence";
+import { recordRecommendationDecisionAction } from "@/lib/actions/intelligence";
+import {
+  recommendationDecisionDisplayState,
+  type RecommendationDecisionValue,
+} from "@/lib/intelligence/api";
 import { LivingBriefEditor } from "@/components/intelligence/living-brief-editor";
 import type {
   SubjectSummary,
@@ -32,6 +37,7 @@ import type {
   LivingBriefContent,
   ScoreEvidence,
   RecommendationSummary,
+  RecommendationDecision,
   SinceLastAuditItem,
   ReportArchiveItem,
 } from "@/lib/intelligence/types";
@@ -77,6 +83,23 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // Recommendation decisions mirror the durable `decisions` ledger after a
+  // server-confirmed write; the read model re-projects it on every load.
+  // The ledger remains the authoritative source — this is not client-authoritative state.
+  const [recommendationDecisions, setRecommendationDecisions] = useState<
+    Record<string, RecommendationDecision>
+  >(() =>
+    Object.fromEntries(
+      recommendations
+        .filter((r) => r.decision)
+        .map((r) => [r.id, r.decision as RecommendationDecision]),
+    ),
+  );
+  const [recommendationError, setRecommendationError] = useState<
+    string | null
+  >(null);
+  const [resolvingRecId, setResolvingRecId] = useState<string | null>(null);
+
   const currentBrief = briefVersions[0] ?? null;
   const pendingProposals = proposals.filter(
     (p) => (proposalState[p.id] ?? p.status) === "proposed",
@@ -96,6 +119,35 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
         return;
       }
       setProposalState((prev) => ({ ...prev, [id]: status }));
+    });
+  };
+
+  const decideRecommendation = (
+    id: string,
+    decision: RecommendationDecisionValue,
+  ) => {
+    setRecommendationError(null);
+    setResolvingRecId(id);
+    startTransition(async () => {
+      const result = await recordRecommendationDecisionAction({
+        subjectId,
+        recommendationId: id,
+        decision,
+      });
+      setResolvingRecId(null);
+      if (!result.ok) {
+        setRecommendationError(result.error);
+        return;
+      }
+      setRecommendationDecisions((prev) => ({
+        ...prev,
+        [id]: {
+          decision: result.decision,
+          note: "",
+          decidedBy: "",
+          decidedAt: new Date().toISOString(),
+        },
+      }));
     });
   };
 
@@ -155,6 +207,7 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
           channels={channels}
           currentBrief={currentBrief}
           recommendations={recommendations}
+          recommendationDecisions={recommendationDecisions}
           sinceLast={sinceLast}
           reports={reports}
           pendingProposalCount={pendingProposals.length}
@@ -175,7 +228,14 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
       )}
       {activeTab === "scores" && <ScoresTab scores={scores} />}
       {activeTab === "recommendations" && (
-        <RecommendationsTab recommendations={recommendations} />
+        <RecommendationsTab
+          recommendations={recommendations}
+          decisions={recommendationDecisions}
+          error={recommendationError}
+          resolving={pending}
+          resolvingId={resolvingRecId}
+          onDecide={decideRecommendation}
+        />
       )}
     </div>
   );
@@ -185,6 +245,7 @@ function OverviewTab({
   channels,
   currentBrief,
   recommendations,
+  recommendationDecisions,
   sinceLast,
   reports,
   pendingProposalCount,
@@ -192,12 +253,16 @@ function OverviewTab({
   channels: ChannelSummary[];
   currentBrief: LivingBriefVersion | null;
   recommendations: RecommendationSummary[];
+  recommendationDecisions: Record<string, RecommendationDecision>;
   sinceLast: SinceLastAuditItem[];
   reports: ReportArchiveItem[];
   pendingProposalCount: number;
 }) {
   const activeRecs = recommendations.filter(
-    (r) => r.status === "proposed" || r.status === "in_progress",
+    (r) =>
+      (r.status === "proposed" || r.status === "in_progress") &&
+      (recommendationDecisions[r.id] ?? r.decision ?? null)?.decision !==
+        "rejected",
   );
 
   return (
@@ -741,8 +806,18 @@ function ScoresTab({ scores }: { scores: ScoreEvidence[] }) {
 
 function RecommendationsTab({
   recommendations,
+  decisions,
+  error,
+  resolving,
+  resolvingId,
+  onDecide,
 }: {
   recommendations: RecommendationSummary[];
+  decisions: Record<string, RecommendationDecision>;
+  error: string | null;
+  resolving: boolean;
+  resolvingId: string | null;
+  onDecide: (id: string, decision: RecommendationDecisionValue) => void;
 }) {
   if (recommendations.length === 0) {
     return (
@@ -753,6 +828,18 @@ function RecommendationsTab({
     );
   }
 
+  const rows = recommendations.map((rec) => {
+    const decision = decisions[rec.id] ?? rec.decision ?? null;
+    return {
+      rec,
+      decision,
+      state: recommendationDecisionDisplayState({
+        status: rec.status,
+        decision,
+      }),
+    };
+  });
+
   return (
     <section>
       <div className="mb-4 flex items-center gap-2">
@@ -760,9 +847,21 @@ function RecommendationsTab({
         <h2 className="text-base font-semibold">Recommendation lifecycle</h2>
         <Badge tone="neutral">{recommendations.length}</Badge>
       </div>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Accept a recommendation to keep it active, or reject it — rejected
+        advice stays suppressed until new evidence supports it again.
+      </p>
+      {error && (
+        <p role="alert" className="mb-3 text-sm text-[color:var(--red)]">
+          {error}
+        </p>
+      )}
       <ul className="divide-y divide-border border-y border-border">
-        {recommendations.map((rec) => (
-          <li key={rec.id} className="flex items-start gap-3 py-3">
+        {rows.map(({ rec, decision, state }) => (
+          <li
+            key={rec.id}
+            className="flex flex-wrap items-start gap-3 py-4"
+          >
             <RecStatusIcon status={rec.status} />
             <div className="min-w-0 flex-1">
               <p className="text-sm leading-relaxed">{rec.text}</p>
@@ -774,7 +873,51 @@ function RecommendationsTab({
                   ? ` · ${rec.evidenceIds.length} evidence`
                   : ""}
               </p>
+              {state === "rejected_suppressed" && (
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  You rejected this — it won't reappear without new evidence.
+                </p>
+              )}
+              {state === "accepted" && decision && (
+                <p className="mt-2 text-xs text-[color:var(--green)]">
+                  You accepted this
+                  {decision.note ? ` — ${decision.note}` : ""}.
+                </p>
+              )}
             </div>
+            {state === "actionable" && (
+              <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+                <Button
+                  type="button"
+                  size="lg"
+                  disabled={resolving}
+                  aria-label={`Accept recommendation: ${rec.text}`}
+                  onClick={() => onDecide(rec.id, "accepted")}
+                >
+                  {resolving && resolvingId === rec.id ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="size-4" />
+                  )}
+                  Accept
+                </Button>
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  disabled={resolving}
+                  aria-label={`Reject recommendation: ${rec.text}`}
+                  onClick={() => onDecide(rec.id, "rejected")}
+                >
+                  {resolving && resolvingId === rec.id ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <XCircle className="size-4" />
+                  )}
+                  Reject
+                </Button>
+              </div>
+            )}
           </li>
         ))}
       </ul>

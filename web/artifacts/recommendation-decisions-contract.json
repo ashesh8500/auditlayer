@@ -1,0 +1,56 @@
+{
+  "contract": "recommendation-decisions",
+  "version": "1.0.0",
+  "status": "partial",
+  "summary": "Customer-owned recommendation decisions exposed through the canonical Subject Home boundary: one owner/admin-checked server action writes exactly one authoritative decisions-ledger call; the read model projects the latest durable decision. accepted/rejected are fully operable; modified is explicitly unsupported by the existing schema and must NOT be fabricated.",
+  "object": {
+    "ledger": "decisions",
+    "writeRpc": "record_decision",
+    "grant": "service_role",
+    "rpcArgs": [
+      "p_subject_id",
+      "p_user_id",
+      "p_target_type",
+      "p_target_id",
+      "p_decision",
+      "p_note"
+    ],
+    "targetType": "recommendation",
+    "targetLinkage": "record_decision validates recommendation -> intelligence_run -> subject (kernel-owned); product layer pre-checks the same linkage and fails closed with zero writes"
+  },
+  "decisionLedger": {
+    "schemaVocabulary": ["accepted", "rejected", "superseded"],
+    "supportedCustomerDecisions": ["accepted", "rejected"],
+    "unsupportedCustomerDecision": "modified",
+    "unsupportedReason": "decisions.decision CHECK constraint (kernel migration 20260723020611_alm_intelligence_kernel.sql) admits only accepted/rejected/superseded. recommendation_outcomes admits accepted/rejected/modified but requires a bounded observation window (window_start/window_end) and is the outcomes ledger for efficacy observation, NOT the decision ledger; using it as a substitute decision ledger without an observation window is prohibited.",
+    "supersededHandling": "superseded remains honest in the projection (display state decided_other); never mapped to accepted/free/success."
+  },
+  "writeSemantics": {
+    "validSubmission": "exactly one allowlisted record_decision RPC call",
+    "duplicate": "zero writes; idempotent ok with the existing decision id",
+    "stale": "zero writes; bounded error",
+    "unsupported": "zero writes; modified returns an explicit partial message, never success",
+    "malformed": "zero writes (invalid uuids, note > 500 chars)",
+    "unauthorized": "zero writes; opaque 'Recommendation not found.' (no existence leak)",
+    "wrongSubject": "zero writes; product pre-check plus kernel RPC backstop",
+    "persistenceFailure": "exactly one attempted write surfaced as an error, never success"
+  },
+  "projection": {
+    "latestDecision": "decisions rows ordered by created_at desc, then id desc; first row per target wins (deterministic regardless of query order)",
+    "rejectedSuppression": "a recommendation whose latest durable decision is rejected is suppressed from actionable surfaces (Overview active list and Recommendations tab) until a NEW recommendation row with new evidence/run exists; rejection recurrence is tied to the durable decision",
+    "clientState": "client mirrors a decision ONLY after the server action confirms the write; the decisions ledger remains the authoritative source and the read model re-projects on every load"
+  },
+  "experience": {
+    "controls": "Accept/Reject buttons rendered only for proposed recommendations with no durable decision",
+    "loading": "both controls disabled while a decision is pending; spinner on the active control",
+    "errorRecovery": "bounded role=alert error; cleared on the next attempt",
+    "accessibility": "native button elements with text labels and aria-labels",
+    "targetSize": "size=lg (h-11 = 44px) decision controls in a flex-wrap container for the 390px composition"
+  },
+  "missingAuthority": {
+    "owner": "kernel migrations (supabase/migrations/) and generated Supabase types (web/src/lib/supabase/types.ts)",
+    "change": "add 'modified' to the decisions.decision CHECK constraint via an additive kernel-owned migration, refresh generated types, then re-open the product surface",
+    "correctionPath": "kernel-owned ALM card; the product adapter already routes through the one-call path and would enable modified without a second store"
+  },
+  "fixtureNote": "Fixtures prove software contracts only; they do not prove live RLS behavior, creator efficacy, retention, conversion, or business impact. network_calls=0, provider_calls=0."
+}

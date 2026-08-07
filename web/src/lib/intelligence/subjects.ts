@@ -20,6 +20,10 @@ import {
   projectBriefField,
   projectLivingBriefContent,
 } from "@/lib/intelligence/brief-project";
+import {
+  projectLatestDecision,
+  type DecisionLedgerRow,
+} from "@/lib/intelligence/api";
 
 export type SubjectListSource = "live";
 
@@ -316,6 +320,22 @@ export async function getSubjectHomeBundle(
         : Promise.resolve({ data: null }),
     ]);
 
+    // Latest durable customer decision per recommendation (decisions ledger).
+    // RLS scopes reads to the acting user's own decisions; the projection is
+    // deterministic (newest created_at wins, id tie-break).
+    const recRows = recResult.data ?? [];
+    const recIds = recRows.map((row) => row.id);
+    let decisionRows: DecisionLedgerRow[] = [];
+    if (recIds.length > 0) {
+      const { data: dRows } = await supabase
+        .from("decisions")
+        .select("id, target_id, decision, note, user_id, created_at")
+        .eq("target_type", "recommendation")
+        .in("target_id", recIds);
+      decisionRows = (dRows ?? []) as DecisionLedgerRow[];
+    }
+    const decisionMap = projectLatestDecision(decisionRows);
+
     const scores: ScoreEvidence[] = (scoreResult.data ?? []).map((scoreRow) => ({
       dimensionId: scoreRow.dimension,
       dimensionLabel: scoreRow.dimension.replace(/_/g, " "),
@@ -338,9 +358,7 @@ export async function getSubjectHomeBundle(
           : Number(scoreRow.previous_value),
     }));
 
-    const recommendations: RecommendationSummary[] = (
-      recResult.data ?? []
-    ).map((recRow) => {
+    const recommendations: RecommendationSummary[] = recRows.map((recRow) => {
       const content =
         recRow.content && typeof recRow.content === "object"
           ? (recRow.content as Record<string, unknown>)
@@ -362,6 +380,7 @@ export async function getSubjectHomeBundle(
           : [],
         createdAt: recRow.created_at,
         updatedAt: recRow.created_at,
+        decision: decisionMap[recRow.id] ?? null,
       };
     });
 

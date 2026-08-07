@@ -148,6 +148,22 @@ export type RecommendationStatus =
   | "superseded"
   | "invalidated";
 
+/**
+ * Decision values the `decisions` ledger can authoritatively hold for a
+ * recommendation. The customer surface writes accepted/rejected only;
+ * superseded may appear from kernel/worker transitions and stays honest in
+ * the projection (never mapped to accept/free/success).
+ */
+export type RecommendationLedgerDecision = "accepted" | "rejected" | "superseded";
+
+/** Latest durable customer decision for a recommendation, projected server-side. */
+export interface RecommendationDecision {
+  decision: RecommendationLedgerDecision;
+  note: string;
+  decidedBy: string;
+  decidedAt: string;
+}
+
 export interface RecommendationSummary {
   id: string;
   subjectId: string;
@@ -157,6 +173,8 @@ export interface RecommendationSummary {
   evidenceIds: string[];
   createdAt: string;
   updatedAt: string;
+  /** Latest authoritative decision from the `decisions` ledger (nullable when none). */
+  decision?: RecommendationDecision | null;
 }
 
 // ---- Audit Batch & Submission ----
