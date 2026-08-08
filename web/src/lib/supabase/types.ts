@@ -2357,6 +2357,10 @@ export type Database = {
         }
         Returns: string
       }
+      lookup_entitled_audit_batch_retry: {
+        Args: { p_idempotency_key: string; p_user_id: string }
+        Returns: Json
+      }
       owns_audit: { Args: { target_audit_id: string }; Returns: boolean }
       owns_subject: { Args: { target_subject_id: string }; Returns: boolean }
       persist_instagram_connection: {
@@ -2498,6 +2502,25 @@ export type Database = {
           p_user_id: string
         }
         Returns: string
+      }
+      submit_entitled_audit_batch: {
+        Args: {
+          p_audits: Json
+          p_idempotency_key: string
+          p_subject_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      submit_entitled_audit_batch_v2: {
+        Args: {
+          p_audits: Json
+          p_idempotency_key: string
+          p_subject_draft: Json | null
+          p_subject_id: string | null
+          p_user_id: string
+        }
+        Returns: Json
       }
       submit_entitled_audit: {
         Args: {

@@ -450,13 +450,17 @@ Postgres naming (shipped) vs plan prose aliases:
 | `link_subject_channel` | channel + same-tenant account check |
 | `record_living_brief_version` | append immutable brief |
 | `create_context_update_proposals` / `resolve_context_update_proposal` | proposal workflow |
-| `submit_audit_batch` | atomic idempotent batch (preferred) |
-| `create_audit_batch` / `add_audit_to_batch` | compat shims |
+| `submit_entitled_audit_batch_v2` | preferred customer path: optional draft subject + first brief, owner-check with row lock, entitlement consumption, channel link, audit/event creation, and batch link in one transaction; identical complete payloads retry the latest batch within a rolling 10-minute window |
+| `lookup_entitled_audit_batch_retry` | owner-scoped read of a committed rolling-window retry before mutable entitlement planning; lets a lost response recover even after the first request consumed the final entitlement |
+| `submit_entitled_audit_batch` | compatibility/internal path for an existing subject; remains transactional and owner-locked |
+| `submit_audit_batch` | tenant-serialized atomic linking of already-created audits with rolling retry semantics (compatibility/internal path) |
+| `create_audit_batch` / `add_audit_to_batch` | compatibility shims; creation delegates to the locked submit path and link insertion rejects cross-tenant audits |
 | `start_intelligence_run` / `finalize_intelligence_run` | run lifecycle |
 | `create_evidence_snapshot` | snapshot header |
 | `upsert_evidence` | append evidence; optional membership pin |
 | `pin_evidence_to_snapshot` | same-subject membership |
-| `record_scores` / `record_findings` / `record_recommendations` / `record_decision` | ledgers |
+| `record_scores` / `record_findings` / `record_recommendations` | intelligence ledgers |
+| `record_decision` | owner- and target-locked decision ledger; transactionally revalidates subject ownership/linkage, recovers retries only when decision + normalized note both match, and rejects conflicting decisions/refinement instructions |
 | `set_intelligence_run_progress` | customer progress projection |
 | `backfill_connected_subjects` | connected/managed → subjects only |
 | `register_embedding_model` / `attach_evidence_embedding` | optional embed writer |

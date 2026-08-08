@@ -257,16 +257,16 @@ describe("planRecommendationDecision matrix", () => {
       writes: 1,
     },
     {
-      name: "admin modified with refinement note on another user's subject → one write",
+      name: "admin modified with refinement note on another user's subject → zero writes",
       overrides: {
         profile: { id: ADMIN_ID, role: "admin" },
         subject: { id: SUBJECT_ID, user_id: OTHER_ID },
         decision: "modified",
         note: "Adjust the posting cadence recommendation",
       },
-      plan: "write",
-      decision: "modified",
-      writes: 1,
+      plan: "noop",
+      reason: "unauthorized",
+      writes: 0,
     },
     {
       name: "modified without a refinement note → zero writes",
@@ -283,15 +283,15 @@ describe("planRecommendationDecision matrix", () => {
       writes: 0,
     },
     {
-      name: "admin accept on a subject owned by another user → one write",
+      name: "admin accept on a subject owned by another user → zero writes",
       overrides: {
         profile: { id: ADMIN_ID, role: "admin" },
         subject: { id: SUBJECT_ID, user_id: OTHER_ID },
         decision: "accepted",
       },
-      plan: "write",
-      decision: "accepted",
-      writes: 1,
+      plan: "noop",
+      reason: "unauthorized",
+      writes: 0,
     },
     {
       name: "other user (not owner/admin) → zero writes",
@@ -345,6 +345,38 @@ describe("planRecommendationDecision matrix", () => {
       },
       plan: "noop",
       reason: "duplicate",
+      writes: 0,
+    },
+    {
+      name: "duplicate modified decision with the same normalized note → zero writes",
+      overrides: {
+        existingDecisions: [
+          {
+            ...ledgerRow(DECISION_ID, REC_ID, "modified", OWNER_ID),
+            note: "Tighten the niche",
+          },
+        ],
+        decision: "modified",
+        note: "  Tighten the niche  ",
+      },
+      plan: "noop",
+      reason: "duplicate",
+      writes: 0,
+    },
+    {
+      name: "modified decision with a different note is stale, not a retry",
+      overrides: {
+        existingDecisions: [
+          {
+            ...ledgerRow(DECISION_ID, REC_ID, "modified", OWNER_ID),
+            note: "Tighten the niche",
+          },
+        ],
+        decision: "modified",
+        note: "Use a different refinement instruction",
+      },
+      plan: "noop",
+      reason: "stale",
       writes: 0,
     },
     {
