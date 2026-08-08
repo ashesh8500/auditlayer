@@ -14,6 +14,9 @@
  *   record_living_brief_version(...) → uuid
  *   resolve_context_update_proposal(p_proposal_id, p_status, p_user_id) → void
  *   submit_audit_batch(p_user_id, p_subject_id, p_idempotency_key, p_audit_ids) → uuid
+ *   submit_entitled_audit_batch(p_user_id, p_subject_id, p_idempotency_key, p_audits) → jsonb
+ *   submit_entitled_audit_batch_v2(p_user_id, p_subject_id, p_subject_draft, p_idempotency_key, p_audits) → jsonb
+ *   lookup_entitled_audit_batch_retry(p_user_id, p_idempotency_key) → jsonb|null
  *
  * Customer progress: CustomerWaitState polls /live and projects
  * Preparing/Analyzing/Finalizing/Delayed client-side until an allowlisted
@@ -37,6 +40,9 @@ export type KernelRpcName =
   | "record_living_brief_version"
   | "resolve_context_update_proposal"
   | "submit_audit_batch"
+  | "submit_entitled_audit_batch"
+  | "submit_entitled_audit_batch_v2"
+  | "lookup_entitled_audit_batch_retry"
   | "record_decision";
 
 export type AdminClient = SupabaseClient<Database>;
@@ -69,6 +75,33 @@ export interface SubmitBatchInput {
   auditIds: string[];
 }
 
+export interface EntitledBatchAuditInput {
+  channelType?: string | null;
+  channelLocator?: string | null;
+  handle: string;
+  platform: string;
+  goal: string;
+  reportType: string;
+  context: string;
+  status: string;
+  limitations: string[];
+  milestoneLabel?: string | null;
+  forceRefresh: boolean;
+}
+
+export interface SubmitEntitledBatchInput {
+  userId: string;
+  subjectId: string | null;
+  subjectDraft: {
+    name: string;
+    subjectType: string;
+    identity: Record<string, string>;
+    goals: string[];
+  } | null;
+  idempotencyKey: string;
+  audits: EntitledBatchAuditInput[];
+}
+
 export interface PrepareBatchResult {
   ok: true;
   mode: "live" | "stub";
@@ -84,31 +117,6 @@ export interface PrepareBatchError {
 }
 
 export type PrepareBatchOutcome = PrepareBatchResult | PrepareBatchError;
-
-/**
- * Build a stable idempotency key for a batch submission.
- * Same subject + channels + brief + notes → same key within a short window
- * so retries do not double-enqueue.
- */
-export function buildBatchIdempotencyKey(
-  submission: BatchSubmission,
-  channelLocators: string[],
-): string {
-  const channels = [...channelLocators].sort().join("|");
-  const types = submission.requests
-    .map((r) => r.reportType)
-    .sort()
-    .join(",");
-  const notes = submission.changeNotes.trim().toLowerCase().slice(0, 80);
-  return [
-    "alm-batch",
-    submission.subjectId,
-    submission.briefVersionId || "none",
-    channels,
-    types,
-    notes,
-  ].join(":");
-}
 
 /**
  * Fixture/stub submit used when kernel tables/RPCs are unavailable.
@@ -133,7 +141,7 @@ export function stubPrepareAndSubmitBatch(
     };
   }
 
-  const key = buildBatchIdempotencyKey(submission, channelLocators);
+  const key = JSON.stringify({ submission, channelLocators });
   const auditIds = submission.requests.map(
     (_, i) => `stub-audit-${hashShort(`${key}:${i}`)}`,
   );
@@ -176,6 +184,27 @@ export const KERNEL_RPC_SHAPES = {
   submit_audit_batch: {
     args: ["p_user_id", "p_subject_id", "p_idempotency_key", "p_audit_ids"],
     returns: "uuid",
+    grant: "service_role",
+  },
+  submit_entitled_audit_batch: {
+    args: ["p_user_id", "p_subject_id", "p_idempotency_key", "p_audits"],
+    returns: "jsonb",
+    grant: "service_role",
+  },
+  submit_entitled_audit_batch_v2: {
+    args: [
+      "p_user_id",
+      "p_subject_id",
+      "p_subject_draft",
+      "p_idempotency_key",
+      "p_audits",
+    ],
+    returns: "jsonb",
+    grant: "service_role",
+  },
+  lookup_entitled_audit_batch_retry: {
+    args: ["p_user_id", "p_idempotency_key"],
+    returns: "jsonb|null",
     grant: "service_role",
   },
   resolve_context_update_proposal: {
@@ -246,6 +275,88 @@ export async function rpcSubmitAuditBatch(
     throw new Error(error?.message ?? "submit_audit_batch failed");
   }
   return String(data);
+}
+
+export async function rpcSubmitEntitledAuditBatch(
+  admin: AdminClient,
+  input: SubmitEntitledBatchInput,
+): Promise<{ batchId: string; auditIds: string[]; subjectId: string }> {
+  const { data, error } = await admin.rpc("submit_entitled_audit_batch_v2", {
+    p_user_id: input.userId,
+    p_subject_id: input.subjectId,
+    p_subject_draft: input.subjectDraft
+      ? {
+          name: input.subjectDraft.name,
+          subject_type: input.subjectDraft.subjectType,
+          identity: input.subjectDraft.identity,
+          goals: input.subjectDraft.goals,
+        }
+      : null,
+    p_idempotency_key: input.idempotencyKey,
+    p_audits: input.audits.map((audit) => ({
+      channel_type: audit.channelType ?? null,
+      channel_locator: audit.channelLocator ?? null,
+      handle: audit.handle,
+      platform: audit.platform,
+      goal: audit.goal,
+      report_type: audit.reportType,
+      context: audit.context,
+      status: audit.status,
+      limitations: audit.limitations,
+      milestone_label: audit.milestoneLabel ?? null,
+      force_refresh: audit.forceRefresh,
+    })),
+  });
+  const result = data as {
+    batch_id?: unknown;
+    audit_ids?: unknown;
+    subject_id?: unknown;
+  } | null;
+  if (
+    error ||
+    typeof result?.batch_id !== "string" ||
+    typeof result.subject_id !== "string" ||
+    !Array.isArray(result.audit_ids) ||
+    !result.audit_ids.every((id) => typeof id === "string")
+  ) {
+    throw new Error(error?.message ?? "submit_entitled_audit_batch_v2 failed");
+  }
+  return {
+    batchId: result.batch_id,
+    auditIds: result.audit_ids as string[],
+    subjectId: result.subject_id,
+  };
+}
+
+export async function rpcLookupEntitledAuditBatchRetry(
+  admin: AdminClient,
+  input: { userId: string; idempotencyKey: string },
+): Promise<{ batchId: string; auditIds: string[]; subjectId: string } | null> {
+  const { data, error } = await admin.rpc("lookup_entitled_audit_batch_retry", {
+    p_user_id: input.userId,
+    p_idempotency_key: input.idempotencyKey,
+  });
+  if (error) throw new Error(error.message);
+  if (data === null) return null;
+
+  const result = data as {
+    batch_id?: unknown;
+    audit_ids?: unknown;
+    subject_id?: unknown;
+  };
+  if (
+    typeof result.batch_id !== "string" ||
+    typeof result.subject_id !== "string" ||
+    !Array.isArray(result.audit_ids) ||
+    !result.audit_ids.every((id) => typeof id === "string")
+  ) {
+    throw new Error("lookup_entitled_audit_batch_retry returned an invalid payload");
+  }
+  return {
+    batchId: result.batch_id,
+    auditIds: result.audit_ids as string[],
+    subjectId: result.subject_id,
+  };
 }
 
 export async function rpcResolveContextUpdateProposal(
@@ -479,8 +590,7 @@ export function planRecommendationDecision(
   }
   if (!input.subject) return { action: "noop", reason: "subject_not_found" };
   const isOwner = input.profile.id === input.subject.user_id;
-  const isAdmin = input.profile.role === "admin";
-  if (!isOwner && !isAdmin) return { action: "noop", reason: "unauthorized" };
+  if (!isOwner) return { action: "noop", reason: "unauthorized" };
   if (!input.recommendationSubjectId) {
     return { action: "noop", reason: "recommendation_not_found" };
   }
@@ -499,7 +609,10 @@ export function planRecommendationDecision(
     (d) => d.target_id === input.recommendationId,
   );
   if (prior) {
-    if (prior.decision === input.decision) {
+    if (
+      prior.decision === input.decision &&
+      (prior.note ?? "").trim() === note
+    ) {
       return { action: "noop", reason: "duplicate", decisionId: prior.id };
     }
     return { action: "noop", reason: "stale" };

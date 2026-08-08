@@ -20,21 +20,21 @@ import {
 } from "@/lib/domain";
 import { isSupabaseAdminConfigured } from "@/lib/env";
 import {
-  buildBatchIdempotencyKey,
   planRecommendationDecision,
   recommendationDecisionPlanError,
   recommendationSubjectIdFromRow,
-  rpcCreateSubject,
-  rpcLinkSubjectChannel,
+  rpcLookupEntitledAuditBatchRetry,
   rpcRecordDecision,
   rpcRecordLivingBriefVersion,
   rpcResolveContextUpdateProposal,
-  rpcSubmitAuditBatch,
+  rpcSubmitEntitledAuditBatch,
   stubPrepareAndSubmitBatch,
   type DecisionLedgerRow,
+  type EntitledBatchAuditInput,
   type PrepareBatchOutcome,
   type RecommendationDecisionValue,
 } from "@/lib/intelligence/api";
+import { buildBatchFingerprint } from "@/lib/intelligence/batch-idempotency";
 import { canonicalizeWebsiteLocator } from "@/lib/intelligence/channel-locator";
 import { contentToKernelPayload } from "@/lib/intelligence/brief-project";
 import {
@@ -86,8 +86,19 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
   const allowed = allowedReportTypesForProfile(profile as never);
 
   try {
-    let subjectId = input.submission.subjectId;
-    if (!UUID_RE.test(subjectId)) {
+    const existingSubjectId = UUID_RE.test(input.submission.subjectId)
+      ? input.submission.subjectId
+      : null;
+    const subjectId: string | null = existingSubjectId;
+    let subjectIdentity: string;
+    let subjectDraft: {
+      name: string;
+      subjectType: string;
+      identity: Record<string, string>;
+      goals: string[];
+    } | null = null;
+
+    if (!existingSubjectId) {
       const name = (input.newSubjectName || "").trim();
       if (!name) {
         return {
@@ -96,36 +107,70 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
           error: "Name the new subject before submitting.",
         };
       }
-      subjectId = await rpcCreateSubject(admin, {
-        userId: profile.id,
+      const subjectType = input.newSubjectType ?? "creator";
+      subjectIdentity = `draft:${subjectType}:${name.toLowerCase()}`;
+      subjectDraft = {
         name,
-        subjectType: input.newSubjectType ?? "creator",
-      });
-      await rpcRecordLivingBriefVersion(admin, {
-        subjectId,
-        version: 1,
-        createdBy: profile.id,
-        identity: { name, subject_type: input.newSubjectType ?? "creator" },
+        subjectType,
+        identity: { name, subject_type: subjectType },
         goals: input.submission.changeNotes
           ? [input.submission.changeNotes.trim()]
           : [],
-        confirmed: true,
-      });
+      };
+    } else {
+      subjectIdentity = `subject:${existingSubjectId}`;
     }
 
-    // Customer product routes are owner-scoped even for founder/admin profiles.
-    // The broad admin RLS policy exists for explicit founder operations; it must
-    // not let an admin submit audits against another user's workspace subject.
-    // Check before creating any entitled audit so a rejected batch cannot leave
-    // orphaned audit rows behind.
-    const { data: ownedSubject, error: subjectError } = await admin
-      .from("subjects")
-      .select("id")
-      .eq("id", subjectId)
-      .eq("user_id", profile.id)
-      .maybeSingle();
-    if (subjectError || !ownedSubject) {
-      return { ok: false, mode: "live", error: "Subject not found." };
+    const changeNotes = input.submission.changeNotes.trim();
+    const auditIntents = input.submission.requests.map((request, index) => {
+      const meta = input.channelMeta?.[index];
+      const channelLocator =
+        meta?.locator || input.channelLocators[index] || request.channelId;
+      const channelType = meta?.channelType ?? null;
+      const platform =
+        channelType === "website"
+          ? "unknown"
+          : channelType || detectPlatform(channelLocator);
+      return {
+        channelId: request.channelId,
+        channelType,
+        channelLocator,
+        platform,
+        reportType: request.reportType,
+        forceRefresh: request.forceRefresh,
+      };
+    });
+    const idempotencyKey = buildBatchFingerprint({
+      subjectIdentity,
+      briefVersionId: input.submission.briefVersionId,
+      changeNotes,
+      audits: auditIntents,
+    });
+    const committedRetry = await rpcLookupEntitledAuditBatchRetry(admin, {
+      userId: profile.id,
+      idempotencyKey,
+    });
+    if (committedRetry) {
+      return {
+        ok: true,
+        mode: "live",
+        ...committedRetry,
+      };
+    }
+
+    if (existingSubjectId) {
+
+      // Customer product routes are owner-scoped even for founder/admin profiles.
+      // The RPC repeats this check while locking the subject through commit.
+      const { data: ownedSubject, error: subjectError } = await admin
+        .from("subjects")
+        .select("id")
+        .eq("id", existingSubjectId)
+        .eq("user_id", profile.id)
+        .maybeSingle();
+      if (subjectError || !ownedSubject) {
+        return { ok: false, mode: "live", error: "Subject not found." };
+      }
     }
 
     const { count } = await admin
@@ -138,17 +183,13 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
       (profile as { gifted_audits?: number }).gifted_audits ?? 0,
     );
 
-    const auditIds: string[] = [];
+    const plannedAudits: EntitledBatchAuditInput[] = [];
     const goal: Goal = "growth";
-    const changeNotes = input.submission.changeNotes.trim();
 
     for (let i = 0; i < input.submission.requests.length; i += 1) {
       const request = input.submission.requests[i]!;
-      const meta = input.channelMeta?.[i];
-      const locator =
-        meta?.locator ||
-        input.channelLocators[i] ||
-        request.channelId;
+      const intent = auditIntents[i]!;
+      const locator = intent.channelLocator;
       const reportType = request.reportType as ReportType;
       if (!allowed.includes(reportType)) {
         return {
@@ -158,15 +199,8 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
         };
       }
 
-      const channelType = meta?.channelType;
-      let platform: Platform;
-      if (channelType === "website") {
-        platform = "unknown";
-      } else if (channelType) {
-        platform = channelType as Platform;
-      } else {
-        platform = detectPlatform(locator);
-      }
+      const channelType = intent.channelType;
+      const platform = intent.platform as Platform;
 
       const decision = evaluateIntake(
         {
@@ -176,9 +210,9 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
           platform,
           plan,
         },
-        usage + auditIds.length,
+        usage + plannedAudits.length,
         null,
-        Math.max(0, giftedAudits - auditIds.length),
+        Math.max(0, giftedAudits - plannedAudits.length),
       );
       if (!decision.accepted) {
         return {
@@ -188,60 +222,37 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
         };
       }
 
-      if (UUID_RE.test(subjectId) && channelType) {
-        const locatorForLink =
-          channelType === "website"
-            ? canonicalizeWebsiteLocator(decision.normalizedHandle || locator)
-            : decision.normalizedHandle || locator;
-        await rpcLinkSubjectChannel(admin, {
-          subjectId,
-          channelType,
-          locator: locatorForLink,
-          managed: true,
-        });
-      }
-
-      const { data: audit, error } = await admin.rpc("submit_entitled_audit", {
-        p_user_id: profile.id,
-        p_handle: decision.normalizedHandle || locator,
-        p_platform: decision.platform,
-        p_goal: goal,
-        p_report_type: reportType,
-        p_context: changeNotes,
-        p_status: decision.status,
-        p_limitations: decision.limitations,
-        p_milestone_label: decision.milestoneLabel,
-      });
-      const row = audit as { id?: string } | null;
-      if (error || !row?.id) {
-        return {
-          ok: false,
-          mode: "live",
-          error: error?.message?.includes("audit_limit_reached")
-            ? "Your current access has reached its audit limit."
-            : "We couldn't create an audit for that channel.",
-        };
-      }
-      auditIds.push(row.id);
-
-      await admin.from("audit_events").insert({
-        audit_id: row.id,
-        actor: "client",
-        event_type: "audit_submitted",
-        phase: "intake",
-        detail: `batch_subject=${subjectId}; platform=${decision.platform}`,
+      const normalizedHandle = decision.normalizedHandle || locator;
+      const locatorForLink = channelType
+        ? channelType === "website"
+          ? canonicalizeWebsiteLocator(normalizedHandle)
+          : normalizedHandle
+        : null;
+      plannedAudits.push({
+        channelType: channelType ?? null,
+        channelLocator: locatorForLink,
+        handle: normalizedHandle,
+        platform: decision.platform,
+        goal,
+        reportType,
+        context: changeNotes,
+        status: decision.status,
+        limitations: decision.limitations,
+        milestoneLabel: decision.milestoneLabel,
+        forceRefresh: request.forceRefresh,
       });
     }
 
-    const idempotencyKey = buildBatchIdempotencyKey(
-      { ...input.submission, subjectId },
-      input.channelLocators,
-    );
-    const batchId = await rpcSubmitAuditBatch(admin, {
+    const {
+      batchId,
+      auditIds,
+      subjectId: persistedSubjectId,
+    } = await rpcSubmitEntitledAuditBatch(admin, {
       userId: profile.id,
       subjectId,
+      subjectDraft,
       idempotencyKey,
-      auditIds,
+      audits: plannedAudits,
     });
 
     return {
@@ -249,12 +260,23 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
       mode: "live",
       batchId,
       auditIds,
-      subjectId,
+      subjectId: persistedSubjectId,
     };
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Batch submit failed unexpectedly.";
-    return { ok: false, mode: "live", error: message };
+    if (message.includes("audit_limit_reached")) {
+      return {
+        ok: false,
+        mode: "live",
+        error: "Your current access has reached its audit limit.",
+      };
+    }
+    return {
+      ok: false,
+      mode: "live",
+      error: "We couldn't create that batch.",
+    };
   }
 }
 
@@ -407,11 +429,12 @@ export async function loadSubjectWizardContextAction(input: {
  * Record a customer decision (accept/reject/modify) on a recommendation
  * through the canonical `decisions` ledger.
  *
- * One owner/admin-checked action → one authoritative `record_decision` call
+ * One owner-checked customer action → one authoritative `record_decision` call
  * for valid submissions. Duplicate, stale, unsupported (superseded/garbage),
  * missing-note (modified without a refinement note), malformed, and
- * unauthorized submissions produce zero writes. The RPC itself validates
- * recommendation→subject linkage as the authoritative backstop.
+ * unauthorized submissions produce zero writes. The RPC itself revalidates and
+ * locks subject ownership plus recommendation→subject linkage as the
+ * authoritative transactional backstop.
  *
  * The decisions vocabulary is accepted/rejected/modified/superseded (additive
  * migration 20260807150000_decision_vocabulary_modified.sql). `modified`
@@ -440,6 +463,7 @@ export async function recordRecommendationDecisionAction(input: {
       .from("subjects")
       .select("id, user_id")
       .eq("id", input.subjectId)
+      .eq("user_id", profile.id)
       .maybeSingle();
 
     const { data: rec } = await admin
@@ -487,11 +511,10 @@ export async function recordRecommendationDecisionAction(input: {
     revalidatePath("/subjects");
 
     return { ok: true, decisionId, decision: plan.call.decision };
-  } catch (err) {
+  } catch {
     return {
       ok: false,
-      error:
-        err instanceof Error ? err.message : "Could not record that decision.",
+      error: "Could not record that decision.",
     };
   }
 }

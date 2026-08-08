@@ -32,22 +32,26 @@ const actions = source("lib/actions/intelligence.ts");
 const subjects = source("lib/intelligence/subjects.ts");
 
 describe("subject workspace tenant scope", () => {
-  it("checks subject ownership before creating any audit in a batch", () => {
+  it("checks ownership and delegates all batch mutations to one atomic RPC", () => {
     const section = functionSection(
       actions,
       "export async function prepareAndSubmitIntelligenceBatch",
       "export async function resolveBriefProposalAction",
     );
     const ownershipCheckAt = section.indexOf('.from("subjects")');
-    const auditCreationAt = section.indexOf('admin.rpc("submit_entitled_audit"');
+    const atomicSubmitAt = section.indexOf("rpcSubmitEntitledAuditBatch");
 
     expect(ownershipCheckAt).toBeGreaterThanOrEqual(0);
-    expect(auditCreationAt).toBeGreaterThan(ownershipCheckAt);
+    expect(atomicSubmitAt).toBeGreaterThan(ownershipCheckAt);
 
-    const preflight = section.slice(ownershipCheckAt, auditCreationAt);
-    expect(preflight).toContain('.eq("id", subjectId)');
+    const preflight = section.slice(ownershipCheckAt, atomicSubmitAt);
+    expect(preflight).toContain('.eq("id", existingSubjectId)');
     expect(preflight).toContain('.eq("user_id", profile.id)');
     expect(preflight).toContain('error: "Subject not found."');
+    expect(section).not.toContain('admin.rpc("submit_entitled_audit"');
+    expect(section).not.toContain("rpcLinkSubjectChannel");
+    expect(section).not.toContain('.from("audit_events").insert');
+    expect(section).not.toContain("rpcSubmitAuditBatch");
   });
 
   it("lists only subjects owned by the signed-in profile, including for admins", () => {
