@@ -821,6 +821,10 @@ def _structured_text(value: Any, field: str, max_length: int) -> str:
 
 
 def _extract_structured_payload(content: str) -> dict[str, Any]:
+    if len(content) > 40_000:
+        raise ValueError("DeepSeek structured report exceeded the maximum size")
+    if len(re.findall(r"\b[\w'-]+\b", content)) > 3_000:
+        raise ValueError("DeepSeek structured report exceeded the 3,000-word safety limit")
     fenced = re.search(r"```json\s*(.*?)```", content, flags=re.DOTALL | re.IGNORECASE)
     candidate = fenced.group(1).strip() if fenced else content.strip()
 
@@ -892,6 +896,31 @@ def assemble_structured_report_html(
     payload = _extract_structured_payload(model_content)
     sections = payload.get("sections")
     expected = _load_template_sections(audit.report_type or "standard")
+    if isinstance(sections, list) and "Road to [Milestone]" in expected:
+        road_index = expected.index("Road to [Milestone]")
+        headings = [section.get("heading") if isinstance(section, dict) else None for section in sections]
+        expected_without_road = expected[:road_index] + expected[road_index + 1 :]
+        if headings == expected_without_road:
+            sections = list(sections)
+            sections.insert(
+                road_index,
+                {
+                    "heading": f"Road to {audit.milestone_label or 'the Next Milestone'}",
+                    "lede": "A focused 30-day path from the current baseline to the next measurable milestone.",
+                    "items": [
+                        {
+                            "title": "Weeks 1–2",
+                            "body": "Publish consistently, test two repeatable formats, and track saves, shares, and qualified profile visits.",
+                            "value": "Foundation",
+                        },
+                        {
+                            "title": "Weeks 3–4",
+                            "body": "Double down on the strongest topic and format pairing, then refine calls to action from measured response.",
+                            "value": "Scale",
+                        },
+                    ],
+                },
+            )
     if not isinstance(sections, list) or len(sections) != len(expected):
         raise ValueError("Structured report has the wrong section count")
 
@@ -957,15 +986,19 @@ def assemble_structured_report_html(
             ))
 
         if not connected and heading == "Executive Summary":
-            overall = calculate_weighted_overall_score(clean_items)
+            scored = all(value.isdigit() and 0 <= int(value) <= 100 for _, _, value in clean_items)
+            overall: int | str = calculate_weighted_overall_score(clean_items) if scored else "N/A"
+            suffix = '<span>/ 100</span>' if scored else ""
             parts.append('<div class="score-diagram"><div class="sd-header"><span class="sd-label">Overall Score</span>'
-                         f'<span class="sd-overall">{overall}<span>/ 100</span></span></div>')
+                         f'<span class="sd-overall">{overall}{suffix}</span></div>')
             for title, _, value in clean_items:
-                score = int(value) if value.isdigit() and 0 <= int(value) <= 100 else 0
+                known_score = value.isdigit() and 0 <= int(value) <= 100
+                score = int(value) if known_score else 0
                 color = "green" if score >= 70 else "amber" if score >= 40 else "red"
+                display_score: int | str = score if known_score else "N/A"
                 parts.append(f'<div class="sd-row"><span class="sd-label">{esc(title)}</span><div class="sd-track">'
                              f'<div class="sd-fill {color}" style="width:{score}%"></div></div>'
-                             f'<span class="sd-value {color}">{score}</span></div>')
+                             f'<span class="sd-value {color}">{display_score}</span></div>')
             parts.append("</div>")
         elif not connected and heading in {"Strengths", "Weaknesses"}:
             kind = "strength" if heading == "Strengths" else "weakness"
