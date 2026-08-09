@@ -87,6 +87,15 @@ describe("manualChannelFromInput", () => {
       manualChannelFromInput("https://youtube.com/@auditlayer", "subject-1"),
     ).toMatchObject({ platform: "youtube", handle: "auditlayer" });
   });
+
+  it("rejects social content URLs instead of treating route names as handles", () => {
+    expect(
+      manualChannelFromInput("https://instagram.com/p/ABC123", "subject-1"),
+    ).toBeNull();
+    expect(
+      manualChannelFromInput("https://youtube.com/watch?v=ABC123", "subject-1"),
+    ).toBeNull();
+  });
 });
 
 describe("dedupeChannels", () => {

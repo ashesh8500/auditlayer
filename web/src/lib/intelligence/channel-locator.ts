@@ -161,9 +161,9 @@ export function inputLooksLikeWebsite(input: string): boolean {
 function knownSocialProfile(input: string): {
   platform: Exclude<ChannelPlatform, "website">;
   handle: string;
-} | null {
+} | null | undefined {
   const raw = input.trim();
-  if (!raw) return null;
+  if (!raw) return undefined;
   const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
   try {
     const url = new URL(withScheme);
@@ -178,12 +178,22 @@ function knownSocialProfile(input: string): {
       "twitter.com": "x",
       "linkedin.com": "linkedin",
       "youtube.com": "youtube",
+      "youtu.be": "youtube",
     };
     const platform = platformByHost[host];
-    if (!platform) return null;
+    if (!platform) return undefined;
 
     const parts = url.pathname.split("/").filter(Boolean);
     let candidate = parts[0] ?? "";
+    const reservedRoutes: Partial<Record<Exclude<ChannelPlatform, "website">, Set<string>>> = {
+      instagram: new Set(["p", "reel", "reels", "stories", "explore", "tv"]),
+      youtube: new Set(["watch", "shorts", "playlist", "feed"]),
+      linkedin: new Set(["feed", "posts", "pulse", "jobs", "learning"]),
+      x: new Set(["home", "search", "explore", "compose", "i"]),
+    };
+    if (host === "youtu.be" || reservedRoutes[platform]?.has(candidate.toLowerCase())) {
+      return null;
+    }
     if (
       (platform === "linkedin" &&
         ["in", "company", "school"].includes(candidate.toLowerCase())) ||
@@ -195,7 +205,7 @@ function knownSocialProfile(input: string): {
     const handle = canonicalizeSocialLocator(candidate.replace(/^@/, ""));
     return handle ? { platform, handle } : null;
   } catch {
-    return null;
+    return undefined;
   }
 }
 
@@ -206,6 +216,7 @@ export function manualChannelFromInput(
   const raw = input.trim();
   if (!raw) return null;
   const socialProfile = knownSocialProfile(raw);
+  if (socialProfile === null) return null;
   if (socialProfile) {
     return {
       id: "pending-channel",
