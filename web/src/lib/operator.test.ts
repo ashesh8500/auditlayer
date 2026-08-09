@@ -53,6 +53,19 @@ describe("readOperatorResponseText", () => {
       "Operator response stream ended before completion",
     );
   });
+
+  it("rejects an in-stream upstream error instead of saving a partial answer", async () => {
+    const response = new Response(
+      'data: {"choices":[{"delta":{"content":"partial answer"}}]}\n\n' +
+        'data: {"error":{"message":"upstream failed"}}\n\n' +
+        "data: [DONE]\n\n",
+      { headers: { "content-type": "text/event-stream" } },
+    );
+
+    await expect(readOperatorResponseText(response)).rejects.toThrow(
+      "Operator stream reported an upstream error",
+    );
+  });
 });
 
 describe("buildOperatorSystemContext", () => {

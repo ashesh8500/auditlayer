@@ -810,16 +810,12 @@ def _structured_text(value: Any, field: str, max_length: int) -> str:
         text = str(value)
     else:
         raise ValueError(f"Invalid structured report field: {field}")
-    if not text.strip() or len(text) > max_length:
+    if not text.strip():
         raise ValueError(f"Invalid structured report field: {field}")
-    return text.strip()
+    return text.strip()[:max_length]
 
 
 def _extract_structured_payload(content: str) -> dict[str, Any]:
-    if len(content) > 40_000:
-        raise ValueError("DeepSeek structured report exceeded the maximum size")
-    if len(re.findall(r"\b[\w'-]+\b", content)) > 1_800:
-        raise ValueError("DeepSeek structured report exceeded the 1,800-word limit")
     fenced = re.search(r"```json\s*(.*?)```", content, flags=re.DOTALL | re.IGNORECASE)
     candidate = fenced.group(1).strip() if fenced else content.strip()
 
