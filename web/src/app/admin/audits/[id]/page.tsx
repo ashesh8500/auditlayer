@@ -102,11 +102,12 @@ export default async function AdminAuditDetail({
         </div>
       </header>
 
-      {audit.admin_notes && (
+      {audit.admin_notes &&
+        ["blocked", "failed", "needs_review"].includes(audit.status) && (
         <pre className="mt-5 whitespace-pre-wrap rounded-[var(--radius)] border border-border bg-muted p-3 text-xs text-muted-foreground">
           {audit.admin_notes}
         </pre>
-      )}
+        )}
 
       {limitations.length > 0 && (
         <ul className="mt-4 space-y-1 text-xs text-muted-foreground">
