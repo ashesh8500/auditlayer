@@ -16,7 +16,7 @@ def test_prompt_version_is_non_empty():
     """PROMPT_VERSION is a non-empty string like '0.6'."""
     assert isinstance(PROMPT_VERSION, str)
     assert len(PROMPT_VERSION) > 0
-    assert PROMPT_VERSION == "1.2"
+    assert PROMPT_VERSION == "1.3"
 
 
 def test_build_prompt_footer_line_includes_all_fields():

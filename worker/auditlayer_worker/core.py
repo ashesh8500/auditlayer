@@ -139,7 +139,9 @@ INSTAGRAM_LIMITATION = (
 #        rounded data tables, per-section item guidance in prompt
 # v1.2 — Add canonical print CSS to the master skeleton; broken print support now
 #        fails closed in the deterministic quality gate
-PROMPT_VERSION = "1.2"
+# v1.3 — Bound section copy and force a compact fresh-session correction so
+#        recoverable DeepSeek formatting drift cannot dead-letter paid reports
+PROMPT_VERSION = "1.3"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework
@@ -155,6 +157,9 @@ PROMPT_VERSION = "1.2"
 #   v0.8 — Add report type content budgets to reduce latency and repetition
 #   v0.9 — Replace model-authored HTML with validated JSON and deterministic local rendering
 #   v1.0 — Restore the Narin 15-section structure and heading-specific deterministic renderers
+#   v1.1 — Add score colors, metric grids, section labels, tables, and richer guidance
+#   v1.2 — Enforce canonical print CSS in the deterministic quality gate
+#   v1.3 — Bound structured copy and compact the fresh-session format correction
 
 
 def build_prompt_footer_line(
