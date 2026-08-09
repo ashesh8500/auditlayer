@@ -267,9 +267,9 @@ def test_structured_report_enforces_prompt_size_limits(sample_audit):
         assemble_structured_report_html(sample_audit, json.dumps(payload))
 
     payload["sections"][0]["lede"] = "valid"
-    payload["sections"][0]["items"][0]["body"] = "word " * 1_801
+    fenced_payload = f"{'word ' * 1_801}\n```json\n{json.dumps(payload)}\n```"
     with pytest.raises(ValueError, match="1,800-word limit"):
-        assemble_structured_report_html(sample_audit, json.dumps(payload))
+        assemble_structured_report_html(sample_audit, fenced_payload)
 
 
 def test_structured_report_computes_weighted_overall_score_locally(sample_audit):

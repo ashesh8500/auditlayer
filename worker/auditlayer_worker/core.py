@@ -816,12 +816,12 @@ def _structured_text(value: Any, field: str, max_length: int) -> str:
 
 
 def _extract_structured_payload(content: str) -> dict[str, Any]:
+    if len(content) > 40_000:
+        raise ValueError("DeepSeek structured report exceeded the maximum size")
+    if len(re.findall(r"\b[\w'-]+\b", content)) > 1_800:
+        raise ValueError("DeepSeek structured report exceeded the 1,800-word limit")
     fenced = re.search(r"```json\s*(.*?)```", content, flags=re.DOTALL | re.IGNORECASE)
     candidate = fenced.group(1).strip() if fenced else content.strip()
-    if len(candidate) > 40_000:
-        raise ValueError("DeepSeek structured report exceeded the maximum size")
-    if len(re.findall(r"\b[\w'-]+\b", candidate)) > 1_800:
-        raise ValueError("DeepSeek structured report exceeded the 1,800-word limit")
 
     def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
         result: dict[str, Any] = {}
