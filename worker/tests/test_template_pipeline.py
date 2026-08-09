@@ -555,6 +555,8 @@ def test_format_retry_names_invalid_field_and_requires_scalar_strings(sample_aud
     assert "Invalid structured report field: lede" in correction
     assert "heading, lede, callout, title, body, and value" in correction
     assert "JSON scalar string" in correction
+    assert "exactly 1 item in every other section" in correction
+    assert client.calls[1]["max_tokens"] == 6_000
     assert "recovered" in result.html
 
 

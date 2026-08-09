@@ -443,18 +443,18 @@ class HermesReportGenerator:
                                 "The first character must be { and the root must contain only sections. "
                                 "Every heading, lede, callout, title, body, and value must be a JSON "
                                 "scalar string, never an object, array, boolean, or null. Regenerate "
-                                "compactly from the supplied evidence: stay under 1,800 words and do "
-                                "not spend tokens explaining or restating the contract."
+                                "as the smallest acceptable report from the supplied evidence: use "
+                                "exactly 8 Executive summary items, exactly 4 Key metrics items, and "
+                                "exactly 1 item in every other section. Omit all tables and callouts. "
+                                "Keep each lede under 25 words and each item body under 45 words. Stay "
+                                "under 1,200 words total. Do not explain or restate the contract."
                             ),
                         },
                         {"role": "user", "content": prompt},
                     ],
                     model=self.model,
                     toolsets=(),
-                    max_tokens=min(
-                        self.max_tokens,
-                        _REPORT_MAX_TOKENS.get(audit.report_type or "standard", 12000),
-                    ),
+                    max_tokens=min(self.max_tokens, 6_000),
                     temperature=self.temperature,
                     stream=False,
                     # A malformed first response must not drag its full session
