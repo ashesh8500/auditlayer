@@ -122,15 +122,6 @@ export async function sendOperatorMessage(
   const { data: history, error: historyError } = historyResult;
   if (historyError) return { status: "error", message: FAILURE_MESSAGE };
 
-  const { error: messageError } = await messageTable.insert({
-    thread_id: thread.id,
-    role: "user",
-    content: message,
-    author_id: profile.id,
-    run_id: runId,
-  });
-  if (messageError) return { status: "error", message: FAILURE_MESSAGE };
-
   const { data: job, error: jobError } = await jobTable
     .insert({
       thread_id: thread.id,
@@ -142,7 +133,27 @@ export async function sendOperatorMessage(
     })
     .select("id")
     .single();
+  if (jobError?.code === "23505") {
+    return {
+      status: "error",
+      message: "Another ALM discussion is already running for this audit. Try again when it finishes.",
+    };
+  }
   if (jobError || !job) return { status: "error", message: FAILURE_MESSAGE };
+
+  const { error: messageError } = await messageTable.insert({
+    thread_id: thread.id,
+    role: "user",
+    content: message,
+    author_id: profile.id,
+    run_id: runId,
+  });
+  if (messageError) {
+    await jobTable
+      .update({ status: "failed", error: "User message persistence failed" })
+      .eq("id", job.id);
+    return { status: "error", message: FAILURE_MESSAGE };
+  }
 
   const systemContext = buildOperatorSystemContext(
     {
@@ -171,7 +182,7 @@ export async function sendOperatorMessage(
       },
       body: JSON.stringify({
         model: "deepseek-v4-flash",
-        stream: true,
+        stream: false,
         messages: [
           { role: "system", content: systemContext },
           ...((history ?? []) as Array<{ role: string; content: string }>).slice(-12),

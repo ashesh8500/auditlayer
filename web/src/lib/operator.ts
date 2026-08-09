@@ -51,12 +51,19 @@ export async function readOperatorResponseText(response: Response): Promise<stri
       return;
     }
     try {
-      const chunk = JSON.parse(data) as {
+      const parsed = JSON.parse(data) as {
+        error?: unknown;
         choices?: Array<{ delta?: { content?: string } }>;
       };
-      const content = chunk.choices?.[0]?.delta?.content;
+      if (parsed.error) {
+        throw new Error("Operator stream reported an upstream error");
+      }
+      const content = parsed.choices?.[0]?.delta?.content;
       if (content) pieces.push(content);
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === "Operator stream reported an upstream error") {
+        throw error;
+      }
       // Ignore non-JSON keepalive/event lines from the upstream stream.
     }
   };
