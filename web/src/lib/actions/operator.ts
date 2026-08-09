@@ -178,14 +178,19 @@ export async function sendOperatorMessage(
         Authorization: `Bearer ${process.env.ALM_OPERATOR_API_KEY}`,
         "Content-Type": "application/json",
         "Idempotency-Key": runId,
-        "X-Hermes-Session-Id": thread.hermes_session_id,
+        // Persisted database history is the conversation source of truth. A
+        // request-scoped Hermes session avoids duplicating that history in the
+        // gateway on every turn and bounds cold/warm latency growth.
+        "X-Hermes-Session-Id": `operator-${runId}`,
       },
       body: JSON.stringify({
         model: "deepseek-v4-flash",
         stream: false,
         messages: [
           { role: "system", content: systemContext },
-          ...((history ?? []) as Array<{ role: string; content: string }>).slice(-12),
+          ...((history ?? []) as Array<{ role: string; content: string }>)
+            .slice(-8)
+            .map((entry) => ({ ...entry, content: entry.content.slice(0, 2000) })),
           { role: "user", content: message },
         ],
       }),
