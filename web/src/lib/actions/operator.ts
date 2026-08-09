@@ -197,7 +197,6 @@ export async function sendOperatorMessage(
       jobTable.update({ status: "completed", result: "Discussion completed" }).eq("id", job.id),
     ]);
     if (assistantError || completedError) throw new Error("Operator result persistence failed");
-    revalidatePath(`/admin/audits/${auditId}`);
     return { status: "ok", message: "Discussion saved.", answer: boundedAnswer };
   } catch {
     await jobTable
