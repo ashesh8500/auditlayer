@@ -40,11 +40,16 @@ export async function readOperatorResponseText(response: Response): Promise<stri
   const decoder = new TextDecoder();
   const pieces: string[] = [];
   let buffer = "";
+  let completed = false;
 
   const consume = (line: string) => {
     if (!line.startsWith("data:")) return;
     const data = line.slice(5).trim();
-    if (!data || data === "[DONE]") return;
+    if (!data) return;
+    if (data === "[DONE]") {
+      completed = true;
+      return;
+    }
     try {
       const chunk = JSON.parse(data) as {
         choices?: Array<{ delta?: { content?: string } }>;
@@ -65,6 +70,9 @@ export async function readOperatorResponseText(response: Response): Promise<stri
     if (done) break;
   }
   if (buffer) consume(buffer);
+  if (!completed) {
+    throw new Error("Operator response stream ended before completion");
+  }
   return pieces.join("").trim();
 }
 

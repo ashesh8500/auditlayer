@@ -42,6 +42,17 @@ describe("readOperatorResponseText", () => {
 
     await expect(readOperatorResponseText(response)).resolves.toBe("Fast answer");
   });
+
+  it("rejects a stream that closes before the completion marker", async () => {
+    const response = new Response(
+      'data: {"choices":[{"delta":{"content":"partial answer"}}]}\n\n',
+      { headers: { "content-type": "text/event-stream" } },
+    );
+
+    await expect(readOperatorResponseText(response)).rejects.toThrow(
+      "Operator response stream ended before completion",
+    );
+  });
 });
 
 describe("buildOperatorSystemContext", () => {

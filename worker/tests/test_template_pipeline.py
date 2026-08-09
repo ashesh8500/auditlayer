@@ -259,6 +259,19 @@ def test_structured_report_autofills_connected_instagram_metrics(sample_audit):
     assert "&lt;script&gt;not markup&lt;/script&gt;" in html
 
 
+def test_structured_report_enforces_prompt_size_limits(sample_audit):
+    payload = json.loads(_complete_standard_payload())
+    payload["sections"][0]["lede"] = "x" * 361
+
+    with pytest.raises(ValueError, match="Invalid structured report field: lede"):
+        assemble_structured_report_html(sample_audit, json.dumps(payload))
+
+    payload["sections"][0]["lede"] = "valid"
+    payload["sections"][0]["items"][0]["body"] = "word " * 1_801
+    with pytest.raises(ValueError, match="1,800-word limit"):
+        assemble_structured_report_html(sample_audit, json.dumps(payload))
+
+
 def test_structured_report_computes_weighted_overall_score_locally(sample_audit):
     payload = json.loads(_complete_standard_payload())
     payload["sections"][0]["items"] = [

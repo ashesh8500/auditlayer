@@ -68,6 +68,25 @@ describe("manualChannelFromInput", () => {
       url: "https://auditlayermedia.com",
     });
   });
+
+  it("preserves known social profile URLs as social channels", () => {
+    expect(
+      manualChannelFromInput(
+        "https://instagram.com/muskann.kaurr",
+        "subject-1",
+      ),
+    ).toMatchObject({
+      platform: "instagram",
+      handle: "muskann.kaurr",
+      url: null,
+    });
+    expect(
+      manualChannelFromInput("instagram.com/muskann.kaurr", "subject-1"),
+    ).toMatchObject({ platform: "instagram", handle: "muskann.kaurr" });
+    expect(
+      manualChannelFromInput("https://youtube.com/@auditlayer", "subject-1"),
+    ).toMatchObject({ platform: "youtube", handle: "auditlayer" });
+  });
 });
 
 describe("dedupeChannels", () => {

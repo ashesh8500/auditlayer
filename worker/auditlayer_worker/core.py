@@ -818,6 +818,10 @@ def _structured_text(value: Any, field: str, max_length: int) -> str:
 def _extract_structured_payload(content: str) -> dict[str, Any]:
     fenced = re.search(r"```json\s*(.*?)```", content, flags=re.DOTALL | re.IGNORECASE)
     candidate = fenced.group(1).strip() if fenced else content.strip()
+    if len(candidate) > 40_000:
+        raise ValueError("DeepSeek structured report exceeded the maximum size")
+    if len(re.findall(r"\b[\w'-]+\b", candidate)) > 1_800:
+        raise ValueError("DeepSeek structured report exceeded the 1,800-word limit")
 
     def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
         result: dict[str, Any] = {}
@@ -931,7 +935,7 @@ def assemble_structured_report_html(
         heading = _structured_text(section.get("heading"), "heading", 120)
         if not (heading.startswith("Road to ") if required_heading == "Road to [Milestone]" else heading == required_heading):
             raise ValueError(f"Structured report heading {index + 1} is invalid")
-        lede = _structured_text(section.get("lede"), "lede", 5000)
+        lede = _structured_text(section.get("lede"), "lede", 360)
         esc = html_lib.escape
         parts = [f"<section><h2>{esc(heading)}</h2>"]
         connected = heading == "Key Metrics" and ig_metrics is not None
@@ -946,9 +950,9 @@ def assemble_structured_report_html(
                 raise ValueError("Structured report item is invalid")
             raw_value = item.get("value", "")
             clean_items.append((
-                _structured_text(item.get("title"), "item title", 300),
-                _structured_text(item.get("body"), "item body", 3000),
-                "" if raw_value in (None, "") else _structured_text(raw_value, "item value", 300),
+                _structured_text(item.get("title"), "item title", 100),
+                _structured_text(item.get("body"), "item body", 320),
+                "" if raw_value in (None, "") else _structured_text(raw_value, "item value", 80),
             ))
 
         if not connected and heading == "Executive Summary":
@@ -1009,18 +1013,18 @@ def assemble_structured_report_html(
                 raise ValueError("Structured report table headers are invalid")
             if not isinstance(rows, list) or len(rows) > 12:
                 raise ValueError("Structured report table rows are invalid")
-            clean_headers = [_structured_text(value, "table header", 200) for value in headers]
+            clean_headers = [_structured_text(value, "table header", 120) for value in headers]
             clean_rows: list[list[str]] = []
             for row in rows:
                 if not isinstance(row, list) or len(row) != len(clean_headers):
                     raise ValueError("Structured report table row is invalid")
-                clean_rows.append([_structured_text(value, "table cell", 1000) for value in row])
+                clean_rows.append([_structured_text(value, "table cell", 120) for value in row])
             if not connected:
                 render_table(parts, heading, clean_headers, clean_rows)
 
         callout = section.get("callout")
         if callout is not None:
-            clean_callout = _structured_text(callout, "callout", 2000)
+            clean_callout = _structured_text(callout, "callout", 240)
             if not connected:
                 parts.append(f'<div class="callout accent"><p>{esc(clean_callout)}</p></div>')
         parts.append("</section>")

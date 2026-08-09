@@ -158,12 +158,67 @@ export function inputLooksLikeWebsite(input: string): boolean {
   return lastSegment.length >= 2 && lastSegment.length <= 4;
 }
 
+function knownSocialProfile(input: string): {
+  platform: Exclude<ChannelPlatform, "website">;
+  handle: string;
+} | null {
+  const raw = input.trim();
+  if (!raw) return null;
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const url = new URL(withScheme);
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    const platformByHost: Record<
+      string,
+      Exclude<ChannelPlatform, "website">
+    > = {
+      "instagram.com": "instagram",
+      "tiktok.com": "tiktok",
+      "x.com": "x",
+      "twitter.com": "x",
+      "linkedin.com": "linkedin",
+      "youtube.com": "youtube",
+    };
+    const platform = platformByHost[host];
+    if (!platform) return null;
+
+    const parts = url.pathname.split("/").filter(Boolean);
+    let candidate = parts[0] ?? "";
+    if (
+      (platform === "linkedin" &&
+        ["in", "company", "school"].includes(candidate.toLowerCase())) ||
+      (platform === "youtube" &&
+        ["channel", "c", "user"].includes(candidate.toLowerCase()))
+    ) {
+      candidate = parts[1] ?? "";
+    }
+    const handle = canonicalizeSocialLocator(candidate.replace(/^@/, ""));
+    return handle ? { platform, handle } : null;
+  } catch {
+    return null;
+  }
+}
+
 export function manualChannelFromInput(
   input: string,
   subjectId: string,
 ): ChannelSummary | null {
   const raw = input.trim();
   if (!raw) return null;
+  const socialProfile = knownSocialProfile(raw);
+  if (socialProfile) {
+    return {
+      id: "pending-channel",
+      platform: socialProfile.platform,
+      handle: socialProfile.handle,
+      url: null,
+      ownershipStatus: "managed",
+      displayName: socialProfile.handle,
+      avatarUrl: null,
+      connected: false,
+      subjectId: subjectId || "pending",
+    };
+  }
   if (inputLooksLikeWebsite(raw)) {
     const url = canonicalizeWebsiteLocator(raw);
     if (!url) return null;
