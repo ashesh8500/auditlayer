@@ -1,13 +1,14 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 
 import { requireAdmin } from "@/lib/auth";
 import { isOperatorConfigured, isSupabaseAdminConfigured } from "@/lib/env";
 import {
   buildOperatorSystemContext,
   operatorSessionId,
+  readOperatorResponseText,
   validateOperatorMessage,
 } from "@/lib/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -20,13 +21,14 @@ export type OperatorActionState = {
 
 const FAILURE_MESSAGE = "The ALM operator could not complete this request. No change was made.";
 
-async function reportHtml(admin: ReturnType<typeof createAdminClient>, reportPath: string | null) {
+const reportHtml = unstable_cache(async (reportPath: string | null) => {
   if (!reportPath) return "";
+  const admin = createAdminClient();
   const { data, error } = await admin.storage.from("reports").download(reportPath);
   if (error || !data) return "";
   const html = await data.text();
   return html.slice(0, 250_000);
-}
+}, ["operator-report-html"], { revalidate: 3600 });
 
 async function operatorThread(
   admin: ReturnType<typeof createAdminClient>,
@@ -77,16 +79,31 @@ export async function sendOperatorMessage(
   }
 
   const admin = createAdminClient();
-  const { data: audit, error: auditError } = await admin
-    .from("audits")
-    .select("id,handle,goal,status,limitations,model,report_path,agent_bundle_version")
-    .eq("id", auditId)
-    .maybeSingle();
-  if (auditError || !audit) return { status: "error", message: "Audit not found." };
-
+  let audit: {
+    id: string;
+    handle: string;
+    goal: string;
+    status: string;
+    limitations: unknown;
+    model: string | null;
+    report_path: string | null;
+    agent_bundle_version: string | null;
+  };
   let thread: { id: string; hermes_session_id: string };
   try {
-    thread = await operatorThread(admin, auditId, profile.id);
+    const [auditResult, threadResult] = await Promise.all([
+      admin
+        .from("audits")
+        .select("id,handle,goal,status,limitations,model,report_path,agent_bundle_version")
+        .eq("id", auditId)
+        .maybeSingle(),
+      operatorThread(admin, auditId, profile.id),
+    ]);
+    if (auditResult.error || !auditResult.data) {
+      return { status: "error", message: "Audit not found." };
+    }
+    audit = auditResult.data;
+    thread = threadResult;
   } catch {
     return { status: "error", message: FAILURE_MESSAGE };
   }
@@ -94,11 +111,15 @@ export async function sendOperatorMessage(
   const runId = randomUUID();
   const messageTable = admin.from("operator_messages");
   const jobTable = admin.from("operator_jobs");
-  const { data: history, error: historyError } = await messageTable
-    .select("role,content")
-    .eq("thread_id", thread.id)
-    .order("created_at", { ascending: true })
-    .limit(20);
+  const [historyResult, html] = await Promise.all([
+    messageTable
+      .select("role,content")
+      .eq("thread_id", thread.id)
+      .order("created_at", { ascending: true })
+      .limit(20),
+    reportHtml(audit.report_path),
+  ]);
+  const { data: history, error: historyError } = historyResult;
   if (historyError) return { status: "error", message: FAILURE_MESSAGE };
 
   const { error: messageError } = await messageTable.insert({
@@ -123,7 +144,6 @@ export async function sendOperatorMessage(
     .single();
   if (jobError || !job) return { status: "error", message: FAILURE_MESSAGE };
 
-  const html = await reportHtml(admin, audit.report_path);
   const systemContext = buildOperatorSystemContext(
     {
       id: audit.id,
@@ -151,7 +171,7 @@ export async function sendOperatorMessage(
       },
       body: JSON.stringify({
         model: "deepseek-v4-flash",
-        stream: false,
+        stream: true,
         messages: [
           { role: "system", content: systemContext },
           ...((history ?? []) as Array<{ role: string; content: string }>).slice(-12),
@@ -162,10 +182,7 @@ export async function sendOperatorMessage(
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`Operator returned ${response.status}`);
-    const body = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const answer = body.choices?.[0]?.message?.content?.trim();
+    const answer = await readOperatorResponseText(response);
     if (!answer) throw new Error("Operator returned no answer");
     const boundedAnswer = answer.slice(0, 12000);
 

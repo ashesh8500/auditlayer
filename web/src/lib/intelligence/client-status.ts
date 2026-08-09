@@ -81,10 +81,16 @@ export function projectCustomerStatus(
   // Terminal first — always stops animation immediately
   if (TERMINAL.includes(internalStatus)) {
     const terminal = internalStatus as CustomerAuditTerminal;
+    const phase =
+      terminal === "ready"
+        ? "finalizing"
+        : terminal === "needs_review"
+          ? "preparing"
+          : deriveCustomerPhase(events);
     return {
-      phase: "finalizing",
+      phase,
       terminal,
-      message: TERMINAL_MESSAGES[terminal] ?? "Your audit is ready.",
+      message: terminalMessage(terminal, phase),
       startedAt,
       lastProgressAt: newestProgressAt(events, startedAt, nowMs),
       estimatedCompletion: null,
@@ -157,7 +163,9 @@ function isoOrNull(ms: number | null): string | null {
   return ms === null ? null : new Date(ms).toISOString();
 }
 
-function deriveCustomerPhase(events: InternalEvent[]): CustomerAuditPhase {
+function deriveCustomerPhase(
+  events: InternalEvent[],
+): Exclude<CustomerAuditPhase, "delayed"> {
   const eventTypes = new Set(events.map((e) => e.event_type));
 
   // Any composition/upload/scoring events → finalizing
@@ -205,6 +213,19 @@ const TERMINAL_MESSAGES: Record<CustomerAuditTerminal, string> = {
   needs_review:
     "We couldn't detect which platform this handle belongs to. A founder will confirm the platform, then generation starts.",
 };
+
+function terminalMessage(
+  terminal: CustomerAuditTerminal,
+  phase: Exclude<CustomerAuditPhase, "delayed">,
+): string {
+  if (terminal === "blocked" && phase === "finalizing") {
+    return "We couldn't finalize this report. A founder has been notified and will review it.";
+  }
+  if (terminal === "blocked" && phase === "analyzing") {
+    return "This audit stopped during analysis. A founder has been notified and will review it.";
+  }
+  return TERMINAL_MESSAGES[terminal] ?? "Your audit is ready.";
+}
 
 /**
  * Returns true if the customer status is in a terminal state.

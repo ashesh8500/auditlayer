@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bot, Loader2, Send, Wrench } from "lucide-react";
 
@@ -53,15 +53,19 @@ export function OperatorPanel({
   const router = useRouter();
   const messageForm = useRef<HTMLFormElement>(null);
   const jobForm = useRef<HTMLFormElement>(null);
+  const [pendingMessage, setPendingMessage] = useState("");
   const [chatState, chatAction, chatting] = useActionState(sendOperatorMessage, initial);
   const [jobState, jobAction, jobbing] = useActionState(createOperatorJob, initial);
+  const displayedPendingMessage = chatting ? pendingMessage : "";
 
   useEffect(() => {
-    if (chatState.status === "ok") {
-      messageForm.current?.reset();
+    if (chatState.status !== "idle") {
       router.refresh();
     }
-  }, [chatState.status, router]);
+    if (chatState.status === "ok") {
+      messageForm.current?.reset();
+    }
+  }, [chatState.answer, chatState.message, chatState.status, router]);
   useEffect(() => {
     if (jobState.status === "ok") {
       jobForm.current?.reset();
@@ -84,7 +88,7 @@ export function OperatorPanel({
       </header>
 
       <div className="max-h-[32rem] space-y-3 overflow-y-auto p-4">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !displayedPendingMessage ? (
           <p className="text-xs text-muted-foreground">
             No discussion yet. Ask about evidence, scoring, positioning, limitations, or presentation.
           </p>
@@ -105,9 +109,29 @@ export function OperatorPanel({
             </article>
           ))
         )}
+        {displayedPendingMessage && (
+          <>
+            <article className="ml-6 rounded-xl bg-[color:var(--accent-muted)] px-3 py-2 text-sm leading-relaxed">
+              <p className="whitespace-pre-wrap">{displayedPendingMessage}</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">Admin · sending now</p>
+            </article>
+            <article className="mr-6 flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin" />
+              ALM is reading the report…
+            </article>
+          </>
+        )}
       </div>
 
-      <form ref={messageForm} action={chatAction} className="space-y-3 border-t border-border p-4">
+      <form
+        ref={messageForm}
+        action={chatAction}
+        onSubmit={(event) => {
+          const data = new FormData(event.currentTarget);
+          setPendingMessage(String(data.get("message") ?? "").trim());
+        }}
+        className="space-y-3 border-t border-border p-4"
+      >
         <input type="hidden" name="auditId" value={auditId} />
         <Textarea
           name="message"

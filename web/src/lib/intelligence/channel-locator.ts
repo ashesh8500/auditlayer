@@ -140,12 +140,123 @@ export function suggestChannelsForInput(
 
 export function inputLooksLikeWebsite(input: string): boolean {
   const t = input.trim().toLowerCase();
-  if (!t) return false;
+  if (!t || t.startsWith("@")) return false;
   if (t.includes(" ") && !t.includes(".")) return false;
-  return (
-    t.includes(".") ||
+  if (
     t.startsWith("http://") ||
     t.startsWith("https://") ||
     t.startsWith("www.")
-  );
+  ) {
+    return true;
+  }
+  if (!/^[a-z0-9.-]+$/i.test(t) || !t.includes(".")) return false;
+
+  // Dots are valid in Instagram usernames. Keep the platform detector's
+  // conservative domain heuristic here too: short suffixes look like TLDs,
+  // while a longer final segment (muskann.kaurr) is a social handle.
+  const lastSegment = t.split(".").pop() ?? "";
+  return lastSegment.length >= 2 && lastSegment.length <= 4;
+}
+
+function knownSocialProfile(input: string): {
+  platform: Exclude<ChannelPlatform, "website">;
+  handle: string;
+} | null | undefined {
+  const raw = input.trim();
+  if (!raw) return undefined;
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const url = new URL(withScheme);
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    const platformByHost: Record<
+      string,
+      Exclude<ChannelPlatform, "website">
+    > = {
+      "instagram.com": "instagram",
+      "tiktok.com": "tiktok",
+      "x.com": "x",
+      "twitter.com": "x",
+      "linkedin.com": "linkedin",
+      "youtube.com": "youtube",
+      "youtu.be": "youtube",
+    };
+    const platform = platformByHost[host];
+    if (!platform) return undefined;
+
+    const parts = url.pathname.split("/").filter(Boolean);
+    let candidate = parts[0] ?? "";
+    const reservedRoutes: Partial<Record<Exclude<ChannelPlatform, "website">, Set<string>>> = {
+      instagram: new Set(["p", "reel", "reels", "stories", "explore", "tv"]),
+      youtube: new Set(["watch", "shorts", "playlist", "feed"]),
+      linkedin: new Set(["feed", "posts", "pulse", "jobs", "learning"]),
+      x: new Set(["home", "search", "explore", "compose", "i"]),
+    };
+    if (host === "youtu.be" || reservedRoutes[platform]?.has(candidate.toLowerCase())) {
+      return null;
+    }
+    if (
+      (platform === "linkedin" &&
+        ["in", "company", "school"].includes(candidate.toLowerCase())) ||
+      (platform === "youtube" &&
+        ["channel", "c", "user"].includes(candidate.toLowerCase()))
+    ) {
+      candidate = parts[1] ?? "";
+    }
+    const handle = canonicalizeSocialLocator(candidate.replace(/^@/, ""));
+    return handle ? { platform, handle } : null;
+  } catch {
+    return undefined;
+  }
+}
+
+export function manualChannelFromInput(
+  input: string,
+  subjectId: string,
+): ChannelSummary | null {
+  const raw = input.trim();
+  if (!raw) return null;
+  const socialProfile = knownSocialProfile(raw);
+  if (socialProfile === null) return null;
+  if (socialProfile) {
+    return {
+      id: "pending-channel",
+      platform: socialProfile.platform,
+      handle: socialProfile.handle,
+      url: null,
+      ownershipStatus: "managed",
+      displayName: socialProfile.handle,
+      avatarUrl: null,
+      connected: false,
+      subjectId: subjectId || "pending",
+    };
+  }
+  if (inputLooksLikeWebsite(raw)) {
+    const url = canonicalizeWebsiteLocator(raw);
+    if (!url) return null;
+    return {
+      id: "pending-channel",
+      platform: "website",
+      handle: "",
+      url,
+      ownershipStatus: "managed",
+      displayName: displayWebsiteHost(url),
+      avatarUrl: null,
+      connected: false,
+      subjectId: subjectId || "pending",
+    };
+  }
+
+  const handle = canonicalizeSocialLocator(raw);
+  if (!/^[a-z0-9._]{1,30}$/i.test(handle)) return null;
+  return {
+    id: "pending-channel",
+    platform: "instagram",
+    handle,
+    url: null,
+    ownershipStatus: "managed",
+    displayName: handle,
+    avatarUrl: null,
+    connected: false,
+    subjectId: subjectId || "pending",
+  };
 }

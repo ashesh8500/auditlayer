@@ -139,7 +139,7 @@ def test_analysis_failure_carries_reusable_research_checkpoint() -> None:
     assert failure.stage_timings["research"] >= 0
 
 
-def test_invalid_correction_is_nonretryable_but_keeps_checkpoint() -> None:
+def test_invalid_correction_is_retryable_and_keeps_checkpoint() -> None:
     client = _Client(["not json", "still not json"])
 
     with pytest.raises(GenerationStageError) as caught:
@@ -148,7 +148,7 @@ def test_invalid_correction_is_nonretryable_but_keeps_checkpoint() -> None:
     failure = caught.value
     assert failure.stage == "format_correction"
     assert failure.error_code == "structured_output_invalid"
-    assert failure.retryable is False
+    assert failure.retryable is True
     assert failure.tokens_in == 2_400
     assert failure.tokens_out == 1_600
     assert failure.research_cache

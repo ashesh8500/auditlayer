@@ -4,6 +4,8 @@ import {
   canonicalizeWebsiteLocator,
   channelDedupeKey,
   dedupeChannels,
+  inputLooksLikeWebsite,
+  manualChannelFromInput,
   suggestChannelsForInput,
 } from "./channel-locator";
 import type { ChannelSummary } from "./types";
@@ -34,6 +36,65 @@ describe("canonicalizeWebsiteLocator", () => {
     expect(canonicalizeWebsiteLocator("http://AuditLayerMedia.com")).toBe(
       "https://auditlayermedia.com",
     );
+  });
+});
+
+describe("inputLooksLikeWebsite", () => {
+  it("does not turn a dotted Instagram handle into a fake website", () => {
+    expect(inputLooksLikeWebsite("muskann.kaurr")).toBe(false);
+    expect(inputLooksLikeWebsite("@muskann.kaurr")).toBe(false);
+  });
+
+  it("still recognizes explicit and ordinary website locators", () => {
+    expect(inputLooksLikeWebsite("https://auditlayermedia.com")).toBe(true);
+    expect(inputLooksLikeWebsite("www.auditlayermedia.com")).toBe(true);
+    expect(inputLooksLikeWebsite("auditlayermedia.com")).toBe(true);
+  });
+});
+
+describe("manualChannelFromInput", () => {
+  it("normalizes a dotted bare handle as Instagram", () => {
+    expect(manualChannelFromInput("muskann.kaurr", "subject-1")).toMatchObject({
+      platform: "instagram",
+      handle: "muskann.kaurr",
+      url: null,
+    });
+  });
+
+  it("normalizes a domain as a website", () => {
+    expect(manualChannelFromInput("auditlayermedia.com", "subject-1")).toMatchObject({
+      platform: "website",
+      handle: "",
+      url: "https://auditlayermedia.com",
+    });
+  });
+
+  it("preserves known social profile URLs as social channels", () => {
+    expect(
+      manualChannelFromInput(
+        "https://instagram.com/muskann.kaurr",
+        "subject-1",
+      ),
+    ).toMatchObject({
+      platform: "instagram",
+      handle: "muskann.kaurr",
+      url: null,
+    });
+    expect(
+      manualChannelFromInput("instagram.com/muskann.kaurr", "subject-1"),
+    ).toMatchObject({ platform: "instagram", handle: "muskann.kaurr" });
+    expect(
+      manualChannelFromInput("https://youtube.com/@auditlayer", "subject-1"),
+    ).toMatchObject({ platform: "youtube", handle: "auditlayer" });
+  });
+
+  it("rejects social content URLs instead of treating route names as handles", () => {
+    expect(
+      manualChannelFromInput("https://instagram.com/p/ABC123", "subject-1"),
+    ).toBeNull();
+    expect(
+      manualChannelFromInput("https://youtube.com/watch?v=ABC123", "subject-1"),
+    ).toBeNull();
   });
 });
 

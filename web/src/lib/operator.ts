@@ -26,6 +26,56 @@ export function validateOperatorMessage(input: string): string {
   return normalized;
 }
 
+export async function readOperatorResponseText(response: Response): Promise<string> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("text/event-stream")) {
+    const body = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    return body.choices?.[0]?.message?.content?.trim() ?? "";
+  }
+
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const pieces: string[] = [];
+  let buffer = "";
+  let completed = false;
+
+  const consume = (line: string) => {
+    if (!line.startsWith("data:")) return;
+    const data = line.slice(5).trim();
+    if (!data) return;
+    if (data === "[DONE]") {
+      completed = true;
+      return;
+    }
+    try {
+      const chunk = JSON.parse(data) as {
+        choices?: Array<{ delta?: { content?: string } }>;
+      };
+      const content = chunk.choices?.[0]?.delta?.content;
+      if (content) pieces.push(content);
+    } catch {
+      // Ignore non-JSON keepalive/event lines from the upstream stream.
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() ?? "";
+    lines.forEach(consume);
+    if (done) break;
+  }
+  if (buffer) consume(buffer);
+  if (!completed) {
+    throw new Error("Operator response stream ended before completion");
+  }
+  return pieces.join("").trim();
+}
+
 function sanitizeUntrustedText(value: string, max: number): string {
   return value
     .replace(/---\s*(?:BEGIN|END)\s+UNTRUSTED REPORT DATA\s*---/gi, "[boundary marker removed]")

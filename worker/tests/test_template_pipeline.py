@@ -222,6 +222,8 @@ def test_section_prompt_and_local_skeleton_assembly(sample_audit):
     assert evidence in prompt
     assert "Master Skeleton Template" not in prompt
     assert "Return one JSON object only" in prompt
+    assert "Hard size limits" in prompt
+    assert "body: 320 characters" in prompt
 
     fragment = _complete_standard_sections()
     html = assemble_report_html(sample_audit, fragment)
@@ -255,6 +257,19 @@ def test_structured_report_autofills_connected_instagram_metrics(sample_audit):
     assert "3.5 posts per week" in html
     assert "<script>not markup</script>" not in html
     assert "&lt;script&gt;not markup&lt;/script&gt;" in html
+
+
+def test_structured_report_enforces_prompt_size_limits(sample_audit):
+    payload = json.loads(_complete_standard_payload())
+    payload["sections"][0]["lede"] = "x" * 361
+
+    with pytest.raises(ValueError, match="Invalid structured report field: lede"):
+        assemble_structured_report_html(sample_audit, json.dumps(payload))
+
+    payload["sections"][0]["lede"] = "valid"
+    fenced_payload = f"{'word ' * 1_801}\n```json\n{json.dumps(payload)}\n```"
+    with pytest.raises(ValueError, match="1,800-word limit"):
+        assemble_structured_report_html(sample_audit, fenced_payload)
 
 
 def test_structured_report_computes_weighted_overall_score_locally(sample_audit):
@@ -497,6 +512,7 @@ def test_bounded_generator_retries_one_format_miss(sample_audit):
     result = generator.generate(sample_audit, lambda _phase, _detail: None)
 
     assert len(client.calls) == 2
+    assert client.calls[1]["session_id"] == ""
     assert result.tokens_in == 200
     assert result.tokens_out == 100
     assert "recovered" in result.html

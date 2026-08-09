@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildOperatorSystemContext,
   operatorSessionId,
+  readOperatorResponseText,
   validateOperatorMessage,
 } from "./operator";
 
@@ -24,6 +25,33 @@ describe("validateOperatorMessage", () => {
     );
     expect(() => validateOperatorMessage("   ")).toThrow("Message is required");
     expect(() => validateOperatorMessage("x".repeat(4001))).toThrow("4000");
+  });
+});
+
+describe("readOperatorResponseText", () => {
+  it("collects OpenAI-compatible streaming deltas", async () => {
+    const response = new Response(
+      [
+        'data: {"choices":[{"delta":{"content":"Fast "}}]}',
+        'data: {"choices":[{"delta":{"content":"answer"}}]}',
+        "data: [DONE]",
+        "",
+      ].join("\n\n"),
+      { headers: { "content-type": "text/event-stream" } },
+    );
+
+    await expect(readOperatorResponseText(response)).resolves.toBe("Fast answer");
+  });
+
+  it("rejects a stream that closes before the completion marker", async () => {
+    const response = new Response(
+      'data: {"choices":[{"delta":{"content":"partial answer"}}]}\n\n',
+      { headers: { "content-type": "text/event-stream" } },
+    );
+
+    await expect(readOperatorResponseText(response)).rejects.toThrow(
+      "Operator response stream ended before completion",
+    );
   });
 });
 

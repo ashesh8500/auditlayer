@@ -50,16 +50,32 @@ function project(
 // ---- Tests ----
 
 describe("projectCustomerStatus — terminal states", () => {
-  it.each([
-    ["ready", "ready"],
-    ["failed", "failed"],
-    ["blocked", "blocked"],
-    ["needs_review", "needs_review"],
-  ] as const)("returns terminal %s for internal status %s", (_, internal) => {
-    const result = project(internal, [], 0);
-    expect(result.terminal).toBe(internal);
-    expect(result.phase).toBe("finalizing");
+  it("stops founder review at preparing when generation never started", () => {
+    const result = project("needs_review", [], null);
+    expect(result).toMatchObject({ terminal: "needs_review", phase: "preparing" });
     expect(isTerminal(result)).toBe(true);
+  });
+
+  it("preserves the last meaningful phase for blocked and failed audits", () => {
+    expect(project("blocked", [], 0)).toMatchObject({
+      terminal: "blocked",
+      phase: "preparing",
+    });
+    expect(project("failed", [mkEvent("research_started")], 0)).toMatchObject({
+      terminal: "failed",
+      phase: "analyzing",
+    });
+    expect(project("blocked", [mkEvent("composing_started")], 0)).toMatchObject({
+      terminal: "blocked",
+      phase: "finalizing",
+    });
+  });
+
+  it("always renders ready as finalized", () => {
+    expect(project("ready", [], 0)).toMatchObject({
+      terminal: "ready",
+      phase: "finalizing",
+    });
   });
 
   it("terminal always wins even with stale progress and noise", () => {
@@ -72,7 +88,7 @@ describe("projectCustomerStatus — terminal states", () => {
       -30 * MIN,
     );
     expect(result.terminal).toBe("failed");
-    expect(result.phase).toBe("finalizing");
+    expect(result.phase).toBe("preparing");
   });
 
   it("terminal always wins even with recent meaningful progress", () => {
