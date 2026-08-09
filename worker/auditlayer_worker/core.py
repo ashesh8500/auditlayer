@@ -606,13 +606,15 @@ SECTION-BY-SECTION GUIDE (use items for different purposes per section):
 - Get the Execution Plan: items = upgrade value props in title/body/value format.
 
 Each section requires heading and lede. Items, table, and callout are optional.
-Keep each lede to 1 to 3 sentences and use no more than 10 items per section.
-Use tables only where comparison rows materially improve clarity, with no more
-than 12 rows. Return analysis as plain text values only. Do not return HTML, CSS, URLs
-as markup, scripts, markdown fences, or extra root fields. Connected Instagram
-metrics are inserted deterministically by local code, so analyze them but do not
-invent replacements for their displayed values. Use only supplied account data and
-evidence as factual source material.
+Hard size limits: the complete response must stay under 1,800 words. Maximums
+per field — lede: 360 characters; title: 100 characters; body: 320 characters;
+value: 80 characters; callout: 240 characters; table cell: 120 characters.
+Use no more than 10 items per section and tables only where comparison rows
+materially improve clarity, with no more than 12 rows. Return analysis as plain
+text values only. Do not return HTML, CSS, URLs as markup, scripts, markdown fences,
+or extra root fields. Connected Instagram metrics are inserted deterministically
+by local code, so analyze them but do not invent replacements for their displayed
+values. Use only supplied account data and evidence as factual source material.
 """
 
 

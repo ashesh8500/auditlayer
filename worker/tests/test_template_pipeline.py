@@ -222,6 +222,8 @@ def test_section_prompt_and_local_skeleton_assembly(sample_audit):
     assert evidence in prompt
     assert "Master Skeleton Template" not in prompt
     assert "Return one JSON object only" in prompt
+    assert "Hard size limits" in prompt
+    assert "body: 320 characters" in prompt
 
     fragment = _complete_standard_sections()
     html = assemble_report_html(sample_audit, fragment)
@@ -497,6 +499,7 @@ def test_bounded_generator_retries_one_format_miss(sample_audit):
     result = generator.generate(sample_audit, lambda _phase, _detail: None)
 
     assert len(client.calls) == 2
+    assert client.calls[1]["session_id"] == ""
     assert result.tokens_in == 200
     assert result.tokens_out == 100
     assert "recovered" in result.html

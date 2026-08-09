@@ -43,10 +43,10 @@ import { allowedReportTypes, type Plan } from "@/lib/domain";
 import { LivingBriefView } from "@/components/intelligence/living-brief-view";
 import { startNavigationProgress } from "@/components/navigation-progress";
 import {
-  canonicalizeWebsiteLocator,
   channelDedupeKey,
   displayWebsiteHost,
   inputLooksLikeWebsite,
+  manualChannelFromInput,
   suggestChannelsForInput,
 } from "@/lib/intelligence/channel-locator";
 
@@ -201,28 +201,24 @@ export function IntelligenceWizard({
 
   const effectiveChannels = useMemo(() => {
     const list = [...channels];
-    const pending = state.newWebsiteUrl.trim();
+    const pending = manualChannelFromInput(
+      state.newWebsiteUrl,
+      state.subjectId,
+    );
     if (pending) {
-      const canonical = canonicalizeWebsiteLocator(pending);
-      const already = list.some(
-        (c) =>
-          c.platform === "website" &&
-          channelDedupeKey("website", c.url || "") ===
-            channelDedupeKey("website", canonical),
+      const pendingKey = channelDedupeKey(
+        pending.platform,
+        pending.url || pending.handle,
       );
-      if (!already && canonical) {
-        list.push({
-          id: "pending-website",
-          platform: "website",
-          handle: "",
-          url: canonical,
-          ownershipStatus: "managed",
-          displayName: displayWebsiteHost(canonical),
-          avatarUrl: null,
-          connected: false,
-          subjectId: state.subjectId || "pending",
-        });
-      }
+      const already = list.some(
+        (channel) =>
+          channel.platform === pending.platform &&
+          channelDedupeKey(
+            channel.platform,
+            channel.url || channel.handle,
+          ) === pendingKey,
+      );
+      if (!already) list.push(pending);
     }
     return list;
   }, [channels, state.newWebsiteUrl, state.subjectId]);
@@ -365,23 +361,27 @@ export function IntelligenceWizard({
           }}
           onNext={() => {
             const ids = [...state.selectedChannelIds];
-            if (
-              state.newWebsiteUrl.trim() &&
-              !ids.includes("pending-website")
-            ) {
-              const canonical = canonicalizeWebsiteLocator(
-                state.newWebsiteUrl,
+            const pending = manualChannelFromInput(
+              state.newWebsiteUrl,
+              state.subjectId,
+            );
+            if (pending && !ids.includes(pending.id)) {
+              const pendingKey = channelDedupeKey(
+                pending.platform,
+                pending.url || pending.handle,
               );
               const match = channels.find(
-                (c) =>
-                  c.platform === "website" &&
-                  channelDedupeKey("website", c.url || "") ===
-                    channelDedupeKey("website", canonical),
+                (channel) =>
+                  channel.platform === pending.platform &&
+                  channelDedupeKey(
+                    channel.platform,
+                    channel.url || channel.handle,
+                  ) === pendingKey,
               );
               if (match) {
                 if (!ids.includes(match.id)) ids.push(match.id);
-              } else if (canonical) {
-                ids.push("pending-website");
+              } else {
+                ids.push(pending.id);
               }
             }
             const requests: BatchAuditRequest[] = ids.map((cid) => ({
@@ -656,7 +656,7 @@ function ChannelStep({
   onBack: () => void;
 }) {
   const managed = channels.filter(
-    (c) => c.ownershipStatus !== "observed" && c.id !== "pending-website",
+    (c) => c.ownershipStatus !== "observed" && c.id !== "pending-channel",
   );
   const suggestions = suggestChannelsForInput(newWebsiteUrl, managed);
   const exactWebsiteMatch =
@@ -669,7 +669,7 @@ function ChannelStep({
     );
   const canContinue =
     !loading &&
-    (selectedIds.some((id) => id !== "pending-website") ||
+    (selectedIds.some((id) => id !== "pending-channel") ||
       (newWebsiteUrl.trim().length > 0 && !exactWebsiteMatch));
 
   return (
@@ -950,7 +950,7 @@ function BatchStep({
   const availableChannels = channels.filter(
     (c) =>
       c.ownershipStatus !== "observed" &&
-      c.id !== "pending-website" &&
+      c.id !== "pending-channel" &&
       !batchRequests.some((r) => r.channelId === c.id),
   );
 

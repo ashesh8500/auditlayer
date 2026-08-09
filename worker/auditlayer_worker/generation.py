@@ -442,7 +442,9 @@ class HermesReportGenerator:
                                 f"validation with: {exc}. Return one valid JSON object now. "
                                 "The first character must be { and the root must contain only sections. "
                                 "Every heading, lede, callout, title, body, and value must be a JSON "
-                                "scalar string, never an object, array, boolean, or null."
+                                "scalar string, never an object, array, boolean, or null. Regenerate "
+                                "compactly from the supplied evidence: stay under 1,800 words and do "
+                                "not spend tokens explaining or restating the contract."
                             ),
                         },
                         {"role": "user", "content": prompt},
@@ -455,7 +457,10 @@ class HermesReportGenerator:
                     ),
                     temperature=self.temperature,
                     stream=False,
-                    session_id=session_id,
+                    # A malformed first response must not drag its full session
+                    # history into the correction call. Regenerate from the
+                    # bounded prompt in a fresh tool-free context.
+                    session_id="",
                 )
                 total_tokens_in += retry_result.usage.tokens_in
                 total_tokens_out += retry_result.usage.tokens_out
@@ -475,7 +480,10 @@ class HermesReportGenerator:
                 raise fail(
                     "format_correction",
                     "structured_output_invalid",
-                    retryable=False,
+                    # Model formatting/truncation is transient. Preserve the
+                    # research checkpoint and let the bounded retry policy run
+                    # again instead of routing directly to founder review.
+                    retryable=True,
                     cause=correction_exc,
                 ) from correction_exc
             except Exception as correction_exc:  # noqa: BLE001

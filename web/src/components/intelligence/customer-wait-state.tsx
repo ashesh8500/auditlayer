@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, Loader2, CheckCircle2 } from "lucide-react";
+import { BookOpen, CircleDashed, Loader2, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { projectCustomerStatus, CUSTOMER_PHASE_LABELS } from "@/lib/intelligence/client-status";
+import { progressStepState } from "@/lib/intelligence/progress-step-state";
 import type { CustomerAuditPhase, CustomerAuditTerminal } from "@/lib/intelligence/types";
 import type { AuditStatus } from "@/lib/domain";
 
@@ -81,6 +82,10 @@ export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitSt
   const effectivePhase: CustomerAuditPhase = delayedHard
     ? "delayed"
     : customerStatus.phase;
+  const stepStates = progressStepState(
+    effectivePhase,
+    customerStatus.terminal,
+  );
 
   const poll = useCallback(async () => {
     if (pollRef.current) return;
@@ -114,17 +119,22 @@ export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitSt
       <nav aria-label="Audit phases" className="mx-auto max-w-lg">
         <ol className="flex items-center justify-between gap-2">
           {PHASE_ORDER.map((phase, i) => {
-            const phaseIndex = PHASE_ORDER.indexOf(effectivePhase);
-            const isCompleted = i < phaseIndex || isTerminal;
-            const isCurrent = i === phaseIndex && !isTerminal;
-            const isDelayed = effectivePhase === "delayed" && i === phaseIndex;
+            const visualState = stepStates[i];
+            const isCompleted = visualState === "complete";
+            const isCurrent = visualState === "current";
+            const isStopped = visualState === "stopped";
+            const isDelayed = effectivePhase === "delayed" && isCurrent;
 
             return (
-              <li key={phase} className="flex flex-1 flex-col items-center gap-2">
+              <li key={phase} className="relative flex flex-1 flex-col items-center gap-2">
                 <span
-                  className={`grid size-10 place-items-center rounded-full border-2 transition-all duration-500 ${
+                  className={`relative z-10 grid size-10 place-items-center rounded-full border-2 transition-all duration-500 ${
                     isCompleted
                       ? "border-[color:var(--green)] bg-[color:var(--green)] text-white"
+                      : isStopped
+                        ? customerStatus.terminal === "needs_review"
+                          ? "border-[color:var(--amber)] bg-[color:var(--amber-muted)] text-[color:var(--amber)]"
+                          : "border-[color:var(--red)] bg-[color:var(--red-muted)] text-[color:var(--red)]"
                       : isDelayed
                         ? "border-[color:var(--amber)] bg-[color:var(--amber-muted)] text-[color:var(--amber)]"
                         : isCurrent
@@ -135,6 +145,8 @@ export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitSt
                 >
                   {isCompleted ? (
                     <CheckCircle2 className="size-5" />
+                  ) : isStopped ? (
+                    <CircleDashed className="size-5" />
                   ) : isCurrent || isDelayed ? (
                     <Loader2 className={`size-5 ${isDelayed ? "" : "animate-spin"}`} />
                   ) : (
@@ -145,7 +157,7 @@ export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitSt
                   className={`text-xs font-medium ${
                     isCompleted
                       ? "text-[color:var(--green)]"
-                      : isCurrent || isDelayed
+                      : isCurrent || isDelayed || isStopped
                         ? "text-foreground"
                         : "text-muted-foreground"
                   }`}
@@ -154,14 +166,11 @@ export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitSt
                 </span>
                 {i < PHASE_ORDER.length - 1 && (
                   <div
-                    className={`absolute left-[calc(50%+2.5rem)] hidden h-0.5 w-[calc(100%-5rem)] sm:block ${
+                    className={`absolute left-[calc(50%+1.25rem)] top-5 hidden h-0.5 w-[calc(100%-2.5rem)] sm:block ${
                       isCompleted
                         ? "bg-[color:var(--green)]/30"
-                        : isCurrent
-                          ? "bg-border"
-                          : "bg-border/40"
+                        : "bg-border/40"
                     }`}
-                    style={{ marginTop: "1.25rem" }}
                     aria-hidden="true"
                   />
                 )}
@@ -189,7 +198,11 @@ export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitSt
             </p>
           </div>
         ) : customerStatus.terminal ? (
-          <TerminalState terminal={customerStatus.terminal} auditId={auditId} />
+          <TerminalState
+            terminal={customerStatus.terminal}
+            auditId={auditId}
+            phase={effectivePhase}
+          />
         ) : (
           <div className="space-y-4 rounded-[var(--radius)] border border-border bg-card px-6 py-8 shadow-[var(--shadow)]">
             <div className="mx-auto grid size-14 place-items-center rounded-full bg-[color:var(--accent-muted)]">
@@ -226,9 +239,11 @@ export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitSt
 
 function TerminalState({
   terminal,
+  phase,
 }: {
   terminal: CustomerAuditTerminal;
   auditId: string;
+  phase: CustomerAuditPhase;
 }) {
   switch (terminal) {
     case "ready":
@@ -265,8 +280,9 @@ function TerminalState({
           </div>
           <h2 className="text-lg font-semibold">Audit blocked</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            This audit needs a founder review before it can run. We&apos;ll reach out
-            if anything is needed.
+            {phase === "preparing"
+              ? "This audit needs a founder review before it can run. We'll reach out if anything is needed."
+              : "Generation stopped before the report could be finalized. A founder is reviewing it; you don't need to take any action."}
           </p>
         </div>
       );
@@ -274,7 +290,7 @@ function TerminalState({
       return (
         <div className="space-y-4 rounded-[var(--radius)] border border-[color:var(--amber)]/30 bg-[color:var(--amber-muted)] px-6 py-8">
           <div className="mx-auto grid size-14 place-items-center rounded-full bg-[color:var(--amber)]/10">
-            <Loader2 className="size-6 text-[color:var(--amber)]" />
+            <CircleDashed className="size-6 text-[color:var(--amber)]" />
           </div>
           <h2 className="text-lg font-semibold">Awaiting founder review</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">

@@ -140,12 +140,57 @@ export function suggestChannelsForInput(
 
 export function inputLooksLikeWebsite(input: string): boolean {
   const t = input.trim().toLowerCase();
-  if (!t) return false;
+  if (!t || t.startsWith("@")) return false;
   if (t.includes(" ") && !t.includes(".")) return false;
-  return (
-    t.includes(".") ||
+  if (
     t.startsWith("http://") ||
     t.startsWith("https://") ||
     t.startsWith("www.")
-  );
+  ) {
+    return true;
+  }
+  if (!/^[a-z0-9.-]+$/i.test(t) || !t.includes(".")) return false;
+
+  // Dots are valid in Instagram usernames. Keep the platform detector's
+  // conservative domain heuristic here too: short suffixes look like TLDs,
+  // while a longer final segment (muskann.kaurr) is a social handle.
+  const lastSegment = t.split(".").pop() ?? "";
+  return lastSegment.length >= 2 && lastSegment.length <= 4;
+}
+
+export function manualChannelFromInput(
+  input: string,
+  subjectId: string,
+): ChannelSummary | null {
+  const raw = input.trim();
+  if (!raw) return null;
+  if (inputLooksLikeWebsite(raw)) {
+    const url = canonicalizeWebsiteLocator(raw);
+    if (!url) return null;
+    return {
+      id: "pending-channel",
+      platform: "website",
+      handle: "",
+      url,
+      ownershipStatus: "managed",
+      displayName: displayWebsiteHost(url),
+      avatarUrl: null,
+      connected: false,
+      subjectId: subjectId || "pending",
+    };
+  }
+
+  const handle = canonicalizeSocialLocator(raw);
+  if (!/^[a-z0-9._]{1,30}$/i.test(handle)) return null;
+  return {
+    id: "pending-channel",
+    platform: "instagram",
+    handle,
+    url: null,
+    ownershipStatus: "managed",
+    displayName: handle,
+    avatarUrl: null,
+    connected: false,
+    subjectId: subjectId || "pending",
+  };
 }

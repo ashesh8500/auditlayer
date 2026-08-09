@@ -120,28 +120,37 @@ export default async function AdminAuditDetail({
         <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           Report workspace
         </h2>
-        <div className="mt-3 grid items-start gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,0.8fr)]">
-          <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card">
-            {audit.status === "ready" && audit.report_path ? (
+        {audit.status === "ready" && audit.report_path ? (
+          <div className="mt-3 grid items-start gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,0.8fr)]">
+            <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card">
               <iframe
                 src={`/api/audits/${id}/report`}
                 title={`Audit report for @${audit.handle}`}
                 sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
                 className="h-[48rem] w-full bg-white"
               />
-            ) : (
-              <div className="grid h-56 place-items-center p-6 text-sm text-muted-foreground">
-                The report is not ready for review yet.
-              </div>
-            )}
+            </div>
+            <OperatorPanel
+              auditId={id}
+              configured={isOperatorConfigured()}
+              messages={operatorMessages ?? []}
+              jobs={jobs ?? []}
+            />
           </div>
-          <OperatorPanel
-            auditId={id}
-            configured={isOperatorConfigured()}
-            messages={operatorMessages ?? []}
-            jobs={jobs ?? []}
-          />
-        </div>
+        ) : (
+          <div className="mt-3 max-w-3xl">
+            <div className="mb-4 rounded-[var(--radius)] border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+              The report is not ready for review yet. ALM can still discuss the
+              audit state, limitations, and recovery path.
+            </div>
+            <OperatorPanel
+              auditId={id}
+              configured={isOperatorConfigured()}
+              messages={operatorMessages ?? []}
+              jobs={jobs ?? []}
+            />
+          </div>
+        )}
       </section>
 
       <section className="mt-8">
