@@ -167,14 +167,19 @@ export async function sendOperatorMessage(
         Authorization: `Bearer ${process.env.ALM_OPERATOR_API_KEY}`,
         "Content-Type": "application/json",
         "Idempotency-Key": runId,
-        "X-Hermes-Session-Id": thread.hermes_session_id,
+        // Conversation continuity comes from the bounded database history below.
+        // A request-scoped Hermes session prevents the gateway from accumulating
+        // that same history again on every turn.
+        "X-Hermes-Session-Id": `operator-${runId}`,
       },
       body: JSON.stringify({
         model: "deepseek-v4-flash",
         stream: true,
         messages: [
           { role: "system", content: systemContext },
-          ...((history ?? []) as Array<{ role: string; content: string }>).slice(-12),
+          ...((history ?? []) as Array<{ role: string; content: string }>)
+            .slice(-8)
+            .map((entry) => ({ ...entry, content: entry.content.slice(0, 2000) })),
           { role: "user", content: message },
         ],
       }),
