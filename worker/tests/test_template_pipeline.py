@@ -270,6 +270,36 @@ def test_structured_report_enforces_prompt_size_limits_in_rendered_output(sample
     assert "x" * 361 not in html
     assert "word " * 65 not in html
 
+    payload["sections"][0]["lede"] = "valid"
+    payload["sections"][0]["items"][0]["body"] = "valid"
+    fenced_payload = f"{'word ' * 3_001}\n```json\n{json.dumps(payload)}\n```"
+    with pytest.raises(ValueError, match="3,000-word safety limit"):
+        assemble_structured_report_html(sample_audit, fenced_payload)
+
+
+def test_structured_report_fills_a_missing_roadmap_section_locally(sample_audit):
+    payload = json.loads(_complete_standard_payload())
+    payload["sections"] = [
+        section
+        for section in payload["sections"]
+        if section["heading"] != "Road to [Milestone]"
+    ]
+
+    html = assemble_structured_report_html(sample_audit, json.dumps(payload))
+
+    assert f"Road to {sample_audit.milestone_label}" in html
+
+
+def test_structured_report_keeps_unavailable_scores_truthful(sample_audit):
+    payload = json.loads(_complete_standard_payload())
+    for item in payload["sections"][0]["items"]:
+        item["value"] = "n/a"
+
+    html = assemble_structured_report_html(sample_audit, json.dumps(payload))
+
+    assert '<span class="sd-overall">N/A</span>' in html
+    assert '<span class="sd-value red">N/A</span>' in html
+
 
 def test_structured_report_computes_weighted_overall_score_locally(sample_audit):
     payload = json.loads(_complete_standard_payload())
