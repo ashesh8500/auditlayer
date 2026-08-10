@@ -105,6 +105,7 @@ function issueCounts(bundle: RunHealthBundle): {
   let critical = 0;
   let attention = 0;
   for (const h of [...bundle.reportAttempts, ...bundle.intelligenceRuns]) {
+    if (h.recovered) continue;
     if (criticalStates.has(h.state)) critical += 1;
     else if (attentionStates.has(h.state)) attention += 1;
   }
@@ -131,8 +132,8 @@ function AttemptRow({ h }: { h: ReportAttemptHealth }) {
     <li className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 py-3">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={toneFor(h.owner, h.state)}>
-            {statusLabel(h.owner, h.state)}
+          <Badge tone={h.recovered ? "success" : toneFor(h.owner, h.state)}>
+            {h.recovered ? "Recovered" : statusLabel(h.owner, h.state)}
           </Badge>
           {h.resumed && <Badge tone="accent">Resumed</Badge>}
           <span className="font-mono text-xs text-muted-foreground">
@@ -145,7 +146,9 @@ function AttemptRow({ h }: { h: ReportAttemptHealth }) {
           )}
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          {h.statusKnown ? `status ${h.status}` : `raw status ${JSON.stringify(h.status)}`}
+          {h.statusKnown
+            ? `${h.recovered ? "historical " : ""}status ${h.status}`
+            : `raw status ${JSON.stringify(h.status)}`}
           {" · "}
           age {formatRunAge(h.ageMs)}
           {h.errorCode ? ` · error ${h.errorCode}` : ""}
@@ -165,8 +168,8 @@ function IntelligenceRow({ h }: { h: IntelligenceRunHealth }) {
     <li className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 py-3">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={toneFor(h.owner, h.state)}>
-            {statusLabel(h.owner, h.state)}
+          <Badge tone={h.recovered ? "success" : toneFor(h.owner, h.state)}>
+            {h.recovered ? "Recovered" : statusLabel(h.owner, h.state)}
           </Badge>
           {h.resumed && <Badge tone="accent">Resumed</Badge>}
           <span className="font-mono text-xs text-muted-foreground">
@@ -179,7 +182,9 @@ function IntelligenceRow({ h }: { h: IntelligenceRunHealth }) {
           )}
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          {h.statusKnown ? `status ${h.status}` : `raw status ${JSON.stringify(h.status)}`}
+          {h.statusKnown
+            ? `${h.recovered ? "historical " : ""}status ${h.status}`
+            : `raw status ${JSON.stringify(h.status)}`}
           {" · "}
           age {formatRunAge(h.ageMs)}
           {h.latencyMs !== null ? ` · latency ${h.latencyMs}ms` : ""}
@@ -223,8 +228,8 @@ export function AdminRunHealth({ bundle, className }: { bundle: RunHealthBundle;
           Delayed, blocked, needs-review, or unknown runs are surfaced below with recovery guidance.
         </ExperienceBanner>
       ) : (
-        <ExperienceBanner tone="success" title="All tracked runs are healthy">
-          No failed, crashed, delayed, or contradictory run records detected.
+        <ExperienceBanner tone="success" title="No current runs require founder action">
+          Recovered attempts remain visible below as history, without being counted as active work.
         </ExperienceBanner>
       )}
 

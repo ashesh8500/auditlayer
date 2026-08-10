@@ -40,6 +40,7 @@ function reportRow(overrides: Partial<ReportRunHealthRow> = {}): ReportRunHealth
     started_at: iso(2 * MIN),
     finished_at: null,
     updated_at: iso(1 * MIN),
+    audit: null,
     ...overrides,
   };
 }
@@ -110,6 +111,21 @@ describe("admin-run-health: report-attempt vocabulary", () => {
     expect(h.state).toBe("failed");
     expect(h.errorCode).toBe("provider_error");
     expect(h.correctionTip).toMatch(/audit review surface/);
+  });
+
+  it("treats a failed attempt as recovered when the audit is now ready", () => {
+    const h = projectReportAttempt(
+      reportRow({
+        status: "failed",
+        error_code: "report_finalization_failed",
+        finished_at: iso(1 * MIN),
+        audit: { status: "ready" },
+      }),
+      { nowMs: NOW_MS },
+    );
+    expect(h.state).toBe("failed");
+    expect(h.recovered).toBe(true);
+    expect(h.correctionTip).toMatch(/no founder action is required/i);
   });
 
   it("projects a crashed attempt", () => {
@@ -223,6 +239,32 @@ describe("admin-run-health: intelligence-run vocabulary", () => {
     });
     expect(h.state).toBe("failed");
     expect(h.correctionTip).toMatch(/runtime-budget telemetry/);
+  });
+
+  it("marks an older failed run recovered after a later completed run", () => {
+    const bundle = projectRunHealth(
+      {
+        reportAttempts: [],
+        intelligenceRuns: [
+          intelligenceRow({
+            id: "00000000-0000-4000-8000-000000000021",
+            status: "failed",
+            created_at: iso(8 * MIN),
+            updated_at: iso(7 * MIN),
+          }),
+          intelligenceRow({
+            id: "00000000-0000-4000-8000-000000000022",
+            status: "completed",
+            created_at: iso(2 * MIN),
+            updated_at: iso(1 * MIN),
+          }),
+        ],
+      },
+      { nowMs: NOW_MS },
+    );
+    expect(bundle.intelligenceRuns[1].state).toBe("failed");
+    expect(bundle.intelligenceRuns[1].recovered).toBe(true);
+    expect(bundle.intelligenceRuns[1].correctionTip).toMatch(/later completed/i);
   });
 
   it("projects a resumed run from cache_mode=resume", () => {

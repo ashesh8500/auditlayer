@@ -85,7 +85,7 @@ export default async function AdminHome({
       admin
         .from("report_generation_runs")
         .select(
-          "id, audit_id, status, error_code, cache_mode, evidence_items, started_at, finished_at, updated_at",
+          "id, audit_id, status, error_code, cache_mode, evidence_items, started_at, finished_at, updated_at, audit:audits(status)",
         )
         .order("started_at", { ascending: false })
         .limit(12),
