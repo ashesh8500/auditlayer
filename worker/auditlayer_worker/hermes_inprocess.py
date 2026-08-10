@@ -3,16 +3,139 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 import json
 from concurrent.futures import ThreadPoolExecutor
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Callable, Iterable
+from urllib.parse import parse_qs, quote_plus, unquote, urlparse
+from urllib.request import Request, urlopen
 
 from .hermes import ChatResult, Usage, _estimate_tokens
 from .hermes_runtime import resolve_agent_root
 from .config import WorkerSettings
 from .hermes_home_scope import HERMES_HOME_LOCK
+
+
+class _PublicSearchParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.results: list[dict[str, str]] = []
+        self._current: dict[str, str] | None = None
+        self._field: str | None = None
+        self._yahoo_text = False
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = dict(attrs)
+        classes = set((values.get("class") or "").split())
+        if tag == "a" and "result__a" in classes:
+            self._current = {"url": _unwrap_search_url(values.get("href") or "")}
+            self._field = "title"
+        elif tag == "a" and "result__snippet" in classes and self._current is not None:
+            self._field = "description"
+        elif tag == "a" and values.get("data-matarget") == "algo":
+            self._current = {"url": _unwrap_search_url(values.get("href") or "")}
+        elif tag == "h3" and self._current is not None:
+            self._field = "title"
+        elif tag == "div" and "compText" in classes:
+            self._yahoo_text = True
+        elif tag == "p" and self._yahoo_text and self._current is not None:
+            self._field = "description"
+
+    def handle_data(self, data: str) -> None:
+        if self._current is not None and self._field is not None:
+            self._current[self._field] = self._current.get(self._field, "") + data
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "div" and self._yahoo_text:
+            self._yahoo_text = False
+        if tag not in {"a", "h3", "p"} or self._current is None or self._field is None:
+            return
+        field = self._field
+        self._current[field] = " ".join(self._current.get(field, "").split())
+        self._field = None
+        if field != "description":
+            return
+        if self._current.get("url") and self._current.get("description"):
+            self._current["title"] = self._current.get("title") or urlparse(
+                self._current["url"]
+            ).netloc
+            self._current["evidence_mode"] = "public_search_index"
+            self.results.append(self._current)
+        self._current = None
+
+
+def _unwrap_search_url(value: str) -> str:
+    if value.startswith("//"):
+        value = f"https:{value}"
+    parsed = urlparse(value)
+    if parsed.netloc.endswith("duckduckgo.com"):
+        value = (parse_qs(parsed.query).get("uddg") or [""])[0]
+        parsed = urlparse(value)
+    elif parsed.netloc.endswith("search.yahoo.com"):
+        match = re.search(r"/RU=([^/]+)/RK=", parsed.path)
+        value = unquote(match.group(1)) if match else ""
+        parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.username:
+        return ""
+    return value
+
+
+def _parse_public_search_html(content: str) -> list[dict[str, str]]:
+    parser = _PublicSearchParser()
+    parser.feed(content)
+    parser.close()
+    return parser.results
+
+
+def _public_search_index(queries: tuple[str, ...]) -> list[dict[str, str]]:
+    """Use a bounded public index when managed search credentials are unavailable."""
+    import logging
+
+    def fetch(query: str) -> list[dict[str, str]]:
+        request = Request(
+            f"https://search.yahoo.com/search?p={quote_plus(query)}",
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "Chrome/126 Safari/537.36"
+                ),
+                "Accept": "text/html,application/xhtml+xml",
+            },
+        )
+        try:
+            with urlopen(request, timeout=12) as response:  # noqa: S310 - fixed HTTPS host
+                content = response.read(500_001)
+            if len(content) > 500_000:
+                return []
+            return _parse_public_search_html(content.decode("utf-8", "replace"))[:5]
+        except Exception as exc:  # noqa: BLE001 - public index degrades independently
+            logging.getLogger("auditlayer").warning(
+                "public search index query failed safely: %s", type(exc).__name__
+            )
+            return []
+
+    with ThreadPoolExecutor(max_workers=len(queries)) as pool:
+        batches = list(pool.map(fetch, queries))
+    found: list[dict[str, str]] = []
+    seen_urls: set[str] = set()
+    for batch in batches:
+        for item in batch:
+            url = item["url"]
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            found.append(
+                {
+                    "url": url[:500],
+                    "title": item["title"][:500],
+                    "description": item["description"][:2500],
+                    "evidence_mode": "public_search_index",
+                }
+            )
+    return found[:8]
 
 
 class InProcessHermesClient:
@@ -127,8 +250,12 @@ class InProcessHermesClient:
                     }
                 )
         if not verified:
+            verified.extend(_public_search_index(queries))
+        if not verified:
             import logging
-            logging.getLogger("auditlayer").warning("collect_research: no web evidence found — proceeding without web research")
+            logging.getLogger("auditlayer").warning(
+                "collect_research: no web evidence found — proceeding without web research"
+            )
         bounded = verified[:8]
         payload = json.dumps({"web": bounded}, ensure_ascii=False)
         while len(payload) > 12000 and bounded:

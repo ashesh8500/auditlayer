@@ -15,6 +15,7 @@ import pytest
 
 from auditlayer_worker.config import WorkerSettings
 from auditlayer_worker.hermes_inprocess import InProcessHermesClient
+import auditlayer_worker.hermes_inprocess as hermes_inprocess
 
 
 # ---------------------------------------------------------------------------
@@ -119,6 +120,44 @@ class TestHermesHomeScoping:
 
 
 class TestIterationBudget:
+    def test_public_search_parser_returns_indexed_instagram_evidence(self):
+        html = """
+        <div class="result">
+          <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.instagram.com%2Freel%2FABC%2F&amp;rut=x">Instagram</a>
+          <a class="result__snippet">57 likes, 29 comments - hungerdeck on June 28, 2026: High-protein meals.</a>
+        </div>
+        """
+
+        results = hermes_inprocess._parse_public_search_html(html)
+
+        assert results == [
+            {
+                "url": "https://www.instagram.com/reel/ABC/",
+                "title": "Instagram",
+                "description": (
+                    "57 likes, 29 comments - hungerdeck on June 28, 2026: "
+                    "High-protein meals."
+                ),
+                "evidence_mode": "public_search_index",
+            }
+        ]
+
+    def test_public_search_parser_accepts_yahoo_index_results(self):
+        html = """
+        <li><div class="algo"><a data-matarget="algo"
+          href="https://r.search.yahoo.com/x/RU=https%3a%2f%2fwww.instagram.com%2freel%2fABC%2f/RK=2/RS=x">
+          <h3><span>Instagram</span></h3></a>
+          <div class="compText"><p>6 likes, 0 comments - <b>hungerdeck</b> on August 10, 2026.</p></div>
+        </div></li>
+        """
+
+        results = hermes_inprocess._parse_public_search_html(html)
+
+        assert results[0]["url"] == "https://www.instagram.com/reel/ABC/"
+        assert results[0]["title"] == "Instagram"
+        assert "6 likes, 0 comments - hungerdeck" in results[0]["description"]
+        assert results[0]["evidence_mode"] == "public_search_index"
+
     def test_bounded_research_uses_shared_web_home_and_restores_account_home(
         self, settings, monkeypatch
     ):
@@ -144,6 +183,10 @@ class TestIterationBudget:
         assert os.environ["HERMES_HOME"] == "/opt/alm/hermes/accounts/customer"
 
     def test_bounded_research_gracefully_handles_failed_searches(self, settings, monkeypatch):
+        monkeypatch.setattr(
+            "auditlayer_worker.hermes_inprocess._public_search_index",
+            lambda _queries: [],
+        )
         monkeypatch.setitem(
             sys.modules,
             "model_tools",
@@ -160,7 +203,51 @@ class TestIterationBudget:
         parsed = json.loads(result)
         assert parsed["web"] == []  # empty, not crash
 
+    def test_bounded_research_uses_public_index_when_managed_search_is_unavailable(
+        self, settings, monkeypatch
+    ):
+        monkeypatch.setitem(
+            sys.modules,
+            "model_tools",
+            SimpleNamespace(
+                handle_function_call=lambda *_args, **_kwargs: (
+                    '{"error": "Web tools are not configured"}'
+                )
+            ),
+        )
+        monkeypatch.setattr(
+            "auditlayer_worker.hermes_inprocess._public_search_index",
+            lambda _queries: [
+                {
+                    "url": "https://www.instagram.com/reel/example/",
+                    "title": "Instagram",
+                    "description": "57 likes, 29 comments - creator: public post summary",
+                    "evidence_mode": "public_search_index",
+                }
+            ],
+            raising=False,
+        )
+        client = InProcessHermesClient(settings)
+
+        result = client.collect_research(
+            SimpleNamespace(id="audit-1", handle="creator", platform="instagram")
+        )
+
+        parsed = json.loads(result)
+        assert parsed["web"] == [
+            {
+                "url": "https://www.instagram.com/reel/example/",
+                "title": "Instagram",
+                "description": "57 likes, 29 comments - creator: public post summary",
+                "evidence_mode": "public_search_index",
+            }
+        ]
+
     def test_bounded_research_gracefully_handles_search_exceptions(self, settings, monkeypatch):
+        monkeypatch.setattr(
+            "auditlayer_worker.hermes_inprocess._public_search_index",
+            lambda _queries: [],
+        )
         def fail(*_args, **_kwargs):
             raise RuntimeError("provider unavailable")
 
