@@ -11,6 +11,9 @@ from auditlayer_worker.core import AuditRecord, REPORT_SECTIONS
 from auditlayer_worker.generation import (
     GenerationStageError,
     HermesReportGenerator,
+    _append_evidence_sources,
+    _filter_evidence_payload,
+    _indexed_instagram_metrics,
     _safe_evidence_sources,
 )
 from auditlayer_worker.hermes import ChatResult, Usage
@@ -67,8 +70,16 @@ class _Client:
         return json.dumps(
             {
                 "web": [
-                    {"url": "https://example.com/a", "title": "A", "description": "Evidence A"},
-                    {"url": "https://example.com/b", "title": "B", "description": "Evidence B"},
+                    {
+                        "url": "https://www.instagram.com/reel/a/",
+                        "title": "Example on Instagram",
+                        "description": "Evidence A for example on Instagram",
+                    },
+                    {
+                        "url": "https://www.instagram.com/reel/b/",
+                        "title": "Example on Instagram",
+                        "description": "Evidence B for example on Instagram",
+                    },
                 ]
             }
         )
@@ -111,7 +122,7 @@ def test_success_records_bounded_stage_metrics() -> None:
     assert set(result.stage_timings) >= {"research", "analysis", "validation"}
     assert all(value >= 0 for value in result.stage_timings.values())
     assert 'data-source-kind="public_research"' in result.html
-    assert "https://example.com/a" in result.html
+    assert "https://www.instagram.com/reel/a/" in result.html
 
 
 def test_format_retry_is_bounded_and_accounted() -> None:
@@ -209,11 +220,104 @@ def test_citation_projection_rejects_script_credentials_and_duplicates() -> None
     sources = _safe_evidence_sources(
         {
             "web": [
-                {"title": "Safe", "url": "https://example.com/report"},
+                {
+                    "title": "Safe",
+                    "url": "https://example.com/report",
+                    "evidence_mode": "public_search_index",
+                },
                 {"title": "Duplicate", "url": "https://example.com/report"},
                 {"title": "Script", "url": "javascript:alert(1)"},
                 {"title": "Credentials", "url": "https://user@example.com/private"},
             ]
         }
     )
-    assert sources == [("Safe", "https://example.com/report")]
+    assert sources == [
+        ("Safe", "https://example.com/report", "public_search_index")
+    ]
+
+
+def test_public_index_provenance_survives_visible_citation_projection() -> None:
+    html = _append_evidence_sources(
+        "<html><body></body></html>",
+        [("Indexed result", "https://example.com/result", "public_search_index")],
+        connected_metrics=False,
+    )
+
+    assert 'data-source-kind="public_search_index"' in html
+    assert 'data-source-kind="public_research"' not in html
+    assert "Public search index snapshot" in html
+
+
+def test_cached_evidence_is_filtered_before_prompt_or_citation_use() -> None:
+    filtered = _filter_evidence_payload(
+        {
+            "web": [
+                {
+                    "url": "https://github.com/other/hungerdeck-tools",
+                    "title": "HungerDeck software",
+                    "description": "A different software project",
+                },
+                {
+                    "url": "https://www.instagram.com/reel/ABC/",
+                    "title": "Instagram",
+                    "description": "57 likes - hungerdeck on Instagram",
+                    "evidence_mode": "public_search_index",
+                },
+            ]
+        },
+        handle="hungerdeck",
+        platform="instagram",
+    )
+
+    assert [row["url"] for row in filtered["web"]] == [
+        "https://www.instagram.com/reel/ABC/"
+    ]
+
+
+def test_filtered_cache_not_original_payload_reaches_model_prompt() -> None:
+    client = _Client([_payload()])
+    cache = json.dumps(
+        {
+            "web": [
+                {
+                    "url": "https://github.com/other/hungerdeck-tools",
+                    "title": "HungerDeck software",
+                    "description": "UNRELATED-MARKER from another project",
+                }
+            ]
+        }
+    )
+
+    result = _generator(client).generate(
+        _audit(), lambda *_args: None, research_cache=cache
+    )
+
+    prompt = client.calls[0]["messages"][1]["content"]
+    assert "UNRELATED-MARKER" not in prompt
+    assert '"web": []' in prompt
+    assert result.evidence_items == 0
+    assert result.research_cache == '{"web": []}'
+
+
+def test_indexed_instagram_metrics_require_attributable_public_index_evidence() -> None:
+    payload = {
+        "web": [
+            {
+                "url": "https://www.instagram.com/reel/ABC/",
+                "title": "Instagram",
+                "description": "57 likes, 29 comments - hungerdeck on June 28, 2026.",
+                "evidence_mode": "public_search_index",
+            },
+            {
+                "url": "https://example.com/generic",
+                "title": "Generic engagement calculator",
+                "description": "2.7% engagement and 99,999 followers",
+                "evidence_mode": "public_search_index",
+            },
+        ]
+    }
+
+    assert _indexed_instagram_metrics(payload, "hungerdeck") == {
+        "likes": "57",
+        "comments": "29",
+    }

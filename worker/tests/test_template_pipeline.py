@@ -270,13 +270,57 @@ def test_unconnected_instagram_report_marks_public_index_metrics_and_explains_th
     metrics["items"][0]["title"] = "57 likes"
     metrics["items"][0]["body"] = "Indexed post snapshot"
 
-    html = assemble_structured_report_html(sample_audit, json.dumps(payload))
+    html = assemble_structured_report_html(
+        sample_audit,
+        json.dumps(payload),
+        indexed_instagram_metrics={"likes": "57"},
+    )
 
     assert "57 likes*" in html
     assert "* Data-access note" in html
     assert "publicly indexed profile and content signals" in html
     assert "not live account analytics" in html
     assert "unavailable private metrics are shown as N/A" in html
+
+
+def test_unconnected_instagram_report_suppresses_unproven_private_metrics(sample_audit):
+    payload = json.loads(_complete_standard_payload())
+    metrics = next(
+        section for section in payload["sections"] if section["heading"] == "Key Metrics"
+    )
+    metrics["items"] = [
+        {"title": "2.7%", "body": "Engagement rate green", "value": ""},
+        {"title": "12,400", "body": "Followers green", "value": ""},
+    ]
+
+    html = assemble_structured_report_html(
+        sample_audit,
+        json.dumps(payload),
+        indexed_instagram_metrics={"followers": "12,400"},
+    )
+
+    assert "12,400*" in html
+    assert "2.7%" not in html
+    assert "Engagement rate</div>" in html
+    assert ">N/A</div>" in html
+
+
+def test_non_instagram_key_metrics_keep_metric_grid(sample_audit):
+    payload = json.loads(_complete_standard_payload())
+    metrics = next(
+        section for section in payload["sections"] if section["heading"] == "Key Metrics"
+    )
+    metrics["items"] = [
+        {"title": "14K", "body": "Subscribers green", "value": ""},
+        {"title": "8.2K", "body": "Average views amber", "value": ""},
+    ]
+    youtube_audit = replace(sample_audit, platform="youtube")
+
+    html = assemble_structured_report_html(youtube_audit, json.dumps(payload))
+
+    section = html.split("<h2>Key Metrics</h2>", 1)[1].split("</section>", 1)[0]
+    assert '<div class="metric-grid">' in section
+    assert '<div class="rec-card">' not in section
 
 
 def test_structured_report_enforces_prompt_size_limits_in_rendered_output(sample_audit):
@@ -495,7 +539,17 @@ def test_standard_generator_uses_bounded_single_pass(sample_audit):
 
         def collect_research(self, audit):
             self.research_calls += 1
-            return "Bounded verified evidence from three web searches."
+            return json.dumps(
+                {
+                    "web": [
+                        {
+                            "url": "https://www.instagram.com/hemalpatelphd/",
+                            "title": "Hemal Patel PhD on Instagram",
+                            "description": "Bounded verified evidence for hemalpatelphd on Instagram.",
+                        }
+                    ]
+                }
+            )
 
         def chat(self, **kwargs):
             self.calls.append(kwargs)
@@ -638,7 +692,17 @@ def test_cached_evidence_uses_local_section_assembly(sample_audit):
     result = generator.generate(
         sample_audit,
         lambda _phase, _detail: None,
-        research_cache="Previously verified evidence",
+        research_cache=json.dumps(
+            {
+                "web": [
+                    {
+                        "url": "https://www.instagram.com/hemalpatelphd/",
+                        "title": "Hemal Patel PhD on Instagram",
+                        "description": "Previously verified evidence for hemalpatelphd on Instagram.",
+                    }
+                ]
+            }
+        ),
     )
 
     assert len(client.calls) == 1

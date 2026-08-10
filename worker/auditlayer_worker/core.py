@@ -912,11 +912,39 @@ def _instagram_metric_block(ig_metrics: Any) -> str:
     )
 
 
+def _public_index_instagram_metric_block(
+    indexed_metrics: dict[str, str] | None,
+) -> str:
+    """Render only metric snapshots extracted from attributable index evidence."""
+    snapshots = indexed_metrics or {}
+    metrics = (
+        ("Followers", f"{snapshots['followers']}*" if snapshots.get("followers") else "N/A"),
+        (
+            "Indexed post likes",
+            f"{snapshots['likes']} likes*" if snapshots.get("likes") else "N/A",
+        ),
+        (
+            "Indexed post comments",
+            f"{snapshots['comments']} comments*" if snapshots.get("comments") else "N/A",
+        ),
+        ("Engagement rate", "N/A"),
+    )
+    cards = "".join(
+        '<div class="metric-card"><div class="value">{}</div>'
+        '<div class="label">{}</div></div>'.format(
+            html_lib.escape(value), html_lib.escape(label)
+        )
+        for label, value in metrics
+    )
+    return f'<div class="metric-grid">{cards}</div>'
+
+
 def assemble_structured_report_html(
     audit: AuditRecord,
     model_content: str,
     *,
     ig_metrics: Any = None,
+    indexed_instagram_metrics: dict[str, str] | None = None,
 ) -> str:
     """Validate report JSON and render heading-specific, escaped HTML locally."""
     payload = _extract_structured_payload(model_content)
@@ -994,8 +1022,18 @@ def assemble_structured_report_html(
         lede = _structured_text(section.get("lede"), "lede", 360)
         esc = html_lib.escape
         parts = [f"<section><h2>{esc(heading)}</h2>"]
-        connected = heading == "Key Metrics" and ig_metrics is not None
-        parts.append(_instagram_metric_block(ig_metrics) if connected else f"<p>{esc(lede)}</p>")
+        instagram_key_metrics = (
+            heading == "Key Metrics" and audit.platform.lower() == "instagram"
+        )
+        connected = instagram_key_metrics and ig_metrics is not None
+        if instagram_key_metrics:
+            parts.append(
+                _instagram_metric_block(ig_metrics)
+                if connected
+                else _public_index_instagram_metric_block(indexed_instagram_metrics)
+            )
+        else:
+            parts.append(f"<p>{esc(lede)}</p>")
 
         items = section.get("items", [])
         if not isinstance(items, list) or len(items) > 10:  # Creative Board can have 10 ideas
@@ -1032,20 +1070,25 @@ def assemble_structured_report_html(
             for title, body, _ in clean_items:
                 parts.append(f'<div class="sw-card {kind}"><div class="sw-label">{esc(title)}</div><p>{esc(body)}</p></div>')
             parts.append("</div>")
-        elif not connected and heading == "Key Metrics":
+        elif instagram_key_metrics:
+            # Instagram metrics are deterministically owned above. Model-authored
+            # metric values are never rendered without connected or indexed proof.
+            pass
+        elif heading == "Key Metrics":
             if clean_items:
                 parts.append('<div class="metric-grid">')
-                for title, body, value in clean_items:
-                    color = "red" if "red" in (body or "").lower() else "amber" if "amber" in (body or "").lower() else "green"
-                    display_title = title
-                    if (
-                        audit.platform.lower() == "instagram"
-                        and ig_metrics is None
-                        and title.strip().upper() != "N/A"
-                        and not title.rstrip().endswith("*")
-                    ):
-                        display_title = f"{title}*"
-                    parts.append(f'<div class="metric-card"><div class="value {color}">{esc(display_title)}</div><div class="label">{esc(body)}</div></div>')
+                for title, body, _ in clean_items:
+                    color = (
+                        "red"
+                        if "red" in body.lower()
+                        else "amber"
+                        if "amber" in body.lower()
+                        else "green"
+                    )
+                    parts.append(
+                        f'<div class="metric-card"><div class="value {color}">'
+                        f"{esc(title)}</div><div class=\"label\">{esc(body)}</div></div>"
+                    )
                 parts.append("</div>")
         elif not connected and heading == "Content Calendar & Creative Board":
             pillars = ("Educational & Strategy", "Portfolio & Proof", "Engagement & Community", "Growth & Reach")
@@ -1087,13 +1130,13 @@ def assemble_structured_report_html(
                 if not isinstance(row, list) or len(row) != len(clean_headers):
                     raise ValueError("Structured report table row is invalid")
                 clean_rows.append([_structured_text(value, "table cell", 120) for value in row])
-            if not connected:
+            if not instagram_key_metrics:
                 render_table(parts, heading, clean_headers, clean_rows)
 
         callout = section.get("callout")
         if callout is not None:
             clean_callout = _structured_text(callout, "callout", 240)
-            if not connected:
+            if not instagram_key_metrics:
                 parts.append(f'<div class="callout accent"><p>{esc(clean_callout)}</p></div>')
         parts.append("</section>")
         rendered.append("".join(parts))

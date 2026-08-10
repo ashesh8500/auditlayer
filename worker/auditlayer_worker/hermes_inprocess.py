@@ -6,7 +6,9 @@ import os
 import re
 import sys
 import json
-from concurrent.futures import ThreadPoolExecutor
+import time
+import multiprocessing
+from concurrent.futures import ThreadPoolExecutor, wait
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Callable, Iterable
@@ -17,6 +19,10 @@ from .hermes import ChatResult, Usage, _estimate_tokens
 from .hermes_runtime import resolve_agent_root
 from .config import WorkerSettings
 from .hermes_home_scope import HERMES_HOME_LOCK
+
+
+RESEARCH_TOTAL_SECONDS = 20.0
+MANAGED_SEARCH_SECONDS = 10.0
 
 
 class _PublicSearchParser(HTMLParser):
@@ -90,11 +96,75 @@ def _parse_public_search_html(content: str) -> list[dict[str, str]]:
     return parser.results
 
 
-def _public_search_index(queries: tuple[str, ...]) -> list[dict[str, str]]:
+def _is_subject_relevant(
+    item: dict[str, str], handle: str, platform: str
+) -> bool:
+    """Require explicit subject attribution before accepting index evidence."""
+    normalized_handle = handle.strip().lstrip("@").lower()
+    if not normalized_handle:
+        return False
+    text = f"{item.get('title', '')} {item.get('description', '')}".lower()
+    parsed = urlparse(item.get("url") or "")
+    normalized_platform = platform.strip().lower()
+    expected_host = {
+        "instagram": "instagram.com",
+        "youtube": "youtube.com",
+        "tiktok": "tiktok.com",
+        "x": "x.com",
+        "twitter": "x.com",
+    }.get(normalized_platform)
+    host = (parsed.hostname or "").lower()
+    host_matches = bool(
+        expected_host
+        and (host == expected_host or host.endswith(f".{expected_host}"))
+    )
+    handle_in_text = bool(
+        re.search(rf"(?<![\w.])@?{re.escape(normalized_handle)}(?![\w.])", text)
+    )
+    platform_terms = {
+        "instagram": ("instagram",),
+        "youtube": ("youtube",),
+        "tiktok": ("tiktok",),
+        "x": ("twitter", " x.com"),
+        "twitter": ("twitter", " x.com"),
+    }.get(normalized_platform, (normalized_platform,))
+    if handle_in_text and (
+        host_matches or any(term and term in text for term in platform_terms)
+    ):
+        return True
+    path_parts = {unquote(part).strip("@").lower() for part in parsed.path.split("/")}
+    return host_matches and normalized_handle in path_parts
+
+
+def _read_bounded_response(response, *, deadline: float, max_bytes: int) -> bytes:
+    """Read in chunks while enforcing a response-wide monotonic deadline."""
+    chunks: list[bytes] = []
+    total = 0
+    while time.monotonic() < deadline and total <= max_bytes:
+        chunk = response.read(min(64 * 1024, max_bytes + 1 - total))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        total += len(chunk)
+    return b"" if total > max_bytes else b"".join(chunks)
+
+
+def _public_search_index(
+    queries: tuple[str, ...],
+    *,
+    handle: str = "",
+    platform: str = "",
+    deadline: float | None = None,
+) -> list[dict[str, str]]:
     """Use a bounded public index when managed search credentials are unavailable."""
     import logging
 
+    total_deadline = deadline or (time.monotonic() + 12.0)
+
     def fetch(query: str) -> list[dict[str, str]]:
+        fetch_deadline = min(total_deadline, time.monotonic() + 10.0)
+        if fetch_deadline <= time.monotonic():
+            return []
         request = Request(
             f"https://search.yahoo.com/search?p={quote_plus(query)}",
             headers={
@@ -106,9 +176,12 @@ def _public_search_index(queries: tuple[str, ...]) -> list[dict[str, str]]:
             },
         )
         try:
-            with urlopen(request, timeout=12) as response:  # noqa: S310 - fixed HTTPS host
-                content = response.read(500_001)
-            if len(content) > 500_000:
+            timeout = min(2.0, max(0.1, fetch_deadline - time.monotonic()))
+            with urlopen(request, timeout=timeout) as response:  # noqa: S310 - fixed HTTPS host
+                content = _read_bounded_response(
+                    response, deadline=fetch_deadline, max_bytes=500_000
+                )
+            if not content:
                 return []
             return _parse_public_search_html(content.decode("utf-8", "replace"))[:5]
         except Exception as exc:  # noqa: BLE001 - public index degrades independently
@@ -117,14 +190,21 @@ def _public_search_index(queries: tuple[str, ...]) -> list[dict[str, str]]:
             )
             return []
 
-    with ThreadPoolExecutor(max_workers=len(queries)) as pool:
-        batches = list(pool.map(fetch, queries))
+    pool = ThreadPoolExecutor(max_workers=len(queries))
+    futures = [pool.submit(fetch, query) for query in queries]
+    completed, pending = wait(
+        futures, timeout=max(0.0, total_deadline - time.monotonic())
+    )
+    batches = [future.result() for future in futures if future in completed]
+    for future in pending:
+        future.cancel()
+    pool.shutdown(wait=False, cancel_futures=True)
     found: list[dict[str, str]] = []
     seen_urls: set[str] = set()
     for batch in batches:
         for item in batch:
             url = item["url"]
-            if url in seen_urls:
+            if url in seen_urls or not _is_subject_relevant(item, handle, platform):
                 continue
             seen_urls.add(url)
             found.append(
@@ -135,7 +215,88 @@ def _public_search_index(queries: tuple[str, ...]) -> list[dict[str, str]]:
                     "evidence_mode": "public_search_index",
                 }
             )
-    return found[:8]
+    return found
+
+
+def _managed_search_process(queries: tuple[str, ...], audit_id: str, sender) -> None:
+    """Run managed searches in a killable child process."""
+    try:
+        from model_tools import handle_function_call  # type: ignore[import-not-found]
+
+        def search(query: str) -> str:
+            try:
+                return handle_function_call(
+                    "web_search",
+                    {"query": query, "limit": 5},
+                    task_id=f"audit-{audit_id}-research",
+                    user_task="bounded public account research",
+                    enabled_toolsets=["web"],
+                )
+            except Exception as exc:  # noqa: BLE001 - each source degrades independently
+                import logging
+
+                logging.getLogger("auditlayer").warning(
+                    "collect_research query failed safely: %s", type(exc).__name__
+                )
+                return json.dumps({"success": False, "data": {"web": []}})
+
+        with ThreadPoolExecutor(max_workers=len(queries)) as pool:
+            results = list(pool.map(search, queries))
+        sender.send(results)
+    except Exception as exc:  # noqa: BLE001 - process boundary degrades safely
+        import logging
+
+        logging.getLogger("auditlayer").warning(
+            "managed research process failed safely: %s", type(exc).__name__
+        )
+        try:
+            sender.send([])
+        except (BrokenPipeError, EOFError, OSError):
+            pass
+    finally:
+        sender.close()
+
+
+def _managed_search_results(
+    queries: tuple[str, ...], audit_id: str, *, deadline: float
+) -> list[str]:
+    """Isolate managed search so a stalled tool call can be terminated safely."""
+    context = multiprocessing.get_context("fork")
+    receiver, sender = context.Pipe(duplex=False)
+    process = context.Process(
+        target=_managed_search_process,
+        args=(queries, audit_id, sender),
+        daemon=True,
+    )
+    with HERMES_HOME_LOCK:
+        account_home = os.environ.get("HERMES_HOME")
+        os.environ["HERMES_HOME"] = str(Path.home() / ".hermes")
+        try:
+            process.start()
+        finally:
+            if account_home is None:
+                os.environ.pop("HERMES_HOME", None)
+            else:
+                os.environ["HERMES_HOME"] = account_home
+    sender.close()
+    results: list[str] = []
+    timeout = max(0.0, deadline - time.monotonic())
+    try:
+        if receiver.poll(timeout):
+            received = receiver.recv()
+            if isinstance(received, list):
+                results = [str(item) for item in received]
+    except (EOFError, OSError):
+        results = []
+    finally:
+        receiver.close()
+        if process.is_alive():
+            process.terminate()
+        process.join(timeout=1.0)
+        if process.is_alive():
+            process.kill()
+            process.join(timeout=1.0)
+    return results[:8]
 
 
 class InProcessHermesClient:
@@ -191,8 +352,7 @@ class InProcessHermesClient:
 
     def collect_research(self, audit) -> str:
         """Run a fixed, parallel web sweep without an open-ended model loop."""
-        from model_tools import handle_function_call  # type: ignore[import-not-found]
-
+        research_deadline = time.monotonic() + RESEARCH_TOTAL_SECONDS
         handle = str(audit.handle).strip().lstrip("@")
         platform = str(audit.platform).strip()
         queries = (
@@ -201,33 +361,13 @@ class InProcessHermesClient:
             f'"{handle}" content creator brand',
         )
 
-        def search(query: str) -> str:
-            try:
-                return handle_function_call(
-                    "web_search",
-                    {"query": query, "limit": 5},
-                    task_id=f"audit-{audit.id}-research",
-                    user_task="bounded public account research",
-                    enabled_toolsets=["web"],
-                )
-            except Exception as exc:  # noqa: BLE001 - each source degrades independently
-                import logging
-                logging.getLogger("auditlayer").warning(
-                    "collect_research query failed safely: %s", type(exc).__name__
-                )
-                return json.dumps({"success": False, "data": {"web": []}})
-
-        with HERMES_HOME_LOCK:
-            account_home = os.environ.get("HERMES_HOME")
-            os.environ["HERMES_HOME"] = str(Path.home() / ".hermes")
-            try:
-                with ThreadPoolExecutor(max_workers=len(queries)) as pool:
-                    results = list(pool.map(search, queries))
-            finally:
-                if account_home is None:
-                    os.environ.pop("HERMES_HOME", None)
-                else:
-                    os.environ["HERMES_HOME"] = account_home
+        results = _managed_search_results(
+            queries,
+            str(audit.id),
+            deadline=min(
+                research_deadline, time.monotonic() + MANAGED_SEARCH_SECONDS
+            ),
+        )
 
         verified: list[dict] = []
         seen_urls: set[str] = set()
@@ -239,18 +379,28 @@ class InProcessHermesClient:
             web = (payload.get("data") or {}).get("web") if payload.get("success") else None
             for item in web or []:
                 url = str(item.get("url") or "")
-                if not url or url in seen_urls:
+                candidate = {
+                    "url": url,
+                    "title": str(item.get("title") or "")[:500],
+                    "description": str(item.get("description") or "")[:2500],
+                }
+                if (
+                    not url
+                    or url in seen_urls
+                    or not _is_subject_relevant(candidate, handle, platform)
+                ):
                     continue
                 seen_urls.add(url)
-                verified.append(
-                    {
-                        "url": url,
-                        "title": str(item.get("title") or "")[:500],
-                        "description": str(item.get("description") or "")[:2500],
-                    }
+                verified.append(candidate)
+        if not verified and time.monotonic() < research_deadline:
+            verified.extend(
+                _public_search_index(
+                    queries,
+                    handle=handle,
+                    platform=platform,
+                    deadline=research_deadline,
                 )
-        if not verified:
-            verified.extend(_public_search_index(queries))
+            )
         if not verified:
             import logging
             logging.getLogger("auditlayer").warning(
