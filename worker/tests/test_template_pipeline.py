@@ -539,7 +539,17 @@ def test_standard_generator_uses_bounded_single_pass(sample_audit):
 
         def collect_research(self, audit):
             self.research_calls += 1
-            return "Bounded verified evidence from three web searches."
+            return json.dumps(
+                {
+                    "web": [
+                        {
+                            "url": "https://www.instagram.com/hemalpatelphd/",
+                            "title": "Hemal Patel PhD on Instagram",
+                            "description": "Bounded verified evidence for hemalpatelphd on Instagram.",
+                        }
+                    ]
+                }
+            )
 
         def chat(self, **kwargs):
             self.calls.append(kwargs)
@@ -682,7 +692,17 @@ def test_cached_evidence_uses_local_section_assembly(sample_audit):
     result = generator.generate(
         sample_audit,
         lambda _phase, _detail: None,
-        research_cache="Previously verified evidence",
+        research_cache=json.dumps(
+            {
+                "web": [
+                    {
+                        "url": "https://www.instagram.com/hemalpatelphd/",
+                        "title": "Hemal Patel PhD on Instagram",
+                        "description": "Previously verified evidence for hemalpatelphd on Instagram.",
+                    }
+                ]
+            }
+        ),
     )
 
     assert len(client.calls) == 1

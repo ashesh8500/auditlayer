@@ -468,7 +468,7 @@ class HermesReportGenerator:
         emitter.advance_to("scoring")
         prompt = build_section_prompt(
             audit,
-            evidence,
+            research_material,
             ig_metrics=ig_metrics,
             benchmarks=benchmarks,
         )

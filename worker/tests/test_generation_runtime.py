@@ -274,6 +274,31 @@ def test_cached_evidence_is_filtered_before_prompt_or_citation_use() -> None:
     ]
 
 
+def test_filtered_cache_not_original_payload_reaches_model_prompt() -> None:
+    client = _Client([_payload()])
+    cache = json.dumps(
+        {
+            "web": [
+                {
+                    "url": "https://github.com/other/hungerdeck-tools",
+                    "title": "HungerDeck software",
+                    "description": "UNRELATED-MARKER from another project",
+                }
+            ]
+        }
+    )
+
+    result = _generator(client).generate(
+        _audit(), lambda *_args: None, research_cache=cache
+    )
+
+    prompt = client.calls[0]["messages"][1]["content"]
+    assert "UNRELATED-MARKER" not in prompt
+    assert '"web": []' in prompt
+    assert result.evidence_items == 0
+    assert result.research_cache == '{"web": []}'
+
+
 def test_indexed_instagram_metrics_require_attributable_public_index_evidence() -> None:
     payload = {
         "web": [
