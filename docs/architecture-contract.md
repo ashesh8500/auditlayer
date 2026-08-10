@@ -258,6 +258,15 @@ peers → scoring → composing → uploaded → succeeded → failed → refine
 - `failed` — terminal failure (status → `failed`).
 - `refinement` — a section-scoped refinement pass.
 
+### Public-index fallback truthfulness
+
+Managed search remains primary. When it is unavailable, the worker may use a
+bounded public search index only for results attributable to the requested subject
+and platform. Each citation preserves `public_search_index` provenance through the
+final artifact. For unconnected Instagram reports, local rendering—not the model—
+owns Key Metrics: only attributable indexed follower/post snapshots receive `*`;
+engagement rate and every unsupported private metric render as `N/A`.
+
 ---
 
 ## Storage bucket (private)

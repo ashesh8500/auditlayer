@@ -15,6 +15,7 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 from dataclasses import dataclass, field
 import html as html_lib
 import json
+import re
 import time
 from typing import Any, Callable, Protocol, Sequence
 from urllib.parse import urlsplit
@@ -156,14 +157,17 @@ class _PhaseEmitter:
             self.advance_to(self._phases[self._idx + 1])
 
 
-def _safe_evidence_sources(payload: object) -> list[tuple[str, str]]:
+EvidenceSource = tuple[str, str, str]
+
+
+def _safe_evidence_sources(payload: object) -> list[EvidenceSource]:
     """Project untrusted research rows into a small safe citation list."""
     if not isinstance(payload, dict):
         return []
     rows = payload.get("web")
     if not isinstance(rows, list):
         return []
-    sources: list[tuple[str, str]] = []
+    sources: list[EvidenceSource] = []
     seen: set[str] = set()
     for row in rows:
         if not isinstance(row, dict):
@@ -179,7 +183,12 @@ def _safe_evidence_sources(payload: object) -> list[tuple[str, str]]:
         if url in seen:
             continue
         title = str(row.get("title") or parsed.netloc).strip()[:160]
-        sources.append((title or parsed.netloc, url))
+        mode = (
+            "public_search_index"
+            if row.get("evidence_mode") == "public_search_index"
+            else "public_research"
+        )
+        sources.append((title or parsed.netloc, url, mode))
         seen.add(url)
         if len(sources) >= 5:
             break
@@ -188,21 +197,23 @@ def _safe_evidence_sources(payload: object) -> list[tuple[str, str]]:
 
 def _append_evidence_sources(
     report_html: str,
-    sources: Sequence[tuple[str, str]],
+    sources: Sequence[EvidenceSource],
     *,
     connected_metrics: bool,
 ) -> str:
     """Add visible evidence provenance without creating another report section."""
     if sources:
         items = "".join(
-            "<li><a href=\"{}\" rel=\"noreferrer noopener\">{}</a></li>".format(
+            '<li data-source-kind="{}"><a href="{}" rel="noreferrer noopener">{}</a></li>'.format(
+                html_lib.escape(mode, quote=True),
                 html_lib.escape(url, quote=True),
                 html_lib.escape(title),
             )
-            for title, url in sources
+            for title, url, mode in sources
         )
         body = f"<ul>{items}</ul>"
-        source_kind = "public_research"
+        modes = {mode for _, _, mode in sources}
+        source_kind = next(iter(modes)) if len(modes) == 1 else "mixed_public_evidence"
     elif connected_metrics:
         body = "<p>Connected Instagram first-party metrics supplied by the account owner.</p>"
         source_kind = "connected_first_party"
@@ -216,6 +227,38 @@ def _append_evidence_sources(
     if "</body>" in report_html:
         return report_html.replace("</body>", f"{aside}</body>", 1)
     return f"{report_html}{aside}"
+
+
+def _indexed_instagram_metrics(payload: object, handle: str) -> dict[str, str]:
+    """Extract only attributable, explicitly indexed public metric snapshots."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("web"), list):
+        return {}
+    normalized_handle = handle.strip().lstrip("@").lower()
+    if not normalized_handle:
+        return {}
+    patterns = {
+        "followers": re.compile(r"(?P<value>\d[\d,.]*\s*[kKmM]?)\s+followers?\b"),
+        "likes": re.compile(r"(?P<value>\d[\d,.]*\s*[kKmM]?)\s+likes?\b"),
+        "comments": re.compile(r"(?P<value>\d[\d,.]*\s*[kKmM]?)\s+comments?\b"),
+    }
+    found: dict[str, str] = {}
+    for row in payload["web"]:
+        if not isinstance(row, dict) or row.get("evidence_mode") != "public_search_index":
+            continue
+        text = f"{row.get('title', '')} {row.get('description', '')}".lower()
+        handle_in_text = re.search(
+            rf"(?<![\w.])@?{re.escape(normalized_handle)}(?![\w.])", text
+        )
+        parsed = urlsplit(str(row.get("url") or ""))
+        host = (parsed.hostname or "").lower()
+        instagram_host = host == "instagram.com" or host.endswith(".instagram.com")
+        if not handle_in_text or not (instagram_host or "instagram" in text):
+            continue
+        for name, pattern in patterns.items():
+            match = pattern.search(text)
+            if match and name not in found:
+                found[name] = " ".join(match.group("value").split())
+    return found
 
 
 class MockReportGenerator:
@@ -370,11 +413,16 @@ class HermesReportGenerator:
 
         research_material = evidence
         evidence_items = 0
-        evidence_sources: list[tuple[str, str]] = []
+        evidence_sources: list[EvidenceSource] = []
+        indexed_instagram_metrics: dict[str, str] = {}
         try:
             evidence_payload = json.loads(evidence)
             evidence_items = len(evidence_payload.get("web") or [])
             evidence_sources = _safe_evidence_sources(evidence_payload)
+            if audit.platform.lower() == "instagram" and ig_metrics is None:
+                indexed_instagram_metrics = _indexed_instagram_metrics(
+                    evidence_payload, audit.handle
+                )
             has_web_evidence = evidence_items > 0
         except (TypeError, json.JSONDecodeError):
             has_web_evidence = False
@@ -425,7 +473,10 @@ class HermesReportGenerator:
         started = time.monotonic()
         try:
             report_html = assemble_structured_report_html(
-                audit, result.content, ig_metrics=ig_metrics
+                audit,
+                result.content,
+                ig_metrics=ig_metrics,
+                indexed_instagram_metrics=indexed_instagram_metrics,
             )
             estimated = result.usage.estimated
         except ValueError as exc:
@@ -465,7 +516,10 @@ class HermesReportGenerator:
                 total_tokens_in += retry_result.usage.tokens_in
                 total_tokens_out += retry_result.usage.tokens_out
                 report_html = assemble_structured_report_html(
-                    audit, retry_result.content, ig_metrics=ig_metrics
+                    audit,
+                    retry_result.content,
+                    ig_metrics=ig_metrics,
+                    indexed_instagram_metrics=indexed_instagram_metrics,
                 )
             except (TimeoutError, FutureTimeoutError) as correction_exc:
                 timed("format_correction", correction_started)

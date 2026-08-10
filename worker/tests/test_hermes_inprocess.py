@@ -166,6 +166,40 @@ class TestIterationBudget:
 
         assert hermes_inprocess._unwrap_search_url(value) == value
 
+    def test_public_index_relevance_requires_the_subject_identity(self):
+        assert hermes_inprocess._is_subject_relevant(
+            {
+                "url": "https://www.instagram.com/reel/ABC/",
+                "title": "Instagram",
+                "description": "57 likes - hungerdeck on June 28, 2026.",
+            },
+            "hungerdeck",
+            "instagram",
+        )
+        assert not hermes_inprocess._is_subject_relevant(
+            {
+                "url": "https://github.com/other/hungerdeck-tools",
+                "title": "A different software project",
+                "description": "Generic social analytics tool",
+            },
+            "hungerdeck",
+            "instagram",
+        )
+
+    def test_public_search_reader_stops_at_total_deadline(self, monkeypatch):
+        clock = iter((0.0, 0.4, 0.8, 1.2))
+        monkeypatch.setattr(hermes_inprocess.time, "monotonic", lambda: next(clock))
+
+        class SlowResponse:
+            def read(self, _size):
+                return b"x" * 16
+
+        content = hermes_inprocess._read_bounded_response(
+            SlowResponse(), deadline=1.0, max_bytes=500_000
+        )
+
+        assert content == b"x" * 48
+
     def test_bounded_research_uses_shared_web_home_and_restores_account_home(
         self, settings, monkeypatch
     ):
@@ -193,7 +227,7 @@ class TestIterationBudget:
     def test_bounded_research_gracefully_handles_failed_searches(self, settings, monkeypatch):
         monkeypatch.setattr(
             "auditlayer_worker.hermes_inprocess._public_search_index",
-            lambda _queries: [],
+            lambda _queries, **_kwargs: [],
         )
         monkeypatch.setitem(
             sys.modules,
@@ -225,7 +259,7 @@ class TestIterationBudget:
         )
         monkeypatch.setattr(
             "auditlayer_worker.hermes_inprocess._public_search_index",
-            lambda _queries: [
+            lambda _queries, **_kwargs: [
                 {
                     "url": "https://www.instagram.com/reel/example/",
                     "title": "Instagram",
@@ -254,7 +288,7 @@ class TestIterationBudget:
     def test_bounded_research_gracefully_handles_search_exceptions(self, settings, monkeypatch):
         monkeypatch.setattr(
             "auditlayer_worker.hermes_inprocess._public_search_index",
-            lambda _queries: [],
+            lambda _queries, **_kwargs: [],
         )
         def fail(*_args, **_kwargs):
             raise RuntimeError("provider unavailable")

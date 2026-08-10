@@ -6,7 +6,8 @@ import os
 import re
 import sys
 import json
-from concurrent.futures import ThreadPoolExecutor
+import time
+from concurrent.futures import ThreadPoolExecutor, wait
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Callable, Iterable
@@ -90,11 +91,67 @@ def _parse_public_search_html(content: str) -> list[dict[str, str]]:
     return parser.results
 
 
-def _public_search_index(queries: tuple[str, ...]) -> list[dict[str, str]]:
+def _is_subject_relevant(
+    item: dict[str, str], handle: str, platform: str
+) -> bool:
+    """Require explicit subject attribution before accepting index evidence."""
+    normalized_handle = handle.strip().lstrip("@").lower()
+    if not normalized_handle:
+        return False
+    text = f"{item.get('title', '')} {item.get('description', '')}".lower()
+    parsed = urlparse(item.get("url") or "")
+    normalized_platform = platform.strip().lower()
+    expected_host = {
+        "instagram": "instagram.com",
+        "youtube": "youtube.com",
+        "tiktok": "tiktok.com",
+        "x": "x.com",
+        "twitter": "x.com",
+    }.get(normalized_platform)
+    host = (parsed.hostname or "").lower()
+    host_matches = bool(
+        expected_host
+        and (host == expected_host or host.endswith(f".{expected_host}"))
+    )
+    handle_in_text = bool(
+        re.search(rf"(?<![\w.])@?{re.escape(normalized_handle)}(?![\w.])", text)
+    )
+    platform_terms = {
+        "instagram": ("instagram",),
+        "youtube": ("youtube",),
+        "tiktok": ("tiktok",),
+        "x": ("twitter", " x.com"),
+        "twitter": ("twitter", " x.com"),
+    }.get(normalized_platform, (normalized_platform,))
+    if handle_in_text and (
+        host_matches or any(term and term in text for term in platform_terms)
+    ):
+        return True
+    path_parts = {unquote(part).strip("@").lower() for part in parsed.path.split("/")}
+    return host_matches and normalized_handle in path_parts
+
+
+def _read_bounded_response(response, *, deadline: float, max_bytes: int) -> bytes:
+    """Read in chunks while enforcing a response-wide monotonic deadline."""
+    chunks: list[bytes] = []
+    total = 0
+    while time.monotonic() < deadline and total <= max_bytes:
+        chunk = response.read(min(64 * 1024, max_bytes + 1 - total))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        total += len(chunk)
+    return b"" if total > max_bytes else b"".join(chunks)
+
+
+def _public_search_index(
+    queries: tuple[str, ...], *, handle: str = "", platform: str = ""
+) -> list[dict[str, str]]:
     """Use a bounded public index when managed search credentials are unavailable."""
     import logging
 
     def fetch(query: str) -> list[dict[str, str]]:
+        deadline = time.monotonic() + 10.0
         request = Request(
             f"https://search.yahoo.com/search?p={quote_plus(query)}",
             headers={
@@ -106,9 +163,11 @@ def _public_search_index(queries: tuple[str, ...]) -> list[dict[str, str]]:
             },
         )
         try:
-            with urlopen(request, timeout=12) as response:  # noqa: S310 - fixed HTTPS host
-                content = response.read(500_001)
-            if len(content) > 500_000:
+            with urlopen(request, timeout=2.0) as response:  # noqa: S310 - fixed HTTPS host
+                content = _read_bounded_response(
+                    response, deadline=deadline, max_bytes=500_000
+                )
+            if not content:
                 return []
             return _parse_public_search_html(content.decode("utf-8", "replace"))[:5]
         except Exception as exc:  # noqa: BLE001 - public index degrades independently
@@ -117,14 +176,19 @@ def _public_search_index(queries: tuple[str, ...]) -> list[dict[str, str]]:
             )
             return []
 
-    with ThreadPoolExecutor(max_workers=len(queries)) as pool:
-        batches = list(pool.map(fetch, queries))
+    pool = ThreadPoolExecutor(max_workers=len(queries))
+    futures = [pool.submit(fetch, query) for query in queries]
+    completed, pending = wait(futures, timeout=12.0)
+    batches = [future.result() for future in futures if future in completed]
+    for future in pending:
+        future.cancel()
+    pool.shutdown(wait=False, cancel_futures=True)
     found: list[dict[str, str]] = []
     seen_urls: set[str] = set()
     for batch in batches:
         for item in batch:
             url = item["url"]
-            if url in seen_urls:
+            if url in seen_urls or not _is_subject_relevant(item, handle, platform):
                 continue
             seen_urls.add(url)
             found.append(
@@ -250,7 +314,9 @@ class InProcessHermesClient:
                     }
                 )
         if not verified:
-            verified.extend(_public_search_index(queries))
+            verified.extend(
+                _public_search_index(queries, handle=handle, platform=platform)
+            )
         if not verified:
             import logging
             logging.getLogger("auditlayer").warning(

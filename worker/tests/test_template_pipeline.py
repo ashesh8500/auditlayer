@@ -270,13 +270,39 @@ def test_unconnected_instagram_report_marks_public_index_metrics_and_explains_th
     metrics["items"][0]["title"] = "57 likes"
     metrics["items"][0]["body"] = "Indexed post snapshot"
 
-    html = assemble_structured_report_html(sample_audit, json.dumps(payload))
+    html = assemble_structured_report_html(
+        sample_audit,
+        json.dumps(payload),
+        indexed_instagram_metrics={"likes": "57"},
+    )
 
     assert "57 likes*" in html
     assert "* Data-access note" in html
     assert "publicly indexed profile and content signals" in html
     assert "not live account analytics" in html
     assert "unavailable private metrics are shown as N/A" in html
+
+
+def test_unconnected_instagram_report_suppresses_unproven_private_metrics(sample_audit):
+    payload = json.loads(_complete_standard_payload())
+    metrics = next(
+        section for section in payload["sections"] if section["heading"] == "Key Metrics"
+    )
+    metrics["items"] = [
+        {"title": "2.7%", "body": "Engagement rate green", "value": ""},
+        {"title": "12,400", "body": "Followers green", "value": ""},
+    ]
+
+    html = assemble_structured_report_html(
+        sample_audit,
+        json.dumps(payload),
+        indexed_instagram_metrics={"followers": "12,400"},
+    )
+
+    assert "12,400*" in html
+    assert "2.7%" not in html
+    assert "Engagement rate</div>" in html
+    assert ">N/A</div>" in html
 
 
 def test_structured_report_enforces_prompt_size_limits_in_rendered_output(sample_audit):
