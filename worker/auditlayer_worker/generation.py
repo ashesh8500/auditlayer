@@ -33,6 +33,7 @@ from .core import (
     html_looks_complete,
 )
 from .hermes import HermesClient
+from .hermes_inprocess import _is_subject_relevant
 
 Progress = Callable[[str, str], None]
 
@@ -204,8 +205,11 @@ def _append_evidence_sources(
     """Add visible evidence provenance without creating another report section."""
     if sources:
         items = "".join(
-            '<li data-source-kind="{}"><a href="{}" rel="noreferrer noopener">{}</a></li>'.format(
+            '<li data-source-kind="{}">{}<a href="{}" rel="noreferrer noopener">{}</a></li>'.format(
                 html_lib.escape(mode, quote=True),
+                "Public search index snapshot · "
+                if mode == "public_search_index"
+                else "Public research · ",
                 html_lib.escape(url, quote=True),
                 html_lib.escape(title),
             )
@@ -227,6 +231,31 @@ def _append_evidence_sources(
     if "</body>" in report_html:
         return report_html.replace("</body>", f"{aside}</body>", 1)
     return f"{report_html}{aside}"
+
+
+def _filter_evidence_payload(
+    payload: object, *, handle: str, platform: str
+) -> dict[str, list[dict[str, str]]]:
+    """Canonicalize cached/live evidence and reject unrelated rows."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("web"), list):
+        return {"web": []}
+    filtered: list[dict[str, str]] = []
+    for row in payload["web"]:
+        if not isinstance(row, dict):
+            continue
+        candidate = {
+            "url": str(row.get("url") or "")[:2000],
+            "title": str(row.get("title") or "")[:500],
+            "description": str(row.get("description") or "")[:2500],
+        }
+        if not _is_subject_relevant(candidate, handle, platform):
+            continue
+        if row.get("evidence_mode") == "public_search_index":
+            candidate["evidence_mode"] = "public_search_index"
+        filtered.append(candidate)
+        if len(filtered) >= 8:
+            break
+    return {"web": filtered}
 
 
 def _indexed_instagram_metrics(payload: object, handle: str) -> dict[str, str]:
@@ -411,12 +440,15 @@ class HermesReportGenerator:
                 ) from exc
             timed("connected_metrics", started)
 
-        research_material = evidence
+        research_material = json.dumps({"web": []})
         evidence_items = 0
         evidence_sources: list[EvidenceSource] = []
         indexed_instagram_metrics: dict[str, str] = {}
         try:
-            evidence_payload = json.loads(evidence)
+            evidence_payload = _filter_evidence_payload(
+                json.loads(evidence), handle=audit.handle, platform=audit.platform
+            )
+            research_material = json.dumps(evidence_payload, ensure_ascii=False)
             evidence_items = len(evidence_payload.get("web") or [])
             evidence_sources = _safe_evidence_sources(evidence_payload)
             if audit.platform.lower() == "instagram" and ig_metrics is None:

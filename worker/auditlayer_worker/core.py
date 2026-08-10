@@ -1074,6 +1074,22 @@ def assemble_structured_report_html(
             # Instagram metrics are deterministically owned above. Model-authored
             # metric values are never rendered without connected or indexed proof.
             pass
+        elif heading == "Key Metrics":
+            if clean_items:
+                parts.append('<div class="metric-grid">')
+                for title, body, _ in clean_items:
+                    color = (
+                        "red"
+                        if "red" in body.lower()
+                        else "amber"
+                        if "amber" in body.lower()
+                        else "green"
+                    )
+                    parts.append(
+                        f'<div class="metric-card"><div class="value {color}">'
+                        f"{esc(title)}</div><div class=\"label\">{esc(body)}</div></div>"
+                    )
+                parts.append("</div>")
         elif not connected and heading == "Content Calendar & Creative Board":
             pillars = ("Educational & Strategy", "Portfolio & Proof", "Engagement & Community", "Growth & Reach")
             for number in range(10):

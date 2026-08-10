@@ -305,6 +305,24 @@ def test_unconnected_instagram_report_suppresses_unproven_private_metrics(sample
     assert ">N/A</div>" in html
 
 
+def test_non_instagram_key_metrics_keep_metric_grid(sample_audit):
+    payload = json.loads(_complete_standard_payload())
+    metrics = next(
+        section for section in payload["sections"] if section["heading"] == "Key Metrics"
+    )
+    metrics["items"] = [
+        {"title": "14K", "body": "Subscribers green", "value": ""},
+        {"title": "8.2K", "body": "Average views amber", "value": ""},
+    ]
+    youtube_audit = replace(sample_audit, platform="youtube")
+
+    html = assemble_structured_report_html(youtube_audit, json.dumps(payload))
+
+    section = html.split("<h2>Key Metrics</h2>", 1)[1].split("</section>", 1)[0]
+    assert '<div class="metric-grid">' in section
+    assert '<div class="rec-card">' not in section
+
+
 def test_structured_report_enforces_prompt_size_limits_in_rendered_output(sample_audit):
     payload = json.loads(_complete_standard_payload())
     payload["sections"][0]["lede"] = "x" * 361

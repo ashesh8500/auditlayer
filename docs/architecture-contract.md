@@ -263,7 +263,11 @@ peers → scoring → composing → uploaded → succeeded → failed → refine
 Managed search remains primary. When it is unavailable, the worker may use a
 bounded public search index only for results attributable to the requested subject
 and platform. Each citation preserves `public_search_index` provenance through the
-final artifact. For unconnected Instagram reports, local rendering—not the model—
+final artifact and labels that provenance visibly. Managed and fallback research
+share one 20-second deadline; managed tool calls run in a killable child process so
+a stalled call cannot retain the process-global Hermes-home lock. Cached evidence
+is revalidated through the same subject/platform filter before prompt or citation
+use. For unconnected Instagram reports, local rendering—not the model—
 owns Key Metrics: only attributable indexed follower/post snapshots receive `*`;
 engagement rate and every unsupported private metric render as `N/A`.
 

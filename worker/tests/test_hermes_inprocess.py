@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import types
 from dataclasses import replace
 from pathlib import Path
@@ -203,11 +204,22 @@ class TestIterationBudget:
     def test_bounded_research_uses_shared_web_home_and_restores_account_home(
         self, settings, monkeypatch
     ):
-        seen_homes: list[str | None] = []
-
         def fake_handle_function_call(*_args, **_kwargs):
-            seen_homes.append(os.environ.get("HERMES_HOME"))
-            return '{"success": true, "data": {"web": [{"url": "https://example.com", "title": "Example", "description": "Evidence"}]}}'
+            home = os.environ.get("HERMES_HOME")
+            return json.dumps(
+                {
+                    "success": True,
+                    "data": {
+                        "web": [
+                            {
+                                "url": "https://www.instagram.com/creator/",
+                                "title": "creator on Instagram",
+                                "description": f"Instagram evidence home={home}",
+                            }
+                        ]
+                    },
+                }
+            )
 
         monkeypatch.setitem(
             sys.modules,
@@ -217,12 +229,76 @@ class TestIterationBudget:
         monkeypatch.setenv("HERMES_HOME", "/opt/alm/hermes/accounts/customer")
         client = InProcessHermesClient(settings)
 
-        client.collect_research(
+        result = client.collect_research(
             SimpleNamespace(id="audit-1", handle="creator", platform="instagram")
         )
 
-        assert seen_homes == [str(Path.home() / ".hermes")] * 3
+        assert str(Path.home() / ".hermes") in result
         assert os.environ["HERMES_HOME"] == "/opt/alm/hermes/accounts/customer"
+
+    def test_managed_research_has_a_total_deadline(self, settings, monkeypatch):
+        def block_forever(*_args, **_kwargs):
+            time.sleep(60)
+
+        monkeypatch.setitem(
+            sys.modules,
+            "model_tools",
+            SimpleNamespace(handle_function_call=block_forever),
+        )
+        monkeypatch.setattr(hermes_inprocess, "MANAGED_SEARCH_SECONDS", 0.05)
+        monkeypatch.setattr(
+            hermes_inprocess, "_public_search_index", lambda *_args, **_kwargs: []
+        )
+        client = InProcessHermesClient(settings)
+
+        started = time.monotonic()
+        result = client.collect_research(
+            SimpleNamespace(id="audit-1", handle="creator", platform="instagram")
+        )
+
+        assert time.monotonic() - started < 2
+        assert json.loads(result) == {"web": []}
+
+    def test_managed_research_rejects_wrong_subject_or_platform(
+        self, settings, monkeypatch
+    ):
+        payload = json.dumps(
+            {
+                "success": True,
+                "data": {
+                    "web": [
+                        {
+                            "url": "https://github.com/other/hungerdeck-tools",
+                            "title": "HungerDeck software",
+                            "description": "A different software project",
+                        },
+                        {
+                            "url": "https://www.instagram.com/reel/ABC/",
+                            "title": "Instagram",
+                            "description": "57 likes - hungerdeck on Instagram",
+                        },
+                    ]
+                },
+            }
+        )
+        monkeypatch.setitem(
+            sys.modules,
+            "model_tools",
+            SimpleNamespace(handle_function_call=lambda *_args, **_kwargs: payload),
+        )
+        client = InProcessHermesClient(settings)
+
+        result = json.loads(
+            client.collect_research(
+                SimpleNamespace(
+                    id="audit-1", handle="hungerdeck", platform="instagram"
+                )
+            )
+        )
+
+        assert [row["url"] for row in result["web"]] == [
+            "https://www.instagram.com/reel/ABC/"
+        ]
 
     def test_bounded_research_gracefully_handles_failed_searches(self, settings, monkeypatch):
         monkeypatch.setattr(

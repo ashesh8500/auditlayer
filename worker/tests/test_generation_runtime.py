@@ -12,6 +12,7 @@ from auditlayer_worker.generation import (
     GenerationStageError,
     HermesReportGenerator,
     _append_evidence_sources,
+    _filter_evidence_payload,
     _indexed_instagram_metrics,
     _safe_evidence_sources,
 )
@@ -69,8 +70,16 @@ class _Client:
         return json.dumps(
             {
                 "web": [
-                    {"url": "https://example.com/a", "title": "A", "description": "Evidence A"},
-                    {"url": "https://example.com/b", "title": "B", "description": "Evidence B"},
+                    {
+                        "url": "https://www.instagram.com/reel/a/",
+                        "title": "Example on Instagram",
+                        "description": "Evidence A for example on Instagram",
+                    },
+                    {
+                        "url": "https://www.instagram.com/reel/b/",
+                        "title": "Example on Instagram",
+                        "description": "Evidence B for example on Instagram",
+                    },
                 ]
             }
         )
@@ -113,7 +122,7 @@ def test_success_records_bounded_stage_metrics() -> None:
     assert set(result.stage_timings) >= {"research", "analysis", "validation"}
     assert all(value >= 0 for value in result.stage_timings.values())
     assert 'data-source-kind="public_research"' in result.html
-    assert "https://example.com/a" in result.html
+    assert "https://www.instagram.com/reel/a/" in result.html
 
 
 def test_format_retry_is_bounded_and_accounted() -> None:
@@ -236,6 +245,33 @@ def test_public_index_provenance_survives_visible_citation_projection() -> None:
 
     assert 'data-source-kind="public_search_index"' in html
     assert 'data-source-kind="public_research"' not in html
+    assert "Public search index snapshot" in html
+
+
+def test_cached_evidence_is_filtered_before_prompt_or_citation_use() -> None:
+    filtered = _filter_evidence_payload(
+        {
+            "web": [
+                {
+                    "url": "https://github.com/other/hungerdeck-tools",
+                    "title": "HungerDeck software",
+                    "description": "A different software project",
+                },
+                {
+                    "url": "https://www.instagram.com/reel/ABC/",
+                    "title": "Instagram",
+                    "description": "57 likes - hungerdeck on Instagram",
+                    "evidence_mode": "public_search_index",
+                },
+            ]
+        },
+        handle="hungerdeck",
+        platform="instagram",
+    )
+
+    assert [row["url"] for row in filtered["web"]] == [
+        "https://www.instagram.com/reel/ABC/"
+    ]
 
 
 def test_indexed_instagram_metrics_require_attributable_public_index_evidence() -> None:
