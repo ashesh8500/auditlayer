@@ -550,8 +550,14 @@ class GenerationPipeline:
                     milestone_label=audit.milestone_label,
                     limitations=audit.limitations,
                     research_cache="",
+                    force_refresh=False,
                 )
-                gateway.finalize_initial_report(
+                finalize_report = (
+                    gateway.finalize_regenerated_report
+                    if audit.report_path
+                    else gateway.finalize_initial_report
+                )
+                finalize_report(
                     audit_id=audit.id,
                     delivery_status=delivery_status.value,
                     report_path=report_path,

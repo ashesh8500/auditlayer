@@ -367,6 +367,32 @@ class SupabaseGateway:
         value = response.data[0] if isinstance(response.data, list) else response.data
         return int(value)
 
+    def finalize_regenerated_report(
+        self,
+        *,
+        audit_id: str,
+        delivery_status: str,
+        report_path: str,
+        prompt_version: str,
+        agent_bundle_version: str,
+        template_version: str = "master-skeleton-v1",
+        intelligence_run_id: str | None = None,
+    ) -> int:
+        response = self.client.rpc(
+            "finalize_regenerated_report",
+            {
+                "p_audit_id": audit_id,
+                "p_delivery_status": delivery_status,
+                "p_report_path": report_path,
+                "p_prompt_version": prompt_version,
+                "p_template_version": template_version,
+                "p_agent_bundle_version": agent_bundle_version,
+                "p_intelligence_run_id": intelligence_run_id,
+            },
+        ).execute()
+        value = response.data[0] if isinstance(response.data, list) else response.data
+        return int(value)
+
     def finalize_refinement_report(
         self,
         *,

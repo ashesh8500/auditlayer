@@ -188,7 +188,9 @@ async function ReadyReport({
                   <p className="mt-1 text-xs text-muted-foreground">
                     {version.change_type === "refinement"
                       ? `Refined ${version.changed_section || "report"}`
-                      : "Initial generation"}
+                      : version.version > 1
+                        ? "Full regeneration"
+                        : "Initial generation"}
                     {version.prompt_version ? ` · Method ${version.prompt_version}` : ""}
                     {` · ${new Date(version.created_at).toLocaleString()}`}
                   </p>

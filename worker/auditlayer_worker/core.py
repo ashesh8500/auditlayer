@@ -231,6 +231,8 @@ class AuditRecord:
     plan: str = Plan.FREE.value
     prompt_version: str = ""
     force_refresh: bool = False
+    report_path: str = ""
+    report_version: int = 0
 
     @classmethod
     def from_row(cls, row: dict) -> "AuditRecord":
@@ -259,6 +261,8 @@ class AuditRecord:
             plan=row.get("plan") or Plan.FREE.value,
             prompt_version=row.get("prompt_version") or "",
             force_refresh=bool(row.get("force_refresh")),
+            report_path=row.get("report_path") or "",
+            report_version=int(row.get("report_version") or 0),
         )
 
 

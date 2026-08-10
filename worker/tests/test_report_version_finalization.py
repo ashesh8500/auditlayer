@@ -1,7 +1,14 @@
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
 from auditlayer_worker.supabase_client import SupabaseGateway
+
+
+REGENERATION_MIGRATION = (
+    Path(__file__).parents[2]
+    / "supabase/migrations/20260810153500_report_regeneration_finalization.sql"
+)
 
 
 class _RpcCall:
@@ -79,6 +86,40 @@ def test_initial_report_finalization_carries_pinned_intelligence_run() -> None:
         params["p_intelligence_run_id"]
         == "33333333-3333-4333-8333-333333333333"
     )
+
+
+def test_regenerated_report_finalization_delegates_version_allocation_to_database() -> None:
+    gateway, client = _gateway([2])
+
+    version = gateway.finalize_regenerated_report(
+        audit_id="audit-1",
+        delivery_status="ready",
+        report_path="audit-1/revisions/regenerated.html",
+        prompt_version="1.4",
+        agent_bundle_version="1.0.0",
+        intelligence_run_id="33333333-3333-4333-8333-333333333333",
+    )
+
+    assert version == 2
+    name, params = client.calls[0]
+    assert name == "finalize_regenerated_report"
+    assert params["p_delivery_status"] == "ready"
+    assert params["p_report_path"].endswith("regenerated.html")
+    assert params["p_intelligence_run_id"] == "33333333-3333-4333-8333-333333333333"
+
+
+def test_regeneration_rpc_is_atomic_idempotent_and_service_role_only() -> None:
+    sql = REGENERATION_MIGRATION.read_text().lower()
+
+    assert "security definer" in sql
+    assert "set search_path = ''" in sql
+    assert "where id = p_audit_id for update" in sql
+    assert "coalesce(max(version), 0) + 1" in sql
+    assert "and report_path = p_report_path" in sql
+    assert "'generation'" in sql
+    assert "force_refresh = false" in sql
+    assert "from public, anon, authenticated" in sql
+    assert "to service_role" in sql
 
 
 def test_refinement_finalization_delegates_version_allocation_to_database() -> None:

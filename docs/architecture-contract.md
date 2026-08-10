@@ -390,7 +390,10 @@ Per-audit metric snapshots for dashboard charts. Compat bridge until score ledge
 
 ### `audit_report_versions`
 Immutable HTML report lineage per audit (`generation` \| `refinement` \| `manual`).
-Reports remain projections; intelligence continuity lives in kernel ledgers.
+Initial generation is version 1. A founder-triggered full regeneration allocates
+`max(version) + 1` atomically and remains `change_type = 'generation'`; it never
+overwrites version 1. Reports remain projections; intelligence continuity lives
+in kernel ledgers.
 
 ### Operator plane
 See earlier section: `operator_threads`, `operator_messages`, `operator_jobs`,
