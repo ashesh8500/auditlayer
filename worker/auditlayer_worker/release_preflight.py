@@ -19,9 +19,10 @@ _REQUIRED_RPCS = {
     "redeem_trial_link",
     "submit_entitled_audit",
     "admin_set_access",
+    "finalize_regenerated_report",
 }
 _REQUIRED_SELECTS = {
-    "audits": "id,report_type,retry_count,last_failed_at,research_cache,prompt_version,claimed_at,claimed_by",
+    "audits": "id,report_type,retry_count,last_failed_at,research_cache,prompt_version,claimed_at,claimed_by,report_path,report_version",
     "profiles": "id,plan,account_type,gifted_audits,trial_link_id,trial_plan,trial_report_types,trial_expires_at",
     "trial_links": "id,audits_granted,max_uses,used_count,expires_at,offer_plan,report_types,access_days",
     "admin_actions": "id,actor_id,target_user_id,action,detail",

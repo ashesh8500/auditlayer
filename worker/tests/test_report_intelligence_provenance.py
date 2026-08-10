@@ -62,8 +62,14 @@ class _RecordingGateway:
         self.updates.append((audit_id, fields))
 
     def finalize_initial_report(self, **_fields: Any) -> int:
+        _fields["finalization_kind"] = "initial"
         self.finalize_calls.append(dict(_fields))
         return 1
+
+    def finalize_regenerated_report(self, **_fields: Any) -> int:
+        _fields["finalization_kind"] = "regeneration"
+        self.finalize_calls.append(dict(_fields))
+        return 2
 
 
 def _pipeline_settings(tmp_path) -> WorkerSettings:
@@ -122,6 +128,45 @@ def test_pipeline_carries_bridge_run_id_into_finalization(monkeypatch, tmp_path)
     assert finalize["intelligence_run_id"] == RUN_ID
     # Bridge commit happens before the report version is finalized.
     assert finalize["audit_id"] == audit.id
+
+
+def test_pipeline_allocates_a_new_version_when_regenerating_a_ready_report(
+    monkeypatch, tmp_path
+) -> None:
+    settings = _pipeline_settings(tmp_path)
+    audit = replace(
+        _audit(),
+        report_path="provenance-audit-1/revisions/original.html",
+        report_version=1,
+    )
+    monkeypatch.setattr(
+        "auditlayer_worker.intelligence.bridge.maybe_commit_subject_ledger",
+        lambda *_args, **_kwargs: RUN_ID,
+    )
+    monkeypatch.setattr(
+        "auditlayer_worker.pipeline._fetch_benchmark_cache", lambda _gw: []
+    )
+
+    gateway = _RecordingGateway()
+    summary = GenerationPipeline(settings, MockReportGenerator()).run(
+        audit,
+        PrintEventSink(),
+        gateway=gateway,
+    )
+
+    assert summary.status == "ready"
+    assert gateway.finalize_calls == [
+        {
+            "audit_id": audit.id,
+            "delivery_status": "ready",
+            "report_path": f"{audit.id}/v1.html",
+            "prompt_version": "1.4",
+            "template_version": "master-skeleton-v1",
+            "agent_bundle_version": "1.0.0",
+            "intelligence_run_id": RUN_ID,
+            "finalization_kind": "regeneration",
+        }
+    ]
 
 
 def test_pipeline_bridge_failure_never_fails_paid_report(monkeypatch, tmp_path) -> None:

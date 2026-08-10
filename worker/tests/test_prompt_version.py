@@ -106,6 +106,22 @@ def test_audit_record_parses_prompt_version():
     assert audit.prompt_version == "0.6"
 
 
+def test_audit_record_parses_existing_report_lineage_for_regeneration():
+    audit = AuditRecord.from_row(
+        {
+            "id": "abc-report",
+            "handle": "testuser",
+            "platform": "instagram",
+            "goal": "growth",
+            "report_path": "abc-report/revisions/original.html",
+            "report_version": 3,
+        }
+    )
+
+    assert audit.report_path == "abc-report/revisions/original.html"
+    assert audit.report_version == 3
+
+
 def test_audit_record_prompt_version_defaults_to_empty():
     """When prompt_version is missing from row, default to empty string."""
     row = {
