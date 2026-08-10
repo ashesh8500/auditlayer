@@ -71,10 +71,10 @@ def _unwrap_search_url(value: str) -> str:
     if value.startswith("//"):
         value = f"https:{value}"
     parsed = urlparse(value)
-    if parsed.netloc.endswith("duckduckgo.com"):
+    if parsed.hostname == "duckduckgo.com":
         value = (parse_qs(parsed.query).get("uddg") or [""])[0]
         parsed = urlparse(value)
-    elif parsed.netloc.endswith("search.yahoo.com"):
+    elif parsed.hostname == "r.search.yahoo.com":
         match = re.search(r"/RU=([^/]+)/RK=", parsed.path)
         value = unquote(match.group(1)) if match else ""
         parsed = urlparse(value)

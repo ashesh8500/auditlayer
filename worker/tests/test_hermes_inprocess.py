@@ -158,6 +158,14 @@ class TestIterationBudget:
         assert "6 likes, 0 comments - hungerdeck" in results[0]["description"]
         assert results[0]["evidence_mode"] == "public_search_index"
 
+    def test_public_search_redirect_unwrap_requires_exact_trusted_host(self):
+        value = (
+            "https://evilsearch.yahoo.com/x/"
+            "RU=https%3a%2f%2fwww.instagram.com%2freel%2fABC%2f/RK=2"
+        )
+
+        assert hermes_inprocess._unwrap_search_url(value) == value
+
     def test_bounded_research_uses_shared_web_home_and_restores_account_home(
         self, settings, monkeypatch
     ):
