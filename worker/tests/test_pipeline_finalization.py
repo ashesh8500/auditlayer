@@ -4,6 +4,7 @@ from auditlayer_worker.config import WorkerSettings
 from auditlayer_worker.core import AuditRecord, Plan
 from auditlayer_worker.generation import GenerationStageError, MockReportGenerator
 from auditlayer_worker.pipeline import GenerationPipeline, PrintEventSink
+from auditlayer_worker.supabase_client import ReportFinalizationOutcomeUnknown
 
 
 def test_database_finalization_failure_never_announces_ready(monkeypatch, tmp_path) -> None:
@@ -54,6 +55,57 @@ def test_database_finalization_failure_never_announces_ready(monkeypatch, tmp_pa
     assert phases[-1] == "failed"
     assert summary.report_path == "finalize-fail-1/v1.html"
     assert gateway.updates[-1][1]["status"] == "failed"
+
+
+def test_unknown_regeneration_finalization_outcome_never_overwrites_committed_state(
+    monkeypatch, tmp_path
+) -> None:
+    settings = replace(
+        WorkerSettings.from_env(),
+        output_dir=tmp_path,
+        phase_interval_seconds=0,
+        generator="mock",
+        alm_accounts_root=str(tmp_path / "accounts"),
+    )
+    audit = AuditRecord(
+        id="finalize-unknown-1",
+        handle="creator",
+        platform="youtube",
+        goal="growth",
+        plan=Plan.STARTER.value,
+        status="running",
+        report_path="finalize-unknown-1/revisions/original.html",
+        report_version=1,
+        force_refresh=True,
+    )
+
+    class Gateway:
+        def __init__(self) -> None:
+            self.updates = []
+
+        def upload_report(self, audit_id: str, html: str, *, version: int | None = None):
+            return (f"{audit_id}/revisions/retry.html", "")
+
+        def update_audit(self, audit_id: str, **fields):
+            self.updates.append((audit_id, fields))
+
+        def finalize_regenerated_report(self, **_fields):
+            raise ReportFinalizationOutcomeUnknown("database outcome unavailable")
+
+    monkeypatch.setattr("auditlayer_worker.pipeline._fetch_benchmark_cache", lambda _gw: [])
+    sink = PrintEventSink()
+    gateway = Gateway()
+
+    summary = GenerationPipeline(settings, MockReportGenerator()).run(
+        audit,
+        sink,
+        gateway=gateway,
+    )
+
+    assert summary.status == "running"
+    assert not any(fields.get("status") == "failed" for _, fields in gateway.updates)
+    assert not any(fields.get("force_refresh") is False for _, fields in gateway.updates)
+    assert "succeeded" not in [phase for _, phase, _ in sink.events]
 
 
 def test_retryable_generation_failure_persists_research_checkpoint_and_metrics(

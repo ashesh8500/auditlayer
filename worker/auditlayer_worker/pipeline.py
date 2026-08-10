@@ -44,7 +44,7 @@ from .account_homes import ensure_account_home, get_report_bundle_version
 from .hermes_home_scope import HERMES_HOME_LOCK
 from .observability import log_event
 from .quality import evaluate_report_quality
-from .supabase_client import _utcnow
+from .supabase_client import ReportFinalizationOutcomeUnknown, _utcnow
 
 
 class EventSink(Protocol):
@@ -538,25 +538,12 @@ class GenerationPipeline:
                         audit_id=audit.id,
                         error_type=type(bridge_exc).__name__,
                     )
+            finalize_report = (
+                gateway.finalize_regenerated_report
+                if audit.report_path
+                else gateway.finalize_initial_report
+            )
             try:
-                gateway.update_audit(
-                    audit.id,
-                    admin_notes=(quality.summary[:500] if not quality.passed else ""),
-                    tokens_in=result.tokens_in,
-                    tokens_out=result.tokens_out,
-                    cost_usd=cost.total_usd,
-                    model=result.model,
-                    prompt_version=PROMPT_VERSION,
-                    milestone_label=audit.milestone_label,
-                    limitations=audit.limitations,
-                    research_cache="",
-                    force_refresh=False,
-                )
-                finalize_report = (
-                    gateway.finalize_regenerated_report
-                    if audit.report_path
-                    else gateway.finalize_initial_report
-                )
                 finalize_report(
                     audit_id=audit.id,
                     delivery_status=delivery_status.value,
@@ -565,6 +552,41 @@ class GenerationPipeline:
                     template_version="master-skeleton-v1",
                     agent_bundle_version=bundle_version,
                     intelligence_run_id=intelligence_run_id,
+                )
+            except ReportFinalizationOutcomeUnknown as exc:
+                # Never overwrite a possibly committed ready row with failed.
+                # If the RPC did not commit, the still-running audit retains its
+                # refresh intent and the stale reaper can safely retry later.
+                log_event(
+                    "audit_finalization_outcome_unknown",
+                    level="error",
+                    audit_id=audit.id,
+                    error_type=type(exc).__name__,
+                    report_path=report_path,
+                )
+                sink.emit(
+                    "finalizing",
+                    "Report storage succeeded; finalization outcome is being reconciled.",
+                    event_type="finalization_pending",
+                )
+                return RunSummary(
+                    audit_id=audit.id,
+                    status=audit.status,
+                    wall_clock_seconds=round(time.monotonic() - started_at, 2),
+                    tokens_in=result.tokens_in,
+                    tokens_out=result.tokens_out,
+                    cost_usd=cost.total_usd,
+                    model=result.model,
+                    estimated_tokens=result.estimated,
+                    prompt_version=PROMPT_VERSION,
+                    report_path=report_path,
+                    note="Report finalization outcome is unknown; audit row was left unchanged.",
+                    stage_timings=dict(result.stage_timings),
+                    quality_score=quality.score,
+                    account_mode=result.account_mode,
+                    cache_mode=cache_mode,
+                    evidence_items=result.evidence_items,
+                    format_retry_used=result.format_retry_used,
                 )
             except Exception as exc:
                 try:
@@ -633,6 +655,30 @@ class GenerationPipeline:
                     cache_mode=cache_mode,
                     evidence_items=result.evidence_items,
                     format_retry_used=result.format_retry_used,
+                )
+            try:
+                # Finalization is the success boundary. Persist mutable run
+                # telemetry only afterwards so a rejected finalization cannot
+                # clear force_refresh or publish metadata without a version.
+                gateway.update_audit(
+                    audit.id,
+                    admin_notes=(quality.summary[:500] if not quality.passed else ""),
+                    tokens_in=result.tokens_in,
+                    tokens_out=result.tokens_out,
+                    cost_usd=cost.total_usd,
+                    model=result.model,
+                    prompt_version=PROMPT_VERSION,
+                    milestone_label=audit.milestone_label,
+                    limitations=audit.limitations,
+                    research_cache="",
+                    force_refresh=False,
+                )
+            except Exception as metadata_exc:
+                log_event(
+                    "audit_generation_metadata_update_failed",
+                    level="warning",
+                    audit_id=audit.id,
+                    error_type=type(metadata_exc).__name__,
                 )
             sink.emit("uploaded", "HTML report stored")
         else:

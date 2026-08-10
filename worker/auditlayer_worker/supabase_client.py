@@ -21,6 +21,14 @@ def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+class ReportFinalizationOutcomeUnknown(RuntimeError):
+    """The report RPC may have committed, but its result could not be reconciled."""
+
+
+class ReportFinalizationRejected(RuntimeError):
+    """The report RPC failed and reconciliation confirmed no immutable version."""
+
+
 # Stage-timing whitelist for private report-attempt telemetry. Hoisted to module
 # level so the intelligence telemetry-persistence contract can drift-test the
 # adapter: report stages are the only keys ``finish_report_generation_run`` may
@@ -378,20 +386,75 @@ class SupabaseGateway:
         template_version: str = "master-skeleton-v1",
         intelligence_run_id: str | None = None,
     ) -> int:
-        response = self.client.rpc(
-            "finalize_regenerated_report",
-            {
-                "p_audit_id": audit_id,
-                "p_delivery_status": delivery_status,
-                "p_report_path": report_path,
-                "p_prompt_version": prompt_version,
-                "p_template_version": template_version,
-                "p_agent_bundle_version": agent_bundle_version,
-                "p_intelligence_run_id": intelligence_run_id,
-            },
-        ).execute()
-        value = response.data[0] if isinstance(response.data, list) else response.data
-        return int(value)
+        payload = {
+            "p_audit_id": audit_id,
+            "p_delivery_status": delivery_status,
+            "p_report_path": report_path,
+            "p_prompt_version": prompt_version,
+            "p_template_version": template_version,
+            "p_agent_bundle_version": agent_bundle_version,
+            "p_intelligence_run_id": intelligence_run_id,
+        }
+
+        def execute() -> int:
+            response = self.client.rpc("finalize_regenerated_report", payload).execute()
+            value = response.data[0] if isinstance(response.data, list) else response.data
+            return int(value)
+
+        try:
+            return execute()
+        except Exception as first_error:
+            existing = self._reconcile_report_version(payload, first_error)
+            if existing is not None:
+                return existing
+
+        try:
+            # Retry the exact same immutable object. Never upload or allocate a
+            # second path merely because the first HTTP response was lost.
+            return execute()
+        except Exception as retry_error:
+            existing = self._reconcile_report_version(payload, retry_error)
+            if existing is not None:
+                return existing
+            raise ReportFinalizationRejected(
+                "regenerated report finalization failed without committing a version"
+            ) from retry_error
+
+    def _reconcile_report_version(
+        self, payload: Mapping[str, Any], rpc_error: Exception
+    ) -> int | None:
+        try:
+            response = (
+                self.client.table("audit_report_versions")
+                .select(
+                    "version,prompt_version,template_version,agent_bundle_version,"
+                    "intelligence_run_id"
+                )
+                .eq("audit_id", payload["p_audit_id"])
+                .eq("report_path", payload["p_report_path"])
+                .limit(1)
+                .execute()
+            )
+        except Exception as reconciliation_error:
+            raise ReportFinalizationOutcomeUnknown(
+                "could not determine whether regenerated report finalization committed"
+            ) from reconciliation_error
+
+        rows = response.data or []
+        if not rows:
+            return None
+        row = rows[0]
+        expected = {
+            "prompt_version": payload["p_prompt_version"],
+            "template_version": payload["p_template_version"],
+            "agent_bundle_version": payload["p_agent_bundle_version"],
+            "intelligence_run_id": payload["p_intelligence_run_id"],
+        }
+        if any(row.get(field) != value for field, value in expected.items()):
+            raise ReportFinalizationOutcomeUnknown(
+                "existing report path has conflicting immutable provenance"
+            ) from rpc_error
+        return int(row["version"])
 
     def finalize_refinement_report(
         self,

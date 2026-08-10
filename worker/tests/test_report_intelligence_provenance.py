@@ -53,20 +53,24 @@ class _RecordingGateway:
     def __init__(self) -> None:
         self.finalize_calls: list[dict[str, Any]] = []
         self.updates: list[tuple[str, dict[str, Any]]] = []
+        self.operations: list[str] = []
 
     def upload_report(self, audit_id: str, html: str, *, version: int | None = None):
         assert version == 1
         return (f"{audit_id}/v1.html", "")
 
     def update_audit(self, audit_id: str, **fields: Any) -> None:
+        self.operations.append("update")
         self.updates.append((audit_id, fields))
 
     def finalize_initial_report(self, **_fields: Any) -> int:
+        self.operations.append("finalize")
         _fields["finalization_kind"] = "initial"
         self.finalize_calls.append(dict(_fields))
         return 1
 
     def finalize_regenerated_report(self, **_fields: Any) -> int:
+        self.operations.append("finalize")
         _fields["finalization_kind"] = "regeneration"
         self.finalize_calls.append(dict(_fields))
         return 2
@@ -167,6 +171,8 @@ def test_pipeline_allocates_a_new_version_when_regenerating_a_ready_report(
             "finalization_kind": "regeneration",
         }
     ]
+    assert gateway.operations.index("finalize") < gateway.operations.index("update")
+    assert gateway.updates[-1][1]["force_refresh"] is False
 
 
 def test_pipeline_bridge_failure_never_fails_paid_report(monkeypatch, tmp_path) -> None:
