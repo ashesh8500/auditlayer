@@ -1,6 +1,6 @@
 {
   "contract": "admin-run-health",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "providerCalls": 0,
   "delayedThresholdMs": 600000,
   "owners": {
@@ -22,7 +22,8 @@
         "evidence_items",
         "started_at",
         "finished_at",
-        "updated_at"
+        "updated_at",
+        "audit.status"
       ],
       "ownerNote": "Private report-attempt telemetry; report-pipeline status vocabulary. Never conjoined with intelligence-run vocabulary."
     },
@@ -66,10 +67,11 @@
     "resumed",
     "empty",
     "contradictory",
+    "recovered",
     "deadline-UNKNOWN",
     "cancellation-UNKNOWN"
   ],
-  "joinBehavior": "No cross-record join. report_generation_runs.audit_id→audits and intelligence_runs.subject_id→subjects are separate owners; the audit→batch→subject path (audit_batches/batch_audits) is many-to-many and is not inferred.",
+  "joinBehavior": "Report attempts use only audit_id→audits.status to distinguish recovered history from current founder work. Intelligence recovery uses only a later completed run for the same subject_id. The many-to-many audit→batch→subject path is not inferred.",
   "redactionExcludes": [
     "handles",
     "emails",

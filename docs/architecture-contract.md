@@ -408,6 +408,13 @@ Private attempt-level runtime telemetry (latency, tokens, cost, stage timings,
 cache mode, normalized error codes). Never stores report content, handles,
 credentials, or tracebacks. Service-role only.
 
+The founder run-health projection preserves these immutable attempts as history,
+but derives current action from authoritative later state. A failed, crashed, or
+blocked attempt whose parent audit is now `ready` is recovered history and must
+not count as founder work. Likewise, a later `completed` intelligence run resolves
+older failed records for the same subject. Recovery classification never mutates
+either run table.
+
 ### `share_links`
 Share tokens for reports. Includes `updated_at` (trigger/column aligned).
 

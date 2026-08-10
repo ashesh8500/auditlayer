@@ -27,6 +27,7 @@ function reportRow(overrides: Partial<ReportRunHealthRow> = {}): ReportRunHealth
     started_at: iso(2 * MIN),
     finished_at: null,
     updated_at: iso(1 * MIN),
+    audit: null,
     ...overrides,
   };
 }
@@ -88,6 +89,34 @@ describe("AdminRunHealth component", () => {
     // uses the danger tone (red-muted) — shared primitives, no raw colors.
     expect(html).toContain("bg-muted");
     expect(html).toContain("bg-[color:var(--red-muted)]");
+  });
+
+  it("does not present recovered historical failures as current founder work", () => {
+    const html = render(
+      projectRunHealth(
+        {
+          reportAttempts: [
+            reportRow({
+              id: "00000000-0000-4000-8000-000000000031",
+              status: "failed",
+              finished_at: iso(1 * MIN),
+              audit: { status: "ready" },
+            }),
+            reportRow({
+              id: "00000000-0000-4000-8000-000000000032",
+              status: "crashed",
+              finished_at: iso(1 * MIN),
+              audit: { status: "ready" },
+            }),
+          ],
+          intelligenceRuns: [],
+        },
+        { nowMs: NOW_MS },
+      ),
+    );
+    expect(html).not.toContain("runs need attention");
+    expect(html).toContain("No current runs require founder action");
+    expect(html.match(/>Recovered<\/span>/g)?.length).toBe(2);
   });
 
   it("renders recovery guidance and UNKNOWN unsupported signals, never success", () => {

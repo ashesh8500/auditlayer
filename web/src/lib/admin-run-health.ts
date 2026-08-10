@@ -18,10 +18,12 @@
  * correction path — never fabricated success. No recovery mutation is added
  * here; correction tips are non-mutating guidance only.
  *
- * The records are projected independently. There is NO cross-record join:
- * report attempts link to audits (audit_id → audits) and intelligence runs
- * link to subjects (subject_id → subjects); the audit→batch→subject path
- * (audit_batches/batch_audits) is many-to-many and is not inferred here.
+ * Report attempts may carry the allowlisted current status of their parent
+ * audit. A ready parent resolves older failed/crashed attempt telemetry without
+ * rewriting that immutable history. Intelligence runs are reconciled only
+ * within the same subject: a later completed run resolves an older failed or
+ * stale run. The audit→batch→subject path remains many-to-many and is never
+ * inferred here.
  *
  * Time is injected (`nowMs`) so every age/order decision is deterministic.
  * The serialized projection carries only allowlisted health fields — no
@@ -127,6 +129,8 @@ export interface ReportRunHealthRow {
   started_at: string | null;
   finished_at: string | null;
   updated_at: string | null;
+  /** Allowlisted current parent state from audit:audits(status). */
+  audit?: { status: string } | null;
 }
 
 /** Allowlisted input shape for one intelligence_runs health row. */
@@ -180,6 +184,8 @@ interface RunHealthBase {
   unsupported: readonly UnsupportedSignal[];
   /** Non-mutating recovery guidance; null when no founder action is useful. */
   correctionTip: string | null;
+  /** True when later authoritative state proves this historical issue resolved. */
+  recovered: boolean;
 }
 
 export interface ReportAttemptHealth extends RunHealthBase {
@@ -336,6 +342,13 @@ export function projectReportAttempt(
     }
   }
 
+  const recovered = row.audit?.status === "ready" && state !== "ready";
+  if (recovered) {
+    correctionTip =
+      "The audit is ready. This historical attempt is retained for provenance; " +
+      "no founder action is required.";
+  }
+
   return {
     owner: "report_generation_run",
     recordId: row.id,
@@ -356,6 +369,7 @@ export function projectReportAttempt(
     contradictions,
     unsupported,
     correctionTip,
+    recovered,
   };
 }
 
@@ -466,6 +480,7 @@ export function projectIntelligenceRun(
     contradictions,
     unsupported,
     correctionTip,
+    recovered: false,
   };
 }
 
@@ -510,9 +525,10 @@ export interface ProjectRunHealthInput {
 
 /**
  * Project both records under their own vocabularies and order each list by
- * reference timestamp descending (stable, record-id tie-break). No cross-record
- * join is performed. provider_calls is a typed literal 0 — this projection can
- * never spend model tokens.
+ * reference timestamp descending (stable, record-id tie-break). Recovery is
+ * bounded to explicit parent-audit state or a later completed run for the same
+ * subject. provider_calls is a typed literal 0 — this projection can never
+ * spend model tokens.
  */
 export function projectRunHealth(
   input: ProjectRunHealthInput,
@@ -526,11 +542,46 @@ export function projectRunHealth(
       projectReportAttempt(row, { nowMs, delayedThresholdMs }),
     ),
   );
-  const intelligenceRuns = orderByReferenceDesc(
+  const projectedIntelligenceRuns = orderByReferenceDesc(
     input.intelligenceRuns.map((row) =>
       projectIntelligenceRun(row, { nowMs, delayedThresholdMs }),
     ),
   );
+  const latestCompletedBySubject = new Map<string, number>();
+  for (const run of projectedIntelligenceRuns) {
+    if (run.subjectId && run.state === "completed") {
+      const completedAt = parseMs(run.referenceAt);
+      if (completedAt !== null) {
+        latestCompletedBySubject.set(
+          run.subjectId,
+          Math.max(
+            latestCompletedBySubject.get(run.subjectId) ?? -Infinity,
+            completedAt,
+          ),
+        );
+      }
+    }
+  }
+  const intelligenceRuns = projectedIntelligenceRuns.map((run) => {
+    const completedAt = run.subjectId
+      ? latestCompletedBySubject.get(run.subjectId)
+      : undefined;
+    const referenceAt = parseMs(run.referenceAt);
+    const recovered =
+      run.state !== "completed" &&
+      completedAt !== undefined &&
+      referenceAt !== null &&
+      completedAt > referenceAt;
+    return recovered
+      ? {
+          ...run,
+          recovered: true,
+          correctionTip:
+            "A later completed intelligence run resolved this historical record; " +
+            "no founder action is required.",
+        }
+      : run;
+  });
   return {
     reportAttempts,
     intelligenceRuns,
@@ -589,6 +640,7 @@ export function serializeReportAttemptHealth(
     contradictions: [...h.contradictions],
     unsupported: h.unsupported.map((u) => ({ ...u })),
     correctionTip: h.correctionTip,
+    recovered: h.recovered,
   };
 }
 
@@ -610,6 +662,7 @@ export function serializeIntelligenceRunHealth(
     contradictions: [...h.contradictions],
     unsupported: h.unsupported.map((u) => ({ ...u })),
     correctionTip: h.correctionTip,
+    recovered: h.recovered,
   };
 }
 
@@ -630,7 +683,7 @@ export function serializeRunHealthBundle(bundle: RunHealthBundle): Record<string
 // Deterministic contract artifact
 // ---------------------------------------------------------------------------
 
-export const ADMIN_RUN_HEALTH_VERSION = "1.0.0";
+export const ADMIN_RUN_HEALTH_VERSION = "1.1.0";
 
 export interface AdminRunHealthContract {
   contract: "admin-run-health";
@@ -684,6 +737,7 @@ export function buildAdminRunHealthContract(): AdminRunHealthContract {
           "started_at",
           "finished_at",
           "updated_at",
+          "audit.status",
         ],
         ownerNote:
           "Private report-attempt telemetry; report-pipeline status vocabulary. Never conjoined with intelligence-run vocabulary.",
@@ -721,11 +775,12 @@ export function buildAdminRunHealthContract(): AdminRunHealthContract {
       "resumed",
       "empty",
       "contradictory",
+      "recovered",
       "deadline-UNKNOWN",
       "cancellation-UNKNOWN",
     ],
     joinBehavior:
-      "No cross-record join. report_generation_runs.audit_id→audits and intelligence_runs.subject_id→subjects are separate owners; the audit→batch→subject path (audit_batches/batch_audits) is many-to-many and is not inferred.",
+      "Report attempts use only audit_id→audits.status to distinguish recovered history from current founder work. Intelligence recovery uses only a later completed run for the same subject_id. The many-to-many audit→batch→subject path is not inferred.",
     redactionExcludes: [
       "handles",
       "emails",
