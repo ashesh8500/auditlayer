@@ -392,8 +392,11 @@ Per-audit metric snapshots for dashboard charts. Compat bridge until score ledge
 Immutable HTML report lineage per audit (`generation` \| `refinement` \| `manual`).
 Initial generation is version 1. A founder-triggered full regeneration allocates
 `max(version) + 1` atomically and remains `change_type = 'generation'`; it never
-overwrites version 1. Reports remain projections; intelligence continuity lives
-in kernel ledgers.
+overwrites version 1. A lost RPC response is reconciled against the same private
+artifact path before retrying, and a same-path retry must match every immutable
+provenance field. Ambiguous outcomes must not overwrite a possibly committed
+`ready` row or clear `force_refresh`. Reports remain projections; intelligence
+continuity lives in kernel ledgers.
 
 ### Operator plane
 See earlier section: `operator_threads`, `operator_messages`, `operator_jobs`,
