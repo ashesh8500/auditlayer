@@ -14,7 +14,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-3xl px-6 py-12 text-sm leading-relaxed text-foreground sm:py-16">
       <p className="alm-kicker">Privacy</p>
       <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em]">Privacy Policy</h1>
-      <p className="mt-2 text-muted-foreground">Effective: July 20, 2026</p>
+      <p className="mt-2 text-muted-foreground">Effective: August 11, 2026</p>
 
       <section className="mt-8 space-y-4">
         <h2 className="text-base font-semibold">1. What we collect</h2>
@@ -30,6 +30,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong className="text-foreground">Optional context</strong> — any niche, goals, or competitor information you provide to calibrate your report.
+          </li>
+          <li>
+            <strong className="text-foreground">Waitlist details</strong> — your name, work email, company or brand, social account, area of interest, and any context you choose to share.
           </li>
           <li>
             <strong className="text-foreground">Payment information</strong> — processed by our secure payment provider. We never see or store your credit card details.
@@ -50,6 +53,10 @@ export default function PrivacyPage() {
           <li>
             <strong className="text-foreground">To manage your account.</strong>{" "}
             Email is used for login, account recovery, and service-related notifications (not marketing).
+          </li>
+          <li>
+            <strong className="text-foreground">To respond to waitlist requests.</strong>{" "}
+            We use the details you submit to assess early-access fit and contact you about your request. Product updates are sent only when you choose the optional updates checkbox.
           </li>
           <li>
             <strong className="text-foreground">To process payments.</strong>{" "}
@@ -118,6 +125,9 @@ export default function PrivacyPage() {
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
           <li>
             <strong className="text-foreground">Account data</strong> — retained for the life of your account. You can request deletion at any time.
+          </li>
+          <li>
+            <strong className="text-foreground">Waitlist details</strong> — retained while we manage early-access interest and follow-up, and removed when you ask us to delete them.
           </li>
           <li>
             <strong className="text-foreground">Audit reports</strong> — retained while your account is active. Reports are stored securely and are accessible only to you and the AuditLayerMedia team.

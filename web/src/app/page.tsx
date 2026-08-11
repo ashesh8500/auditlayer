@@ -16,6 +16,7 @@ import {
 import { PublicShell } from "@/components/public-shell";
 import { SampleReportPreview } from "@/components/sample-report-preview";
 import { TestimonialCarousel } from "@/components/testimonial-carousel";
+import { WaitlistForm } from "@/components/waitlist-form";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
 import { PUBLIC_BRAND_KICKER } from "@/lib/brand-positioning";
@@ -233,6 +234,36 @@ export default async function Home() {
                 </Button>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section id="waitlist" className="scroll-mt-16 border-y border-border bg-[color:var(--panel)] py-20 sm:py-28">
+          <div className="alm-shell grid gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:items-start lg:gap-20">
+            <div className="max-w-lg lg:sticky lg:top-28">
+              <p className="alm-kicker">Early access</p>
+              <h2 className="mt-4 text-4xl font-semibold leading-[1.06] tracking-[-0.05em] sm:text-5xl">
+                Join the AuditLayerMedia waitlist.
+              </h2>
+              <p className="mt-6 text-base leading-7 text-muted-foreground">
+                Interested in using AuditLayerMedia? Tell us about your brand, account, or team and what you would like help deciding. We’ll review it and follow up directly.
+              </p>
+              <div className="mt-9 grid border-y border-border">
+                {[
+                  ["01", "Tell us what you need", "Share your brand, account, and the decision you’re trying to make."],
+                  ["02", "We review it personally", "The founders look at each request rather than sending an automatic sales sequence."],
+                  ["03", "We follow up", "We’ll contact you directly when there is a useful next step."],
+                ].map(([number, title, body]) => (
+                  <div key={number} className="grid grid-cols-[2.5rem_1fr] gap-3 border-b border-border py-4 last:border-b-0">
+                    <span className="font-mono text-xs text-[color:var(--accent)]">{number}</span>
+                    <div>
+                      <p className="text-sm font-semibold">{title}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <WaitlistForm />
           </div>
         </section>
 

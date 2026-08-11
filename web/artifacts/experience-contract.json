@@ -61,6 +61,7 @@
       "src/components/ui/textarea.tsx"
     ],
     "shared": [
+      "src/components/admin-run-health.tsx",
       "src/components/alm-skeleton.tsx",
       "src/components/app-header.tsx",
       "src/components/brand.tsx",
@@ -79,6 +80,7 @@
       "src/components/share-links.tsx",
       "src/components/status-badge.tsx",
       "src/components/testimonial-carousel.tsx",
+      "src/components/waitlist-form.tsx",
       "src/components/whimsical-shapes.tsx"
     ]
   },
@@ -133,13 +135,13 @@
     },
     "panel": {
       "status": "exceptions",
-      "findings": 45,
+      "findings": 46,
       "violations": [],
       "exceptions": [
         {
           "rule": "panel",
           "path": "src/components/intelligence/customer-wait-state.tsx",
-          "line": 194,
+          "line": 207,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
@@ -181,19 +183,19 @@
         {
           "rule": "panel",
           "path": "src/components/live-timeline.tsx",
-          "line": 353,
+          "line": 352,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/components/public-shell.tsx",
-          "line": 33,
+          "line": 34,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/components/public-shell.tsx",
-          "line": 37,
+          "line": 38,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
@@ -277,43 +279,49 @@
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/audit-actions.tsx",
-          "line": 57,
+          "line": 62,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/audit-actions.tsx",
-          "line": 86,
+          "line": 91,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/audit-actions.tsx",
-          "line": 118,
+          "line": 123,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/audit-actions.tsx",
-          "line": 146,
+          "line": 151,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/operator-panel.tsx",
-          "line": 73,
+          "line": 77,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/page.tsx",
-          "line": 124,
+          "line": 126,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/page.tsx",
-          "line": 167,
+          "line": 143,
+          "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
+        },
+        {
+          "rule": "panel",
+          "path": "src/app/admin/audits/[id]/page.tsx",
+          "line": 177,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
@@ -337,7 +345,7 @@
         {
           "rule": "panel",
           "path": "src/app/admin/page.tsx",
-          "line": 49,
+          "line": 55,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
@@ -403,7 +411,7 @@
         {
           "rule": "panel",
           "path": "src/app/page.tsx",
-          "line": 161,
+          "line": 163,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         }
       ],
@@ -502,19 +510,19 @@
         {
           "rule": "button",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 137,
+          "line": 193,
           "detail": "raw <button> without shared Button or explicit focus+target (\n            key={tab}\n            role=\"tab\"\n            ar)"
         },
         {
           "rule": "button",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 490,
+          "line": 559,
           "detail": "raw <button> without shared Button or explicit focus+target (\n                  type=\"button\"\n                  onClick={)"
         },
         {
           "rule": "button",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 675,
+          "line": 744,
           "detail": "raw <button> without shared Button or explicit focus+target (\n              type=\"button\"\n              onClick={() =)"
         },
         {
@@ -616,13 +624,13 @@
         {
           "rule": "banner",
           "path": "src/components/live-timeline.tsx",
-          "line": 400,
+          "line": 399,
           "detail": "banner-like surface via color-mix(in oklch; prefer ExperienceBanner"
         },
         {
           "rule": "banner",
           "path": "src/components/live-timeline.tsx",
-          "line": 401,
+          "line": 400,
           "detail": "banner-like surface via color-mix(in oklch; prefer ExperienceBanner"
         }
       ],
@@ -706,19 +714,19 @@
         {
           "rule": "focus",
           "path": "src/app/privacy/page.tsx",
-          "line": 91,
+          "line": 98,
           "detail": "interactive element without alm-focus/focus-visible treatment"
         },
         {
           "rule": "focus",
           "path": "src/app/privacy/page.tsx",
-          "line": 139,
+          "line": 149,
           "detail": "interactive element without alm-focus/focus-visible treatment"
         },
         {
           "rule": "focus",
           "path": "src/app/privacy/page.tsx",
-          "line": 150,
+          "line": 160,
           "detail": "interactive element without alm-focus/focus-visible treatment"
         },
         {
@@ -739,7 +747,7 @@
     },
     "target": {
       "status": "exceptions",
-      "findings": 38,
+      "findings": 39,
       "violations": [],
       "exceptions": [
         {
@@ -799,25 +807,31 @@
         {
           "rule": "target",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 137,
+          "line": 193,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 490,
+          "line": 559,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 675,
+          "line": 744,
+          "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
+        },
+        {
+          "rule": "target",
+          "path": "src/components/intelligence/subject-home.tsx",
+          "line": 976,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/components/live-timeline.tsx",
-          "line": 354,
+          "line": 353,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
@@ -859,13 +873,13 @@
         {
           "rule": "target",
           "path": "src/app/admin/audits/[id]/audit-actions.tsx",
-          "line": 182,
+          "line": 187,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/app/admin/audits/[id]/operator-panel.tsx",
-          "line": 135,
+          "line": 159,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
@@ -937,19 +951,19 @@
         {
           "rule": "target",
           "path": "src/app/privacy/page.tsx",
-          "line": 91,
+          "line": 98,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/app/privacy/page.tsx",
-          "line": 139,
+          "line": 149,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/app/privacy/page.tsx",
-          "line": 150,
+          "line": 160,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {

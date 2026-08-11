@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("public smoke (no Supabase creds required)", () => {
-  test("landing page leads with product proof and pricing", async ({ page }) => {
+  test("landing page keeps product proof and pricing while adding a founder-led waitlist", async ({ page }) => {
     await page.goto("/");
     await expect(
       page.getByRole("heading", {
@@ -10,8 +10,9 @@ test.describe("public smoke (no Supabase creds required)", () => {
     ).toBeVisible();
     await expect(page.getByText(/sample intelligence brief/i)).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Starter" }),
+      page.getByRole("heading", { name: /join the auditlayermedia waitlist/i }),
     ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Starter" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Pro" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /loved by our community/i })).toBeVisible();
     await expect(page.getByText("Kas di Kos Team")).toHaveCount(0);
@@ -21,6 +22,10 @@ test.describe("public smoke (no Supabase creds required)", () => {
     await expect(
       page.getByRole("link", { name: /run a free pulse audit/i }).first(),
     ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Waitlist" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /join the waitlist/i })).toBeVisible();
+    await expect(page.getByLabel(/work email/i)).toBeVisible();
+    await expect(page.getByLabel(/occasional product updates/i)).not.toBeChecked();
   });
 
   test("homepage sample report scrolls as one continuous document", async ({ page }) => {

@@ -8,6 +8,7 @@ const publicLinks = [
   ["Sample", "/#sample"],
   ["Method", "/#method"],
   ["Pricing", "/#pricing"],
+  ["Waitlist", "/#waitlist"],
   ["Enterprise", "/enterprise"],
 ] as const;
 
@@ -63,6 +64,7 @@ export function PublicFooter() {
           <Link className="inline-flex min-h-10 items-center" href="/#sample">Sample</Link>
           <Link className="inline-flex min-h-10 items-center" href="/#method">Method</Link>
           <Link className="inline-flex min-h-10 items-center" href="/#pricing">Pricing</Link>
+          <Link className="inline-flex min-h-10 items-center" href="/#waitlist">Waitlist</Link>
           <Link className="inline-flex min-h-10 items-center" href="/enterprise">Enterprise</Link>
           <Link className="inline-flex min-h-10 items-center" href="/support">Support</Link>
           <Link className="inline-flex min-h-10 items-center" href="/privacy">Privacy</Link>
