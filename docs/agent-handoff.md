@@ -197,6 +197,8 @@ without the browser's PKCE verifier cookie.
 | `NEXT_PUBLIC_SUPABASE_*` | All authenticated features |
 | `SUPABASE_SERVICE_ROLE_KEY` | Admin actions, webhooks, signed URLs |
 | `RESEND_API_KEY` + `AUTH_EMAIL_FROM` | Branded magic links |
+| `WAITLIST_EMAIL_TO` | Optional comma-separated founder notification recipients |
+| `WAITLIST_EMAIL_FROM` | Optional waitlist sender identity; defaults to support sender |
 | `STRIPE_*` | Paid plans |
 
 **Worker (`worker/.env`):** see `worker/.env.example`

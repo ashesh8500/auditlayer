@@ -53,6 +53,26 @@ One row per `auth.users` user (1:1). Auto-created on first sign-in via the
 | `trial_expires_at` | timestamptz | trial entitlement expiry |
 | `created_at` | timestamptz | default `now()` |
 
+### `waitlist_entries`
+Founder-managed early-access leads submitted through the public landing page.
+Submissions are normalized and written only by the server-side service-role path;
+browser roles have no direct table privileges or RLS policies.
+
+| column | type | default / constraints |
+|---|---|---|
+| `id` | uuid | **PK**, default `gen_random_uuid()` |
+| `name` | text | not null, 2–120 characters |
+| `email` | text | not null, unique, normalized lowercase |
+| `organization` | text | not null, default `''` |
+| `social_handle` | text | not null, default `''` |
+| `primary_interest` | text | one of the six public interest categories |
+| `notes` | text | not null, default `''`, max 2,000 characters |
+| `marketing_updates` | boolean | not null, default `false` |
+| `source` | text | not null, default `'website'` |
+| `status` | text | `new`, `contacted`, `invited`, or `closed` |
+| `created_at` | timestamptz | default `now()` |
+| `updated_at` | timestamptz | default `now()` |
+
 ### `audits`
 One row per requested audit, owned by a profile.
 
