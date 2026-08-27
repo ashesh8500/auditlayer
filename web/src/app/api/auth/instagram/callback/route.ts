@@ -9,13 +9,17 @@ import {
 } from "@/lib/instagram-oauth-config";
 import { instagramOAuthStateMatches } from "@/lib/instagram-oauth-url";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  captureWebFailure,
+  type WebFailureContext,
+} from "@/lib/sentry";
 
 const STATE_COOKIE_PATH = "/api/auth/instagram/callback";
 
 function clearStateCookie(response: NextResponse) {
   response.cookies.set(INSTAGRAM_OAUTH_STATE_COOKIE, "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     sameSite: "lax",
     path: STATE_COOKIE_PATH,
     maxAge: 0,
@@ -42,6 +46,51 @@ function unauthenticatedRedirect(request: NextRequest) {
   return response;
 }
 
+const OAUTH_FAILURE_CONTEXT: Record<string, WebFailureContext> = {
+  instagram_oauth_not_configured: {
+    surface: "instagram_oauth",
+    operation: "oauth_callback",
+    status: "failed",
+    errorClass: "OAuthConfigError",
+  },
+  instagram_token_exchange_failed: {
+    surface: "instagram_oauth",
+    operation: "token_exchange",
+    status: "failed",
+    errorClass: "OAuthTokenExchangeError",
+  },
+  instagram_permissions_not_granted: {
+    surface: "instagram_oauth",
+    operation: "permission_validation",
+    status: "rejected",
+    errorClass: "OAuthExchangeError",
+  },
+  instagram_long_lived_exchange_failed: {
+    surface: "instagram_oauth",
+    operation: "long_lived_token_exchange",
+    status: "failed",
+    errorClass: "OAuthLongLivedExchangeError",
+  },
+  instagram_profile_fetch_failed: {
+    surface: "instagram_oauth",
+    operation: "profile_fetch",
+    status: "failed",
+    errorClass: "InstagramProfileFetchError",
+  },
+  instagram_professional_account_required: {
+    surface: "instagram_oauth",
+    operation: "profile_fetch",
+    status: "rejected",
+    errorClass: "InstagramProfessionalAccountRequiredError",
+  },
+  instagram_connection_store_failed: {
+    surface: "instagram_persistence",
+    operation: "connection_persist",
+    status: "failed",
+    errorClass: "InstagramConnectionStoreError",
+  },
+};
+
 /**
  * Direct Instagram Business Login callback.
  * Validates user-bound CSRF state, exchanges the code server-side, and stores
@@ -57,17 +106,32 @@ export async function GET(request: NextRequest) {
     return unauthenticatedRedirect(request);
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
+  let user: { id: string } | null = null;
+  try {
+    const supabase = await createClient();
+    const { data, error: authError } = await supabase.auth.getUser();
+    if (!authError) user = data.user;
+  } catch (error) {
+    captureWebFailure(error, {
+      surface: "instagram_oauth",
+      operation: "oauth_callback",
+      status: "failed",
+      errorClass: "OAuthExchangeError",
+    });
+    user = null;
+  }
+  if (!user) {
     return unauthenticatedRedirect(request);
   }
 
   const userBoundState = returnedState ? `${user.id}:${returnedState}` : null;
   if (!instagramOAuthStateMatches(stateCookie, userBoundState)) {
+    captureWebFailure(new Error("instagram_oauth_state_invalid"), {
+      surface: "instagram_oauth",
+      operation: "oauth_callback",
+      status: "rejected",
+      errorClass: "OAuthExchangeError",
+    });
     return dashboardRedirect(request, "instagram_error", "invalid_state");
   }
   if (searchParams.get("error")) {
@@ -93,6 +157,7 @@ export async function GET(request: NextRequest) {
         p_account_type: tokens.accountType,
         p_followers_count: tokens.followersCount,
         p_media_count: tokens.mediaCount,
+        p_graph_api_family: "instagram",
       },
     );
     if (dbError) throw new Error("instagram_connection_store_failed");
@@ -108,6 +173,7 @@ export async function GET(request: NextRequest) {
       [
         "instagram_oauth_not_configured",
         "instagram_token_exchange_failed",
+        "instagram_permissions_not_granted",
         "instagram_long_lived_exchange_failed",
         "instagram_profile_fetch_failed",
         "instagram_professional_account_required",
@@ -115,6 +181,15 @@ export async function GET(request: NextRequest) {
       ].includes(error.message)
         ? error.message
         : "connection_failed";
+    captureWebFailure(
+      error,
+      OAUTH_FAILURE_CONTEXT[errorCode] ?? {
+        surface: "instagram_oauth",
+        operation: "oauth_callback",
+        status: "failed",
+        errorClass: "OAuthExchangeError",
+      },
+    );
     console.error("Instagram OAuth callback failed", { code: errorCode });
     return dashboardRedirect(request, "instagram_error", errorCode);
   }

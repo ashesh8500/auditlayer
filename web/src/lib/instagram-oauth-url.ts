@@ -1,6 +1,11 @@
 /** Client-safe helpers for Instagram Business Login OAuth. */
 
-export const INSTAGRAM_OAUTH_SCOPE = "instagram_business_basic";
+export const INSTAGRAM_OAUTH_PERMISSIONS = [
+  "instagram_business_basic",
+  "instagram_business_manage_insights",
+] as const;
+
+export const INSTAGRAM_OAUTH_SCOPE = INSTAGRAM_OAUTH_PERMISSIONS.join(",");
 
 type InstagramAuthUrlOptions = {
   appId: string;

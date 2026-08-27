@@ -199,6 +199,19 @@ def evaluate_report_quality(
         followers = int(getattr(profile, "followers_count", 0) or 0)
         if followers and f"{followers:,}" not in visible and str(followers) not in visible:
             blockers.append("live follower count missing from rendered report")
+        if hasattr(ig_metrics, "reach_eligible_media_count"):
+            reach_count = int(getattr(ig_metrics, "reach_media_count", 0) or 0)
+            eligible_count = int(
+                getattr(ig_metrics, "reach_eligible_media_count", 0) or 0
+            )
+            coverage = f"{reach_count} of {eligible_count} eligible recent posts"
+            if coverage not in visible:
+                blockers.append("live reach coverage missing from rendered report")
+            raw_reach = getattr(ig_metrics, "avg_reach", None)
+            if raw_reach is not None:
+                reach = float(raw_reach)
+                if f"{reach:,.0f}" not in visible and str(raw_reach) not in visible:
+                    blockers.append("live average reach missing from rendered report")
 
     # Exact repeated sentences are a reliable low-false-positive signal for the
     # roadmap duplication Narin identified. Do not block stylistic short labels.

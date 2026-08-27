@@ -9,14 +9,20 @@ const config = {
 };
 
 describe("completeInstagramOAuth", () => {
-  it("exchanges a direct Instagram code without losing a large scoped user id", async () => {
+  it("parses Meta's current token response and validates both granted permissions", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            access_token: "IGA-short",
-            user_id: "17841499999999999",
+            data: [
+              {
+                access_token: "IGA-short",
+                user_id: "17841499999999999",
+                permissions:
+                  "instagram_business_basic,instagram_business_manage_insights",
+              },
+            ],
           }),
           { status: 200 },
         ),
@@ -30,9 +36,9 @@ describe("completeInstagramOAuth", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            id: "17841499999999999",
+            user_id: "17841499999999999",
             username: "auditlayermedia",
-            account_type: "MEDIA_CREATOR",
+            account_type: "Media_Creator",
             followers_count: 1234,
             media_count: 87,
           }),
@@ -53,6 +59,10 @@ describe("completeInstagramOAuth", () => {
       followersCount: 1234,
       mediaCount: 87,
       expiresIn: 5_184_000,
+      grantedPermissions: [
+        "instagram_business_basic",
+        "instagram_business_manage_insights",
+      ],
     });
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(String(fetchImpl.mock.calls[0]?.[1]?.body)).toContain(
@@ -61,6 +71,124 @@ describe("completeInstagramOAuth", () => {
     expect(String(fetchImpl.mock.calls[0]?.[1]?.body)).toContain(
       "redirect_uri=https%3A%2F%2Fauditlayermedia.com%2Fapi%2Fauth%2Finstagram%2Fcallback",
     );
+    expect(fetchImpl.mock.calls.every((call) => call[1]?.signal instanceof AbortSignal)).toBe(
+      true,
+    );
+    expect(fetchImpl.mock.calls[2]?.[0]).toContain(
+      "fields=user_id%2Cusername%2Caccount_type%2Cfollowers_count%2Cmedia_count",
+    );
+  });
+
+  it("rejects the connection before token extension when Insights was not granted", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: [
+            {
+              access_token: "IGA-short",
+              user_id: "123",
+              permissions: "instagram_business_basic",
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      completeInstagramOAuth("authorization-code", { ...config, fetchImpl }),
+    ).rejects.toThrow("instagram_permissions_not_granted");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects any short-token envelope without exactly one canonical record", async () => {
+    const canonicalRecord = {
+      access_token: "IGA-short",
+      user_id: "123",
+      permissions: "instagram_business_basic,instagram_business_manage_insights",
+    };
+    const malformedPayloads = [
+      { data: [] },
+      { data: [canonicalRecord, { ...canonicalRecord, user_id: "456" }] },
+      canonicalRecord,
+    ];
+
+    for (const payload of malformedPayloads) {
+      const fetchImpl = vi.fn<typeof fetch>().mockResolvedValueOnce(
+        new Response(JSON.stringify(payload), { status: 200 }),
+      );
+
+      await expect(
+        completeInstagramOAuth("authorization-code", { ...config, fetchImpl }),
+      ).rejects.toThrow("instagram_token_exchange_failed");
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("maps a bounded short-token network failure to a safe error class", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new Error("socket failed with sensitive upstream detail"));
+
+    await expect(
+      completeInstagramOAuth("authorization-code", {
+        ...config,
+        fetchImpl,
+        timeoutMs: 25,
+      }),
+    ).rejects.toThrow("instagram_token_exchange_failed");
+  });
+
+  it("keeps unavailable profile counts distinct from real zero values", async () => {
+    const fetchForProfile = (profile: Record<string, unknown>) =>
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              data: [
+                {
+                  access_token: "IGA-short",
+                  user_id: "123",
+                  permissions:
+                    "instagram_business_basic,instagram_business_manage_insights",
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ access_token: "IGA-long", expires_in: 5_184_000 }),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              user_id: "123",
+              username: "professionalaccount",
+              account_type: "BUSINESS",
+              ...profile,
+            }),
+            { status: 200 },
+          ),
+        );
+
+    const unavailable = await completeInstagramOAuth("authorization-code", {
+      ...config,
+      fetchImpl: fetchForProfile({}),
+    });
+    const zero = await completeInstagramOAuth("authorization-code", {
+      ...config,
+      fetchImpl: fetchForProfile({ followers_count: 0, media_count: 0 }),
+    });
+
+    expect(unavailable.followersCount).toBeNull();
+    expect(unavailable.mediaCount).toBeNull();
+    expect(zero.followersCount).toBe(0);
+    expect(zero.mediaCount).toBe(0);
   });
 
   it("rejects accounts that are not professional accounts", async () => {
@@ -68,7 +196,16 @@ describe("completeInstagramOAuth", () => {
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({ access_token: "IGA-short", user_id: "123" }),
+          JSON.stringify({
+            data: [
+              {
+                access_token: "IGA-short",
+                user_id: "123",
+                permissions:
+                  "instagram_business_basic,instagram_business_manage_insights",
+              },
+            ],
+          }),
           { status: 200 },
         ),
       )
@@ -81,7 +218,7 @@ describe("completeInstagramOAuth", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            id: "123",
+            user_id: "123",
             username: "personalaccount",
             account_type: "PERSONAL",
           }),

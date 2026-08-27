@@ -397,6 +397,19 @@ ontology — Subjects are. Connected/managed rows backfill into `subjects` /
 | `cache_valid_until` | timestamptz | **Authoritative TTL: 24 hours** (worker write). Migration 0027's 7-day comment is superseded. |
 | `updated_at` | timestamptz | required; Instagram `persist_instagram_connection` bumps it |
 
+### `instagram_connections`
+Owner-scoped professional-account connection and protected Graph API credential. The
+service-role-only `persist_instagram_connection` RPC writes the connection and its linked
+`accounts` row in one transaction.
+
+| column | type | notes |
+|---|---|---|
+| `user_id` / `ig_user_id` | uuid / bigint | owner and connected Instagram account identity |
+| `long_lived_token` | text | protected server-side credential; never selected into authenticated browser projections |
+| `graph_api_family` | text | nullable compatibility field; new writes require `instagram` \| `facebook`; `NULL` is a legacy connection that must reconnect and is never inferred from token text |
+| `followers_count` / `media_count` | bigint | nullable; unavailable is distinct from a real zero |
+| `is_active` / expiry timestamps | boolean / timestamptz | connection health and refresh boundary |
+
 ### `account_progression`
 Per-audit metric snapshots for dashboard charts. Compat bridge until score ledger
 (`scores`) is the customer progression source.

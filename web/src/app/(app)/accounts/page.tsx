@@ -11,6 +11,7 @@ import {
   summarizeProgression,
   type ProgressionPoint,
 } from "@/lib/account-progress";
+import { INSTAGRAM_CONNECTION_HEALTH_FIELDS } from "@/lib/instagram-connection-public";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Accounts — AuditLayerMedia" };
@@ -57,7 +58,7 @@ export default async function AccountsPage() {
         .order("recorded_at", { ascending: false }),
       (supabase as any)
         .from("instagram_connections")
-        .select("ig_username, is_active, long_lived_expires_at")
+        .select(INSTAGRAM_CONNECTION_HEALTH_FIELDS)
         .eq("user_id", profile.id),
     ]);
 

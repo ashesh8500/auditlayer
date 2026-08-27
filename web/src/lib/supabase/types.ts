@@ -920,6 +920,7 @@ export type Database = {
           account_type: string | null
           created_at: string
           followers_count: number | null
+          graph_api_family: "instagram" | "facebook" | null
           id: string
           ig_user_id: number
           ig_username: string
@@ -936,6 +937,7 @@ export type Database = {
           account_type?: string | null
           created_at?: string
           followers_count?: number | null
+          graph_api_family?: "instagram" | "facebook" | null
           id?: string
           ig_user_id: number
           ig_username: string
@@ -952,6 +954,7 @@ export type Database = {
           account_type?: string | null
           created_at?: string
           followers_count?: number | null
+          graph_api_family?: "instagram" | "facebook" | null
           id?: string
           ig_user_id?: number
           ig_username?: string
@@ -2366,12 +2369,13 @@ export type Database = {
       persist_instagram_connection: {
         Args: {
           p_account_type: string
-          p_followers_count: number
+          p_followers_count: number | null
+          p_graph_api_family: "instagram" | "facebook"
           p_ig_user_id: number
           p_ig_username: string
           p_long_lived_expires_at: string
           p_long_lived_token: string
-          p_media_count: number
+          p_media_count: number | null
           p_user_id: string
         }
         Returns: {

@@ -143,7 +143,11 @@ INSTAGRAM_LIMITATION = (
 #        recoverable DeepSeek formatting drift cannot dead-letter paid reports
 # v1.4 — Restore bounded public-index evidence when no direct connector exists;
 #        annotate indexed metrics and explain unavailable private analytics
-PROMPT_VERSION = "1.4"
+# v1.5 — Project connected Instagram reach with explicit successful/eligible
+#        Insights coverage and preserve missing reach as unavailable
+# v1.6 — Preserve unavailable connected Instagram counts as N/A while retaining
+#        observed numeric zero in evidence supplied to report generation
+PROMPT_VERSION = "1.6"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework
@@ -884,27 +888,63 @@ def _instagram_metric_block(ig_metrics: Any) -> str:
     profile = getattr(ig_metrics, "profile", None)
     if profile is None:
         return ""
-    followers = int(getattr(profile, "followers_count", 0) or 0)
-    engagement = float(getattr(ig_metrics, "avg_engagement_rate", 0) or 0)
-    likes = float(getattr(ig_metrics, "avg_likes", 0) or 0)
-    comments = float(getattr(ig_metrics, "avg_comments", 0) or 0)
-    if not all(math.isfinite(value) for value in (engagement, likes, comments)):
+    raw_followers = getattr(profile, "followers_count", None)
+    followers = None if raw_followers is None else int(raw_followers)
+    raw_engagement = getattr(ig_metrics, "avg_engagement_rate", None)
+    engagement = None if raw_engagement is None else float(raw_engagement)
+    raw_likes = getattr(ig_metrics, "avg_likes", None)
+    likes = None if raw_likes is None else float(raw_likes)
+    raw_comments = getattr(ig_metrics, "avg_comments", None)
+    comments = None if raw_comments is None else float(raw_comments)
+    raw_reach = getattr(ig_metrics, "avg_reach", None)
+    reach = None if raw_reach is None else float(raw_reach)
+    reach_count = int(getattr(ig_metrics, "reach_media_count", 0) or 0)
+    eligible_count = int(
+        getattr(ig_metrics, "reach_eligible_media_count", 0) or 0
+    )
+    numeric_values = tuple(
+        value
+        for value in (engagement, likes, comments, reach)
+        if value is not None
+    )
+    if not all(math.isfinite(value) for value in numeric_values):
         raise ValueError("Connected Instagram metrics contained nonfinite values")
+    if (
+        reach_count < 0
+        or eligible_count < 0
+        or reach_count > eligible_count
+        or (reach is None and reach_count != 0)
+        or (reach is not None and reach_count == 0)
+    ):
+        raise ValueError("Connected Instagram reach coverage was inconsistent")
     cadence = str(getattr(ig_metrics, "posting_cadence", "") or "Unknown")
     formats = [str(value).replace("_", " ").title() for value in getattr(ig_metrics, "top_content_types", [])]
     metrics = (
-        ("Followers", f"{followers:,}"),
-        ("Average engagement", f"{engagement:.2f}%"),
-        ("Average likes", f"{likes:,.0f}"),
-        ("Average comments", f"{comments:,.0f}"),
+        ("Followers", f"{followers:,}" if followers is not None else "N/A"),
+        (
+            "Average engagement",
+            f"{engagement:.2f}%" if engagement is not None else "N/A",
+        ),
+        ("Average likes", f"{likes:,.0f}" if likes is not None else "N/A"),
+        (
+            "Average comments",
+            f"{comments:,.0f}" if comments is not None else "N/A",
+        ),
+        ("Average reach", f"{reach:,.0f}" if reach is not None else "N/A"),
     )
     cards = "".join(
         f'<div class="metric-card"><div class="value">{html_lib.escape(value)}</div>'
         f'<div class="label">{html_lib.escape(label)}</div></div>'
         for label, value in metrics
     )
+    reach_coverage = (
+        f"Reach available for {reach_count} of {eligible_count} eligible recent posts."
+        if eligible_count
+        else "No eligible recent posts were available for reach Insights."
+    )
     details = html_lib.escape(
-        f"Cadence: {cadence}. Format mix: {', '.join(formats) if formats else 'Unavailable'}."
+        f"Cadence: {cadence}. Format mix: {', '.join(formats) if formats else 'Unavailable'}. "
+        f"{reach_coverage}"
     )
     return (
         '<div class="callout accent"><strong>Connected Instagram Graph API</strong>'
@@ -1315,23 +1355,52 @@ def build_worker_prompt(
     ig_data_block = ""
     if ig_metrics is not None:
         p = ig_metrics.profile
-        recent_posts = "\n".join(
-            f"    [{m.media_type}] {m.like_count} likes, {m.comments_count} comments, ER {m.engagement_rate}% — {m.caption[:80] if m.caption else '(no caption)'}"
-            for m in ig_metrics.recent_media[:10]
+        def count_text(value: Any) -> str:
+            return "N/A" if value is None else f"{int(value):,}"
+
+        def rounded_text(value: Any) -> str:
+            return "N/A" if value is None else f"{float(value):.0f}"
+
+        recent_post_lines = []
+        for media in ig_metrics.recent_media[:10]:
+            media_reach = getattr(media, "reach", None)
+            reach_text = f", {media_reach:,} reach" if media_reach is not None else ""
+            engagement_text = (
+                "N/A"
+                if getattr(media, "engagement_rate", None) is None
+                else f"{float(media.engagement_rate)}%"
+            )
+            recent_post_lines.append(
+                f"    [{media.media_type}] {count_text(media.like_count)} likes, "
+                f"{count_text(media.comments_count)} comments{reach_text}, ER {engagement_text} — "
+                f"{media.caption[:80] if media.caption else '(no caption)'}"
+            )
+        recent_posts = "\n".join(recent_post_lines)
+        avg_reach = getattr(ig_metrics, "avg_reach", None)
+        avg_reach_text = (
+            f"{float(avg_reach):,.0f}"
+            if avg_reach is not None
+            else "not available for recent media"
+        )
+        reach_count = int(getattr(ig_metrics, "reach_media_count", 0) or 0)
+        eligible_count = int(
+            getattr(ig_metrics, "reach_eligible_media_count", 0) or 0
         )
         ig_data_block = f"""
 === LIVE INSTAGRAM DATA (via connected Business/Creator account) ===
 Use these REAL metrics from the Instagram Graph API — do NOT estimate or skip:
 - Profile: @{p.username} ({p.name})
-- Followers: {p.followers_count:,}
-- Following: {p.follows_count:,}
-- Media count: {p.media_count:,}
+- Followers: {count_text(p.followers_count)}
+- Following: {count_text(p.follows_count)}
+- Media count: {count_text(p.media_count)}
 - Account type: {p.account_type}
 - Bio: {p.biography}
 - Website: {p.website}
-- Avg likes/post: {ig_metrics.avg_likes:.0f}
-- Avg comments/post: {ig_metrics.avg_comments:.0f}
-- Avg engagement rate: {ig_metrics.avg_engagement_rate}%
+- Avg likes/post: {rounded_text(ig_metrics.avg_likes)}
+- Avg comments/post: {rounded_text(ig_metrics.avg_comments)}
+- Avg reach/post (Instagram Insights): {avg_reach_text}
+- Reach coverage: {reach_count} of {eligible_count} eligible recent posts
+- Avg engagement rate: {"N/A" if ig_metrics.avg_engagement_rate is None else f"{ig_metrics.avg_engagement_rate}%"}
 - Posting cadence: {ig_metrics.posting_cadence}
 - Top content types: {', '.join(ig_metrics.top_content_types) if ig_metrics.top_content_types else 'mixed'}
 - Recent posts ({len(ig_metrics.recent_media)}):

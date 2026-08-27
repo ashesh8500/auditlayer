@@ -5,8 +5,19 @@ import { normalizeSentryWebhook, scrubSentryEvent } from "./sentry-privacy";
 import { isValidSentrySignature } from "./sentry-webhook";
 
 describe("scrubSentryEvent", () => {
-  it("removes secrets, cookies, user identity, and report content", () => {
+  it("retains only allowlisted diagnostics and source frames", () => {
     const event = {
+      environment: "production",
+      release: "3548ec4",
+      level: "error",
+      tags: {
+        service: "auditlayer-web",
+        surface: "instagram-oauth",
+        operation: "callback.exchange",
+        error_class: "OAuthExchangeError",
+        status: "failed",
+        handle: "private_creator",
+      },
       request: {
         url: "https://auditlayermedia.com/report?token=secret",
         headers: {
@@ -47,15 +58,28 @@ describe("scrubSentryEvent", () => {
         email: "person@example.com",
         safe: "kept",
       },
+      arbitrary: "must not survive",
     };
     const scrubbed = scrubSentryEvent(event);
-    expect(scrubbed.request?.headers).toEqual({ "user-agent": "test" });
-    expect(scrubbed.request?.data).toEqual("[Filtered]");
-    expect(scrubbed.request?.url).toBeUndefined();
-    expect(scrubbed.user).toBeUndefined();
-    expect(scrubbed.message).toBeUndefined();
-    expect(scrubbed.breadcrumbs).toBeUndefined();
-    expect(scrubbed.exception).toEqual({
+    expect(scrubbed).toEqual({
+      environment: "production",
+      release: "3548ec4",
+      level: "error",
+      tags: {
+        service: "auditlayer-web",
+        surface: "instagram-oauth",
+        operation: "callback.exchange",
+        error_class: "OAuthExchangeError",
+        status: "failed",
+      },
+      fingerprint: [
+        "{{ default }}",
+        "auditlayer-web",
+        "instagram-oauth",
+        "callback.exchange",
+        "OAuthExchangeError",
+      ],
+      exception: {
       values: [
         {
           type: "RuntimeError",
@@ -73,13 +97,97 @@ describe("scrubSentryEvent", () => {
           },
         },
       ],
+      },
     });
-    expect(scrubbed.extra).toEqual({
-      access_token: "[Filtered]",
-      creatorHandle: "[Filtered]",
-      reportHtml: "[Filtered]",
-      email: "[Filtered]",
-      safe: "kept",
+    expect(JSON.stringify(scrubbed)).not.toContain("private_creator");
+    expect(JSON.stringify(scrubbed)).not.toContain("person@example.com");
+    expect(JSON.stringify(scrubbed)).not.toContain("must not survive");
+  });
+
+  it("drops a malformed source URL instead of retaining embedded credentials", () => {
+    const scrubbed = scrubSentryEvent({
+      exception: {
+        values: [
+          {
+            type: "TypeError",
+            stacktrace: {
+              frames: [
+                {
+                  abs_path: "https://user:password@example.com:bad/app.js?token=secret",
+                  function: "run",
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    expect(JSON.stringify(scrubbed)).not.toContain("user:password");
+    expect(
+      (scrubbed.exception.values[0].stacktrace.frames[0] as Record<string, unknown>).abs_path,
+    ).toBeUndefined();
+  });
+
+  it("drops data and blob frame locations so embedded private canaries cannot serialize", () => {
+    const scrubbed = scrubSentryEvent({
+      exception: {
+        values: [
+          {
+            type: "TypeError",
+            stacktrace: {
+              frames: [
+                {
+                  filename: "data:text/plain,PRIVATE_FRAME_CANARY",
+                  abs_path: "blob:https://auditlayermedia.com/PRIVATE_FRAME_CANARY",
+                  function: "run",
+                  lineno: 7,
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    const serialized = JSON.stringify(scrubbed);
+    expect(serialized).not.toContain("PRIVATE_FRAME_CANARY");
+    expect(serialized).not.toContain("data:");
+    expect(serialized).not.toContain("blob:");
+    expect(scrubbed.exception.values[0].stacktrace.frames[0]).toEqual({
+      function: "run",
+      lineno: 7,
+    });
+  });
+
+  it("drops every non-http absolute frame protocol before serialization", () => {
+    const scrubbed = scrubSentryEvent({
+      exception: {
+        values: [
+          {
+            type: "TypeError",
+            stacktrace: {
+              frames: [
+                {
+                  filename: "javascript:PRIVATE_FRAME_CANARY",
+                  abs_path: "file:///home/PRIVATE_FRAME_CANARY/app.ts",
+                  function: "run",
+                  lineno: 9,
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    const serialized = JSON.stringify(scrubbed);
+    expect(serialized).not.toContain("PRIVATE_FRAME_CANARY");
+    expect(serialized).not.toContain("javascript:");
+    expect(serialized).not.toContain("file:");
+    expect(scrubbed.exception.values[0].stacktrace.frames[0]).toEqual({
+      function: "run",
+      lineno: 9,
     });
   });
 });
@@ -96,6 +204,55 @@ describe("isValidSentrySignature", () => {
 });
 
 describe("normalizeSentryWebhook", () => {
+  it("normalizes the official issue-alert event shape with tuple tags", () => {
+    const result = normalizeSentryWebhook({
+      action: "triggered",
+      data: {
+        event: {
+          event_id: "e4874d664c3540c1a32eab185f12c5ab",
+          issue_id: "1117540176",
+          project: 1,
+          level: "error",
+          web_url: "https://sentry.example/issues/1117540176/events/e487?oauth_code=secret",
+          metadata: { type: "OAuthExchangeError", value: "PRIVATE_CANARY" },
+          tags: [
+            ["environment", "preview"],
+            ["release", "f6cfaf9a69bf0c4b1e9ad819c9a1f47dc9c68ef1"],
+            ["service", "auditlayer-web"],
+            ["surface", "instagram_oauth"],
+            ["operation", "token_exchange"],
+            ["error_class", "OAuthExchangeError"],
+            ["status", "failed"],
+            ["handle", "private_creator"],
+          ],
+          request: { headers: [["authorization", "Bearer secret"]] },
+          user: { email: "private@example.com" },
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      fingerprint: "sentry:1:1117540176",
+      source: "sentry",
+      severity: "error",
+      environment: "preview",
+      title: "OAuthExchangeError in instagram_oauth",
+      externalUrl: "https://sentry.example/issues/1117540176/events/e487",
+      metadata: {
+        service: "auditlayer-web",
+        surface: "instagram_oauth",
+        operation: "token_exchange",
+        error_class: "OAuthExchangeError",
+        status: "failed",
+        release: "f6cfaf9a69bf0c4b1e9ad819c9a1f47dc9c68ef1",
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_CANARY");
+    expect(JSON.stringify(result)).not.toContain("private_creator");
+    expect(JSON.stringify(result)).not.toContain("private@example.com");
+    expect(JSON.stringify(result)).not.toContain("oauth_code");
+  });
+
   it("retains only bounded incident metadata", () => {
     const result = normalizeSentryWebhook({
       action: "created",
@@ -105,22 +262,62 @@ describe("normalizeSentryWebhook", () => {
           title: "Worker failed for private creator",
           culprit: "worker.run",
           level: "error",
-          permalink: "https://sentry.example/issues/123",
-          metadata: { type: "RuntimeError", value: "secret payload" },
+          permalink: "https://sentry.example/issues/123?oauth_code=secret#private",
+          metadata: { type: "OAuthExchangeError", value: "secret payload" },
           project: { slug: "worker" },
+          tags: [
+            { key: "environment", value: "production" },
+            { key: "release", value: "3548ec4004fe6796d479108c53683077834dc863" },
+            { key: "service", value: "auditlayer-worker" },
+            { key: "surface", value: "instagram_oauth" },
+            { key: "operation", value: "token_exchange" },
+            { key: "error_class", value: "OAuthExchangeError" },
+            { key: "status", value: "failed" },
+            { key: "handle", value: "private_creator" },
+          ],
         },
       },
       installation: { uuid: "secret" },
     });
     expect(result).toEqual({
-      fingerprint: "sentry:worker:123",
+      fingerprint: "sentry:auditlayer-worker:123",
       source: "sentry",
       severity: "error",
-      environment: "unknown",
-      title: "RuntimeError in worker",
+      environment: "production",
+      title: "OAuthExchangeError in instagram_oauth",
       externalUrl: "https://sentry.example/issues/123",
-      metadata: { action: "created", project: "worker", type: "RuntimeError" },
+      metadata: {
+        service: "auditlayer-worker",
+        surface: "instagram_oauth",
+        operation: "token_exchange",
+        error_class: "OAuthExchangeError",
+        status: "failed",
+        release: "3548ec4004fe6796d479108c53683077834dc863",
+      },
     });
     expect(JSON.stringify(result)).not.toContain("secret payload");
+    expect(JSON.stringify(result)).not.toContain("private_creator");
+    expect(JSON.stringify(result)).not.toContain("oauth_code");
+  });
+
+  it("deduplicates repeated issue notifications by immutable project and issue id", () => {
+    const payload = (service: string) => ({
+      action: "created",
+      data: {
+        issue: {
+          id: "123",
+          level: "error",
+          project: { slug: "worker" },
+          tags: [{ key: "service", value: service }],
+        },
+      },
+    });
+
+    expect(normalizeSentryWebhook(payload("auditlayer-worker"))?.fingerprint).toBe(
+      "sentry:auditlayer-worker:123",
+    );
+    expect(normalizeSentryWebhook(payload("auditlayer-web"))?.fingerprint).toBe(
+      "sentry:auditlayer-worker:123",
+    );
   });
 });

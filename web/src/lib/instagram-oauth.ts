@@ -1,8 +1,11 @@
+import { INSTAGRAM_OAUTH_PERMISSIONS } from "./instagram-oauth-url";
+
 type InstagramOAuthConfig = {
   appId: string;
   appSecret: string;
   redirectUri: string;
   fetchImpl?: typeof fetch;
+  timeoutMs?: number;
 };
 
 export type InstagramTokens = {
@@ -10,15 +13,29 @@ export type InstagramTokens = {
   igUserId: string;
   igUsername: string;
   accountType: "BUSINESS" | "CREATOR";
-  followersCount: number;
-  mediaCount: number;
+  followersCount: number | null;
+  mediaCount: number | null;
   expiresIn: number;
+  grantedPermissions: string[];
 };
 
 async function responseJson<T>(response: Response, errorCode: string): Promise<T> {
   if (!response.ok) throw new Error(errorCode);
   try {
     return (await response.json()) as T;
+  } catch {
+    throw new Error(errorCode);
+  }
+}
+
+async function boundedFetch(
+  fetchImpl: typeof fetch,
+  input: string,
+  init: RequestInit,
+  errorCode: string,
+): Promise<Response> {
+  try {
+    return await fetchImpl(input, init);
   } catch {
     throw new Error(errorCode);
   }
@@ -37,6 +54,8 @@ export async function completeInstagramOAuth(
   }
 
   const fetchImpl = config.fetchImpl ?? fetch;
+  const timeoutMs = config.timeoutMs ?? 10_000;
+  const requestSignal = () => AbortSignal.timeout(timeoutMs);
   const tokenBody = new URLSearchParams({
     client_id: config.appId,
     client_secret: config.appSecret,
@@ -44,21 +63,44 @@ export async function completeInstagramOAuth(
     redirect_uri: config.redirectUri,
     code,
   });
-  const shortResponse = await fetchImpl(
+  const shortResponse = await boundedFetch(
+    fetchImpl,
     "https://api.instagram.com/oauth/access_token",
     {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: tokenBody,
       cache: "no-store",
+      signal: requestSignal(),
     },
+    "instagram_token_exchange_failed",
   );
-  const shortToken = await responseJson<{
-    access_token?: string;
-    user_id?: string | number;
+  const shortPayload = await responseJson<{
+    data?: Array<{
+      access_token?: string;
+      user_id?: string | number;
+      permissions?: string | string[];
+    }>;
   }>(shortResponse, "instagram_token_exchange_failed");
+  if (!Array.isArray(shortPayload.data) || shortPayload.data.length !== 1) {
+    throw new Error("instagram_token_exchange_failed");
+  }
+  const shortToken = shortPayload.data[0];
   if (!shortToken.access_token || shortToken.user_id == null) {
     throw new Error("instagram_token_exchange_failed");
+  }
+  const grantedPermissions = Array.isArray(shortToken.permissions)
+    ? shortToken.permissions
+    : (shortToken.permissions ?? "")
+        .split(",")
+        .map((permission) => permission.trim())
+        .filter(Boolean);
+  if (
+    !INSTAGRAM_OAUTH_PERMISSIONS.every((permission) =>
+      grantedPermissions.includes(permission),
+    )
+  ) {
+    throw new Error("instagram_permissions_not_granted");
   }
 
   const longParams = new URLSearchParams({
@@ -66,9 +108,11 @@ export async function completeInstagramOAuth(
     client_secret: config.appSecret,
     access_token: shortToken.access_token,
   });
-  const longResponse = await fetchImpl(
+  const longResponse = await boundedFetch(
+    fetchImpl,
     `https://graph.instagram.com/access_token?${longParams}`,
-    { cache: "no-store" },
+    { cache: "no-store", signal: requestSignal() },
+    "instagram_long_lived_exchange_failed",
   );
   const longToken = await responseJson<{
     access_token?: string;
@@ -79,39 +123,51 @@ export async function completeInstagramOAuth(
   }
 
   const profileParams = new URLSearchParams({
-    fields: "id,username,account_type,followers_count,media_count",
+    fields: "user_id,username,account_type,followers_count,media_count",
     access_token: longToken.access_token,
   });
-  const profileResponse = await fetchImpl(
+  const profileResponse = await boundedFetch(
+    fetchImpl,
     `https://graph.instagram.com/v21.0/me?${profileParams}`,
-    { cache: "no-store" },
+    { cache: "no-store", signal: requestSignal() },
+    "instagram_profile_fetch_failed",
   );
   const profile = await responseJson<{
-    id?: string | number;
+    user_id?: string | number;
     username?: string;
     account_type?: string;
     followers_count?: number;
     media_count?: number;
   }>(profileResponse, "instagram_profile_fetch_failed");
 
+  const accountType = profile.account_type?.toUpperCase();
   const normalizedAccountType =
-    profile.account_type === "MEDIA_CREATOR" || profile.account_type === "CREATOR"
+    accountType === "MEDIA_CREATOR" || accountType === "CREATOR"
       ? "CREATOR"
-      : profile.account_type === "BUSINESS"
+      : accountType === "BUSINESS"
         ? "BUSINESS"
         : null;
   if (!normalizedAccountType) {
     throw new Error("instagram_professional_account_required");
   }
-  if (!profile.username) throw new Error("instagram_profile_fetch_failed");
+  if (!profile.username || profile.user_id == null) {
+    throw new Error("instagram_profile_fetch_failed");
+  }
 
   return {
     accessToken: longToken.access_token,
-    igUserId: String(profile.id ?? shortToken.user_id),
+    igUserId: String(profile.user_id),
     igUsername: profile.username,
     accountType: normalizedAccountType,
-    followersCount: Number(profile.followers_count ?? 0),
-    mediaCount: Number(profile.media_count ?? 0),
+    followersCount:
+      typeof profile.followers_count === "number" && Number.isFinite(profile.followers_count)
+        ? profile.followers_count
+        : null,
+    mediaCount:
+      typeof profile.media_count === "number" && Number.isFinite(profile.media_count)
+        ? profile.media_count
+        : null,
     expiresIn: Number(longToken.expires_in ?? 5_184_000),
+    grantedPermissions,
   };
 }

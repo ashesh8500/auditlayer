@@ -4,6 +4,7 @@ from concurrent.futures import Future
 import json
 from pathlib import Path
 from typing import Any, cast
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -17,6 +18,7 @@ from auditlayer_worker.generation import (
     _safe_evidence_sources,
 )
 from auditlayer_worker.hermes import ChatResult, Usage
+from auditlayer_worker.instagram_api import InstagramAPIError, InstagramErrorKind
 
 
 def _audit(report_type: str = "standard") -> AuditRecord:
@@ -150,8 +152,14 @@ def test_analysis_failure_carries_reusable_research_checkpoint() -> None:
     assert failure.stage_timings["research"] >= 0
 
 
-def test_invalid_correction_is_retryable_and_keeps_checkpoint() -> None:
+def test_invalid_correction_is_retryable_keeps_checkpoint_and_captures_projection_failure(
+    monkeypatch,
+) -> None:
     client = _Client(["not json", "still not json"])
+    capture = MagicMock()
+    monkeypatch.setattr(
+        "auditlayer_worker.generation.capture_worker_failure", capture, raising=False
+    )
 
     with pytest.raises(GenerationStageError) as caught:
         _generator(client).generate(_audit(), lambda *_args: None)
@@ -163,11 +171,22 @@ def test_invalid_correction_is_retryable_and_keeps_checkpoint() -> None:
     assert failure.tokens_in == 2_400
     assert failure.tokens_out == 1_600
     assert failure.research_cache
+    capture.assert_called_once_with(
+        capture.call_args.args[0],
+        surface="report_projection",
+        operation="report_projection",
+        status="failed",
+    )
+    assert isinstance(capture.call_args.args[0], ValueError)
 
 
-def test_connected_metrics_wait_has_a_hard_timeout() -> None:
+def test_connected_metrics_wait_has_a_hard_timeout_and_is_captured(monkeypatch) -> None:
     client = _Client([_payload()])
     pending: Future[Any] = Future()
+    capture = MagicMock()
+    monkeypatch.setattr(
+        "auditlayer_worker.generation.capture_worker_failure", capture, raising=False
+    )
 
     with pytest.raises(GenerationStageError) as caught:
         _generator(client, instagram_timeout_seconds=0.01).generate(
@@ -182,6 +201,46 @@ def test_connected_metrics_wait_has_a_hard_timeout() -> None:
     assert failure.retryable is True
     assert failure.research_cache
     assert client.calls == []
+    capture.assert_called_once_with(
+        capture.call_args.args[0],
+        surface="instagram_graph",
+        operation="metrics_fetch",
+        status="retrying",
+    )
+    assert isinstance(capture.call_args.args[0], TimeoutError)
+
+
+def test_connected_metrics_permission_failure_is_nonretryable_and_captured(
+    monkeypatch,
+) -> None:
+    client = _Client([_payload()])
+    failed: Future[Any] = Future()
+    graph_error = InstagramAPIError(InstagramErrorKind.AUTH_PERMISSION)
+    failed.set_exception(graph_error)
+    capture = MagicMock()
+    monkeypatch.setattr(
+        "auditlayer_worker.generation.capture_worker_failure", capture, raising=False
+    )
+
+    with pytest.raises(GenerationStageError) as caught:
+        _generator(client).generate(
+            _audit(),
+            lambda *_args: None,
+            ig_future=failed,
+        )
+
+    failure = caught.value
+    assert failure.stage == "connected_metrics"
+    assert failure.error_code == "connected_metrics_auth_permission"
+    assert failure.retryable is False
+    assert failure.research_cache
+    assert client.calls == []
+    capture.assert_called_once_with(
+        graph_error,
+        surface="instagram_graph",
+        operation="metrics_fetch",
+        status="rejected",
+    )
 
 
 def test_report_profile_enforces_single_api_attempt_and_timeout() -> None:
