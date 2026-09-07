@@ -911,3 +911,46 @@ def test_build_report_prompt_smoke(sample_audit):
     assert "Required Sections" in prompt
     assert "Master Skeleton Template" in prompt
     assert len(prompt) > 2000
+
+
+@pytest.mark.parametrize("suffix", [False, True])
+def test_score_labels_accept_only_the_canonical_weight_suffix(sample_audit, suffix):
+    from auditlayer_worker.core import SCORE_DIMENSIONS
+    payload = json.loads(_complete_standard_payload())
+    payload["sections"][0]["items"] = [
+        {"title": f"{title} ({weight}%)" if suffix else title,
+         "body": "Verified rationale", "value": str(score)}
+        for (title, weight), score in zip(SCORE_DIMENSIONS, [80, 70, 60, 50, 40, 30, 20, 10], strict=True)
+    ]
+    report = assemble_structured_report_html(sample_audit, json.dumps(payload))
+    assert '<span class="sd-overall">46<span>/ 100</span></span>' in report
+
+
+@pytest.mark.parametrize("bad_title", ["Profile Clarity (15%)", "Profile Clarity (10)", "Content Quality (15%)"])
+def test_score_labels_reject_wrong_weights_or_dimensions(sample_audit, bad_title):
+    payload = json.loads(_complete_standard_payload())
+    payload["sections"][0]["items"][0]["title"] = bad_title
+    with pytest.raises(ValueError, match="score dimension must be Profile Clarity"):
+        assemble_structured_report_html(sample_audit, json.dumps(payload))
+
+
+def test_structured_prompt_does_not_request_html_or_long_paragraphs(sample_audit):
+    prompt = build_section_prompt(sample_audit, "Verified evidence")
+    assert "JSON heading values" in prompt
+    assert "hemal-report-format.html" not in prompt
+    assert "2-3 rich lede paragraphs" not in prompt
+    assert "Verified evidence" in prompt
+    assert "<h2> elements" not in prompt
+
+
+def test_connected_report_footer_identifies_authenticated_sources(sample_audit):
+    metrics = SimpleNamespace(
+        profile=SimpleNamespace(followers_count=3731), avg_engagement_rate=1.47,
+        avg_likes=46.4, avg_comments=8.5, avg_reach=344.5,
+        reach_media_count=10, reach_eligible_media_count=10,
+        posting_cadence="weekly", top_content_types=["VIDEO"],
+    )
+    report = assemble_structured_report_html(sample_audit, _complete_standard_payload(), ig_metrics=metrics)
+    assert "account owner's authorized Instagram profile" in report
+    assert "This audit is based on publicly available profile data" not in report
+    assert "Reach coverage is shown in Key Metrics" in report

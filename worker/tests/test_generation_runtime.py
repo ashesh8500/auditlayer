@@ -136,6 +136,16 @@ def test_format_retry_is_bounded_and_accounted() -> None:
     assert result.tokens_out == 1_600
     assert result.format_retry_used is True
     assert "format_correction" in result.stage_timings
+    normal_prompt = client.calls[0]["messages"][1]["content"]
+    correction_prompt = client.calls[1]["messages"][1]["content"]
+    assert "SECTION-BY-SECTION GUIDE" in normal_prompt
+    assert "SECTION-BY-SECTION GUIDE" not in correction_prompt
+    assert "exactly 10 creative ideas" not in correction_prompt
+    assert "Compact Correction Contract" in correction_prompt
+    assert "Evidence A for example" in correction_prompt
+    assert "JSON heading values" in correction_prompt
+    assert "hemal-report-format.html" not in correction_prompt
+    assert client.calls[1]["session_id"] == ""
 
 
 def test_analysis_failure_carries_reusable_research_checkpoint() -> None:

@@ -123,3 +123,12 @@ OAuth failures log only a stage, HTTP status, numeric Meta error code, fixed err
 Production Instagram Login returned HTTP 200 with `access_token`, `user_id`, and `permissions` at the top level. Accept that observed response as well as the documented single-record `data` envelope. Validate the record and both granted permissions before exchanging or storing tokens; malformed or ambiguous envelopes remain rejected. No response bodies or credentials are logged.
 
 The short-token exchange can return a numeric Instagram user ID above JavaScript’s safe-integer range. That exchange ID is presence-validated only; it is never used for Graph requests or persisted. The connection uses the authoritative profile `user_id` from `/me`. Regression coverage includes the large numeric exchange ID and a distinct string profile ID.
+## Connected-account report validation follow-up (2026-09-07)
+
+The production reviewer run loaded the profile and Insights reach for 10/10 eligible posts, then failed structured-report validation after the bounded correction pass. A separate private diagnostic reproduced an oversized JSON response (26,499 characters) with an unsupported `lede2` field. Instagram access was successful; report projection correctly refused malformed output.
+
+The structured generator must not inherit HTML/CSS writing instructions. Keep the exact section framework, account evidence, private reach coverage, owner isolation, and existing payload validation. Use concise per-field guidance for the normal pass; regenerate corrections with a separate compact contract instead of resending the normal guide that requests 10 creative ideas and long narrative sections. Do not loosen payload safety limits or publish synthetic report results. The report's source note must also identify authenticated Instagram data when used.
+
+Validate with mocked first-pass failure/correction tests, real captured malformed output rejection, worker checks, and a fresh connected-account run before completing the Meta evidence and submission.
+
+The diagnostic correction also reproduced exact prompted weight suffixes (for example `Profile Clarity (10%)`) rejected by the scorer. The fix accepts only the exact canonical name or its exact expected weight suffix; different dimensions, order, weights, ranges, duplicate fields and excess payload sizes remain rejected. Replaying the unchanged captured correction with the fixed renderer passed and retained authenticated reach coverage. Prompt version is now 1.8.
