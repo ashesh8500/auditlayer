@@ -19,13 +19,51 @@ export type InstagramTokens = {
   grantedPermissions: string[];
 };
 
+function reportOAuthResponseFailure(
+  errorCode: string,
+  response: Response,
+  payload: unknown,
+) {
+  const record = payload && typeof payload === "object"
+    ? payload as Record<string, unknown>
+    : {};
+  const nested = record.error && typeof record.error === "object"
+    ? record.error as Record<string, unknown>
+    : {};
+  const message = typeof record.error_message === "string"
+    ? record.error_message
+    : typeof nested.message === "string" ? nested.message : "";
+  const upstreamCode = record.code ?? nested.code;
+  // Never log upstream text, credentials, IDs, URLs, or token contents.
+  console.warn("Instagram OAuth response rejected", {
+    stage: errorCode,
+    httpStatus: response.status,
+    upstreamCode: typeof upstreamCode === "number" ? upstreamCode : null,
+    category: /secret/i.test(message) ? "app_secret"
+      : /redirect/i.test(message) ? "redirect_uri"
+      : /code/i.test(message) ? "authorization_code"
+      : /client|app/i.test(message) ? "app_configuration"
+      : /permission|scope/i.test(message) ? "permissions" : "other",
+    hasToken: typeof record.access_token === "string",
+    hasUserId: record.user_id != null,
+    hasPermissions: record.permissions != null,
+    dataCount: Array.isArray(record.data) ? record.data.length : null,
+  });
+}
+
 async function responseJson<T>(response: Response, errorCode: string): Promise<T> {
-  if (!response.ok) throw new Error(errorCode);
+  let payload: unknown;
   try {
-    return (await response.json()) as T;
+    payload = await response.json();
   } catch {
+    reportOAuthResponseFailure(errorCode, response, null);
     throw new Error(errorCode);
   }
+  if (!response.ok) {
+    reportOAuthResponseFailure(errorCode, response, payload);
+    throw new Error(errorCode);
+  }
+  return payload as T;
 }
 
 async function boundedFetch(
@@ -83,6 +121,7 @@ export async function completeInstagramOAuth(
     }>;
   }>(shortResponse, "instagram_token_exchange_failed");
   if (!Array.isArray(shortPayload.data) || shortPayload.data.length !== 1) {
+    reportOAuthResponseFailure("instagram_token_exchange_failed", shortResponse, shortPayload);
     throw new Error("instagram_token_exchange_failed");
   }
   const shortToken = shortPayload.data[0];

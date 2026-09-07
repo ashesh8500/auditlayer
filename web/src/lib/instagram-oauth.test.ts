@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { completeInstagramOAuth } from "./instagram-oauth";
 
@@ -9,6 +9,22 @@ const config = {
 };
 
 describe("completeInstagramOAuth", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("logs only safe response diagnostics for a failed exchange", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response(JSON.stringify({
+      error_type: "OAuthException", code: 400,
+      error_message: "Invalid client_secret: VERY_PRIVATE_SECRET",
+      access_token: "VERY_PRIVATE_TOKEN", user_id: "PRIVATE_USER_ID",
+    }), { status: 400 }));
+    await expect(completeInstagramOAuth("PRIVATE_CODE", { ...config, fetchImpl }))
+      .rejects.toThrow("instagram_token_exchange_failed");
+    expect(warning).toHaveBeenCalledWith("Instagram OAuth response rejected", expect.objectContaining({
+      httpStatus: 400, upstreamCode: 400, category: "app_secret", hasToken: true, hasUserId: true,
+    }));
+    expect(JSON.stringify(warning.mock.calls)).not.toContain("PRIVATE");
+  });
   it("parses Meta's current token response and validates both granted permissions", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
