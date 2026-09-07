@@ -114,7 +114,7 @@ export default async function AccountsPage() {
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
             Connect a professional Instagram account to make it part of your managed workspace.
           </p>
-          <Link href="/settings/ai-connections" className="mt-6 inline-block">
+          <Link href="/dashboard#instagram-connection-title" className="mt-6 inline-block">
             <Button size="lg" className="font-semibold">
               <Plus className="size-4" />
               Connect Instagram
