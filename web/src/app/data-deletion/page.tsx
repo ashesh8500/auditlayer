@@ -15,7 +15,7 @@ export default function DataDeletionPage() {
         <div className="mx-auto max-w-3xl">
           <p className="alm-kicker">Privacy control</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em]">Delete your Instagram connection or account data.</h1>
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">Last updated July 20, 2026</p>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">Last updated August 27, 2026</p>
 
           <div className="mt-10 space-y-6">
             <section className="alm-panel p-6 sm:p-8">
@@ -26,7 +26,7 @@ export default function DataDeletionPage() {
                 <li>Open Accounts or Reports and find the Instagram connection panel.</li>
                 <li>Select <strong className="text-foreground">Disconnect and delete access</strong>.</li>
               </ol>
-              <p className="mt-4 text-sm leading-6 text-muted-foreground">This deletes the stored Instagram access token and connection metadata from AuditLayerMedia. Future reports use public signals unless you reconnect.</p>
+              <p className="mt-4 text-sm leading-6 text-muted-foreground">This deletes the saved Instagram connection and the access it used from AuditLayerMedia. Future reports use public signals unless you reconnect.</p>
             </section>
 
             <section className="alm-panel p-6 sm:p-8">

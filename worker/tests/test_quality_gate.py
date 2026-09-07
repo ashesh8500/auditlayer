@@ -65,6 +65,25 @@ def test_quality_gate_requires_live_follower_metric_when_connected() -> None:
     assert "live follower count missing from rendered report" in result.blockers
 
 
+def test_quality_gate_requires_connected_reach_success_denominator() -> None:
+    body = " ".join(f"Unique analysis line {index} has enough useful words." for index in range(100))
+    metrics = SimpleNamespace(
+        profile=SimpleNamespace(followers_count=12400),
+        avg_reach=240.0,
+        reach_media_count=2,
+        reach_eligible_media_count=3,
+    )
+
+    result = evaluate_report_quality(
+        _report(body),
+        report_type="standard",
+        ig_metrics=metrics,
+    )
+
+    assert not result.passed
+    assert "live reach coverage missing from rendered report" in result.blockers
+
+
 def test_quality_gate_blocks_severe_repetition() -> None:
     repeated = "Post three educational reels every week to improve qualified discovery. " * 5
     filler = " ".join(f"Distinct evidence item {index} supports the plan." for index in range(100))

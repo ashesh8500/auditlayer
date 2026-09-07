@@ -44,7 +44,7 @@ export function createSupabaseMcpRepository(): McpRepository {
       if (account.platform !== "instagram") return null;
       const { data, error } = await admin
         .from("instagram_connections")
-        .select("account_type,followers_count,media_count,is_active,long_lived_expires_at,last_refreshed_at")
+        .select("account_type,followers_count,media_count,is_active,connection_status,long_lived_expires_at,last_refreshed_at")
         .eq("user_id", userId)
         .eq("ig_username", account.handle.replace(/^@/, ""))
         .order("updated_at", { ascending: false })

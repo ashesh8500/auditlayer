@@ -74,18 +74,143 @@ location and is not replaced by the operator route.
 
 ## Sentry
 
-Web and worker SDKs are inert without DSNs. Before-send hooks remove user identity,
-request bodies, cookies, authentication values, report content, creator context, and
-sensitive extras. The signed Sentry issue-alert webhook stores a bounded incident through
-a service-role-only atomic RPC; an incident never authorizes execution.
+### Event contract
 
-External Sentry provisioning requires project DSNs and a webhook secret. Configure:
+Web and worker capture is fail-closed: a DSN without an exact 40-hex deployed Git release
+does not enable the SDK. The before-send hooks build a new event from an allowlist instead
+of trying to redact a denylist. They retain only:
 
-- Web: `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ENVIRONMENT`, and optionally
-  `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` for source maps.
-- Worker: `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`.
-- Webhook: `SENTRY_WEBHOOK_SECRET`; point the Sentry issue alert at
-  `https://auditlayermedia.com/api/sentry/webhook` with the same secret.
+- structural event ID/timestamp/level;
+- exception class and safe source frames (`filename`, `abs_path`, function/module,
+  line/column, and `in_app`) without exception messages, local variables, or
+  source-context lines;
+- `environment`, exact `release`, and the diagnostic dimensions `service`, `surface`,
+  `operation`, `error_class`, and `status`.
+
+Grouping uses Sentry's default stack grouping plus those five dimensions. User identity,
+handles, email, IPs, tokens, OAuth codes, auth/cookie headers, request URLs/bodies/query,
+captions, reports, customer context, extras, breadcrumbs, arbitrary tags, replay, and
+transactions are never sent. HTTP(S) frame URLs are stripped of credentials, query, and
+fragment. Schemeless frames are retained only from the explicit application roots `src/`
+for web and `auditlayer_worker/` for worker; absolute POSIX/home/Windows/UNC locations,
+traversal, dependency/customer-relative paths, protocol-relative paths, and malformed
+segments are dropped. Every non-HTTP absolute protocol, including `data:`, `blob:`,
+`file:`, `javascript:`, and custom schemes, is also dropped because it can embed private
+content or environment paths.
+
+Worker error-level structured logs reach Sentry only for the fixed identities
+`worker_loop_failed`, `refinement_failed`, `audit_finalization_failed`, and
+`audit_finalization_outcome_unknown`. Capture uses a constant message that before-send
+removes; grouping survives only in allowlisted `surface`, event-identity `operation`, and
+approved error-class tags. Unknown event names, unapproved error-class values, and all
+other structured-log fields remain local and are never submitted to Sentry.
+Do not pass customer values to a diagnostic dimension; use only the exported fixed helper
+vocabularies in `web/src/lib/sentry.ts` and `worker/auditlayer_worker/observability.py`.
+
+### Activation keys
+
+Configure key names through the deployment control planes; never paste values into logs,
+comments, screenshots, or Git. `web/sentry.env.example` and `worker/.env.example` are the
+non-secret templates.
+
+| Surface | Required key names | Release rule |
+|---|---|---|
+| Vercel server/edge | `SENTRY_DSN`, `SENTRY_ENVIRONMENT` | `SENTRY_RELEASE` or automatic `VERCEL_GIT_COMMIT_SHA`, exactly 40 hex |
+| Browser | `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | build-plugin `SENTRY_RELEASE`; non-Vercel builds also set `NEXT_PUBLIC_SENTRY_RELEASE` to the same exact SHA |
+| Source maps | `SENTRY_ORG`, `SENTRY_PROJECT`, build-only `SENTRY_AUTH_TOKEN` | upload and runtime must use the same exact SHA |
+| Worker systemd env file | `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE` | update to the exact deployed worker commit on every rollout |
+| Incident webhook | `SENTRY_WEBHOOK_SECRET` plus existing Supabase service-role keys | no release key; event release is normalized from allowlisted Sentry tags |
+
+On Vercel, do not pin a long-lived static release: use the deployment commit SHA. Source
+maps upload only when org, project, auth token, and exact release are all present; uploaded
+maps are widened for useful frames and deleted from public build artifacts after upload.
+The runtime remains operational when Sentry is disabled.
+
+Point a Sentry issue alert at `https://auditlayermedia.com/api/sentry/webhook` with the same
+HMAC secret. Intake verifies the signature over the exact raw bytes, caps bodies at 256 KiB,
+strips URL credentials/query/fragment, and sends only allowlisted incident metadata to the
+service-role-only `ingest_operator_incident` RPC. It accepts official issue-alert
+`data.event` payloads with tuple tags and standard `data.issue` payloads; unavailable
+diagnostics on tagless issue payloads are recorded as `unknown`, never reconstructed from
+titles, culprits, request data, or customer fields. The unique immutable
+`sentry:<project>:<issue-id>` fingerprint makes repeated notifications increment one row;
+an incident never authorizes execution.
+
+### Verification and synthetic proof
+
+Before deployment:
+
+```bash
+cd web
+pnpm exec vitest run src/lib/sentry-privacy.test.ts src/lib/sentry.test.ts \
+  src/lib/sentry-config.test.ts src/app/api/sentry/webhook/route.test.ts
+pnpm typecheck && pnpm build
+
+cd ../worker
+uv run pytest tests/test_observability.py -q
+```
+
+At the exact preview/candidate commit, perform a safe synthetic proof with no customer
+request or data:
+
+1. Confirm configured key **names** only. Confirm the web runtime release, uploaded artifact
+   release, and candidate Git SHA are identical. Confirm the worker process has the same
+   exact worker SHA in `SENTRY_RELEASE`; never print any value except the non-secret SHA.
+2. From an authenticated preview-only operator path, call `captureWebFailure(new
+   Error("synthetic_sentry_probe"), { surface: "web_runtime", operation: "request",
+   status: "failed", errorClass: "SyntheticProbeError" })`. Remove the temporary call before
+   promotion. For the worker, define a local `SyntheticProbeError(RuntimeError)`, raise and
+   catch it, then call `capture_worker_failure(error, surface="worker_runtime",
+   operation="worker_loop", status="failed")` from a one-shot maintenance process, never
+   the report generator.
+3. Read back both Sentry events. Required: environment and exact release; five allowlisted
+   tags; resolved application source frame for web; no user/request/extra/breadcrumb data;
+   exception value exactly `[Filtered]`. Search the serialized event for the unique probe
+   string: it must not appear outside the synthetic class/tag chosen above.
+4. Send the same signed issue payload twice to the webhook in a non-production database and
+   verify one `operator_incidents` fingerprint whose `event_count` increments to two. Verify
+   an altered signature returns 401 and the RPC is not called.
+5. Delete/resolve the synthetic issue and retain only event IDs, release SHA, check results,
+   and rollback command as release evidence. Never retain payload exports.
+
+### Instagram reconnect lifecycle incidents
+
+Worker auth/permission rejections use the allowlisted
+`connection_state_transition` operation. The database mutation accepts only the owner
+UUID and connection UUID; Sentry receives the bounded operation/status/error class and
+never a token, handle, provider payload, customer context, or token-bearing URL. A
+successful transition also emits the customer-safe `instagram_reconnect_required` audit
+event.
+
+Triage without live Meta calls:
+
+1. Confirm the owner-scoped row is `connection_status = 'reconnect_required'`,
+   `is_active = false`, and has only the bounded `auth_permission` or
+   `legacy_connection` reason. Do not select or print `long_lived_token`.
+2. Confirm a repeat worker lookup returns reconnect-required before constructing the
+   Graph client; only a missing owner-scoped row may use public fallback.
+3. Confirm dashboard/account surfaces show **Reconnect Instagram** rather than live or
+   public-data status.
+4. After the owner completes OAuth, confirm the canonical persistence RPC reset the row
+   to `connected`, cleared reconnect metadata, and retained the explicit Graph family.
+
+Never manually flip lifecycle columns to recover access. Reauthorization through the
+owner-scoped OAuth transaction is the recovery path.
+
+Production activation, the proof, worker restart, and rollback remain release-gate actions;
+this runbook does not grant permission to perform them.
+
+### Known activation gaps (read-only inspection, 2026-08-27)
+
+- The repository and current process expose no worker Sentry key names. The production
+  `/opt/auditlayer/worker/.env` exists but was unreadable to the non-privileged review user,
+  so production worker key presence is **unknown**, not absent.
+- Vercel CLI had no local credentials and entered device login, so this lane could not
+  re-read production key names. Prior mission evidence established `SENTRY_WEBHOOK_SECRET`
+  only; it did not establish web DSNs, exact release, org/project, or source-map token.
+- No Sentry organization/project was created and no environment was mutated. Activation is
+  blocked until an authorized release operator verifies/adds the required names, then runs
+  the exact-release synthetic proof above.
 
 ## Deferred Telegram activation
 

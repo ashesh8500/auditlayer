@@ -22,6 +22,7 @@ from urllib.parse import urlsplit
 
 from .core import (
     GENERATION_PHASES,
+    INSTAGRAM_LIMITATION,
     AuditRecord,
     REFINE_SYSTEM_PROMPT,
     REPORT_SECTIONS,
@@ -34,6 +35,8 @@ from .core import (
 )
 from .hermes import HermesClient
 from .hermes_inprocess import _is_subject_relevant
+from .instagram_api import InstagramAPIError
+from .observability import capture_worker_failure
 
 Progress = Callable[[str, str], None]
 
@@ -424,10 +427,31 @@ class HermesReportGenerator:
                 ig_metrics = ig_future.result(timeout=self.instagram_timeout_seconds)
             except FutureTimeoutError as exc:
                 timed("connected_metrics", started)
+                capture_worker_failure(
+                    exc,
+                    surface="instagram_graph",
+                    operation="metrics_fetch",
+                    status="retrying",
+                )
                 raise fail(
                     "connected_metrics",
                     "connected_metrics_timeout",
                     retryable=True,
+                    cause=exc,
+                ) from exc
+            except InstagramAPIError as exc:
+                timed("connected_metrics", started)
+                if not getattr(exc, "_auditlayer_sentry_captured", False):
+                    capture_worker_failure(
+                        exc,
+                        surface="instagram_graph",
+                        operation="metrics_fetch",
+                        status="retrying" if exc.retryable else "rejected",
+                    )
+                raise fail(
+                    "connected_metrics",
+                    f"connected_metrics_{exc.kind.value}",
+                    retryable=exc.retryable,
                     cause=exc,
                 ) from exc
             except Exception as exc:  # noqa: BLE001
@@ -439,6 +463,13 @@ class HermesReportGenerator:
                     cause=exc,
                 ) from exc
             timed("connected_metrics", started)
+
+        if ig_metrics is not None and audit.platform.lower() == "instagram":
+            # Intake cannot know whether authenticated collection will succeed.
+            # Reconcile its fallback note only after real connected data arrives.
+            audit.limitations[:] = [
+                note for note in audit.limitations if note != INSTAGRAM_LIMITATION
+            ]
 
         research_material = json.dumps({"web": []})
         evidence_items = 0
@@ -563,6 +594,12 @@ class HermesReportGenerator:
                 ) from correction_exc
             except ValueError as correction_exc:
                 timed("format_correction", correction_started)
+                capture_worker_failure(
+                    correction_exc,
+                    surface="report_projection",
+                    operation="report_projection",
+                    status="failed",
+                )
                 raise fail(
                     "format_correction",
                     "structured_output_invalid",

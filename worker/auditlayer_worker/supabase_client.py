@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any
 from uuid import uuid4
 
@@ -54,6 +55,24 @@ class AppSettings:
     cost_cap_usd: float
 
 
+class InstagramConnectionState(str, Enum):
+    """Owner-scoped connection lookup states used by fail-closed policy."""
+
+    NOT_FOUND = "not_found"
+    USABLE = "usable"
+    RECONNECT_REQUIRED = "reconnect_required"
+
+
+@dataclass(frozen=True)
+class InstagramConnectionLookup:
+    state: InstagramConnectionState
+    connection_id: str | None = None
+    token: str | None = None
+    ig_user_id: int | None = None
+    expires_at: str = ""
+    graph_api_family: str | None = None
+
+
 class SupabaseGateway:
     def __init__(self, settings: WorkerSettings):
         if not settings.has_supabase:
@@ -87,33 +106,72 @@ class SupabaseGateway:
 
     def get_instagram_token(
         self, ig_username: str, user_id: str
-    ) -> tuple[str, int, str] | None:
+    ) -> InstagramConnectionLookup:
         res = (
             self.client.table("instagram_connections")
             .select(
-                "ig_user_id, long_lived_token, long_lived_expires_at, is_active"
+                "id, ig_user_id, long_lived_token, long_lived_expires_at, "
+                "graph_api_family, connection_status, is_active"
             )
             .eq("ig_username", ig_username)
             .eq("user_id", user_id)
-            .eq("is_active", True)
             .order("created_at", desc=True)
             .limit(1)
             .execute()
         )
         rows = res.data or []
         if not rows:
-            return None
+            return InstagramConnectionLookup(InstagramConnectionState.NOT_FOUND)
         row = rows[0]
+        connection_id = str(row["id"]) if row.get("id") else None
+        if row.get("connection_status") != "connected" or not row.get("is_active"):
+            return InstagramConnectionLookup(
+                InstagramConnectionState.RECONNECT_REQUIRED,
+                connection_id=connection_id,
+            )
         token = row.get("long_lived_token")
         if not token:
-            return None
+            return InstagramConnectionLookup(
+                InstagramConnectionState.RECONNECT_REQUIRED,
+                connection_id=connection_id,
+            )
         expires = row.get("long_lived_expires_at")
-        if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
-            return None
+        try:
+            expiry = datetime.fromisoformat(str(expires).replace("Z", "+00:00"))
+            if expiry.tzinfo is None:
+                expiry = expiry.replace(tzinfo=timezone.utc)
+        except (TypeError, ValueError):
+            return InstagramConnectionLookup(
+                InstagramConnectionState.RECONNECT_REQUIRED,
+                connection_id=connection_id,
+            )
+        if expiry <= datetime.now(timezone.utc):
+            return InstagramConnectionLookup(
+                InstagramConnectionState.RECONNECT_REQUIRED,
+                connection_id=connection_id,
+            )
         ig_user_id = row.get("ig_user_id")
-        if ig_user_id is None:
-            return None
-        return (str(token), int(ig_user_id), str(expires or ""))
+        try:
+            parsed_ig_user_id = int(ig_user_id)
+        except (TypeError, ValueError):
+            return InstagramConnectionLookup(
+                InstagramConnectionState.RECONNECT_REQUIRED,
+                connection_id=connection_id,
+            )
+        graph_api_family = row.get("graph_api_family")
+        if graph_api_family not in {"instagram", "facebook"}:
+            return InstagramConnectionLookup(
+                InstagramConnectionState.RECONNECT_REQUIRED,
+                connection_id=connection_id,
+            )
+        return InstagramConnectionLookup(
+            state=InstagramConnectionState.USABLE,
+            connection_id=connection_id,
+            token=str(token),
+            ig_user_id=parsed_ig_user_id,
+            expires_at=str(expires or ""),
+            graph_api_family=str(graph_api_family),
+        )
 
     def update_instagram_token(
         self,
@@ -132,14 +190,30 @@ class SupabaseGateway:
             }
         ).eq("user_id", user_id).eq("ig_user_id", ig_user_id).execute()
 
+    def mark_instagram_connection_reconnect_required(
+        self,
+        *,
+        user_id: str,
+        connection_id: str,
+    ) -> bool:
+        """Persist a bounded reconnect-required transition for one owner row."""
+        result = self.client.rpc(
+            "mark_instagram_connection_reconnect_required",
+            {
+                "p_user_id": user_id,
+                "p_connection_id": connection_id,
+            },
+        ).execute()
+        return result.data is True
+
     def refresh_instagram_connection(
         self,
         *,
         user_id: str,
         ig_user_id: int,
         account_type: str,
-        followers_count: int,
-        media_count: int,
+        followers_count: int | None,
+        media_count: int | None,
         observed_at: str,
     ) -> None:
         """Make connection health agree with the live snapshot used by an audit."""

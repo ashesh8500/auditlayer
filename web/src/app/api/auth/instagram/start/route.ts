@@ -8,6 +8,7 @@ import {
   instagramOAuthServerConfig,
 } from "@/lib/instagram-oauth-config";
 import { buildInstagramAuthUrl } from "@/lib/instagram-oauth-url";
+import { captureWebFailure } from "@/lib/sentry";
 
 /** Start a direct Instagram Business Login flow with a short-lived CSRF cookie. */
 export async function GET(request: NextRequest) {
@@ -25,13 +26,19 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(authorizationUrl);
     response.cookies.set(INSTAGRAM_OAUTH_STATE_COOKIE, `${user.id}:${state}`, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "lax",
       path: "/api/auth/instagram/callback",
       maxAge: INSTAGRAM_OAUTH_STATE_MAX_AGE_SECONDS,
     });
     return response;
-  } catch {
+  } catch (error) {
+    captureWebFailure(error, {
+      surface: "instagram_oauth",
+      operation: "oauth_start",
+      status: "failed",
+      errorClass: "OAuthConfigError",
+    });
     return NextResponse.redirect(
       new URL("/dashboard?instagram_error=not_configured", request.url),
     );

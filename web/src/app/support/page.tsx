@@ -24,9 +24,9 @@ export default function SupportPage() {
               <h2 className="font-semibold">Instagram connection help</h2>
               <ul className="mt-3 list-disc space-y-2 pl-5 text-xs leading-5 text-muted-foreground">
                 <li>Use an Instagram Business or Creator account. A Facebook Page is not required.</li>
-                <li>Approve the read-only profile and media permission shown by Instagram.</li>
+                <li>Approve both read-only profile access and read-only Insights access shown by Instagram.</li>
                 <li>If the session expired, return to Accounts or Reports and start the connection again.</li>
-                <li>Disconnecting deletes the stored access token immediately.</li>
+                <li>Disconnecting deletes the saved connection immediately.</li>
               </ul>
               <Link href="/data-deletion" className="mt-4 inline-block text-xs font-semibold text-[color:var(--accent)] hover:underline">
                 Instagram data deletion instructions
@@ -45,7 +45,7 @@ export default function SupportPage() {
               </div>
               <div className="alm-panel p-4">
                 <p className="font-semibold text-foreground">Account or billing?</p>
-                <p className="mt-1 leading-5">Include the email on the account. Never send passwords, access tokens, or card details.</p>
+                <p className="mt-1 leading-5">Include the email on the account. Never send passwords, connection details, or card details.</p>
               </div>
             </div>
           </div>

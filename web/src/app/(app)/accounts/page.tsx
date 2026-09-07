@@ -11,6 +11,7 @@ import {
   summarizeProgression,
   type ProgressionPoint,
 } from "@/lib/account-progress";
+import { INSTAGRAM_CONNECTION_HEALTH_FIELDS } from "@/lib/instagram-connection-public";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Accounts — AuditLayerMedia" };
@@ -30,6 +31,7 @@ type ConnectionRow = {
   ig_username: string;
   is_active: boolean;
   long_lived_expires_at: string;
+  connection_status: "connected" | "reconnect_required";
 };
 
 function formatDelta(value: number | null) {
@@ -57,7 +59,7 @@ export default async function AccountsPage() {
         .order("recorded_at", { ascending: false }),
       (supabase as any)
         .from("instagram_connections")
-        .select("ig_username, is_active, long_lived_expires_at")
+        .select(INSTAGRAM_CONNECTION_HEALTH_FIELDS)
         .eq("user_id", profile.id),
     ]);
 
@@ -68,10 +70,11 @@ export default async function AccountsPage() {
     current.push(point as ProgressionPoint);
     pointsByAccount.set(point.account_id, current);
   }
-  const liveHandles = new Set(
-    ((connections ?? []) as ConnectionRow[])
-      .filter(isLiveInstagramConnection)
-      .map((connection) => connection.ig_username.toLowerCase()),
+  const connectionsByHandle = new Map(
+    ((connections ?? []) as ConnectionRow[]).map((connection) => [
+      connection.ig_username.toLowerCase(),
+      connection,
+    ]),
   );
 
   return (
@@ -111,7 +114,7 @@ export default async function AccountsPage() {
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
             Connect a professional Instagram account to make it part of your managed workspace.
           </p>
-          <Link href="/settings/ai-connections" className="mt-6 inline-block">
+          <Link href="/dashboard#instagram-connection-title" className="mt-6 inline-block">
             <Button size="lg" className="font-semibold">
               <Plus className="size-4" />
               Connect Instagram
@@ -124,9 +127,11 @@ export default async function AccountsPage() {
             const summary = summarizeProgression(
               pointsByAccount.get(account.id) ?? [],
             );
-            const live =
-              account.platform === "instagram" &&
-              liveHandles.has(account.handle.toLowerCase());
+            const connection = connectionsByHandle.get(account.handle.toLowerCase());
+            const live = account.platform === "instagram" &&
+              isLiveInstagramConnection(connection);
+            const reconnectRequired =
+              account.platform === "instagram" && Boolean(connection) && !live;
             const scoreUp = (summary.scoreDelta ?? 0) >= 0;
 
             return (
@@ -165,7 +170,11 @@ export default async function AccountsPage() {
                           : "bg-[color:var(--amber)]"
                       }`}
                     />
-                    {live ? "Live data" : "Public data"}
+                    {live
+                      ? "Live data"
+                      : reconnectRequired
+                        ? "Reconnect Instagram"
+                        : "Public data"}
                   </span>
                 </div>
 

@@ -22,6 +22,7 @@ import {
 } from "@/lib/account-progress";
 import { requireProfile } from "@/lib/auth";
 import type { AuditStatus } from "@/lib/domain";
+import { INSTAGRAM_CONNECTION_HEALTH_FIELDS } from "@/lib/instagram-connection-public";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Account — AuditLayerMedia" };
@@ -91,9 +92,7 @@ export default async function AccountDetailPage({
         .order("created_at", { ascending: false }),
       (supabase as any)
         .from("instagram_connections")
-        .select(
-          "ig_username, is_active, long_lived_expires_at, last_refreshed_at",
-        )
+        .select(INSTAGRAM_CONNECTION_HEALTH_FIELDS)
         .eq("user_id", profile.id)
         .ilike("ig_username", ownedAccount.handle)
         .limit(1),
@@ -108,6 +107,7 @@ export default async function AccountDetailPage({
         is_active: boolean;
         long_lived_expires_at: string;
         last_refreshed_at: string | null;
+        connection_status: "connected" | "reconnect_required";
       }
     | undefined;
   const live = isLiveInstagramConnection(connection);

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireUser } from "@/lib/auth";
+import { captureWebFailure } from "@/lib/sentry";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function disconnectInstagram(formData: FormData) {
@@ -18,7 +19,16 @@ export async function disconnectInstagram(formData: FormData) {
       p_connection_id: connectionId,
     },
   );
-  if (error) throw new Error("instagram_disconnect_failed");
+  if (error) {
+    const disconnectError = new Error("instagram_disconnect_failed");
+    captureWebFailure(disconnectError, {
+      surface: "instagram_persistence",
+      operation: "disconnect",
+      status: "failed",
+      errorClass: "InstagramDisconnectError",
+    });
+    throw disconnectError;
+  }
 
   revalidatePath("/accounts");
   revalidatePath("/dashboard");

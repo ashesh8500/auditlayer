@@ -31,7 +31,7 @@ from typing import Any, cast
 import pytest
 
 from auditlayer_worker.config import WorkerSettings
-from auditlayer_worker.core import AuditRecord, Plan
+from auditlayer_worker.core import PROMPT_VERSION, AuditRecord, Plan
 from auditlayer_worker.generation import MockReportGenerator
 from auditlayer_worker.intelligence.report_provenance import (
     INTELLIGENCE_RUN_COLUMN,
@@ -164,7 +164,7 @@ def test_pipeline_allocates_a_new_version_when_regenerating_a_ready_report(
             "audit_id": audit.id,
             "delivery_status": "ready",
             "report_path": f"{audit.id}/v1.html",
-            "prompt_version": "1.4",
+            "prompt_version": PROMPT_VERSION,
             "template_version": "master-skeleton-v1",
             "agent_bundle_version": "1.0.0",
             "intelligence_run_id": RUN_ID,

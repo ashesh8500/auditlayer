@@ -21,6 +21,7 @@ from auditlayer_worker.core import (
     assemble_structured_report_html,
     build_report_prompt,
     build_section_prompt,
+    build_worker_prompt,
     load_master_skeleton,
 )
 from auditlayer_worker.generation import HermesReportGenerator, MockReportGenerator
@@ -258,6 +259,138 @@ def test_structured_report_autofills_connected_instagram_metrics(sample_audit):
     assert "3.5 posts per week" in html
     assert "<script>not markup</script>" not in html
     assert "&lt;script&gt;not markup&lt;/script&gt;" in html
+
+
+def test_connected_metric_projection_keeps_missing_counts_na_and_real_zero_zero(sample_audit):
+    metrics = SimpleNamespace(
+        profile=SimpleNamespace(followers_count=None),
+        avg_engagement_rate=0.0,
+        avg_likes=None,
+        avg_comments=0.0,
+        avg_reach=None,
+        reach_media_count=0,
+        reach_eligible_media_count=0,
+        posting_cadence="",
+        top_content_types=[],
+    )
+
+    html = assemble_structured_report_html(
+        sample_audit,
+        _complete_standard_payload(),
+        ig_metrics=metrics,
+    )
+
+    assert '<div class="value">N/A</div><div class="label">Followers</div>' in html
+    assert '<div class="value">N/A</div><div class="label">Average likes</div>' in html
+    assert '<div class="value">0.00%</div><div class="label">Average engagement</div>' in html
+    assert '<div class="value">0</div><div class="label">Average comments</div>' in html
+
+
+def test_connected_instagram_reach_projects_success_denominator(sample_audit):
+    metrics = SimpleNamespace(
+        profile=SimpleNamespace(followers_count=12345),
+        avg_engagement_rate=4.56,
+        avg_likes=321.0,
+        avg_comments=17.0,
+        avg_reach=240.0,
+        reach_media_count=2,
+        reach_eligible_media_count=3,
+        posting_cadence="3.5 posts per week",
+        top_content_types=["CAROUSEL_ALBUM", "VIDEO"],
+    )
+
+    html = assemble_structured_report_html(
+        sample_audit,
+        _complete_standard_payload(),
+        ig_metrics=metrics,
+    )
+
+    assert "Average reach" in html
+    assert ">240<" in html
+    assert "Reach available for 2 of 3 eligible recent posts." in html
+    assert "Connected Instagram Graph API" in html
+
+
+def test_worker_prompt_labels_reach_as_partial_connected_insights(sample_audit):
+    metrics = SimpleNamespace(
+        profile=SimpleNamespace(
+            username="creator",
+            name="Creator",
+            followers_count=12345,
+            follows_count=100,
+            media_count=50,
+            account_type="CREATOR",
+            biography="Bio",
+            website="",
+        ),
+        recent_media=[
+            SimpleNamespace(
+                media_type="VIDEO",
+                like_count=10,
+                comments_count=2,
+                reach=240,
+                engagement_rate=0.1,
+                caption="Example",
+            )
+        ],
+        avg_likes=10.0,
+        avg_comments=2.0,
+        avg_reach=240.0,
+        reach_media_count=2,
+        reach_eligible_media_count=3,
+        avg_engagement_rate=0.1,
+        posting_cadence="weekly",
+        top_content_types=["VIDEO"],
+    )
+
+    prompt = build_worker_prompt(sample_audit, ig_metrics=metrics)
+
+    assert "Avg reach/post (Instagram Insights): 240" in prompt
+    assert "Reach coverage: 2 of 3 eligible recent posts" in prompt
+    assert "240 reach" in prompt
+
+
+def test_worker_prompt_labels_missing_connected_counts_as_unavailable(sample_audit):
+    metrics = SimpleNamespace(
+        profile=SimpleNamespace(
+            username="creator",
+            name="Creator",
+            followers_count=None,
+            follows_count=0,
+            media_count=None,
+            account_type="CREATOR",
+            biography="",
+            website="",
+        ),
+        recent_media=[
+            SimpleNamespace(
+                media_type="VIDEO",
+                like_count=None,
+                comments_count=0,
+                reach=None,
+                engagement_rate=None,
+                caption="",
+            )
+        ],
+        avg_likes=None,
+        avg_comments=0.0,
+        avg_reach=None,
+        reach_media_count=0,
+        reach_eligible_media_count=0,
+        avg_engagement_rate=None,
+        posting_cadence="unknown",
+        top_content_types=["VIDEO"],
+    )
+
+    prompt = build_worker_prompt(sample_audit, ig_metrics=metrics)
+
+    assert "Followers: N/A" in prompt
+    assert "Following: 0" in prompt
+    assert "Media count: N/A" in prompt
+    assert "[VIDEO] N/A likes, 0 comments" in prompt
+    assert "Avg likes/post: N/A" in prompt
+    assert "Avg comments/post: 0" in prompt
+    assert "Avg engagement rate: N/A" in prompt
 
 
 def test_unconnected_instagram_report_marks_public_index_metrics_and_explains_them(

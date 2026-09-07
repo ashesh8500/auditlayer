@@ -42,7 +42,7 @@ from .core import (
 from .generation import GenerationStageError, ReportGenerator
 from .account_homes import ensure_account_home, get_report_bundle_version
 from .hermes_home_scope import HERMES_HOME_LOCK
-from .observability import log_event
+from .observability import capture_worker_failure, log_event
 from .quality import evaluate_report_quality
 from .supabase_client import ReportFinalizationOutcomeUnknown, _utcnow
 
@@ -494,6 +494,13 @@ class GenerationPipeline:
             report_type=audit.report_type or "standard",
             ig_metrics=ig_metrics,
         )
+        if not quality.passed:
+            capture_worker_failure(
+                RuntimeError("Report quality gate blocked delivery"),
+                surface="report_projection",
+                operation="report_projection",
+                status="rejected",
+            )
         delivery_status = (
             AuditStatus.READY if quality.passed else AuditStatus.NEEDS_REVIEW
         )
@@ -814,6 +821,8 @@ def _start_instagram_fetch(gateway, audit, sink):
     ig_metrics or None.
     """
     def _fetch():
+        from .supabase_client import InstagramConnectionState
+
         try:
             token_info = (
                 gateway.get_instagram_token(audit.handle, audit.user_id)
@@ -821,6 +830,12 @@ def _start_instagram_fetch(gateway, audit, sink):
                 else None
             )
         except Exception as exc:
+            capture_worker_failure(
+                exc,
+                surface="instagram_connection",
+                operation="connection_lookup",
+                status="failed",
+            )
             log_event(
                 "instagram_connection_lookup_failed",
                 level="warning",
@@ -832,7 +847,7 @@ def _start_instagram_fetch(gateway, audit, sink):
                 "Could not verify the connected Instagram account; refusing public fallback"
             ) from exc
 
-        if token_info is None:
+        if token_info is None or token_info.state == InstagramConnectionState.NOT_FOUND:
             sink.emit(
                 "researching",
                 "No usable connected Instagram account was found. Using verified public Instagram signals.",
@@ -840,11 +855,64 @@ def _start_instagram_fetch(gateway, audit, sink):
             )
             return None
 
-        token, ig_user_id, expires_at = token_info
-        from .instagram_api import InstagramAPIClient, should_refresh_instagram_token
+        if token_info.state == InstagramConnectionState.RECONNECT_REQUIRED:
+            error = RuntimeError("instagram_reconnect_required")
+            capture_worker_failure(
+                error,
+                surface="instagram_connection",
+                operation="connection_lookup",
+                status="rejected",
+            )
+            sink.emit(
+                "failed",
+                "Instagram must be reconnected before live metrics can be loaded. Public fallback was not used.",
+                event_type="instagram_reconnect_required",
+            )
+            raise error
 
-        client = InstagramAPIClient(token)
-        if token.startswith("IGA") and should_refresh_instagram_token(expires_at):
+        def _persist_reconnect_required() -> None:
+            try:
+                if (
+                    not audit.user_id
+                    or not token_info.connection_id
+                    or not gateway.mark_instagram_connection_reconnect_required(
+                        user_id=audit.user_id,
+                        connection_id=token_info.connection_id,
+                    )
+                ):
+                    raise RuntimeError("instagram_reconnect_transition_failed")
+            except Exception as transition_error:
+                capture_worker_failure(
+                    transition_error,
+                    surface="instagram_connection",
+                    operation="connection_state_transition",
+                    status="failed",
+                )
+                log_event(
+                    "instagram_reconnect_transition_failed",
+                    level="error",
+                    audit_id=audit.id,
+                    error_type=type(transition_error).__name__,
+                )
+            sink.emit(
+                "failed",
+                "Instagram authorization must be reconnected before live metrics can be loaded. Public fallback was not used.",
+                event_type="instagram_reconnect_required",
+            )
+
+        token = token_info.token
+        ig_user_id = token_info.ig_user_id
+        expires_at = token_info.expires_at
+        graph_api_family = token_info.graph_api_family
+        from .instagram_api import (
+            InstagramAPIClient,
+            InstagramAPIError,
+            InstagramErrorKind,
+            should_refresh_instagram_token,
+        )
+
+        client = InstagramAPIClient(token, graph_api_family=graph_api_family)
+        if graph_api_family == "instagram" and should_refresh_instagram_token(expires_at):
             try:
                 refreshed_token, expires_in = client.refresh_long_lived_token()
                 refreshed_expires_at = (
@@ -857,13 +925,35 @@ def _start_instagram_fetch(gateway, audit, sink):
                     expires_at=refreshed_expires_at,
                 )
                 client.close()
-                client = InstagramAPIClient(refreshed_token)
+                client = InstagramAPIClient(
+                    refreshed_token,
+                    graph_api_family=graph_api_family,
+                )
                 sink.emit(
                     "researching",
                     "Instagram authorization renewed before live metrics were loaded.",
                     event_type="instagram_token_refreshed",
                 )
             except Exception as exc:
+                if (
+                    isinstance(exc, InstagramAPIError)
+                    and exc.kind == InstagramErrorKind.AUTH_PERMISSION
+                ):
+                    capture_worker_failure(
+                        exc,
+                        surface="instagram_graph",
+                        operation="token_refresh",
+                        status="rejected",
+                    )
+                    setattr(exc, "_auditlayer_sentry_captured", True)
+                    _persist_reconnect_required()
+                    raise
+                capture_worker_failure(
+                    exc,
+                    surface="instagram_graph",
+                    operation="token_refresh",
+                    status="degraded",
+                )
                 log_event(
                     "instagram_token_refresh_failed",
                     level="warning",
@@ -885,6 +975,12 @@ def _start_instagram_fetch(gateway, audit, sink):
                         observed_at=profile.fetched_at,
                     )
                 except Exception as exc:
+                    capture_worker_failure(
+                        exc,
+                        surface="instagram_connection",
+                        operation="connection_persist",
+                        status="degraded",
+                    )
                     log_event(
                         "instagram_connection_snapshot_update_failed",
                         level="warning",
@@ -896,18 +992,55 @@ def _start_instagram_fetch(gateway, audit, sink):
                         "Live Instagram data loaded, but connection health could not be refreshed.",
                         event_type="internal_warning",
                     )
+            reach_count = int(getattr(metrics, "reach_media_count", 0) or 0)
+            eligible_count = int(
+                getattr(metrics, "reach_eligible_media_count", 0) or 0
+            )
+            if reach_count < eligible_count:
+                capture_worker_failure(
+                    RuntimeError("Instagram Insights coverage was partial"),
+                    surface="instagram_insights",
+                    operation="insights_fetch",
+                    status="degraded",
+                )
+            follower_value = metrics.profile.followers_count
+            followers_text = (
+                "N/A" if follower_value is None else f"{int(follower_value):,}"
+            )
+            engagement_value = metrics.avg_engagement_rate
+            engagement_text = (
+                "N/A" if engagement_value is None else f"{engagement_value}%"
+            )
             sink.emit(
                 "researching",
                 (
                     "Connected Instagram Graph API loaded: "
-                    f"{metrics.profile.followers_count:,} followers, "
+                    f"{followers_text} followers, "
                     f"{len(metrics.recent_media)} recent posts, "
-                    f"{metrics.avg_engagement_rate}% average engagement."
+                    f"{engagement_text} average engagement, "
+                    f"reach available for "
+                    f"{reach_count} of "
+                    f"{eligible_count} "
+                    "eligible posts."
                 ),
                 event_type="instagram_api",
             )
             return metrics
         except Exception as exc:
+            capture_worker_failure(
+                exc,
+                surface="instagram_graph",
+                operation="metrics_fetch",
+                status=(
+                    "retrying"
+                    if isinstance(exc, InstagramAPIError) and exc.retryable
+                    else "rejected"
+                    if isinstance(exc, InstagramAPIError)
+                    else "failed"
+                ),
+            )
+            if isinstance(exc, InstagramAPIError):
+                setattr(exc, "_auditlayer_sentry_captured", True)
             log_event(
                 "instagram_api_fetch_failed",
                 level="warning",
@@ -915,6 +1048,21 @@ def _start_instagram_fetch(gateway, audit, sink):
                 handle=audit.handle,
                 error_type=type(exc).__name__,
             )
+            if isinstance(exc, InstagramAPIError):
+                if exc.kind == InstagramErrorKind.AUTH_PERMISSION:
+                    _persist_reconnect_required()
+                    raise
+                detail = (
+                    "Connected Instagram data was temporarily unavailable. The audit will retry rather than use stale public metrics."
+                    if exc.retryable
+                    else "Connected Instagram authorization or request was rejected. Public fallback was not used."
+                )
+                sink.emit(
+                    "failed",
+                    detail,
+                    event_type=f"instagram_api_{exc.kind.value}",
+                )
+                raise
             sink.emit(
                 "failed",
                 "Connected Instagram data was unavailable. The audit will retry rather than use stale public metrics.",
@@ -996,28 +1144,48 @@ def _link_account_and_progression(
         # metrics enrich it when available; the score itself is locally owned.
         if ig_metrics is not None or score is not None:
             profile = getattr(ig_metrics, "profile", None) if ig_metrics is not None else None
+            followers_value = (
+                getattr(profile, "followers_count", None)
+                if profile is not None
+                else None
+            )
+            engagement_value = (
+                getattr(ig_metrics, "avg_engagement_rate", None)
+                if ig_metrics is not None
+                else None
+            )
+            likes_value = (
+                getattr(ig_metrics, "avg_likes", None)
+                if ig_metrics is not None
+                else None
+            )
+            comments_value = (
+                getattr(ig_metrics, "avg_comments", None)
+                if ig_metrics is not None
+                else None
+            )
             gateway.client.table("account_progression").upsert(
                 {
                     "account_id": account_id,
                     "audit_id": audit.id,
                     "followers": (
-                        int(getattr(profile, "followers_count", 0) or 0)
-                        if profile is not None
+                        int(followers_value)
+                        if followers_value is not None
                         else None
                     ),
                     "engagement": (
-                        float(getattr(ig_metrics, "avg_engagement_rate", 0) or 0)
-                        if ig_metrics is not None
+                        float(engagement_value)
+                        if engagement_value is not None
                         else None
                     ),
                     "avg_likes": (
-                        float(getattr(ig_metrics, "avg_likes", 0) or 0)
-                        if ig_metrics is not None
+                        float(likes_value)
+                        if likes_value is not None
                         else None
                     ),
                     "avg_comments": (
-                        float(getattr(ig_metrics, "avg_comments", 0) or 0)
-                        if ig_metrics is not None
+                        float(comments_value)
+                        if comments_value is not None
                         else None
                     ),
                     "score": score,

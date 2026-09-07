@@ -14,7 +14,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-3xl px-6 py-12 text-sm leading-relaxed text-foreground sm:py-16">
       <p className="alm-kicker">Privacy</p>
       <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em]">Privacy Policy</h1>
-      <p className="mt-2 text-muted-foreground">Effective: July 20, 2026</p>
+      <p className="mt-2 text-muted-foreground">Effective: September 7, 2026</p>
 
       <section className="mt-8 space-y-4">
         <h2 className="text-base font-semibold">1. What we collect</h2>
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
             <strong className="text-foreground">Payment information</strong> — processed by our secure payment provider. We never see or store your credit card details.
           </li>
           <li>
-            <strong className="text-foreground">Instagram connection data</strong> — if you connect a Business or Creator account, we retain the connection details and approved profile and content metrics needed for your reports.
+            <strong className="text-foreground">Instagram connection data</strong> — if you connect a Business or Creator account, we retain the connection details and approved profile, recent-content, and reach metrics needed for your reports.
           </li>
         </ul>
       </section>
@@ -68,11 +68,12 @@ export default function PrivacyPage() {
       <section id="instagram-data" className="mt-8 scroll-mt-24 space-y-4">
         <h2 className="text-base font-semibold">3. Instagram data use</h2>
         <p className="text-muted-foreground">
-          Connecting Instagram is optional. If you connect a Business or Creator account, we use the profile and recent-content data you approve only to provide verified metrics, account progression, and strategic reports for you.
+          Connecting Instagram is optional. If you connect a Business or Creator account, we use the profile, recent-content, and reach metrics you approve only to provide verified metrics, account progression, and strategic reports for you.
         </p>
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
           <li>We cannot publish, edit, comment, follow, unfollow, send messages, or manage advertising.</li>
-          <li>Your connection credentials are protected and are never exposed to another customer.</li>
+          <li>If Instagram does not return an approved metric, we show it as unavailable rather than zero.</li>
+          <li>Your connection data is protected and is never exposed to another customer.</li>
           <li>Connected Instagram data is associated only with your AuditLayerMedia account.</li>
           <li>Disconnecting removes the saved connection immediately.</li>
         </ul>
@@ -84,7 +85,7 @@ export default function PrivacyPage() {
       <section className="mt-8 space-y-4">
         <h2 className="text-base font-semibold">4. Service providers</h2>
         <p className="text-muted-foreground">
-          We use carefully selected service providers to operate AuditLayerMedia, process payments, deliver essential account emails, protect your account, and store your reports. They may process only the information needed to provide those services and may not use it for their own advertising.
+          Vercel hosts our web application and connection flow. Supabase stores account information, approved Instagram connection data, and reports. Hetzner hosts our report-processing workers. DeepSeek processes selected report inputs, including approved account metrics and content, to generate the analysis you request. Instagram login credentials are not included in report-generation inputs.
         </p>
         <p className="text-muted-foreground">
           If you connect Instagram, Instagram processes the connection and approved account data under its{" "}

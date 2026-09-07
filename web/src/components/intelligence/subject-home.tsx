@@ -294,19 +294,23 @@ function OverviewTab({
                   <p className="truncate text-xs text-muted-foreground">
                     {ch.platform === "website" ? ch.url : `@${ch.handle}`}
                     {" · "}
-                    {ch.connected ? "Connected" : "Public research"}
+                    {ch.reconnectRequired ? "Reconnect Instagram" : ch.connected ? "Connected" : "Public research"}
                   </p>
                 </div>
                 <Badge
                   tone={
-                    ch.ownershipStatus === "connected"
+                    ch.reconnectRequired
+                      ? "warning"
+                      : ch.connected
                       ? "success"
                       : ch.ownershipStatus === "observed"
                         ? "warning"
                         : "neutral"
                   }
                 >
-                  {ch.ownershipStatus === "connected"
+                  {ch.reconnectRequired
+                    ? "Reconnect"
+                    : ch.connected
                     ? "Connected"
                     : ch.ownershipStatus === "observed"
                       ? "Observed"

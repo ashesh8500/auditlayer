@@ -46,6 +46,7 @@ export interface ChannelSummary {
   displayName: string | null;
   avatarUrl: string | null;
   connected: boolean; // live OAuth connection
+  reconnectRequired?: boolean;
   subjectId: string;
 }
 

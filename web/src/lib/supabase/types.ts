@@ -6,6 +6,22 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// Application-level event vocabulary; preserve this preamble when regenerating.
+export type AuditEventPhase =
+  | "intake"
+  | "queued"
+  | "approved"
+  | "started"
+  | "researching"
+  | "metrics"
+  | "peers"
+  | "scoring"
+  | "composing"
+  | "uploaded"
+  | "succeeded"
+  | "failed"
+  | "refinement"
+
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -918,8 +934,10 @@ export type Database = {
         Row: {
           access_token: string | null
           account_type: string | null
+          connection_status: "connected" | "reconnect_required"
           created_at: string
           followers_count: number | null
+          graph_api_family: "instagram" | "facebook" | null
           id: string
           ig_user_id: number
           ig_username: string
@@ -928,14 +946,18 @@ export type Database = {
           long_lived_expires_at: string
           long_lived_token: string
           media_count: number | null
+          reconnect_reason: "auth_permission" | "legacy_connection" | null
+          reconnect_required_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           access_token?: string | null
           account_type?: string | null
+          connection_status?: "connected" | "reconnect_required"
           created_at?: string
           followers_count?: number | null
+          graph_api_family?: "instagram" | "facebook" | null
           id?: string
           ig_user_id: number
           ig_username: string
@@ -944,14 +966,18 @@ export type Database = {
           long_lived_expires_at: string
           long_lived_token: string
           media_count?: number | null
+          reconnect_reason?: "auth_permission" | "legacy_connection" | null
+          reconnect_required_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           access_token?: string | null
           account_type?: string | null
+          connection_status?: "connected" | "reconnect_required"
           created_at?: string
           followers_count?: number | null
+          graph_api_family?: "instagram" | "facebook" | null
           id?: string
           ig_user_id?: number
           ig_username?: string
@@ -960,6 +986,8 @@ export type Database = {
           long_lived_expires_at?: string
           long_lived_token?: string
           media_count?: number | null
+          reconnect_reason?: "auth_permission" | "legacy_connection" | null
+          reconnect_required_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -2361,17 +2389,22 @@ export type Database = {
         Args: { p_idempotency_key: string; p_user_id: string }
         Returns: Json
       }
+      mark_instagram_connection_reconnect_required: {
+        Args: { p_connection_id: string; p_user_id: string }
+        Returns: boolean
+      }
       owns_audit: { Args: { target_audit_id: string }; Returns: boolean }
       owns_subject: { Args: { target_subject_id: string }; Returns: boolean }
       persist_instagram_connection: {
         Args: {
           p_account_type: string
-          p_followers_count: number
+          p_followers_count: number | null
+          p_graph_api_family: "instagram" | "facebook"
           p_ig_user_id: number
           p_ig_username: string
           p_long_lived_expires_at: string
           p_long_lived_token: string
-          p_media_count: number
+          p_media_count: number | null
           p_user_id: string
         }
         Returns: {

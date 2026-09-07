@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { isSupabaseAdminConfigured } from "@/lib/env";
+import { captureWebFailure } from "@/lib/sentry";
 import { normalizeSentryWebhook } from "@/lib/sentry-privacy";
 import { isValidSentrySignature } from "@/lib/sentry-webhook";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -45,7 +46,15 @@ export async function POST(request: Request) {
     p_external_url: incident.externalUrl ?? "",
     p_metadata: incident.metadata,
   });
-  if (error) return NextResponse.json({ error: "Incident write failed" }, { status: 500 });
+  if (error) {
+    captureWebFailure(new Error("Sentry incident write failed"), {
+      surface: "sentry_webhook",
+      operation: "incident_ingest",
+      status: "failed",
+      errorClass: "IncidentWriteError",
+    });
+    return NextResponse.json({ error: "Incident write failed" }, { status: 500 });
+  }
 
   return NextResponse.json({ accepted: true }, { status: 202 });
 }

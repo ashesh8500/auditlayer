@@ -22,7 +22,9 @@ describe("buildInstagramAuthUrl", () => {
       "https://auditlayermedia.com/api/auth/instagram/callback",
     );
     expect(url.searchParams.get("response_type")).toBe("code");
-    expect(url.searchParams.get("scope")).toBe("instagram_business_basic");
+    expect(url.searchParams.get("scope")).toBe(
+      "instagram_business_basic,instagram_business_manage_insights",
+    );
     expect(url.searchParams.get("state")).toBe("secure-state");
   });
 

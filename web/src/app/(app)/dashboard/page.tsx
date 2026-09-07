@@ -6,6 +6,7 @@ import { ExperienceBanner, type ExperienceBannerTone } from "@/components/ui/exp
 import { InstagramConnect } from "@/components/instagram-connect";
 import { StatusBadge } from "@/components/status-badge";
 import { requireProfile } from "@/lib/auth";
+import { INSTAGRAM_CONNECTION_CARD_FIELDS } from "@/lib/instagram-connection-public";
 import { createClient } from "@/lib/supabase/server";
 import {
   auditLimitForProfile,
@@ -88,8 +89,7 @@ export default async function DashboardPage({
 
   const instagramQuery = (supabase as any)
     .from("instagram_connections")
-    .select("*")
-    .eq("is_active", true)
+    .select(INSTAGRAM_CONNECTION_CARD_FIELDS)
     .order("created_at", { ascending: false })
     .limit(1);
 

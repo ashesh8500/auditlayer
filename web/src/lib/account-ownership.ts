@@ -10,8 +10,13 @@ export function isWorkspaceAccount(status: string): status is AccountOwnershipSt
 export function isLiveInstagramConnection(connection: {
   is_active: boolean;
   long_lived_expires_at: string | null;
+  connection_status: "connected" | "reconnect_required";
 } | null | undefined): boolean {
-  if (!connection?.is_active || !connection.long_lived_expires_at) return false;
+  if (
+    !connection?.is_active ||
+    connection.connection_status !== "connected" ||
+    !connection.long_lived_expires_at
+  ) return false;
   const expiresAt = Date.parse(connection.long_lived_expires_at);
   return Number.isFinite(expiresAt) && expiresAt > Date.now();
 }

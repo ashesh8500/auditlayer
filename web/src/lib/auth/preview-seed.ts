@@ -182,126 +182,12 @@ export async function applyPreviewTesterPlan(
   }
 }
 
-/**
- * Mirror the live @auditlayermedia Instagram connection onto the preview
- * tester so channel ownership shows as officially connected.
- */
+/** Preview tenants never inherit another tenant's Instagram authorization. */
 export async function mirrorAuditlayerInstagramConnection(
   previewUserId: string,
 ): Promise<string | null> {
-  const admin = createAdminClient();
-
-  const { data: source, error: sourceError } = await admin
-    .from("instagram_connections")
-    .select(
-      "ig_user_id, ig_username, access_token, long_lived_token, long_lived_expires_at, account_type, followers_count, media_count, is_active, last_refreshed_at",
-    )
-    .eq("ig_username", ALM_IG_HANDLE)
-    .eq("is_active", true)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (sourceError || !source) {
-    return null;
-  }
-
-  const { data: existing } = await admin
-    .from("instagram_connections")
-    .select("id")
-    .eq("user_id", previewUserId)
-    .eq("ig_user_id", source.ig_user_id)
-    .maybeSingle();
-
-  let connectionId = existing?.id ?? null;
-
-  if (connectionId) {
-    const { error } = await admin
-      .from("instagram_connections")
-      .update({
-        ig_username: source.ig_username,
-        access_token: source.access_token,
-        long_lived_token: source.long_lived_token,
-        long_lived_expires_at: source.long_lived_expires_at,
-        account_type: source.account_type,
-        followers_count: source.followers_count,
-        media_count: source.media_count,
-        is_active: true,
-        last_refreshed_at: source.last_refreshed_at,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", connectionId);
-    if (error) {
-      throw new Error(`Failed to refresh mirrored IG connection: ${error.message}`);
-    }
-  } else {
-    const { data: created, error } = await admin
-      .from("instagram_connections")
-      .insert({
-        user_id: previewUserId,
-        ig_user_id: source.ig_user_id,
-        ig_username: source.ig_username,
-        access_token: source.access_token,
-        long_lived_token: source.long_lived_token,
-        long_lived_expires_at: source.long_lived_expires_at,
-        account_type: source.account_type,
-        followers_count: source.followers_count,
-        media_count: source.media_count,
-        is_active: true,
-        last_refreshed_at: source.last_refreshed_at,
-      })
-      .select("id")
-      .single();
-    if (error || !created) {
-      throw new Error(
-        `Failed to mirror IG connection: ${error?.message ?? "unknown"}`,
-      );
-    }
-    connectionId = created.id;
-  }
-
-  const { data: accountExisting } = await admin
-    .from("accounts")
-    .select("id")
-    .eq("user_id", previewUserId)
-    .eq("platform", "instagram")
-    .eq("handle", ALM_IG_HANDLE)
-    .maybeSingle();
-
-  if (accountExisting?.id) {
-    const { error } = await admin
-      .from("accounts")
-      .update({
-        ownership_status: "connected",
-        ig_connection_id: connectionId,
-        display_name: "AuditLayerMedia",
-      })
-      .eq("id", accountExisting.id);
-    if (error) {
-      throw new Error(`Failed to update ALM account: ${error.message}`);
-    }
-    return accountExisting.id;
-  }
-
-  const { data: account, error: accountError } = await admin
-    .from("accounts")
-    .insert({
-      user_id: previewUserId,
-      handle: ALM_IG_HANDLE,
-      platform: "instagram",
-      ownership_status: "connected",
-      ig_connection_id: connectionId,
-      display_name: "AuditLayerMedia",
-    })
-    .select("id")
-    .single();
-
-  if (accountError || !account) {
-    throw new Error(
-      `Failed to create ALM account: ${accountError?.message ?? "unknown"}`,
-    );
-  }
-  return account.id;
+  void previewUserId;
+  return null;
 }
 
 async function writeBrief(

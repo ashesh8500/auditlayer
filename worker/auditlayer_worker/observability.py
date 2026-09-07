@@ -11,9 +11,11 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
+import re
 import threading
 import time
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 
 _SENTRY_SECRET_KEYS = {
@@ -63,23 +65,136 @@ def _scrub_value(value: Any, key: str = "") -> Any:
     return value
 
 
+_DIAGNOSTIC_TAGS = ("service", "surface", "operation", "error_class", "status")
+_SENTRY_LEVELS = {"debug", "info", "warning", "error", "fatal"}
+_SAFE_RELATIVE_FRAME_PREFIXES = ("auditlayer_worker/",)
+_SAFE_RELATIVE_FRAME_SEGMENT = re.compile(r"^[a-zA-Z0-9._@()\[\]-]+$")
+WORKER_SENTRY_SURFACES = frozenset(
+    {
+        "worker_runtime",
+        "instagram_connection",
+        "instagram_graph",
+        "instagram_insights",
+        "report_projection",
+        "audit_finalization",
+    }
+)
+WORKER_SENTRY_OPERATIONS = frozenset(
+    {
+        "worker_loop",
+        "connection_lookup",
+        "connection_state_transition",
+        "token_refresh",
+        "connection_persist",
+        "profile_fetch",
+        "metrics_fetch",
+        "insights_fetch",
+        "report_projection",
+        "generation",
+        "finalization",
+    }
+)
+SENTRY_FAILURE_STATUSES = frozenset(
+    {"failed", "rejected", "unavailable", "retrying", "degraded"}
+)
+_SENTRY_LOG_EVENT_GROUPS = {
+    "audit_finalization_outcome_unknown": (
+        "audit_finalization",
+        "AuditFinalizationOutcomeUnknown",
+    ),
+    "audit_finalization_failed": ("audit_finalization", "AuditFinalizationError"),
+    "worker_loop_failed": ("worker_runtime", "WorkerLoopError"),
+    "refinement_failed": ("report_projection", "RefinementError"),
+}
+_SENTRY_LOG_ERROR_CLASSES = frozenset(
+    {
+        "APIError",
+        "ConnectionError",
+        "HTTPError",
+        "OSError",
+        "PostgrestAPIError",
+        "RuntimeError",
+        "TimeoutError",
+        "TypeError",
+        "ValueError",
+    }
+)
+
+
+def _safe_dimension(value: Any, fallback: str, maximum: int = 120) -> str:
+    if not isinstance(value, str):
+        return fallback
+    clean = "".join(
+        character if character.isalnum() or character in "._:/-" else "_"
+        for character in value.strip()
+        if ord(character) >= 32 and ord(character) != 127
+    )
+    return clean[:maximum] if clean else fallback
+
+
+def _safe_frame_location(value: Any) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    raw = value.strip()[:1000]
+    try:
+        parsed = urlsplit(raw)
+        if parsed.scheme:
+            if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:
+                return None
+            hostname = parsed.hostname or ""
+            port = f":{parsed.port}" if parsed.port else ""
+            return urlunsplit((parsed.scheme, f"{hostname}{port}", parsed.path, "", ""))[:500]
+    except ValueError:
+        return None
+    if "://" in raw:
+        return None
+    if "\\" in raw:
+        return None
+    without_suffix = raw.split("?", 1)[0].split("#", 1)[0]
+    relative = without_suffix[2:] if without_suffix.startswith("./") else without_suffix
+    segments = relative.split("/")
+    if not relative.startswith(_SAFE_RELATIVE_FRAME_PREFIXES) or any(
+        not segment
+        or segment in {".", ".."}
+        or _SAFE_RELATIVE_FRAME_SEGMENT.fullmatch(segment) is None
+        for segment in segments
+    ):
+        return None
+    return relative[:500]
+
+
 def scrub_sentry_event(event: dict[str, Any], _hint: dict[str, Any]) -> dict[str, Any]:
-    """Remove creator identity, report content, credentials, and session data."""
-    scrubbed = dict(event)
-    scrubbed.pop("user", None)
-    scrubbed.pop("message", None)
-    scrubbed.pop("logentry", None)
-    scrubbed.pop("breadcrumbs", None)
-    scrubbed.pop("tags", None)
-    scrubbed.pop("fingerprint", None)
-    exception = scrubbed.get("exception")
+    """Return only safe dimensions and source frames required for diagnostics."""
+    scrubbed: dict[str, Any] = {}
+    event_id = event.get("event_id")
+    if isinstance(event_id, str) and len(event_id) == 32 and all(
+        character in "0123456789abcdefABCDEF" for character in event_id
+    ):
+        scrubbed["event_id"] = event_id
+    timestamp = event.get("timestamp")
+    if isinstance(timestamp, (int, float)):
+        scrubbed["timestamp"] = timestamp
+    environment = event.get("environment")
+    if isinstance(environment, str) and environment.strip():
+        scrubbed["environment"] = _safe_dimension(environment, "unknown", 80)
+    release = event.get("release")
+    if isinstance(release, str) and release.strip():
+        scrubbed["release"] = _safe_dimension(release, "unknown", 200)
+    level = event.get("level")
+    if isinstance(level, str) and level in _SENTRY_LEVELS:
+        scrubbed["level"] = level
+
+    exception_type = "Error"
+    exception = event.get("exception")
     if isinstance(exception, dict):
         values = exception.get("values")
         safe_values = []
         if isinstance(values, list):
             for item in values[:10]:
                 if isinstance(item, dict):
-                    error_type = item.get("type")
+                    error_type = _safe_dimension(item.get("type"), "Error")
+                    if exception_type == "Error":
+                        exception_type = error_type
                     raw_stacktrace = item.get("stacktrace")
                     raw_frames = (
                         raw_stacktrace.get("frames")
@@ -94,6 +209,7 @@ def scrub_sentry_event(event: dict[str, Any], _hint: dict[str, Any]) -> dict[str
                             safe_frame: dict[str, Any] = {}
                             for key in (
                                 "filename",
+                                "abs_path",
                                 "function",
                                 "module",
                                 "lineno",
@@ -101,62 +217,127 @@ def scrub_sentry_event(event: dict[str, Any], _hint: dict[str, Any]) -> dict[str
                                 "in_app",
                             ):
                                 frame_value = raw_frame.get(key)
-                                if isinstance(frame_value, str):
-                                    safe_frame[key] = frame_value[:500]
+                                if key in {"filename", "abs_path"}:
+                                    location = _safe_frame_location(frame_value)
+                                    if location is not None:
+                                        safe_frame[key] = location
+                                elif isinstance(frame_value, str):
+                                    safe_frame[key] = _safe_dimension(frame_value, "unknown", 500)
                                 elif isinstance(frame_value, (int, float, bool)):
                                     safe_frame[key] = frame_value
                             safe_frames.append(safe_frame)
                     safe_exception: dict[str, Any] = {
-                        "type": str(error_type)[:120] if error_type else "Error",
+                        "type": error_type,
                         "value": "[Filtered]",
                     }
                     if safe_frames:
                         safe_exception["stacktrace"] = {"frames": safe_frames}
                     safe_values.append(safe_exception)
         scrubbed["exception"] = {"values": safe_values}
-    request = scrubbed.get("request")
-    if isinstance(request, dict):
-        request = dict(request)
-        request["data"] = "[Filtered]"
-        request.pop("url", None)
-        request.pop("query_string", None)
-        request.pop("fragment", None)
-        request.pop("cookies", None)
-        headers = request.get("headers")
-        if isinstance(headers, dict):
-            request["headers"] = {
-                key: value
-                for key, value in headers.items()
-                if not _is_sensitive_key(str(key))
-            }
-        scrubbed["request"] = request
-    scrubbed["extra"] = _scrub_value(scrubbed.get("extra", {}))
-    contexts = scrubbed.get("contexts")
-    if isinstance(contexts, dict):
-        scrubbed["contexts"] = {
-            key: value
-            for key, value in contexts.items()
-            if str(key).lower() not in {"creator", "report", "audit"}
-        }
+
+    source_tags = event.get("tags") if isinstance(event.get("tags"), dict) else {}
+    defaults = {
+        "service": "auditlayer-worker",
+        "surface": "worker_runtime",
+        "operation": "unhandled",
+        "error_class": exception_type,
+        "status": "failed",
+    }
+    tags = {
+        key: _safe_dimension(source_tags.get(key), defaults[key])
+        for key in _DIAGNOSTIC_TAGS
+    }
+    scrubbed["tags"] = tags
+    scrubbed["fingerprint"] = [
+        "{{ default }}",
+        tags["service"],
+        tags["surface"],
+        tags["operation"],
+        tags["error_class"],
+    ]
     return scrubbed
 
 
-def init_sentry() -> bool:
-    """Initialize privacy-safe worker error reporting when SENTRY_DSN is set."""
-    dsn = os.getenv("SENTRY_DSN", "").strip()
-    if not dsn:
-        return False
-    import sentry_sdk
+def capture_worker_failure(
+    error: BaseException,
+    *,
+    surface: str,
+    operation: str,
+    status: str = "failed",
+) -> bool:
+    """Capture a worker exception without accepting arbitrary customer context."""
+    safe_surface = surface if surface in WORKER_SENTRY_SURFACES else "worker_runtime"
+    safe_operation = operation if operation in WORKER_SENTRY_OPERATIONS else "worker_loop"
+    safe_status = status if status in SENTRY_FAILURE_STATUSES else "failed"
+    error_class = type(error).__name__
+    try:
+        import sentry_sdk
 
-    sentry_sdk.init(
-        dsn=dsn,
-        environment=os.getenv("SENTRY_ENVIRONMENT", "production"),
-        release=os.getenv("SENTRY_RELEASE") or None,
-        send_default_pii=False,
-        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.02")),
-        before_send=scrub_sentry_event,
-    )
-    return True
+        if not sentry_sdk.is_initialized():
+            return False
+        with sentry_sdk.isolation_scope() as scope:
+            tags = {
+                "service": "auditlayer-worker",
+                "surface": safe_surface,
+                "operation": safe_operation,
+                "error_class": error_class,
+                "status": safe_status,
+            }
+            for key, value in tags.items():
+                scope.set_tag(key, value)
+            scope.fingerprint = [
+                "{{ default }}",
+                tags["service"],
+                tags["surface"],
+                tags["operation"],
+                tags["error_class"],
+            ]
+            sentry_sdk.capture_exception(error)
+        return True
+    except Exception:
+        # Observability must never interrupt queue processing or recovery.
+        return False
+
+
+def init_sentry() -> bool:
+    """Initialize privacy-safe worker error reporting with an exact release."""
+    dsn = os.getenv("SENTRY_DSN", "").strip()
+    release = os.getenv("SENTRY_RELEASE", "").strip()
+    if not dsn or len(release) != 40 or any(
+        character not in "0123456789abcdefABCDEF" for character in release
+    ):
+        return False
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=dsn,
+            environment=_safe_dimension(
+                os.getenv("SENTRY_ENVIRONMENT", "production"), "production", 80
+            ),
+            release=release,
+            send_default_pii=False,
+            traces_sample_rate=0.0,
+            max_breadcrumbs=0,
+            max_request_body_size="never",
+            include_local_variables=False,
+            include_source_context=False,
+            before_breadcrumb=lambda _breadcrumb, _hint: None,
+            before_send_transaction=lambda _event, _hint: None,
+            before_send=scrub_sentry_event,
+        )
+        for key, value in {
+            "service": "auditlayer-worker",
+            "surface": "worker_runtime",
+            "operation": "worker_loop",
+            "error_class": "Error",
+            "status": "failed",
+        }.items():
+            sentry_sdk.set_tag(key, value)
+        return True
+    except Exception:
+        # Invalid or unavailable observability configuration must not stop paid work.
+        return False
 
 
 def _utcnow() -> str:
@@ -177,11 +358,40 @@ def log_event(event: str, *, level: str = "info", **fields: Any) -> None:
         try:
             import sentry_sdk
 
-            if sentry_sdk.is_initialized():
-                sentry_sdk.capture_message(
-                    event,
-                    level="fatal" if level.lower() in {"critical", "fatal"} else "error",
-                )
+            group = _SENTRY_LOG_EVENT_GROUPS.get(event)
+            if sentry_sdk.is_initialized() and group is not None:
+                surface, default_error_class = group
+                error_class = fields.get("error_type")
+                if (
+                    not isinstance(error_class, str)
+                    or error_class not in _SENTRY_LOG_ERROR_CLASSES
+                ):
+                    error_class = default_error_class
+                tags = {
+                    "service": "auditlayer-worker",
+                    "surface": surface,
+                    "operation": event,
+                    "error_class": error_class,
+                    "status": "failed",
+                }
+                with sentry_sdk.isolation_scope() as scope:
+                    for key, value in tags.items():
+                        scope.set_tag(key, value)
+                    scope.fingerprint = [
+                        "{{ default }}",
+                        tags["service"],
+                        tags["surface"],
+                        tags["operation"],
+                        tags["error_class"],
+                    ]
+                    sentry_sdk.capture_message(
+                        "Worker failure",
+                        level=(
+                            "fatal"
+                            if level.lower() in {"critical", "fatal"}
+                            else "error"
+                        ),
+                    )
         except Exception:
             # Observability must never interrupt queue processing or recovery.
             pass

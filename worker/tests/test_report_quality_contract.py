@@ -21,6 +21,7 @@ import json
 import re
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -377,7 +378,10 @@ def test_pipeline_passes_golden_projection_to_ready(tmp_path) -> None:
 def test_pipeline_holds_broken_projection_for_review_with_stable_blocker(tmp_path) -> None:
     broken = GOLDEN.replace("</body>", "<script>alert(1)</script></body>")
     pipeline, audit, sink = _pipeline(broken, tmp_path)
-    summary = pipeline.run(audit, sink, gateway=None)
+    with patch(
+        "auditlayer_worker.pipeline.capture_worker_failure", create=True
+    ) as capture:
+        summary = pipeline.run(audit, sink, gateway=None)
 
     assert summary.status == "needs_review"
     events = list(sink.events)
@@ -393,3 +397,10 @@ def test_pipeline_holds_broken_projection_for_review_with_stable_blocker(tmp_pat
         for _, phase, detail in events
     )
     assert summary.quality_score < 100
+    capture.assert_called_once_with(
+        capture.call_args.args[0],
+        surface="report_projection",
+        operation="report_projection",
+        status="rejected",
+    )
+    assert str(capture.call_args.args[0]) == "Report quality gate blocked delivery"
