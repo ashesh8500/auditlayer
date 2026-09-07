@@ -12,7 +12,7 @@ export function PasswordLoginForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(signInWithPassword, initialState);
   return (
     <details className="border-t border-border pt-4">
-      <summary className="cursor-pointer text-center text-sm font-medium underline alm-focus">Sign in with a password</summary>
+      <summary className="flex min-h-11 cursor-pointer items-center justify-center text-center text-sm font-medium underline alm-focus">Sign in with a password</summary>
       <form action={action} className="mt-4 space-y-3">
         <input type="hidden" name="next" value={next} />
         <div className="space-y-1.5">

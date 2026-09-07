@@ -695,7 +695,7 @@ function ChannelStep({
       {managed.some((channel) => channel.reconnectRequired) && (
         <p className="text-sm text-muted-foreground">
           Instagram access needs to be restored before this channel can be audited.{" "}
-          <a href="/dashboard" className="underline">Reconnect from Reports</a>.
+          <a href="/dashboard" className="underline alm-focus">Reconnect from Reports</a>.
         </p>
       )}
 
