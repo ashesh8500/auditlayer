@@ -564,7 +564,10 @@ class HermesReportGenerator:
                                 "under 1,200 words total. Do not explain or restate the contract."
                             ),
                         },
-                        {"role": "user", "content": prompt},
+                        {"role": "user", "content": build_section_prompt(
+                            audit, research_material, ig_metrics=ig_metrics,
+                            benchmarks=benchmarks, correction=True,
+                        )},
                     ],
                     model=self.model,
                     toolsets=(),
