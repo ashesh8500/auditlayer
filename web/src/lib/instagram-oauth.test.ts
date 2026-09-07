@@ -32,7 +32,7 @@ describe("completeInstagramOAuth", () => {
         new Response(
           JSON.stringify(shape === "flat" ? {
             access_token: "IGA-short",
-            user_id: "17841499999999999",
+            user_id: 17841453481788956,
             permissions: ["instagram_business_basic", "instagram_business_manage_insights"],
           } : {
             data: [{
