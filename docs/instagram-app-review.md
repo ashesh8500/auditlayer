@@ -112,3 +112,8 @@ Connected report provenance is reconciled only after successful authenticated me
 The subject and audit-channel pickers must derive connection readiness from the same protected lifecycle metadata as the dashboard. A historical account link does not prove current access. Channels needing reconnect cannot be selected for a new audit until reconnect completes.
 
 Meta requires app test credentials and explicitly prohibits supplying Instagram credentials. Provide an isolated non-admin Supabase Auth account through normal password sign-in, with review audit entitlements. This uses the existing Supabase password flow, has no bypass, exposes no credentials in code, and does not require custom SMTP. Reviewer account details belong in 1Password and the private Meta form only.
+
+
+### Live exchange diagnostics
+
+OAuth failures log only a stage, HTTP status, numeric Meta error code, fixed error category, and response-shape flags. Upstream messages, authorization codes, tokens, account IDs, and secret values are never logged. This distinguishes deployment configuration failures from response-format problems during live verification.
