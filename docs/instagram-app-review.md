@@ -117,3 +117,7 @@ Meta requires app test credentials and explicitly prohibits supplying Instagram 
 ### Live exchange diagnostics
 
 OAuth failures log only a stage, HTTP status, numeric Meta error code, fixed error category, and response-shape flags. Upstream messages, authorization codes, tokens, account IDs, and secret values are never logged. This distinguishes deployment configuration failures from response-format problems during live verification.
+
+### Live token-response compatibility (September 7, 2026)
+
+Production Instagram Login returned HTTP 200 with `access_token`, `user_id`, and `permissions` at the top level. Accept that observed response as well as the documented single-record `data` envelope. Validate the record and both granted permissions before exchanging or storing tokens; malformed or ambiguous envelopes remain rejected. No response bodies or credentials are logged.
