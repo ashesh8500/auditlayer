@@ -25,20 +25,21 @@ describe("completeInstagramOAuth", () => {
     }));
     expect(JSON.stringify(warning.mock.calls)).not.toContain("PRIVATE");
   });
-  it("parses Meta's current token response and validates both granted permissions", async () => {
+  it.each(["flat", "envelope"])("parses the %s token response and validates both granted permissions", async (shape) => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({
-            data: [
-              {
-                access_token: "IGA-short",
-                user_id: "17841499999999999",
-                permissions:
-                  "instagram_business_basic,instagram_business_manage_insights",
-              },
-            ],
+          JSON.stringify(shape === "flat" ? {
+            access_token: "IGA-short",
+            user_id: "17841499999999999",
+            permissions: ["instagram_business_basic", "instagram_business_manage_insights"],
+          } : {
+            data: [{
+              access_token: "IGA-short",
+              user_id: "17841499999999999",
+              permissions: "instagram_business_basic,instagram_business_manage_insights",
+            }],
           }),
           { status: 200 },
         ),
@@ -95,18 +96,14 @@ describe("completeInstagramOAuth", () => {
     );
   });
 
-  it("rejects the connection before token extension when Insights was not granted", async () => {
+  it.each(["flat", "envelope"])("rejects the %s connection before token extension when Insights was not granted", async (shape) => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValueOnce(
       new Response(
-        JSON.stringify({
-          data: [
-            {
-              access_token: "IGA-short",
-              user_id: "123",
-              permissions: "instagram_business_basic",
-            },
-          ],
-        }),
+        JSON.stringify(shape === "flat" ? {
+          access_token: "IGA-short", user_id: "123", permissions: "instagram_business_basic",
+        } : { data: [{
+          access_token: "IGA-short", user_id: "123", permissions: "instagram_business_basic",
+        }] }),
         { status: 200 },
       ),
     );
@@ -117,7 +114,7 @@ describe("completeInstagramOAuth", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects any short-token envelope without exactly one canonical record", async () => {
+  it("rejects malformed records and ambiguous token envelopes", async () => {
     const canonicalRecord = {
       access_token: "IGA-short",
       user_id: "123",
@@ -126,7 +123,10 @@ describe("completeInstagramOAuth", () => {
     const malformedPayloads = [
       { data: [] },
       { data: [canonicalRecord, { ...canonicalRecord, user_id: "456" }] },
-      canonicalRecord,
+      null, [], {}, { data: null }, { data: [null] },
+      { ...canonicalRecord, data: [] },
+      { ...canonicalRecord, access_token: 123 },
+      { ...canonicalRecord, user_id: {} },
     ];
 
     for (const payload of malformedPayloads) {

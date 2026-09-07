@@ -23,7 +23,7 @@
 - AuditLayerMedia cannot publish, edit, comment, message, follow, or manage advertising.
 - Tokens remain server-side, are scoped by AuditLayer owner and Instagram account, and are deleted on disconnect.
 - OAuth state is short-lived, user-bound, HttpOnly, Secure, and cleared on every callback outcome.
-- The current short-token contract must contain exactly one `data` record. Its `access_token`, `user_id`, and `permissions` are read only after cardinality validation. Both requested permissions must be present; otherwise reject the connection before persistence.
+- Accept either the observed flat short-token record or a `data` envelope containing exactly one record. Validate `access_token`, `user_id`, and `permissions` before use; malformed or ambiguous envelopes fail closed. Both requested permissions must be present; otherwise reject the connection before persistence.
 - Code exchange, long-lived exchange, and profile fetch each have a bounded network deadline.
 - Direct Instagram Login persistence records the explicit `instagram` Graph API family. Legacy rows without a family require reconnect; token text is never used to infer the family.
 - The worker refreshes eligible direct Instagram tokens inside the seven-day expiry window.
@@ -53,7 +53,7 @@ Open https://developers.facebook.com/apps/1919113942129447/ and complete:
 
 Record one uninterrupted walkthrough on the production domain:
 
-1. Open https://auditlayermedia.com/login, enter the reviewer email, and use the secure sign-in link sent to that inbox.
+1. Open https://auditlayermedia.com/login, expand **Sign in with a password**, and enter the dedicated ALM reviewer credentials supplied privately in Meta.
 2. Open https://auditlayermedia.com/dashboard and scroll to Connected data.
 3. Read the disclosure showing the exact read-only purpose and actions the app cannot take.
 4. Select **Connect Instagram**.
@@ -68,7 +68,7 @@ Do not expose the app secret, access token, browser network payloads, or another
 
 ## Reviewer instructions template
 
-> Open https://auditlayermedia.com/login, enter the supplied reviewer email, and use the secure sign-in link sent to that inbox. Open https://auditlayermedia.com/dashboard and scroll to Connected data. Select Connect Instagram and approve access with the supplied Instagram Business/Creator test account. The app returns to Reports and displays the connected username and read-only Graph API data status. Start a Pulse audit for the same handle to see the approved profile, recent-content, and available reach metrics used in the report. Average reach names the successful/eligible-post denominator; when Instagram returns no eligible Insights, the report says reach is unavailable instead of showing zero. To remove access, return to Connected data and select Disconnect and delete access. Privacy and deletion instructions are available at the public URLs supplied in this submission.
+> Open https://auditlayermedia.com/login, expand Sign in with a password, and enter the dedicated ALM reviewer credentials supplied privately in Meta. Open https://auditlayermedia.com/dashboard and scroll to Connected data. Select Connect Instagram and approve access with an Instagram Business/Creator account available to the Meta review team. The app returns to Reports and displays the connected username and read-only Graph API data status. Start a Standard audit for the same handle to see the approved profile, recent-content, and available reach metrics used in the report. Average reach names the successful/eligible-post denominator; when Instagram returns no eligible Insights, the report says reach is unavailable instead of showing zero. To remove access, return to Connected data and select Disconnect and delete access. Privacy and deletion instructions are available at the public URLs supplied in this submission.
 
 ## Release verification
 
@@ -77,7 +77,7 @@ Do not expose the app secret, access token, browser network payloads, or another
 - [ ] Vercel production has `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, and the canonical site URL.
 - [ ] Unauthenticated OAuth start redirects to login.
 - [ ] Callback without matching state fails closed.
-- [ ] Current nested short-token response contains exactly one canonical record, both granted permissions are verified, and zero-record, multi-record, top-level, or partial-grant responses persist nothing.
+- [ ] Both flat and single-record enveloped token responses work, both granted permissions are verified, and malformed, zero-record, multi-record, or partial-grant responses persist nothing.
 - [ ] All three Meta network calls terminate at their configured deadline and surface only safe error classes.
 - [ ] Public privacy, support, and data-deletion pages return 200.
 - [ ] Successful connection creates one owner-scoped connection without exposing token columns to authenticated clients.
@@ -117,3 +117,7 @@ Meta requires app test credentials and explicitly prohibits supplying Instagram 
 ### Live exchange diagnostics
 
 OAuth failures log only a stage, HTTP status, numeric Meta error code, fixed error category, and response-shape flags. Upstream messages, authorization codes, tokens, account IDs, and secret values are never logged. This distinguishes deployment configuration failures from response-format problems during live verification.
+
+### Live token-response compatibility (September 7, 2026)
+
+Production Instagram Login returned HTTP 200 with `access_token`, `user_id`, and `permissions` at the top level. Accept that observed response as well as the documented single-record `data` envelope. Validate the record and both granted permissions before exchanging or storing tokens; malformed or ambiguous envelopes remain rejected. No response bodies or credentials are logged.

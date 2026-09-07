@@ -45,8 +45,9 @@ describe("Instagram App Review runbook", () => {
 
     expect(runbook).toContain("`instagram_business_basic`");
     expect(runbook).toContain("`instagram_business_manage_insights`");
-    expect(runbook).toContain("exactly one `data` record");
-    expect(runbook).toContain("Its `access_token`, `user_id`, and `permissions`");
+    expect(runbook).toContain("observed flat short-token record");
+    expect(runbook).toContain("`data` envelope containing exactly one record");
+    expect(runbook).toContain("Validate `access_token`, `user_id`, and `permissions`");
     expect(runbook).toContain("reject the connection before persistence");
     expect(runbook).toContain("/dashboard");
     expect(runbook).toContain("Disconnect and delete access");

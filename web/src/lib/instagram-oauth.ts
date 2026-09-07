@@ -113,27 +113,34 @@ export async function completeInstagramOAuth(
     },
     "instagram_token_exchange_failed",
   );
-  const shortPayload = await responseJson<{
-    data?: Array<{
-      access_token?: string;
-      user_id?: string | number;
-      permissions?: string | string[];
-    }>;
-  }>(shortResponse, "instagram_token_exchange_failed");
-  if (!Array.isArray(shortPayload.data) || shortPayload.data.length !== 1) {
+  const shortPayload = await responseJson<unknown>(
+    shortResponse, "instagram_token_exchange_failed",
+  );
+  const envelope = shortPayload && typeof shortPayload === "object" && !Array.isArray(shortPayload)
+    ? shortPayload as Record<string, unknown>
+    : null;
+  // Live Instagram Login returns a flat record; Meta also documents a data envelope.
+  // If data is present, it must contain exactly one record (never silently fall back).
+  const candidate = envelope && "data" in envelope
+    ? Array.isArray(envelope.data) && envelope.data.length === 1 ? envelope.data[0] : null
+    : envelope;
+  const shortToken = candidate && typeof candidate === "object" && !Array.isArray(candidate)
+    ? candidate as Record<string, unknown>
+    : null;
+  if (
+    !shortToken || typeof shortToken.access_token !== "string" || !shortToken.access_token.trim()
+    || !((typeof shortToken.user_id === "string" && shortToken.user_id.trim())
+      || (typeof shortToken.user_id === "number" && Number.isSafeInteger(shortToken.user_id) && shortToken.user_id > 0))
+  ) {
     reportOAuthResponseFailure("instagram_token_exchange_failed", shortResponse, shortPayload);
     throw new Error("instagram_token_exchange_failed");
   }
-  const shortToken = shortPayload.data[0];
-  if (!shortToken.access_token || shortToken.user_id == null) {
-    throw new Error("instagram_token_exchange_failed");
-  }
-  const grantedPermissions = Array.isArray(shortToken.permissions)
-    ? shortToken.permissions
-    : (shortToken.permissions ?? "")
-        .split(",")
-        .map((permission) => permission.trim())
-        .filter(Boolean);
+  const permissions = shortToken.permissions;
+  const grantedPermissions = typeof permissions === "string"
+    ? permissions.split(",").map((permission) => permission.trim()).filter(Boolean)
+    : Array.isArray(permissions) && permissions.every((permission) => typeof permission === "string")
+      ? permissions.map((permission: string) => permission.trim()).filter(Boolean)
+      : [];
   if (
     !INSTAGRAM_OAUTH_PERMISSIONS.every((permission) =>
       grantedPermissions.includes(permission),
