@@ -130,11 +130,13 @@ export async function completeInstagramOAuth(
   if (
     !shortToken || typeof shortToken.access_token !== "string" || !shortToken.access_token.trim()
     || !((typeof shortToken.user_id === "string" && shortToken.user_id.trim())
-      || (typeof shortToken.user_id === "number" && Number.isSafeInteger(shortToken.user_id) && shortToken.user_id > 0))
+      || (typeof shortToken.user_id === "number" && Number.isInteger(shortToken.user_id) && shortToken.user_id > 0))
   ) {
     reportOAuthResponseFailure("instagram_token_exchange_failed", shortResponse, shortPayload);
     throw new Error("instagram_token_exchange_failed");
   }
+  // The exchange ID is only a presence check: Meta can emit numeric IDs above JS safe-integer range.
+  // Persist the authoritative profile user_id returned by /me below, never this numeric value.
   const permissions = shortToken.permissions;
   const grantedPermissions = typeof permissions === "string"
     ? permissions.split(",").map((permission) => permission.trim()).filter(Boolean)

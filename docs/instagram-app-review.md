@@ -121,3 +121,5 @@ OAuth failures log only a stage, HTTP status, numeric Meta error code, fixed err
 ### Live token-response compatibility (September 7, 2026)
 
 Production Instagram Login returned HTTP 200 with `access_token`, `user_id`, and `permissions` at the top level. Accept that observed response as well as the documented single-record `data` envelope. Validate the record and both granted permissions before exchanging or storing tokens; malformed or ambiguous envelopes remain rejected. No response bodies or credentials are logged.
+
+The short-token exchange can return a numeric Instagram user ID above JavaScript’s safe-integer range. That exchange ID is presence-validated only; it is never used for Graph requests or persisted. The connection uses the authoritative profile `user_id` from `/me`. Regression coverage includes the large numeric exchange ID and a distinct string profile ID.
