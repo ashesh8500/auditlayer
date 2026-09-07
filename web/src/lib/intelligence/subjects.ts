@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isLiveInstagramConnection } from "@/lib/account-ownership";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -136,7 +137,7 @@ export async function listChannelsForSubject(
     const { data, error } = await supabase
       .from("subject_channels")
       .select(
-        "id, subject_id, channel_type, locator, managed, account_id, accounts(id, ownership_status, ig_connection_id, display_name)",
+        "id, subject_id, channel_type, locator, managed, account_id, accounts(id, ownership_status, ig_connection_id, display_name, instagram_connections(is_active,long_lived_expires_at,connection_status))",
       )
       .eq("subject_id", subjectId)
       .order("created_at", { ascending: true });
@@ -151,14 +152,21 @@ export async function listChannelsForSubject(
             ownership_status?: string | null;
             ig_connection_id?: string | null;
             display_name?: string | null;
+            instagram_connections?: {
+              is_active: boolean;
+              long_lived_expires_at: string | null;
+              connection_status: "connected" | "reconnect_required";
+            } | null;
           } | null;
         }
       ).accounts;
       const account = Array.isArray(accountRaw) ? accountRaw[0] : accountRaw;
-      const connected = Boolean(
+      const linked = Boolean(
         account?.ig_connection_id || account?.ownership_status === "connected",
       );
-      const ownershipStatus: ChannelOwnershipStatus = connected
+      const connected = linked && isLiveInstagramConnection(account?.instagram_connections);
+      const reconnectRequired = linked && !connected;
+      const ownershipStatus: ChannelOwnershipStatus = linked
         ? "connected"
         : row.managed
           ? "managed"
@@ -174,6 +182,7 @@ export async function listChannelsForSubject(
           : account?.display_name || locator.replace(/^@/, ""),
         avatarUrl: null,
         connected,
+        reconnectRequired,
         subjectId: row.subject_id,
       };
     });

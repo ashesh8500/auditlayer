@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
+  channels: [] as unknown[],
   filters: [] as Array<{ table: string; column: string; value: unknown }>,
 }));
 
@@ -18,7 +19,7 @@ vi.mock("@/lib/supabase/server", () => ({
           state.filters.push({ table, column, value });
           return query;
         },
-        order: async () => ({ data: [], error: null }),
+        order: async () => ({ data: table === "subject_channels" ? state.channels : [], error: null }),
         maybeSingle: async () => ({ data: null, error: null }),
       };
       return query;
@@ -27,6 +28,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 import {
+  listChannelsForSubject,
   getSubjectHomeBundle,
   listSubjectsForUser,
 } from "@/lib/intelligence/subjects";
@@ -34,6 +36,7 @@ import {
 describe("subject customer reads under broad admin visibility", () => {
   beforeEach(() => {
     state.filters.length = 0;
+    state.channels = [];
   });
 
   it("owner-filters the subject list for an admin profile", async () => {
@@ -56,5 +59,18 @@ describe("subject customer reads under broad admin visibility", () => {
         { table: "subjects", column: "user_id", value: "admin-user" },
       ]),
     );
+  });
+});
+
+
+describe("channel connection readiness", () => {
+  it.each(["connected", "reconnect_required", "expired", "missing"])("reflects %s access instead of the historical account link", async (mode) => {
+    state.channels = [{ id: "channel", subject_id: "subject", channel_type: "instagram", locator: "example", managed: true,
+      accounts: { ownership_status: "connected", ig_connection_id: "connection", display_name: "Example",
+        instagram_connections: mode === "missing" ? null : { is_active: true, connection_status: mode === "reconnect_required" ? mode : "connected", long_lived_expires_at: mode === "expired" ? "2000-01-01" : "2099-01-01" } } }];
+    const [channel] = await listChannelsForSubject("subject");
+    expect(channel.connected).toBe(mode === "connected");
+    expect(channel.reconnectRequired).toBe(mode !== "connected");
+    expect(channel.ownershipStatus).toBe("connected");
   });
 });

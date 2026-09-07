@@ -669,7 +669,7 @@ function ChannelStep({
     );
   const canContinue =
     !loading &&
-    (selectedIds.some((id) => id !== "pending-channel") ||
+    (selectedIds.some((id) => id !== "pending-channel" && !channels.find((c) => c.id === id)?.reconnectRequired) ||
       (newWebsiteUrl.trim().length > 0 && !exactWebsiteMatch));
 
   return (
@@ -692,6 +692,13 @@ function ChannelStep({
         <p className="text-sm text-[color:var(--red)]">{loadError}</p>
       )}
 
+      {managed.some((channel) => channel.reconnectRequired) && (
+        <p className="text-sm text-muted-foreground">
+          Instagram access needs to be restored before this channel can be audited.{" "}
+          <a href="/dashboard" className="underline">Reconnect from Reports</a>.
+        </p>
+      )}
+
       {managed.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -702,6 +709,7 @@ function ChannelStep({
               <button
                 key={ch.id}
                 type="button"
+                disabled={ch.reconnectRequired}
                 onClick={() => onToggleChannel(ch.id)}
                 className={`flex items-center gap-3 border p-3 text-left transition-all alm-focus ${
                   selectedIds.includes(ch.id)
@@ -719,7 +727,7 @@ function ChannelStep({
                       ? displayWebsiteHost(ch.url || "")
                       : `@${ch.handle}`}
                     {" · "}
-                    {ch.connected ? "Connected — live data" : "Public research"}
+                    {ch.reconnectRequired ? "Reconnect Instagram to restore live data" : ch.connected ? "Connected — live data" : "Public research"}
                   </p>
                 </div>
                 {selectedIds.includes(ch.id) && (

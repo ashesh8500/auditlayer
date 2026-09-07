@@ -108,3 +108,5 @@ Verified August 27, 2026:
 - Preview and production must show the same reviewed code. Both system worker instances use `/opt/auditlayer/worker`; syncing a repository is not a worker deployment.
 
 Connected report provenance is reconciled only after successful authenticated metrics retrieval. The initial unauthenticated Instagram limitation is removed for that run; genuine missing research and user-context limitations remain. Public-only reports retain their original limitation. Prompt version 1.7 identifies this correction.
+
+The subject and audit-channel pickers must derive connection readiness from the same protected lifecycle metadata as the dashboard. A historical account link does not prove current access. Channels needing reconnect cannot be selected for a new audit until reconnect completes.
