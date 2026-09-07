@@ -13,6 +13,8 @@ import {
   type AuthFormState,
 } from "./actions";
 
+import { PasswordLoginForm } from "./password-login-form";
+
 const initialState: AuthFormState = { status: "idle" };
 
 export function LoginForm({
@@ -106,6 +108,8 @@ export function LoginForm({
           </Button>
         </form>
       )}
+
+      <PasswordLoginForm next={next} />
 
       <p className="text-center text-xs text-muted-foreground">
         Free Pulse audit · no credit card required

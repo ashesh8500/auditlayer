@@ -29,7 +29,7 @@ const emailSchema = z.email({ error: "Enter a valid email address." });
 function safeNext(next: FormDataEntryValue | null): string {
   const value = typeof next === "string" ? next : "";
   // Only allow same-site relative paths to prevent open redirects.
-  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  if (value.startsWith("/") && !value.startsWith("//") && !value.includes("\\")) return value;
   return "/dashboard";
 }
 
@@ -154,4 +154,25 @@ export async function signOut(): Promise<void> {
     await supabase.auth.signOut();
   }
   redirect("/");
+}
+
+/** Normal Supabase password authentication, including isolated review accounts. */
+export async function signInWithPassword(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  if (!isSupabaseConfigured()) {
+    return { status: "error", message: "Authentication is not configured yet." };
+  }
+  const email = emailSchema.safeParse(String(formData.get("email") ?? "").trim().toLowerCase());
+  const password = String(formData.get("password") ?? "");
+  if (!email.success || !password || password.length > 4096) {
+    return { status: "error", message: "Enter your email address and password." };
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithPassword({ email: email.data, password });
+  if (error || !data.user) {
+    return { status: "error", message: "Unable to sign in. Check your email and password." };
+  }
+  redirect(safeNext(formData.get("next")));
 }

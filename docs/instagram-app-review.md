@@ -110,3 +110,5 @@ Verified August 27, 2026:
 Connected report provenance is reconciled only after successful authenticated metrics retrieval. The initial unauthenticated Instagram limitation is removed for that run; genuine missing research and user-context limitations remain. Public-only reports retain their original limitation. Prompt version 1.7 identifies this correction.
 
 The subject and audit-channel pickers must derive connection readiness from the same protected lifecycle metadata as the dashboard. A historical account link does not prove current access. Channels needing reconnect cannot be selected for a new audit until reconnect completes.
+
+Meta requires app test credentials and explicitly prohibits supplying Instagram credentials. Provide an isolated non-admin Supabase Auth account through normal password sign-in, with review audit entitlements. This uses the existing Supabase password flow, has no bypass, exposes no credentials in code, and does not require custom SMTP. Reviewer account details belong in 1Password and the private Meta form only.
