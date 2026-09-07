@@ -40,6 +40,39 @@ def test_instagram_connection_lookup_distinguishes_no_active_connection():
     assert lookup.state.value == "not_found"
 
 
+def test_instagram_connection_lookup_honors_durable_reconnect_state_without_hiding_inactive_row():
+    class Query:
+        def __init__(self):
+            self.filters = []
+
+        def select(self, *_args): return self
+        def eq(self, *args):
+            self.filters.append(args)
+            return self
+        def order(self, *_args, **_kwargs): return self
+        def limit(self, *_args): return self
+        def execute(self):
+            return SimpleNamespace(data=[{
+                "id": "connection-1",
+                "ig_user_id": 123,
+                "long_lived_token": "still-present-but-revoked",
+                "long_lived_expires_at": "2099-01-01T00:00:00+00:00",
+                "graph_api_family": "instagram",
+                "connection_status": "reconnect_required",
+                "is_active": False,
+            }])
+
+    query = Query()
+    gateway = object.__new__(SupabaseGateway)
+    gateway.client = SimpleNamespace(table=lambda _name: query)
+
+    lookup = gateway.get_instagram_token("auditlayermedia", "customer-1")
+
+    assert lookup.state.value == "reconnect_required"
+    assert lookup.connection_id == "connection-1"
+    assert ("is_active", True) not in query.filters
+
+
 def test_instagram_token_lookup_uses_supported_desc_order():
     class Query:
         def __init__(self):
@@ -59,10 +92,12 @@ def test_instagram_token_lookup_uses_supported_desc_order():
         def execute(self):
             return SimpleNamespace(
                 data=[{
+                    "id": "connection-1",
                     "ig_user_id": 123,
                     "long_lived_token": "token",
                     "long_lived_expires_at": "2099-01-01T00:00:00+00:00",
                     "graph_api_family": "instagram",
+                    "connection_status": "connected",
                     "is_active": True,
                 }]
             )
@@ -96,10 +131,12 @@ def test_instagram_token_lookup_uses_supported_desc_order():
 )
 def test_active_unusable_instagram_connections_require_reconnect(invalid_field):
     row = {
+        "id": "connection-1",
         "ig_user_id": 123,
         "long_lived_token": "opaque-token",
         "long_lived_expires_at": "2099-01-01T00:00:00+00:00",
         "graph_api_family": "instagram",
+        "connection_status": "connected",
         "is_active": True,
         **invalid_field,
     }
@@ -516,6 +553,33 @@ def test_gateway_persists_refreshed_instagram_token():
     assert query.values["long_lived_expires_at"] == "2026-09-18T00:00:00+00:00"
     assert ("user_id", "customer-1") in query.filters
     assert ("ig_user_id", 123) in query.filters
+
+
+def test_gateway_marks_reconnect_required_with_owner_and_connection_ids_only():
+    calls = []
+
+    class Rpc:
+        def execute(self):
+            return SimpleNamespace(data=True)
+
+    class Client:
+        def rpc(self, name, args):
+            calls.append((name, args))
+            return Rpc()
+
+    gateway = object.__new__(SupabaseGateway)
+    gateway.client = Client()
+
+    marked = gateway.mark_instagram_connection_reconnect_required(
+        user_id="customer-1",
+        connection_id="connection-1",
+    )
+
+    assert marked is True
+    assert calls == [(
+        "mark_instagram_connection_reconnect_required",
+        {"p_user_id": "customer-1", "p_connection_id": "connection-1"},
+    )]
 
 
 

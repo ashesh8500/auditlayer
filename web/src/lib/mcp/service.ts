@@ -17,6 +17,7 @@ export type ConnectionRecord = {
   followers_count: number | null;
   media_count: number | null;
   is_active: boolean;
+  connection_status: "connected" | "reconnect_required";
   long_lived_expires_at: string;
   last_refreshed_at: string | null;
 };
@@ -61,7 +62,7 @@ function researchStatus(account: AccountRecord): "current" | "stale" | "unavaila
 }
 
 function connectionIsLive(connection: ConnectionRecord | null): boolean {
-  if (!connection?.is_active) return false;
+  if (!connection?.is_active || connection.connection_status !== "connected") return false;
   const expiresAt = Date.parse(connection.long_lived_expires_at);
   return Number.isFinite(expiresAt) && expiresAt > Date.now();
 }

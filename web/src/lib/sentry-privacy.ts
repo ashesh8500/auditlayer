@@ -2,6 +2,8 @@ type UnknownRecord = Record<string, unknown>;
 
 const DIAGNOSTIC_TAGS = ["service", "surface", "operation", "error_class", "status"] as const;
 const LEVELS = new Set(["debug", "info", "warning", "error", "fatal"]);
+const SAFE_RELATIVE_FRAME_PREFIXES = ["src/"] as const;
+const SAFE_RELATIVE_FRAME_SEGMENT = /^[a-zA-Z0-9._@()[\]-]+$/;
 
 function record(value: unknown): UnknownRecord {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -31,7 +33,20 @@ function safeFrameLocation(value: unknown): string | undefined {
     return parsed.toString().slice(0, 500);
   } catch {
     if (raw.includes("://")) return undefined;
-    return raw.split(/[?#]/, 1)[0].slice(0, 500);
+    if (raw.includes("\\")) return undefined;
+    const withoutSuffix = raw.split(/[?#]/, 1)[0];
+    const relative = withoutSuffix.startsWith("./") ? withoutSuffix.slice(2) : withoutSuffix;
+    const segments = relative.split("/");
+    if (
+      !SAFE_RELATIVE_FRAME_PREFIXES.some((prefix) => relative.startsWith(prefix)) ||
+      segments.some(
+        (segment) =>
+          !segment || segment === "." || segment === ".." || !SAFE_RELATIVE_FRAME_SEGMENT.test(segment),
+      )
+    ) {
+      return undefined;
+    }
+    return relative.slice(0, 500);
   }
 }
 

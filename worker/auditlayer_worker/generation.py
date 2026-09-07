@@ -22,6 +22,7 @@ from urllib.parse import urlsplit
 
 from .core import (
     GENERATION_PHASES,
+    INSTAGRAM_LIMITATION,
     AuditRecord,
     REFINE_SYSTEM_PROMPT,
     REPORT_SECTIONS,
@@ -462,6 +463,13 @@ class HermesReportGenerator:
                     cause=exc,
                 ) from exc
             timed("connected_metrics", started)
+
+        if ig_metrics is not None and audit.platform.lower() == "instagram":
+            # Intake cannot know whether authenticated collection will succeed.
+            # Reconcile its fallback note only after real connected data arrives.
+            audit.limitations[:] = [
+                note for note in audit.limitations if note != INSTAGRAM_LIMITATION
+            ]
 
         research_material = json.dumps({"web": []})
         evidence_items = 0

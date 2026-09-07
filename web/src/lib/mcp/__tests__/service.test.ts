@@ -39,6 +39,7 @@ function repository(): McpRepository {
             followers_count: 12500,
             media_count: 340,
             is_active: true,
+            connection_status: "connected",
             long_lived_expires_at: "2026-08-20T12:00:00Z",
             last_refreshed_at: "2026-07-16T12:00:00Z",
           }
@@ -153,10 +154,32 @@ describe("AuditLayerMedia MCP service", () => {
       followers_count: 12500,
       media_count: 340,
       is_active: true,
+      connection_status: "connected",
       long_lived_expires_at: "2000-01-01T00:00:00Z",
       last_refreshed_at: "2026-07-16T12:00:00Z",
     });
     const service = createMcpService("user-one", expiredRepository);
+
+    await expect(service.getAccountContext("account-one")).resolves.toMatchObject({
+      connection: { status: "reconnection_required" },
+    });
+    await expect(
+      service.buildCreatorContext("account-one", "monthly_content_strategy", "audit-one"),
+    ).resolves.toMatchObject({ connected_metrics: null });
+  });
+
+  it("never presents durable reconnect-required metrics as connected evidence", async () => {
+    const reconnectRepository = repository();
+    reconnectRepository.getConnection = async () => ({
+      account_type: "CREATOR",
+      followers_count: 12500,
+      media_count: 340,
+      is_active: true,
+      connection_status: "reconnect_required",
+      long_lived_expires_at: "2999-01-01T00:00:00Z",
+      last_refreshed_at: "2026-07-16T12:00:00Z",
+    });
+    const service = createMcpService("user-one", reconnectRepository);
 
     await expect(service.getAccountContext("account-one")).resolves.toMatchObject({
       connection: { status: "reconnection_required" },

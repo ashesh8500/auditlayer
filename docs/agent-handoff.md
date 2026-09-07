@@ -49,6 +49,10 @@ Browser → Vercel (web/) → Supabase (Auth, Postgres, Storage, Realtime)
 - **Reports** live as private self-contained HTML artifacts; the web app serves
   them through authorized same-origin report and immersive-reader routes.
 - **Live timeline:** Realtime + 4s polling on `/api/audits/[id]/live`.
+- **Instagram reconnect lifecycle:** auth/permission failures are persisted as
+  owner-scoped `reconnect_required`, suppress repeat Meta calls and public fallback, and
+  reset only through a successful owner-scoped OAuth persistence transaction. See
+  `docs/instagram-app-review.md` and `docs/architecture-contract.md`.
 
 ---
 

@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
+import re
 import threading
 import time
 from typing import Any
@@ -66,6 +67,8 @@ def _scrub_value(value: Any, key: str = "") -> Any:
 
 _DIAGNOSTIC_TAGS = ("service", "surface", "operation", "error_class", "status")
 _SENTRY_LEVELS = {"debug", "info", "warning", "error", "fatal"}
+_SAFE_RELATIVE_FRAME_PREFIXES = ("auditlayer_worker/",)
+_SAFE_RELATIVE_FRAME_SEGMENT = re.compile(r"^[a-zA-Z0-9._@()\[\]-]+$")
 WORKER_SENTRY_SURFACES = frozenset(
     {
         "worker_runtime",
@@ -80,6 +83,7 @@ WORKER_SENTRY_OPERATIONS = frozenset(
     {
         "worker_loop",
         "connection_lookup",
+        "connection_state_transition",
         "token_refresh",
         "connection_persist",
         "profile_fetch",
@@ -92,6 +96,28 @@ WORKER_SENTRY_OPERATIONS = frozenset(
 )
 SENTRY_FAILURE_STATUSES = frozenset(
     {"failed", "rejected", "unavailable", "retrying", "degraded"}
+)
+_SENTRY_LOG_EVENT_GROUPS = {
+    "audit_finalization_outcome_unknown": (
+        "audit_finalization",
+        "AuditFinalizationOutcomeUnknown",
+    ),
+    "audit_finalization_failed": ("audit_finalization", "AuditFinalizationError"),
+    "worker_loop_failed": ("worker_runtime", "WorkerLoopError"),
+    "refinement_failed": ("report_projection", "RefinementError"),
+}
+_SENTRY_LOG_ERROR_CLASSES = frozenset(
+    {
+        "APIError",
+        "ConnectionError",
+        "HTTPError",
+        "OSError",
+        "PostgrestAPIError",
+        "RuntimeError",
+        "TimeoutError",
+        "TypeError",
+        "ValueError",
+    }
 )
 
 
@@ -122,7 +148,19 @@ def _safe_frame_location(value: Any) -> str | None:
         return None
     if "://" in raw:
         return None
-    return raw.split("?", 1)[0].split("#", 1)[0][:500]
+    if "\\" in raw:
+        return None
+    without_suffix = raw.split("?", 1)[0].split("#", 1)[0]
+    relative = without_suffix[2:] if without_suffix.startswith("./") else without_suffix
+    segments = relative.split("/")
+    if not relative.startswith(_SAFE_RELATIVE_FRAME_PREFIXES) or any(
+        not segment
+        or segment in {".", ".."}
+        or _SAFE_RELATIVE_FRAME_SEGMENT.fullmatch(segment) is None
+        for segment in segments
+    ):
+        return None
+    return relative[:500]
 
 
 def scrub_sentry_event(event: dict[str, Any], _hint: dict[str, Any]) -> dict[str, Any]:
@@ -320,11 +358,40 @@ def log_event(event: str, *, level: str = "info", **fields: Any) -> None:
         try:
             import sentry_sdk
 
-            if sentry_sdk.is_initialized():
-                sentry_sdk.capture_message(
-                    event,
-                    level="fatal" if level.lower() in {"critical", "fatal"} else "error",
-                )
+            group = _SENTRY_LOG_EVENT_GROUPS.get(event)
+            if sentry_sdk.is_initialized() and group is not None:
+                surface, default_error_class = group
+                error_class = fields.get("error_type")
+                if (
+                    not isinstance(error_class, str)
+                    or error_class not in _SENTRY_LOG_ERROR_CLASSES
+                ):
+                    error_class = default_error_class
+                tags = {
+                    "service": "auditlayer-worker",
+                    "surface": surface,
+                    "operation": event,
+                    "error_class": error_class,
+                    "status": "failed",
+                }
+                with sentry_sdk.isolation_scope() as scope:
+                    for key, value in tags.items():
+                        scope.set_tag(key, value)
+                    scope.fingerprint = [
+                        "{{ default }}",
+                        tags["service"],
+                        tags["surface"],
+                        tags["operation"],
+                        tags["error_class"],
+                    ]
+                    sentry_sdk.capture_message(
+                        "Worker failure",
+                        level=(
+                            "fatal"
+                            if level.lower() in {"critical", "fatal"}
+                            else "error"
+                        ),
+                    )
         except Exception:
             # Observability must never interrupt queue processing or recovery.
             pass

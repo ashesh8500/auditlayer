@@ -14,7 +14,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-3xl px-6 py-12 text-sm leading-relaxed text-foreground sm:py-16">
       <p className="alm-kicker">Privacy</p>
       <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em]">Privacy Policy</h1>
-      <p className="mt-2 text-muted-foreground">Effective: August 27, 2026</p>
+      <p className="mt-2 text-muted-foreground">Effective: September 7, 2026</p>
 
       <section className="mt-8 space-y-4">
         <h2 className="text-base font-semibold">1. What we collect</h2>
@@ -85,7 +85,7 @@ export default function PrivacyPage() {
       <section className="mt-8 space-y-4">
         <h2 className="text-base font-semibold">4. Service providers</h2>
         <p className="text-muted-foreground">
-          We use carefully selected service providers to operate AuditLayerMedia, process payments, deliver essential account emails, protect your account, and store your reports. They may process only the information needed to provide those services and may not use it for their own advertising.
+          Vercel hosts our web application and connection flow. Supabase stores account information, approved Instagram connection data, and reports. Hetzner hosts our report-processing workers. DeepSeek processes selected report inputs, including approved account metrics and content, to generate the analysis you request. Instagram login credentials are not included in report-generation inputs.
         </p>
         <p className="text-muted-foreground">
           If you connect Instagram, Instagram processes the connection and approved account data under its{" "}

@@ -147,7 +147,8 @@ INSTAGRAM_LIMITATION = (
 #        Insights coverage and preserve missing reach as unavailable
 # v1.6 — Preserve unavailable connected Instagram counts as N/A while retaining
 #        observed numeric zero in evidence supplied to report generation
-PROMPT_VERSION = "1.6"
+# v1.7 — Reconcile intake public-data limitations after connected metrics succeed
+PROMPT_VERSION = "1.7"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework

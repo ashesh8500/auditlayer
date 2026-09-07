@@ -870,6 +870,36 @@ def _start_instagram_fetch(gateway, audit, sink):
             )
             raise error
 
+        def _persist_reconnect_required() -> None:
+            try:
+                if (
+                    not audit.user_id
+                    or not token_info.connection_id
+                    or not gateway.mark_instagram_connection_reconnect_required(
+                        user_id=audit.user_id,
+                        connection_id=token_info.connection_id,
+                    )
+                ):
+                    raise RuntimeError("instagram_reconnect_transition_failed")
+            except Exception as transition_error:
+                capture_worker_failure(
+                    transition_error,
+                    surface="instagram_connection",
+                    operation="connection_state_transition",
+                    status="failed",
+                )
+                log_event(
+                    "instagram_reconnect_transition_failed",
+                    level="error",
+                    audit_id=audit.id,
+                    error_type=type(transition_error).__name__,
+                )
+            sink.emit(
+                "failed",
+                "Instagram authorization must be reconnected before live metrics can be loaded. Public fallback was not used.",
+                event_type="instagram_reconnect_required",
+            )
+
         token = token_info.token
         ig_user_id = token_info.ig_user_id
         expires_at = token_info.expires_at
@@ -877,6 +907,7 @@ def _start_instagram_fetch(gateway, audit, sink):
         from .instagram_api import (
             InstagramAPIClient,
             InstagramAPIError,
+            InstagramErrorKind,
             should_refresh_instagram_token,
         )
 
@@ -904,6 +935,19 @@ def _start_instagram_fetch(gateway, audit, sink):
                     event_type="instagram_token_refreshed",
                 )
             except Exception as exc:
+                if (
+                    isinstance(exc, InstagramAPIError)
+                    and exc.kind == InstagramErrorKind.AUTH_PERMISSION
+                ):
+                    capture_worker_failure(
+                        exc,
+                        surface="instagram_graph",
+                        operation="token_refresh",
+                        status="rejected",
+                    )
+                    setattr(exc, "_auditlayer_sentry_captured", True)
+                    _persist_reconnect_required()
+                    raise
                 capture_worker_failure(
                     exc,
                     surface="instagram_graph",
@@ -1005,6 +1049,9 @@ def _start_instagram_fetch(gateway, audit, sink):
                 error_type=type(exc).__name__,
             )
             if isinstance(exc, InstagramAPIError):
+                if exc.kind == InstagramErrorKind.AUTH_PERMISSION:
+                    _persist_reconnect_required()
+                    raise
                 detail = (
                     "Connected Instagram data was temporarily unavailable. The audit will retry rather than use stale public metrics."
                     if exc.retryable

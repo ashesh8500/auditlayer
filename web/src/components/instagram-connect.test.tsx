@@ -23,4 +23,13 @@ describe("Instagram reviewer-visible connection state", () => {
     expect(source).toContain('formatMetric(connectedAccount.media_count, "posts")');
     expect(source).toContain('return `${label} unavailable`');
   });
+
+  it("renders durable reconnect-required state as an actionable reconnect instead of connected", () => {
+    expect(source).toContain(
+      '!isLiveInstagramConnection(connectedAccount)',
+    );
+    expect(source).toContain("Reconnect Instagram");
+    expect(source).not.toContain("{success && (");
+    expect(source).toContain("Reconnect to restore verified Instagram metrics");
+  });
 });

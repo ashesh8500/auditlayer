@@ -409,6 +409,18 @@ service-role-only `persist_instagram_connection` RPC writes the connection and i
 | `graph_api_family` | text | nullable compatibility field; new writes require `instagram` \| `facebook`; `NULL` is a legacy connection that must reconnect and is never inferred from token text |
 | `followers_count` / `media_count` | bigint | nullable; unavailable is distinct from a real zero |
 | `is_active` / expiry timestamps | boolean / timestamptz | connection health and refresh boundary |
+| `connection_status` | text | durable lifecycle: `connected` \| `reconnect_required`; browser-safe status projections must use this field rather than infer health from token metadata |
+| `reconnect_required_at` | timestamptz | first auth/permission transition time; repeated failures preserve the original timestamp |
+| `reconnect_reason` | text | bounded diagnostic enum: `auth_permission` \| `legacy_connection`; never a provider payload or customer context |
+
+`mark_instagram_connection_reconnect_required(user_id, connection_id)` is executable
+only by `service_role`, verifies the owner/connection pair, deactivates the row, and
+records the first bounded lifecycle transition without accepting raw error text.
+The worker performs this transition on token-refresh or Graph profile/media
+auth/permission failures before failing closed. Later jobs read the durable state before
+making a Meta request, so only a genuinely absent owner-scoped row may use public-signal
+fallback. The canonical owner-scoped `persist_instagram_connection` OAuth transaction
+resets lifecycle state to `connected` and clears reconnect metadata.
 
 ### `account_progression`
 Per-audit metric snapshots for dashboard charts. Compat bridge until score ledger

@@ -20,9 +20,17 @@ describe("account ownership story", () => {
 
   it("treats inactive, expired, and malformed Instagram connections as stale", () => {
     expect(isLiveInstagramConnection(null)).toBe(false);
-    expect(isLiveInstagramConnection({ is_active: false, long_lived_expires_at: "2999-01-01" })).toBe(false);
-    expect(isLiveInstagramConnection({ is_active: true, long_lived_expires_at: "2000-01-01" })).toBe(false);
-    expect(isLiveInstagramConnection({ is_active: true, long_lived_expires_at: "not-a-date" })).toBe(false);
-    expect(isLiveInstagramConnection({ is_active: true, long_lived_expires_at: "2999-01-01" })).toBe(true);
+    expect(isLiveInstagramConnection({ is_active: false, long_lived_expires_at: "2999-01-01", connection_status: "connected" })).toBe(false);
+    expect(isLiveInstagramConnection({ is_active: true, long_lived_expires_at: "2000-01-01", connection_status: "connected" })).toBe(false);
+    expect(isLiveInstagramConnection({ is_active: true, long_lived_expires_at: "not-a-date", connection_status: "connected" })).toBe(false);
+    expect(isLiveInstagramConnection({ is_active: true, long_lived_expires_at: "2999-01-01", connection_status: "connected" })).toBe(true);
+  });
+
+  it("treats a durable reconnect-required connection as stale despite future expiry", () => {
+    expect(isLiveInstagramConnection({
+      is_active: true,
+      long_lived_expires_at: "2999-01-01",
+      connection_status: "reconnect_required",
+    })).toBe(false);
   });
 });

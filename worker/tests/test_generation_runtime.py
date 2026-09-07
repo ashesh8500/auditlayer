@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from auditlayer_worker.core import AuditRecord, REPORT_SECTIONS
+from auditlayer_worker.core import AuditRecord, REPORT_SECTIONS, INSTAGRAM_LIMITATION
 from auditlayer_worker.generation import (
     GenerationStageError,
     HermesReportGenerator,
@@ -18,7 +18,7 @@ from auditlayer_worker.generation import (
     _safe_evidence_sources,
 )
 from auditlayer_worker.hermes import ChatResult, Usage
-from auditlayer_worker.instagram_api import InstagramAPIError, InstagramErrorKind
+from auditlayer_worker.instagram_api import InstagramAPIError, InstagramErrorKind, InstagramMetrics, InstagramProfile
 
 
 def _audit(report_type: str = "standard") -> AuditRecord:
@@ -380,3 +380,17 @@ def test_indexed_instagram_metrics_require_attributable_public_index_evidence() 
         "likes": "57",
         "comments": "29",
     }
+
+
+@pytest.mark.parametrize("connected", [True, False])
+def test_report_limitations_match_actual_collection(connected: bool) -> None:
+    audit = _audit()
+    audit.limitations = [INSTAGRAM_LIMITATION, "No optional context was provided."]
+    client = _Client([_payload()])
+    metrics = InstagramMetrics(profile=InstagramProfile(ig_user_id=123, username="example")) if connected else None
+    result = _generator(client).generate(audit, lambda *_args: None, ig_metrics=metrics)
+    assert (INSTAGRAM_LIMITATION in audit.limitations) is (not connected)
+    assert "No optional context was provided." in audit.limitations
+    prompt = client.calls[0]["messages"][1]["content"]
+    assert (INSTAGRAM_LIMITATION in prompt) is (not connected)
+    assert result.account_mode == ("connected_instagram" if connected else "public_instagram")

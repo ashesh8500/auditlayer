@@ -190,6 +190,53 @@ describe("scrubSentryEvent", () => {
       lineno: 9,
     });
   });
+
+  it("retains only http URLs and allowlisted application-relative source paths", () => {
+    const canary = "PRIVATE_LOCAL_PATH_CANARY";
+    const scrubbed = scrubSentryEvent({
+      exception: {
+        values: [
+          {
+            type: "TypeError",
+            stacktrace: {
+              frames: [
+                {
+                  filename: `https://user:password@example.com/static/app.js?token=${canary}#private`,
+                },
+                {
+                  filename: `src/app/(app)/audits/[id]/page.tsx?token=${canary}#private`,
+                },
+                { filename: `/home/customer/${canary}/app.ts` },
+                { filename: `~/${canary}/app.ts` },
+                { filename: `C:\\Users\\customer\\${canary}\\app.ts` },
+                { filename: `\\\\server\\customer\\${canary}\\app.ts` },
+                { filename: `../../customer/${canary}/app.ts` },
+                { filename: `node_modules/customer-${canary}/index.js` },
+                { filename: `customers/${canary}/app.ts` },
+                { filename: `//customer-host/${canary}/app.ts` },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    const frames = scrubbed.exception.values[0].stacktrace.frames;
+    expect(frames).toEqual([
+      { filename: "https://example.com/static/app.js" },
+      { filename: "src/app/(app)/audits/[id]/page.tsx" },
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+    ]);
+    expect(JSON.stringify(scrubbed)).not.toContain(canary);
+    expect(JSON.stringify(scrubbed)).not.toContain("user:password");
+  });
 });
 
 describe("isValidSentrySignature", () => {

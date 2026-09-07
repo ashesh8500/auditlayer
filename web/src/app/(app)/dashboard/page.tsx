@@ -90,7 +90,6 @@ export default async function DashboardPage({
   const instagramQuery = (supabase as any)
     .from("instagram_connections")
     .select(INSTAGRAM_CONNECTION_CARD_FIELDS)
-    .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(1);
 

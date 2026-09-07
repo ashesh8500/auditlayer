@@ -81,8 +81,9 @@ does not enable the SDK. The before-send hooks build a new event from an allowli
 of trying to redact a denylist. They retain only:
 
 - structural event ID/timestamp/level;
-- exception class and source frames (`filename`, `abs_path`, function/module, line/column,
-  and `in_app`) without exception messages, local variables, or source-context lines;
+- exception class and safe source frames (`filename`, `abs_path`, function/module,
+  line/column, and `in_app`) without exception messages, local variables, or
+  source-context lines;
 - `environment`, exact `release`, and the diagnostic dimensions `service`, `surface`,
   `operation`, `error_class`, and `status`.
 
@@ -90,8 +91,19 @@ Grouping uses Sentry's default stack grouping plus those five dimensions. User i
 handles, email, IPs, tokens, OAuth codes, auth/cookie headers, request URLs/bodies/query,
 captions, reports, customer context, extras, breadcrumbs, arbitrary tags, replay, and
 transactions are never sent. HTTP(S) frame URLs are stripped of credentials, query, and
-fragment; every other absolute frame protocol, including `data:`, `blob:`, `file:`, and
-`javascript:`, is dropped because it can embed private content or environment paths.
+fragment. Schemeless frames are retained only from the explicit application roots `src/`
+for web and `auditlayer_worker/` for worker; absolute POSIX/home/Windows/UNC locations,
+traversal, dependency/customer-relative paths, protocol-relative paths, and malformed
+segments are dropped. Every non-HTTP absolute protocol, including `data:`, `blob:`,
+`file:`, `javascript:`, and custom schemes, is also dropped because it can embed private
+content or environment paths.
+
+Worker error-level structured logs reach Sentry only for the fixed identities
+`worker_loop_failed`, `refinement_failed`, `audit_finalization_failed`, and
+`audit_finalization_outcome_unknown`. Capture uses a constant message that before-send
+removes; grouping survives only in allowlisted `surface`, event-identity `operation`, and
+approved error-class tags. Unknown event names, unapproved error-class values, and all
+other structured-log fields remain local and are never submitted to Sentry.
 Do not pass customer values to a diagnostic dimension; use only the exported fixed helper
 vocabularies in `web/src/lib/sentry.ts` and `worker/auditlayer_worker/observability.py`.
 
@@ -160,6 +172,30 @@ request or data:
    an altered signature returns 401 and the RPC is not called.
 5. Delete/resolve the synthetic issue and retain only event IDs, release SHA, check results,
    and rollback command as release evidence. Never retain payload exports.
+
+### Instagram reconnect lifecycle incidents
+
+Worker auth/permission rejections use the allowlisted
+`connection_state_transition` operation. The database mutation accepts only the owner
+UUID and connection UUID; Sentry receives the bounded operation/status/error class and
+never a token, handle, provider payload, customer context, or token-bearing URL. A
+successful transition also emits the customer-safe `instagram_reconnect_required` audit
+event.
+
+Triage without live Meta calls:
+
+1. Confirm the owner-scoped row is `connection_status = 'reconnect_required'`,
+   `is_active = false`, and has only the bounded `auth_permission` or
+   `legacy_connection` reason. Do not select or print `long_lived_token`.
+2. Confirm a repeat worker lookup returns reconnect-required before constructing the
+   Graph client; only a missing owner-scoped row may use public fallback.
+3. Confirm dashboard/account surfaces show **Reconnect Instagram** rather than live or
+   public-data status.
+4. After the owner completes OAuth, confirm the canonical persistence RPC reset the row
+   to `connected`, cleared reconnect metadata, and retained the explicit Graph family.
+
+Never manually flip lifecycle columns to recover access. Reauthorization through the
+owner-scoped OAuth transaction is the recovery path.
 
 Production activation, the proof, worker restart, and rollback remain release-gate actions;
 this runbook does not grant permission to perform them.

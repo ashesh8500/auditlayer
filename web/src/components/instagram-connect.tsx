@@ -1,5 +1,6 @@
 import { CheckCircle2, ExternalLink, ShieldCheck, Unplug } from "lucide-react";
 
+import { isLiveInstagramConnection } from "@/lib/account-ownership";
 import { disconnectInstagram } from "@/lib/actions/instagram";
 import { Button } from "@/components/ui/button";
 import type { InstagramConnectionCard } from "@/lib/instagram-connection-public";
@@ -52,9 +53,10 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 export function InstagramConnect({ connectedAccount, searchParams }: Props) {
   const instagramError = searchParams?.instagram_error;
-  const success = searchParams?.instagram_connected;
+  const reconnectRequired =
+    Boolean(connectedAccount && !isLiveInstagramConnection(connectedAccount));
 
-  if (connectedAccount) {
+  if (connectedAccount && !reconnectRequired) {
     const expiresAt = new Date(connectedAccount.long_lived_expires_at);
     return (
       <section className="alm-panel p-5 sm:p-6" aria-labelledby="instagram-connection-title">
@@ -100,16 +102,20 @@ export function InstagramConnect({ connectedAccount, searchParams }: Props) {
         <div>
           <p className="alm-kicker">Connected data</p>
           <h2 id="instagram-connection-title" className="mt-2 text-xl font-semibold tracking-tight">
-            Connect Instagram for verified metrics
+            {reconnectRequired
+              ? "Reconnect Instagram"
+              : "Connect Instagram for verified metrics"}
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Approve read-only access to profile, recent-content, and reach insights for your Instagram Business or Creator account. No Facebook Page is required. AuditLayerMedia cannot publish, edit, comment, follow, message, or manage advertising.
+            {reconnectRequired
+              ? "Reconnect to restore verified Instagram metrics. New audits will wait until access is restored."
+              : "Approve read-only access to profile, recent-content, and reach insights for your Instagram Business or Creator account. No Facebook Page is required. AuditLayerMedia cannot publish, edit, comment, follow, message, or manage advertising."}
           </p>
         </div>
         <Button asChild size="lg" className="min-h-11 w-full px-5 lg:w-auto">
           <a href="/api/auth/instagram/start">
             <InstagramIcon />
-            Connect Instagram
+            {reconnectRequired ? "Reconnect Instagram" : "Connect Instagram"}
           </a>
         </Button>
       </div>
@@ -120,11 +126,6 @@ export function InstagramConnect({ connectedAccount, searchParams }: Props) {
         <p className="flex gap-2"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />Disconnecting deletes stored access</p>
       </div>
 
-      {success && (
-        <p className="mt-4 border border-[color:var(--green)]/20 bg-[color:var(--green-muted)] px-4 py-3 text-sm text-[color:var(--green)]">
-          Connected <strong>@{success}</strong>. Future audits for this account can use verified Instagram metrics.
-        </p>
-      )}
       {instagramError && (
         <p role="alert" className="mt-4 border border-[color:var(--red)]/20 bg-[color:var(--red-muted)] px-4 py-3 text-sm text-[color:var(--red)]">
           {ERROR_MESSAGES[instagramError] ?? ERROR_MESSAGES.connection_failed}

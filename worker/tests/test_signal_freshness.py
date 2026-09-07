@@ -257,6 +257,82 @@ def test_connected_instagram_failure_preserves_graph_error_class() -> None:
     assert caught.value.kind == InstagramErrorKind.AUTH_PERMISSION
 
 
+def test_auth_permission_failure_persists_reconnect_required_before_failing_closed() -> None:
+    gateway = MagicMock()
+    gateway.get_instagram_token.return_value = InstagramConnectionLookup(
+        state=InstagramConnectionState.USABLE,
+        connection_id="connection-1",
+        token="opaque-direct-token",
+        ig_user_id=123,
+        expires_at="2099-01-01T00:00:00+00:00",
+        graph_api_family="instagram",
+    )
+    gateway.mark_instagram_connection_reconnect_required.return_value = True
+    sink = MagicMock()
+    error = InstagramAPIError(InstagramErrorKind.AUTH_PERMISSION)
+
+    with patch(
+        "auditlayer_worker.instagram_api.InstagramAPIClient.get_full_metrics",
+        side_effect=error,
+    ), patch("auditlayer_worker.instagram_api.InstagramAPIClient.close"), patch(
+        "auditlayer_worker.pipeline.capture_worker_failure", create=True
+    ) as capture:
+        with pytest.raises(InstagramAPIError) as caught:
+            _start_instagram_fetch(gateway, _audit(), sink).result(timeout=2)
+
+    assert caught.value is error
+    gateway.mark_instagram_connection_reconnect_required.assert_called_once_with(
+        user_id="user-1",
+        connection_id="connection-1",
+    )
+    sink.emit.assert_any_call(
+        "failed",
+        "Instagram authorization must be reconnected before live metrics can be loaded. Public fallback was not used.",
+        event_type="instagram_reconnect_required",
+    )
+    capture.assert_called_once_with(
+        error,
+        surface="instagram_graph",
+        operation="metrics_fetch",
+        status="rejected",
+    )
+
+
+def test_reconnect_transition_failure_is_observed_without_exposing_private_detail() -> None:
+    gateway = MagicMock()
+    gateway.get_instagram_token.return_value = InstagramConnectionLookup(
+        state=InstagramConnectionState.USABLE,
+        connection_id="connection-1",
+        token="opaque-direct-token",
+        ig_user_id=123,
+        expires_at="2099-01-01T00:00:00+00:00",
+        graph_api_family="instagram",
+    )
+    transition_error = RuntimeError("private connection persistence detail")
+    gateway.mark_instagram_connection_reconnect_required.side_effect = transition_error
+    sink = MagicMock()
+    graph_error = InstagramAPIError(InstagramErrorKind.AUTH_PERMISSION)
+
+    with patch(
+        "auditlayer_worker.instagram_api.InstagramAPIClient.get_full_metrics",
+        side_effect=graph_error,
+    ), patch("auditlayer_worker.instagram_api.InstagramAPIClient.close"), patch(
+        "auditlayer_worker.pipeline.capture_worker_failure", create=True
+    ) as capture:
+        with pytest.raises(InstagramAPIError):
+            _start_instagram_fetch(gateway, _audit(), sink).result(timeout=2)
+
+    assert capture.call_args_list[-1].args == (transition_error,)
+    assert capture.call_args_list[-1].kwargs == {
+        "surface": "instagram_connection",
+        "operation": "connection_state_transition",
+        "status": "failed",
+    }
+    emitted = " ".join(call.args[1] for call in sink.emit.call_args_list)
+    assert "private connection persistence detail" not in emitted
+    assert "connection-1" not in emitted
+
+
 def test_live_instagram_snapshot_refreshes_connection_health() -> None:
     gateway = MagicMock()
     gateway.get_instagram_token.return_value = InstagramConnectionLookup(
@@ -362,6 +438,52 @@ def test_live_instagram_event_and_snapshot_keep_missing_counts_unavailable() -> 
         "Connected Instagram Graph API loaded: N/A followers, 0 recent posts, "
         "N/A average engagement, reach available for 0 of 0 eligible posts.",
         event_type="instagram_api",
+    )
+
+
+def test_token_refresh_auth_failure_marks_reconnect_and_skips_metrics_fetch() -> None:
+    gateway = MagicMock()
+    gateway.get_instagram_token.return_value = InstagramConnectionLookup(
+        state=InstagramConnectionState.USABLE,
+        connection_id="connection-1",
+        token="opaque-direct-token",
+        ig_user_id=123,
+        expires_at=(datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+        graph_api_family="instagram",
+    )
+    gateway.mark_instagram_connection_reconnect_required.return_value = True
+    sink = MagicMock()
+    auth_error = InstagramAPIError(InstagramErrorKind.AUTH_PERMISSION)
+
+    with patch(
+        "auditlayer_worker.instagram_api.InstagramAPIClient.refresh_long_lived_token",
+        side_effect=auth_error,
+    ), patch(
+        "auditlayer_worker.instagram_api.InstagramAPIClient.get_full_metrics"
+    ) as get_metrics, patch(
+        "auditlayer_worker.instagram_api.InstagramAPIClient.close"
+    ), patch(
+        "auditlayer_worker.pipeline.capture_worker_failure", create=True
+    ) as capture:
+        with pytest.raises(InstagramAPIError) as caught:
+            _start_instagram_fetch(gateway, _audit(), sink).result(timeout=2)
+
+    assert caught.value is auth_error
+    gateway.mark_instagram_connection_reconnect_required.assert_called_once_with(
+        user_id="user-1",
+        connection_id="connection-1",
+    )
+    get_metrics.assert_not_called()
+    capture.assert_any_call(
+        auth_error,
+        surface="instagram_graph",
+        operation="token_refresh",
+        status="rejected",
+    )
+    sink.emit.assert_any_call(
+        "failed",
+        "Instagram authorization must be reconnected before live metrics can be loaded. Public fallback was not used.",
+        event_type="instagram_reconnect_required",
     )
 
 

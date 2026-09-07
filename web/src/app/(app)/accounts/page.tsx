@@ -31,6 +31,7 @@ type ConnectionRow = {
   ig_username: string;
   is_active: boolean;
   long_lived_expires_at: string;
+  connection_status: "connected" | "reconnect_required";
 };
 
 function formatDelta(value: number | null) {
@@ -69,10 +70,11 @@ export default async function AccountsPage() {
     current.push(point as ProgressionPoint);
     pointsByAccount.set(point.account_id, current);
   }
-  const liveHandles = new Set(
-    ((connections ?? []) as ConnectionRow[])
-      .filter(isLiveInstagramConnection)
-      .map((connection) => connection.ig_username.toLowerCase()),
+  const connectionsByHandle = new Map(
+    ((connections ?? []) as ConnectionRow[]).map((connection) => [
+      connection.ig_username.toLowerCase(),
+      connection,
+    ]),
   );
 
   return (
@@ -125,9 +127,11 @@ export default async function AccountsPage() {
             const summary = summarizeProgression(
               pointsByAccount.get(account.id) ?? [],
             );
-            const live =
-              account.platform === "instagram" &&
-              liveHandles.has(account.handle.toLowerCase());
+            const connection = connectionsByHandle.get(account.handle.toLowerCase());
+            const live = account.platform === "instagram" &&
+              isLiveInstagramConnection(connection);
+            const reconnectRequired =
+              account.platform === "instagram" && Boolean(connection) && !live;
             const scoreUp = (summary.scoreDelta ?? 0) >= 0;
 
             return (
@@ -166,7 +170,11 @@ export default async function AccountsPage() {
                           : "bg-[color:var(--amber)]"
                       }`}
                     />
-                    {live ? "Live data" : "Public data"}
+                    {live
+                      ? "Live data"
+                      : reconnectRequired
+                        ? "Reconnect Instagram"
+                        : "Public data"}
                   </span>
                 </div>
 

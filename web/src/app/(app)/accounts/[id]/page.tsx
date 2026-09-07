@@ -107,6 +107,7 @@ export default async function AccountDetailPage({
         is_active: boolean;
         long_lived_expires_at: string;
         last_refreshed_at: string | null;
+        connection_status: "connected" | "reconnect_required";
       }
     | undefined;
   const live = isLiveInstagramConnection(connection);

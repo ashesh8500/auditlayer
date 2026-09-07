@@ -31,4 +31,16 @@ describe("Instagram App Review runbook", () => {
     expect(runbook.match(new RegExp(unavailableProof, "g"))).toHaveLength(2);
     expect(runbook).toContain("8 of 10 eligible posts");
   });
+
+  it("documents the durable auth-failure transition and successful reconnect reset", () => {
+    expect(runbook).toContain(
+      "An auth/permission failure durably marks only that owner's connection `reconnect_required`.",
+    );
+    expect(runbook).toContain(
+      "Later audits read that state before any Meta request and require reconnect without public fallback.",
+    );
+    expect(runbook).toContain(
+      "Successful owner-scoped OAuth persistence resets the connection to `connected`.",
+    );
+  });
 });
