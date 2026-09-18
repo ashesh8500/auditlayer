@@ -10,7 +10,9 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : 2,
+  // The canonical preview login refreshes one shared test user's password.
+  // Concurrent logins invalidate each other's sessions; keep this lane serial.
+  workers: process.env.CI || process.env.PREVIEW_TEST_LOGIN_SECRET ? 1 : 2,
   reporter: "list",
   use: {
     baseURL,

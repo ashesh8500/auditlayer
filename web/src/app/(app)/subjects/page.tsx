@@ -33,7 +33,7 @@ export default async function SubjectsPage() {
       </div>
 
       <p className="mt-4 text-xs text-muted-foreground">
-        Subjects in your workspace.
+        Subjects in your workspace. <Link href="/settings/connections" className="font-semibold text-[color:var(--accent)] hover:underline">Connect or reconnect Instagram</Link>
       </p>
 
       {subjects.length === 0 ? (

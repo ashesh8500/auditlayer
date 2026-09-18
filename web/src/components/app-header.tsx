@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, FilePlus2, Files, FlaskConical, Shield } from "lucide-react";
+import { Building2, FilePlus2, Files, FlaskConical, Shield, Plug } from "lucide-react";
 
 import { signOut } from "@/app/login/actions";
 import { Brand } from "@/components/brand";
@@ -37,6 +37,13 @@ export async function AppHeader() {
               <FilePlus2 className="size-4 sm:hidden" />
               <span className="hidden sm:inline">New Audit</span>
               <span className="sr-only sm:hidden">New Audit</span>
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/settings/connections">
+              <Plug className="size-4 sm:hidden" />
+              <span className="hidden sm:inline">Connections</span>
+              <span className="sr-only sm:hidden">Connections</span>
             </Link>
           </Button>
           {isPreviewTester && (

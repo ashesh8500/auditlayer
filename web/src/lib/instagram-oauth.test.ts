@@ -9,6 +9,28 @@ const config = {
 };
 
 describe("completeInstagramOAuth", () => {
+  const fetchForRawProfileId = (rawId: string) => vi.fn<typeof fetch>()
+    .mockResolvedValueOnce(new Response(JSON.stringify({
+      access_token: "fixture-short", user_id: "123",
+      permissions: ["instagram_business_basic", "instagram_business_manage_insights"],
+    })))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "fixture-long", expires_in: 3600 })))
+    // Raw JSON is essential: constructing a JS number first already loses precision.
+    .mockResolvedValueOnce(new Response(`{"user_id":${rawId},"username":"fixture","account_type":"BUSINESS"}`));
+
+  it.each(["9007199254740993", "9007199254740992", '"9223372036854775808"', '"00123"', '" 123"', '"1e3"', '"1.5"', "0", "-1", "1.5", "true"])(
+    "rejects unsafe or noncanonical authoritative profile identity %s", async (rawId) => {
+      await expect(completeInstagramOAuth("fixture-code", { ...config, fetchImpl: fetchForRawProfileId(rawId) }))
+        .rejects.toThrow("instagram_profile_fetch_failed");
+    },
+  );
+  it.each(['"9007199254740993"', '"9007199254740992"', '"9223372036854775807"', "123"])(
+    "preserves exact supported profile identity %s", async (rawId) => {
+      const result = await completeInstagramOAuth("fixture-code", { ...config, fetchImpl: fetchForRawProfileId(rawId) });
+      expect(result.igUserId).toBe(rawId.replaceAll('"', ""));
+    },
+  );
+
   afterEach(() => vi.restoreAllMocks());
 
   it("logs only safe response diagnostics for a failed exchange", async () => {

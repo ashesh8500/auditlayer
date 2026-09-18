@@ -13,14 +13,19 @@ vi.mock("@/lib/env", () => ({ isSupabaseConfigured: () => true }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     from: (table: string) => {
+      let start = 0;
+      let subjectId: unknown;
       const query = {
         select: () => query,
         eq: (column: string, value: unknown) => {
           state.filters.push({ table, column, value });
+          if (column === "id") subjectId = value;
           return query;
         },
-        order: async () => ({ data: table === "subject_channels" ? state.channels : [], error: null }),
-        maybeSingle: async () => ({ data: null, error: null }),
+        order: () => query,
+        range: (from: number) => { start = from; return query; },
+        then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: table === "subject_channels" && start === 0 ? state.channels : [], error: null }).then(resolve),
+        maybeSingle: async () => ({ data: subjectId === "subject" ? {id: "subject"} : null, error: null }),
       };
       return query;
     },
@@ -66,8 +71,8 @@ describe("subject customer reads under broad admin visibility", () => {
 describe("channel connection readiness", () => {
   it.each(["connected", "reconnect_required", "expired", "missing"])("reflects %s access instead of the historical account link", async (mode) => {
     state.channels = [{ id: "channel", subject_id: "subject", channel_type: "instagram", locator: "example", managed: true,
-      accounts: { ownership_status: "connected", ig_connection_id: "connection", display_name: "Example",
-        instagram_connections: mode === "missing" ? null : { is_active: true, connection_status: mode === "reconnect_required" ? mode : "connected", long_lived_expires_at: mode === "expired" ? "2000-01-01" : "2099-01-01" } } }];
+      accounts: { user_id: "admin-user", ownership_status: "connected", ig_connection_id: "connection", display_name: "Example",
+        instagram_connections: mode === "missing" ? null : { user_id: "admin-user", is_active: true, connection_status: mode === "reconnect_required" ? mode : "connected", long_lived_expires_at: mode === "expired" ? "2000-01-01" : "2099-01-01" } } }];
     const [channel] = await listChannelsForSubject("subject");
     expect(channel.connected).toBe(mode === "connected");
     expect(channel.reconnectRequired).toBe(mode !== "connected");

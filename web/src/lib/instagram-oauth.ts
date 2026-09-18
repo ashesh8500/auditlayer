@@ -66,6 +66,15 @@ async function responseJson<T>(response: Response, errorCode: string): Promise<T
   return payload as T;
 }
 
+/** Never turn an already-rounded provider number into a durable identity. */
+function canonicalInstagramId(value: unknown): string | null {
+  if (typeof value === "number" && !Number.isSafeInteger(value)) return null;
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const text = String(value);
+  if (!/^[1-9][0-9]{0,18}$/.test(text)) return null;
+  return BigInt(text) <= BigInt("9223372036854775807") ? text : null;
+}
+
 async function boundedFetch(
   fetchImpl: typeof fetch,
   input: string,
@@ -198,13 +207,14 @@ export async function completeInstagramOAuth(
   if (!normalizedAccountType) {
     throw new Error("instagram_professional_account_required");
   }
-  if (!profile.username || profile.user_id == null) {
+  const igUserId = canonicalInstagramId(profile.user_id);
+  if (!profile.username || !igUserId) {
     throw new Error("instagram_profile_fetch_failed");
   }
 
   return {
     accessToken: longToken.access_token,
-    igUserId: String(profile.user_id),
+    igUserId,
     igUsername: profile.username,
     accountType: normalizedAccountType,
     followersCount:

@@ -490,16 +490,6 @@ export const EXPERIENCE_EXCEPTIONS: ExperienceException[] = [
   },
   // --- state ---------------------------------------------------------------
   {
-    id: "state-no-route-error-files",
-    rule: "state",
-    path: "",
-    owner: "product-design",
-    reason:
-      "There is no route-level error.tsx boundary; the single global-error.tsx boundary covers all routes and is the reviewed exception for route error surfaces.",
-    correctionTip:
-      "Add a route-level error.tsx under src/app/(app)/ if per-route recovery UX is needed; the contract will then report it.",
-  },
-  {
     id: "state-loading-public-static",
     rule: "state",
     path: "src/app/page.tsx",
@@ -955,22 +945,17 @@ function scanState(
     }
   }
 
-  // Error boundaries: count them; absent route-level error files are a
-  // registered exception (single global boundary).
+  // Route errors use the same error primitive and expose a retry action.
   for (const f of errorFiles) {
-    const exc = exceptionFor("state", rel(f));
-    if (!exc) {
+    const content = readFileSync(f, "utf8");
+    if (!/ExperienceError/.test(content) || !/onClick=\{reset\}/.test(content)) {
       violations.push({
         rule: "state",
         path: rel(f),
         line: 1,
-        detail: "error.tsx present but not registered in the exception registry",
+        detail: "error.tsx must consume ExperienceError and expose reset",
       });
     }
-  }
-  if (errorFiles.length === 0) {
-    const exc = exceptionFor("state", "");
-    if (exc) exceptionIds.add(exc.id);
   }
 
   // Data-driven pages must have an empty-state branch (length guard or

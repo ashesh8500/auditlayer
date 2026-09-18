@@ -3,10 +3,8 @@ import { ArrowRight, ArrowUpRight, Filter, Plus, SlidersHorizontal } from "lucid
 
 import { Button } from "@/components/ui/button";
 import { ExperienceBanner, type ExperienceBannerTone } from "@/components/ui/experience-banner";
-import { InstagramConnect } from "@/components/instagram-connect";
 import { StatusBadge } from "@/components/status-badge";
 import { requireProfile } from "@/lib/auth";
-import { INSTAGRAM_CONNECTION_CARD_FIELDS } from "@/lib/instagram-connection-public";
 import { createClient } from "@/lib/supabase/server";
 import {
   auditLimitForProfile,
@@ -73,53 +71,33 @@ export default async function DashboardPage({
     instagram_connected?: string;
     instagram_error?: string;
     status?: string;
+    page?: string;
   }>;
 }) {
   const params = await searchParams;
-  const { billing, instagram_connected, instagram_error, status: statusFilter } = params;
+  const { billing, status: statusFilter } = params;
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const query = (supabase as any)
-    .from("audits")
-    .select(
-      "id, handle, platform, status, goal, milestone_label, created_at, retry_count, last_failed_at, report_version, prompt_version",
-    )
-    .order("created_at", { ascending: false });
-
-  const instagramQuery = (supabase as any)
-    .from("instagram_connections")
-    .select(INSTAGRAM_CONNECTION_CARD_FIELDS)
-    .order("created_at", { ascending: false })
-    .limit(1);
-
-  const [{ data: audits }, { data: igConnections }] = await Promise.all([
+  const page = /^\d{1,6}$/.test(params.page ?? "") ? Math.max(1, Number(params.page)) : 1;
+  const pageSize = 24;
+  const query = (supabase as any).from("audits")
+    .select("id, handle, platform, status, goal, milestone_label, created_at, retry_count, last_failed_at, report_version, prompt_version", { count: "exact" })
+    .eq("user_id", profile.id).order("created_at", { ascending: false }).order("id")
+    .range((page - 1) * pageSize, page * pageSize - 1);
+  if (statusFilter && statusFilter !== "all") query.eq("status", statusFilter);
+  const [{ data: audits, count, error }, { count: usageCount, error: usageError }] = await Promise.all([
     query,
-    instagramQuery,
+    supabase.from("audits").select("id", { count: "exact", head: true }).eq("user_id", profile.id).in("status", USAGE_STATUSES),
   ]);
   const auditRows = (audits ?? []) as DashboardAuditRow[];
-  let list = auditRows;
-
-  // Apply status filter client-side (avoids Supabase generics constraints)
-  if (statusFilter && statusFilter !== "all") {
-    list = list.filter((a) => a.status === statusFilter);
-  }
-
-  const usage = auditRows.filter((a) =>
-    USAGE_STATUSES.includes(a.status as AuditStatus),
-  ).length;
-
-  // The first query already has every status. Derive counts locally instead of
-  // paying for a second trans-Pacific database round trip.
-  const statusCounts: Record<string, number> = {};
-  for (const a of auditRows) {
-    statusCounts[a.status] = (statusCounts[a.status] || 0) + 1;
-  }
-  const totalAudits = auditRows.length;
-  const connectedIg = igConnections?.[0] ?? null;
+  const list = auditRows;
+  const usage = usageCount ?? 0;
+  const totalAudits = count ?? 0;
+  const pageHref = (next: number) => `/dashboard?${new URLSearchParams({ page: String(next), ...(statusFilter ? { status: statusFilter } : {}) })}`;
 
   const limit = auditLimitForProfile(profile as any);
-  const atCap = !isAdminUnlimited(profile.role) && usage >= limit;
+  const atCap = Boolean(usageError) || (!isAdminUnlimited(profile.role) && usage >= limit);
   const billingMsg = billing ? BILLING_MESSAGES[billing] : undefined;
   const activeAudit = auditRows.find((audit) =>
     ["queued", "running", "needs_review"].includes(audit.status),
@@ -151,7 +129,7 @@ export default async function DashboardPage({
       </div>
 
 
-      {(activeAudit || latestReady) && (
+      {page === 1 && !statusFilter && (activeAudit || latestReady) && (
         <section className="mt-8 grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
           {activeAudit ? (
             <Link href={`/audits/${activeAudit.id}`} className="group bg-[color:var(--forest)] p-6 text-white shadow-[var(--shadow-lg)] sm:p-8 alm-focus">
@@ -186,7 +164,7 @@ export default async function DashboardPage({
               Audit usage
             </span>
             <span className="font-mono text-sm">
-              {usage} /{" "}
+              {usageError ? "Unavailable" : usage} /{" "}
               {isAdminUnlimited(profile.role) || limit >= 10_000 ? "∞" : limit}
             </span>
           </div>
@@ -251,22 +229,15 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      {/* Instagram connect */}
-      <section className="mt-6">
-        <InstagramConnect
-          connectedAccount={connectedIg}
-          plan={profile.plan}
-          searchParams={{ instagram_connected, instagram_error }}
-        />
-      </section>
+      <p className="mt-6 text-sm text-muted-foreground">Need to connect or reconnect Instagram? <Link href="/settings/connections" className="font-semibold text-[color:var(--accent)]">Manage Connections</Link></p>
 
       {/* Audit list */}
       <section className="mt-10">
         <div className="mb-4 flex items-end justify-between gap-4">
           <div><p className="alm-kicker">Report library</p><h2 className="mt-1 text-xl font-semibold tracking-tight">All audits</h2></div>
-          <span className="font-mono text-xs text-muted-foreground">{totalAudits} total</span>
+          {!error && <span className="font-mono text-xs text-muted-foreground">{totalAudits} {statusFilter && statusFilter !== "all" ? "matching reports" : "total"}</span>}
         </div>
-        {list.length === 0 && !statusFilter ? (
+        {error ? <ExperienceBanner tone="danger">Reports could not be loaded. <Link href="/dashboard" className="underline">Try Again</Link></ExperienceBanner> : list.length === 0 && !statusFilter && page === 1 ? (
           /* Enhanced empty state */
           <div className="rounded-[var(--radius)] border border-dashed border-border bg-card p-12 text-center">
             <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-[color:var(--accent-muted)]">
@@ -295,8 +266,6 @@ export default async function DashboardPage({
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <Filter className="size-3.5 text-muted-foreground shrink-0" />
                 {FILTERABLE_STATUSES.map((s) => {
-                  const count = s === "all" ? totalAudits : (statusCounts[s] || 0);
-                  if (count === 0 && s !== "all") return null;
                   const isActive =
                     (s === "all" && !statusFilter) || s === statusFilter;
                   return (
@@ -310,9 +279,6 @@ export default async function DashboardPage({
                       }`}
                     >
                       {s === "all" ? "All" : STATUS_LABELS[s as AuditStatus]}
-                      <span className="tabular-nums text-[10px] opacity-60">
-                        {count}
-                      </span>
                     </Link>
                   );
                 })}
@@ -380,6 +346,11 @@ export default async function DashboardPage({
             )}
           </>
         )}
+        {!error && <nav aria-label="Report pages" className="mt-6 flex gap-4 text-sm">
+          {page > 1 && <Link href={pageHref(page - 1)}>Previous</Link>}
+          <span>Page {page}</span>
+          {page * pageSize < totalAudits && <Link href={pageHref(page + 1)}>Next</Link>}
+        </nav>}
       </section>
     </main>
   );

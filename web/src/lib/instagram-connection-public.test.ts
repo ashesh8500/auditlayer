@@ -39,14 +39,14 @@ describe("authenticated Instagram connection projections", () => {
 
   it("requires every authenticated connection query to use an allowlisted projection", () => {
     const pages = [
-      ["src/app/(app)/dashboard/page.tsx", "INSTAGRAM_CONNECTION_CARD_FIELDS"],
+      ["src/app/(app)/settings/connections/page.tsx", "INSTAGRAM_CONNECTION_CARD_FIELDS"],
       ["src/app/(app)/accounts/page.tsx", "INSTAGRAM_CONNECTION_HEALTH_FIELDS"],
       ["src/app/(app)/accounts/[id]/page.tsx", "INSTAGRAM_CONNECTION_HEALTH_FIELDS"],
     ] as const;
 
     for (const [relativePath, projectionName] of pages) {
       const source = readFileSync(path.join(process.cwd(), relativePath), "utf8");
-      expect(source).toContain(`.select(${projectionName})`);
+      expect(source).toContain(`.select(${projectionName}`);
       expect(source).not.toMatch(
         /\.from\("instagram_connections"\)[\s\S]{0,160}\.select\("\*"\)/,
       );
@@ -55,7 +55,7 @@ describe("authenticated Instagram connection projections", () => {
 
   it("keeps reconnect-required rows visible to the dashboard", () => {
     const source = readFileSync(
-      path.join(process.cwd(), "src/app/(app)/dashboard/page.tsx"),
+      path.join(process.cwd(), "src/app/(app)/settings/connections/page.tsx"),
       "utf8",
     );
 

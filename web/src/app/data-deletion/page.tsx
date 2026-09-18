@@ -23,10 +23,10 @@ export default function DataDeletionPage() {
               <h2 className="mt-3 text-xl font-semibold">Disconnect Instagram immediately</h2>
               <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
                 <li>Sign in to AuditLayerMedia.</li>
-                <li>Open Accounts or Reports and find the Instagram connection panel.</li>
+                <li>Open <Link href="/settings/connections" className="underline">Connections</Link> and find the Instagram account.</li>
                 <li>Select <strong className="text-foreground">Disconnect and delete access</strong>.</li>
               </ol>
-              <p className="mt-4 text-sm leading-6 text-muted-foreground">This deletes the saved Instagram connection and the access it used from AuditLayerMedia. Future reports use public signals unless you reconnect.</p>
+              <p className="mt-4 text-sm leading-6 text-muted-foreground">This deletes stored Instagram access from AuditLayerMedia. Your subjects and report history remain. Reconnect before running new reports that need connected Instagram metrics; disconnecting does not silently switch those reports to public data.</p>
             </section>
 
             <section className="alm-panel p-6 sm:p-8">

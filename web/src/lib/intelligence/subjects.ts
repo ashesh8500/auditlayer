@@ -1,4 +1,5 @@
 import "server-only";
+import { readSubjectHistory, readSubjectPages } from "./subject-reads";
 
 import { isLiveInstagramConnection } from "@/lib/account-ownership";
 import { requireProfile } from "@/lib/auth";
@@ -17,7 +18,7 @@ import type {
   ReportArchiveItem,
   SinceLastAuditItem,
 } from "@/lib/intelligence/types";
-import { dedupeChannels } from "@/lib/intelligence/channel-locator";
+import { dedupeChannels, channelDedupeKey } from "@/lib/intelligence/channel-locator";
 import {
   projectBriefField,
   projectLivingBriefContent,
@@ -45,103 +46,53 @@ export async function listSubjectsForUser(): Promise<{
   subjects: SubjectSummary[];
   source: SubjectListSource;
 }> {
-  if (!isSupabaseConfigured()) {
-    return { subjects: [], source: "live" };
+  if (!isSupabaseConfigured()) throw new Error("Subject data could not be loaded. Please retry.");
+  const profile = await requireProfile();
+  const supabase = await createClient();
+  const data = await readSubjectPages((a, b) => supabase.from("subjects")
+    .select("id, name, subject_type, created_at").eq("user_id", profile.id)
+    .order("created_at", { ascending: false }).order("id").range(a, b));
+  const active = data.filter(row => !String(row.name).startsWith("Archived · "));
+  const subjects: SubjectSummary[] = [];
+  // Bounded groups avoid oversized URL filters; all child reads must succeed.
+  for (let i = 0; i < active.length; i += 100) {
+    const group = active.slice(i, i + 100);
+    const channelRows = await readSubjectPages((a, b) => supabase.from("subject_channels")
+      .select("id, subject_id, channel_type, locator").in("subject_id", group.map(r => r.id))
+      .order("id").range(a, b));
+    const counts = new Map<string, Set<string>>();
+    for (const channel of channelRows) {
+      const keys = counts.get(channel.subject_id) ?? new Set<string>();
+      const key = channelDedupeKey(channel.channel_type as ChannelPlatform, channel.locator ?? "");
+      if (!key.endsWith(":")) keys.add(key);
+      counts.set(channel.subject_id, keys);
+    }
+    for (const row of group) subjects.push({
+      id: row.id, name: row.name, type: row.subject_type as SubjectType,
+      avatarUrl: null, channelCount: counts.get(row.id)?.size ?? 0,
+      // History timestamps live on detail; do not mislabel batch-only activity as complete history.
+      lastAuditAt: null,
+    });
   }
-
-  try {
-    const profile = await requireProfile();
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("subjects")
-      .select("id, name, subject_type, created_at")
-      .eq("user_id", profile.id)
-      .order("created_at", { ascending: false });
-
-    if (error || !data) {
-      return { subjects: [], source: "live" };
-    }
-
-    if (data.length === 0) {
-      return { subjects: [], source: "live" };
-    }
-
-    const active = data.filter(
-      (row) => !String(row.name).startsWith("Archived · "),
-    );
-
-    if (active.length === 0) {
-      return { subjects: [], source: "live" };
-    }
-
-    const ids = active.map((row) => row.id);
-
-    // One channels query + one batches query — avoid per-subject waterfalls.
-    const [{ data: channelRows }, { data: batchRows }] = await Promise.all([
-      supabase
-        .from("subject_channels")
-        .select("id, subject_id, channel_type, locator, managed, account_id")
-        .in("subject_id", ids),
-      supabase
-        .from("audit_batches")
-        .select("subject_id, created_at")
-        .in("subject_id", ids)
-        .order("created_at", { ascending: false }),
-    ]);
-
-    const channelCountBySubject = new Map<string, number>();
-    const seenChannelKeys = new Set<string>();
-    for (const row of channelRows ?? []) {
-      const key = `${row.subject_id}:${row.channel_type}:${String(row.locator ?? "")
-        .toLowerCase()
-        .replace(/^https?:\/\//, "")
-        .replace(/^www\./, "")
-        .replace(/\/+$/, "")
-        .replace(/^@/, "")}`;
-      if (seenChannelKeys.has(key)) continue;
-      seenChannelKeys.add(key);
-      channelCountBySubject.set(
-        row.subject_id,
-        (channelCountBySubject.get(row.subject_id) ?? 0) + 1,
-      );
-    }
-
-    const lastAuditBySubject = new Map<string, string>();
-    for (const row of batchRows ?? []) {
-      if (!lastAuditBySubject.has(row.subject_id)) {
-        lastAuditBySubject.set(row.subject_id, row.created_at);
-      }
-    }
-
-    const subjects: SubjectSummary[] = active.map((row) => ({
-      id: row.id,
-      name: row.name,
-      type: row.subject_type as SubjectType,
-      avatarUrl: null,
-      channelCount: channelCountBySubject.get(row.id) ?? 0,
-      lastAuditAt: lastAuditBySubject.get(row.id) ?? null,
-    }));
-
-    return { subjects, source: "live" };
-  } catch {
-    return { subjects: [], source: "live" };
-  }
+  return { subjects, source: "live" };
 }
 
 export async function listChannelsForSubject(
   subjectId: string,
 ): Promise<ChannelSummary[]> {
-  if (!isSupabaseConfigured()) return [];
-  try {
+  if (!isSupabaseConfigured()) throw new Error("Subject data could not be loaded. Please retry.");
+    const profile = await requireProfile();
     const supabase = await createClient();
-    const { data, error } = await supabase
+    const owned = await supabase.from("subjects").select("id").eq("id", subjectId).eq("user_id", profile.id).maybeSingle();
+    if (owned.error) throw new Error("Subject data could not be loaded. Please retry.");
+    if (!owned.data) return [];
+    const data = await readSubjectPages((a, b) => supabase
       .from("subject_channels")
       .select(
-        "id, subject_id, channel_type, locator, managed, account_id, accounts(id, ownership_status, ig_connection_id, display_name, instagram_connections(is_active,long_lived_expires_at,connection_status))",
+        "id, subject_id, channel_type, locator, managed, account_id, accounts(id, user_id, ownership_status, ig_connection_id, display_name, instagram_connections(user_id,is_active,long_lived_expires_at,connection_status))",
       )
       .eq("subject_id", subjectId)
-      .order("created_at", { ascending: true });
-    if (error || !data) return [];
+      .order("created_at", { ascending: true }).order("id").range(a, b));
     const mapped = data.map((row) => {
       const platform = row.channel_type as ChannelPlatform;
       const isWebsite = platform === "website";
@@ -149,10 +100,12 @@ export async function listChannelsForSubject(
       const accountRaw = (
         row as {
           accounts?: {
+            user_id?: string;
             ownership_status?: string | null;
             ig_connection_id?: string | null;
             display_name?: string | null;
             instagram_connections?: {
+              user_id?: string;
               is_active: boolean;
               long_lived_expires_at: string | null;
               connection_status: "connected" | "reconnect_required";
@@ -160,12 +113,13 @@ export async function listChannelsForSubject(
           } | null;
         }
       ).accounts;
-      const account = Array.isArray(accountRaw) ? accountRaw[0] : accountRaw;
+      const candidate = Array.isArray(accountRaw) ? accountRaw[0] : accountRaw;
+      const account = candidate?.user_id === profile.id ? candidate : null;
       const linked = Boolean(
         account?.ig_connection_id || account?.ownership_status === "connected",
       );
-      const connected = linked && isLiveInstagramConnection(account?.instagram_connections);
-      const reconnectRequired = linked && !connected;
+      const connected = linked && account?.instagram_connections?.user_id === profile.id && isLiveInstagramConnection(account.instagram_connections);
+      const reconnectRequired = platform === "instagram" && (linked || Boolean(row.managed)) && !connected;
       const ownershipStatus: ChannelOwnershipStatus = linked
         ? "connected"
         : row.managed
@@ -187,26 +141,25 @@ export async function listChannelsForSubject(
       };
     });
     return dedupeChannels(mapped);
-  } catch {
-    return [];
-  }
 }
 
 export async function listBriefVersionsForSubject(
   subjectId: string,
   subjectType: SubjectType,
 ): Promise<LivingBriefVersion[]> {
-  if (!isSupabaseConfigured()) return [];
-  try {
+  if (!isSupabaseConfigured()) throw new Error("Subject data could not be loaded. Please retry.");
+    const profile = await requireProfile();
     const supabase = await createClient();
-    const { data: briefs, error } = await supabase
+    const owned = await supabase.from("subjects").select("id").eq("id", subjectId).eq("user_id", profile.id).maybeSingle();
+    if (owned.error) throw new Error("Subject data could not be loaded. Please retry.");
+    if (!owned.data) return [];
+    const briefs = await readSubjectPages((a, b) => supabase
       .from("living_brief_versions")
       .select(
         "id, subject_id, version, identity, audience, positioning, offers, goals, constraints, experiments, decisions, confirmed, created_at",
       )
       .eq("subject_id", subjectId)
-      .order("version", { ascending: false });
-    if (error || !briefs) return [];
+      .order("version", { ascending: false }).order("id").range(a, b));
     return briefs.map((row) => ({
       id: row.id,
       subjectId: row.subject_id,
@@ -217,17 +170,13 @@ export async function listBriefVersionsForSubject(
       changeSummary: null,
       createdAt: row.created_at,
     }));
-  } catch {
-    return [];
-  }
 }
 
 export async function getSubjectHomeBundle(
   subjectId: string,
 ): Promise<SubjectHomeBundle | null> {
-  if (!isSupabaseConfigured()) return null;
+  if (!isSupabaseConfigured()) throw new Error("Subject data could not be loaded. Please retry.");
 
-  try {
     const profile = await requireProfile();
     const supabase = await createClient();
     const { data: row, error } = await supabase
@@ -236,7 +185,8 @@ export async function getSubjectHomeBundle(
       .eq("id", subjectId)
       .eq("user_id", profile.id)
       .maybeSingle();
-    if (error || !row) return null;
+    if (error) throw new Error("Subject data could not be loaded. Please retry.");
+    if (!row) return null;
     if (String(row.name).startsWith("Archived · ")) return null;
 
     const [
@@ -262,15 +212,10 @@ export async function getSubjectHomeBundle(
         .eq("subject_id", subjectId)
         .order("created_at", { ascending: false })
         .limit(5),
-      supabase
-        .from("audit_batches")
-        .select(
-          "id, created_at, batch_audits(audit_id, audits(id, handle, report_version, prompt_version, status, created_at))",
-        )
-        .eq("subject_id", subjectId)
-        .order("created_at", { ascending: false })
-        .limit(10),
+      readSubjectHistory(supabase, profile.id, subjectId),
     ]);
+
+    if (proposalResult.error || runsResult.error) throw new Error("Subject data could not be loaded. Please retry.");
 
     const subject: SubjectSummary = {
       id: row.id,
@@ -278,7 +223,7 @@ export async function getSubjectHomeBundle(
       type: row.subject_type as SubjectType,
       avatarUrl: null,
       channelCount: channels.length,
-      lastAuditAt: batchResult.data?.[0]?.created_at ?? null,
+      lastAuditAt: batchResult[0]?.createdAt ?? null,
     };
 
     const proposals: LivingBriefProposal[] = (proposalResult.data ?? []).map(
@@ -321,7 +266,7 @@ export async function getSubjectHomeBundle(
               "dimension, value, evidence_ids, methodology_version, previous_value, change_kind",
             )
             .eq("intelligence_run_id", latestRunId)
-        : Promise.resolve({ data: null }),
+        : Promise.resolve({ data: null, error: null }),
       runIds.length > 0
         ? supabase
             .from("recommendations")
@@ -331,8 +276,10 @@ export async function getSubjectHomeBundle(
             .in("intelligence_run_id", runIds)
             .order("created_at", { ascending: false })
             .limit(30)
-        : Promise.resolve({ data: null }),
+        : Promise.resolve({ data: null, error: null }),
     ]);
+
+    if (scoreResult.error || recResult.error) throw new Error("Subject data could not be loaded. Please retry.");
 
     // Latest durable customer decision per recommendation (decisions ledger).
     // RLS scopes reads to the acting user's own decisions; the projection is
@@ -341,11 +288,12 @@ export async function getSubjectHomeBundle(
     const recIds = recRows.map((row) => row.id);
     let decisionRows: DecisionLedgerRow[] = [];
     if (recIds.length > 0) {
-      const { data: dRows } = await supabase
+      const { data: dRows, error: decisionError } = await supabase
         .from("decisions")
         .select("id, target_id, decision, note, user_id, created_at")
         .eq("target_type", "recommendation")
         .in("target_id", recIds);
+      if (decisionError) throw new Error("Subject data could not be loaded. Please retry.");
       decisionRows = (dRows ?? []) as DecisionLedgerRow[];
     }
     const decisionMap = projectLatestDecision(decisionRows);
@@ -398,26 +346,7 @@ export async function getSubjectHomeBundle(
       };
     });
 
-    const reports: ReportArchiveItem[] = [];
-    for (const batch of batchResult.data ?? []) {
-      const links = (batch as { batch_audits?: unknown }).batch_audits;
-      const arr = Array.isArray(links) ? links : links ? [links] : [];
-      for (const link of arr) {
-        const audit = (link as { audits?: Record<string, unknown> }).audits;
-        if (!audit || audit.status !== "ready") continue;
-        reports.push({
-          id: String(audit.id),
-          auditId: String(audit.id),
-          channelLabel: `@${String(audit.handle ?? "unknown")}`,
-          reportVersion: Number(audit.report_version ?? 1),
-          promptVersion: audit.prompt_version
-            ? String(audit.prompt_version)
-            : null,
-          createdAt: String(audit.created_at ?? batch.created_at),
-          href: `/audits/${audit.id}`,
-        });
-      }
-    }
+    const reports = batchResult;
 
     const sinceLast: SinceLastAuditItem[] = [];
 
@@ -432,7 +361,4 @@ export async function getSubjectHomeBundle(
       reports,
       source: "live",
     };
-  } catch {
-    return null;
-  }
 }

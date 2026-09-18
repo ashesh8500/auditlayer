@@ -25,8 +25,8 @@ export default function SupportPage() {
               <ul className="mt-3 list-disc space-y-2 pl-5 text-xs leading-5 text-muted-foreground">
                 <li>Use an Instagram Business or Creator account. A Facebook Page is not required.</li>
                 <li>Approve both read-only profile access and read-only Insights access shown by Instagram.</li>
-                <li>If the session expired, return to Accounts or Reports and start the connection again.</li>
-                <li>Disconnecting deletes the saved connection immediately.</li>
+                <li>If the session expired, return to <Link href="/settings/connections" className="underline">Connections</Link> and start the connection again.</li>
+                <li>Disconnecting deletes stored Instagram access and preserves subjects and report history.</li>
               </ul>
               <Link href="/data-deletion" className="mt-4 inline-block text-xs font-semibold text-[color:var(--accent)] hover:underline">
                 Instagram data deletion instructions

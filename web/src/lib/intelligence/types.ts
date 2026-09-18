@@ -104,6 +104,8 @@ export interface SinceLastAuditItem {
 
 /** Immutable report outputs linked to a pinned run */
 export interface ReportArchiveItem {
+  /** Audit state; older fixture consumers may omit it. */
+  status?: string;
   id: string;
   auditId: string;
   channelLabel: string;

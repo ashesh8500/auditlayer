@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import math
 import os
 import re
 import threading
@@ -403,6 +404,9 @@ class WorkerHealth:
     last_loop_monotonic: float = field(default_factory=time.monotonic)
     last_worked: bool = False
     last_error_type: str = ""
+    active_job_kind: str = ""
+    active_job_started_monotonic: float | None = None
+    active_job_deadline_monotonic: float | None = None
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def heartbeat(self, *, worked: bool, error_type: str = "") -> None:
@@ -411,17 +415,50 @@ class WorkerHealth:
             self.last_worked = worked
             self.last_error_type = error_type
 
+    def start_job(self, *, kind: str, budget_seconds: float) -> None:
+        """Grant a fixed observation window, NOT cancellation or a renewable lease."""
+        if not math.isfinite(budget_seconds) or budget_seconds <= 0:
+            raise ValueError("Active job health budget must be finite and positive")
+        with self._lock:
+            if self.active_job_deadline_monotonic is not None:
+                raise RuntimeError("An active job health budget cannot be renewed")
+            self.active_job_kind = kind
+            self.active_job_started_monotonic = time.monotonic()
+            self.active_job_deadline_monotonic = self.active_job_started_monotonic + budget_seconds
+
+    def end_job(self, *, error_type: str = "") -> None:
+        with self._lock:
+            self.active_job_kind = ""
+            self.active_job_started_monotonic = None
+            self.active_job_deadline_monotonic = None
+            self.last_loop_monotonic = time.monotonic()
+            self.last_worked = True
+            self.last_error_type = error_type
+
     def snapshot(self, *, stale_after_seconds: float) -> tuple[int, dict[str, Any]]:
         with self._lock:
-            loop_age = max(0.0, time.monotonic() - self.last_loop_monotonic)
-            healthy = loop_age <= stale_after_seconds
+            now = time.monotonic()
+            loop_age = max(0.0, now - self.last_loop_monotonic)
+            active = self.active_job_deadline_monotonic is not None
+            fresh = (
+                now < self.active_job_deadline_monotonic
+                if self.active_job_deadline_monotonic is not None
+                else loop_age <= stale_after_seconds
+            )
+            healthy = fresh and not self.last_error_type
             body = {
                 "status": "ok" if healthy else "degraded",
                 "service": "auditlayer-worker",
-                "uptime_seconds": round(time.monotonic() - self.started_monotonic, 1),
+                "uptime_seconds": round(now - self.started_monotonic, 1),
                 "last_loop_age_seconds": round(loop_age, 1),
                 "last_loop_worked": self.last_worked,
                 "last_error_type": self.last_error_type or None,
+                "active_job_kind": self.active_job_kind or None,
+                "active_job_age_seconds": (
+                    round(max(0.0, now - self.active_job_started_monotonic), 1)
+                    if self.active_job_started_monotonic is not None else None
+                ),
+                "active_job_budget_exceeded": active and not fresh,
                 "observed_at": _utcnow(),
             }
         return (200 if healthy else 503), body

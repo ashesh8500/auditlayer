@@ -2,12 +2,14 @@ import { CheckCircle2, ExternalLink, ShieldCheck, Unplug } from "lucide-react";
 
 import { isLiveInstagramConnection } from "@/lib/account-ownership";
 import { disconnectInstagram } from "@/lib/actions/instagram";
+import { safeInstagramReturnPath } from "@/lib/instagram-oauth-url";
 import { Button } from "@/components/ui/button";
 import type { InstagramConnectionCard } from "@/lib/instagram-connection-public";
 
 interface Props {
   connectedAccount?: InstagramConnectionCard | null;
   plan?: string;
+  returnTo?: string;
   searchParams?: { instagram_connected?: string; instagram_error?: string };
 }
 
@@ -34,6 +36,9 @@ function InstagramIcon({ className = "size-4" }: { className?: string }) {
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
+  identity_mismatch: "A different Instagram account was selected. Reconnect with the original account, or use Add Instagram for a different account.",
+  connection_unavailable: "This connection is no longer available. Refresh this page and try again.",
+  disconnect_failed: "Access could not be deleted. Please try again.",
   invalid_state: "The connection session expired. Start again from this page.",
   permission_denied: "Instagram access was not approved. Nothing was connected.",
   no_code: "Instagram did not return an authorization code. Please try again.",
@@ -51,15 +56,27 @@ const ERROR_MESSAGES: Record<string, string> = {
   connection_failed: "Instagram could not be connected. Please try again or contact support.",
 };
 
-export function InstagramConnect({ connectedAccount, searchParams }: Props) {
-  const instagramError = searchParams?.instagram_error;
+export function InstagramConnectionFeedback({ searchParams }: Pick<Props, "searchParams">) {
+  return <>
+    {searchParams?.instagram_error && <p role="alert" className="mb-4 border border-[color:var(--red)]/20 bg-[color:var(--red-muted)] px-4 py-3 text-sm text-[color:var(--red)]">{ERROR_MESSAGES[searchParams.instagram_error] ?? ERROR_MESSAGES.connection_failed}</p>}
+    {searchParams?.instagram_connected && <p role="status" className="mb-4 border border-[color:var(--green)]/20 bg-[color:var(--green-muted)] px-4 py-3 text-sm text-[color:var(--green)]">Instagram access updated for @{searchParams.instagram_connected}.</p>}
+  </>;
+}
+
+export function InstagramConnect({ connectedAccount, searchParams, returnTo }: Props) {
+  const titleId = `instagram-connection-${connectedAccount?.id ?? "add"}`;
+  const startParams = new URLSearchParams();
+  if (connectedAccount) startParams.set("connection_id", connectedAccount.id);
+  if (returnTo) startParams.set("return_to", safeInstagramReturnPath(returnTo));
+  const startHref = `/api/auth/instagram/start${startParams.size ? `?${startParams}` : ""}`;
   const reconnectRequired =
     Boolean(connectedAccount && !isLiveInstagramConnection(connectedAccount));
 
   if (connectedAccount && !reconnectRequired) {
     const expiresAt = new Date(connectedAccount.long_lived_expires_at);
     return (
-      <section className="alm-panel p-5 sm:p-6" aria-labelledby="instagram-connection-title">
+      <section className="alm-panel p-5 sm:p-6" aria-labelledby={titleId}>
+        <InstagramConnectionFeedback searchParams={searchParams} />
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[color:var(--green-muted)] text-[color:var(--green)]">
@@ -67,7 +84,7 @@ export function InstagramConnect({ connectedAccount, searchParams }: Props) {
             </span>
             <div className="min-w-0">
               <p className="alm-kicker text-[color:var(--green)]">Connected Instagram Graph API data</p>
-              <h2 id="instagram-connection-title" className="mt-1 truncate text-lg font-semibold">
+              <h2 id={titleId} className="mt-1 truncate text-lg font-semibold">
                 @{connectedAccount.ig_username} is connected
               </h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -84,6 +101,8 @@ export function InstagramConnect({ connectedAccount, searchParams }: Props) {
               </p>
             </div>
           </div>
+          <div className="flex shrink-0 flex-col gap-2">
+          <Button asChild variant="outline"><a href={startHref}>Reconnect Instagram</a></Button>
           <form action={disconnectInstagram}>
             <input type="hidden" name="connection_id" value={connectedAccount.id} />
             <Button type="submit" variant="outline" className="min-h-10 w-full sm:w-auto">
@@ -91,46 +110,47 @@ export function InstagramConnect({ connectedAccount, searchParams }: Props) {
               Disconnect and delete access
             </Button>
           </form>
+          </div>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="alm-panel p-5 sm:p-6" aria-labelledby="instagram-connection-title">
+    <section className="alm-panel p-5 sm:p-6" aria-labelledby={titleId}>
+      <InstagramConnectionFeedback searchParams={searchParams} />
       <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
-          <p className="alm-kicker">Connected data</p>
-          <h2 id="instagram-connection-title" className="mt-2 text-xl font-semibold tracking-tight">
+          <p className="alm-kicker">{reconnectRequired ? "Reconnection required" : "Instagram access"}</p>
+          <h2 id={titleId} className="mt-2 text-xl font-semibold tracking-tight">
             {reconnectRequired
-              ? "Reconnect Instagram"
+              ? `Reconnect @${connectedAccount?.ig_username}`
               : "Connect Instagram for verified metrics"}
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             {reconnectRequired
-              ? "Reconnect to restore verified Instagram metrics. New audits will wait until access is restored."
+              ? "Reconnect to restore verified Instagram metrics for this account before starting a new connected audit."
               : "Approve read-only access to profile, recent-content, and reach insights for your Instagram Business or Creator account. No Facebook Page is required. AuditLayerMedia cannot publish, edit, comment, follow, message, or manage advertising."}
           </p>
         </div>
         <Button asChild size="lg" className="min-h-11 w-full px-5 lg:w-auto">
-          <a href="/api/auth/instagram/start">
+          <a href={startHref}>
             <InstagramIcon />
             {reconnectRequired ? "Reconnect Instagram" : "Connect Instagram"}
           </a>
         </Button>
       </div>
 
+      {connectedAccount && <form action={disconnectInstagram} className="mt-4">
+        <input type="hidden" name="connection_id" value={connectedAccount.id} />
+        <Button type="submit" variant="outline"><Unplug className="size-4" />Disconnect and delete access</Button>
+      </form>}
       <div className="mt-5 grid gap-3 border-t border-border pt-5 text-xs text-muted-foreground sm:grid-cols-3">
         <p className="flex gap-2"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />Read-only professional-account access</p>
         <p className="flex gap-2"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />Connection data is protected and never shared with other customers</p>
         <p className="flex gap-2"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />Disconnecting deletes stored access</p>
       </div>
 
-      {instagramError && (
-        <p role="alert" className="mt-4 border border-[color:var(--red)]/20 bg-[color:var(--red-muted)] px-4 py-3 text-sm text-[color:var(--red)]">
-          {ERROR_MESSAGES[instagramError] ?? ERROR_MESSAGES.connection_failed}
-        </p>
-      )}
 
       <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
         <a href="/privacy#instagram-data" className="inline-flex items-center gap-1 hover:text-foreground">

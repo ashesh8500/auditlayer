@@ -14,15 +14,15 @@ const webRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 describe("experience-contract scanner", () => {
   it("covers every current route page and state file", () => {
     const report = scanExperienceContract(webRoot);
-    expect(report.routes.total).toBe(28);
-    expect(report.routes.files.length).toBe(28);
+    expect(report.routes.total).toBe(29);
+    expect(report.routes.files.length).toBe(29);
     // Every route file is relative to web/ and exists on disk.
     for (const f of report.routes.files) {
       expect(f.startsWith("src/app/")).toBe(true);
       expect(f.endsWith("page.tsx")).toBe(true);
     }
-    expect(report.stateFiles.loading.length).toBe(4);
-    expect(report.stateFiles.error.length).toBe(0);
+    expect(report.stateFiles.loading.length).toBe(5);
+    expect(report.stateFiles.error.length).toBe(1);
     expect(report.stateFiles.globalError.length).toBe(1);
   });
 
@@ -113,6 +113,6 @@ describe("experience-contract artifact", () => {
     const artifact = require("../../artifacts/experience-contract.json") as ExperienceReport;
     expect(artifact.contract).toBe("experience-contract");
     expect(artifact.version).toBe(EXPERIENCE_CONTRACT_VERSION);
-    expect(artifact.routes.total).toBe(28);
+    expect(artifact.routes.total).toBe(29);
   });
 });

@@ -10,6 +10,9 @@ import {
 import { captureWebFailure } from "@/lib/sentry";
 import { GET } from "./route";
 
+import { createClient } from "@/lib/supabase/server";
+vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
+
 vi.mock("@/lib/auth", () => ({ getSession: vi.fn() }));
 vi.mock("@/lib/instagram-oauth-config", () => ({
   createInstagramOAuthState: vi.fn(),
@@ -32,6 +35,29 @@ beforeEach(() => {
 });
 
 describe("Instagram OAuth start route", () => {
+  it("authorizes targeted reconnect and carries only safe return intent", async () => {
+    getSessionMock.mockResolvedValue({ id: "owner-123" } as never);
+    createInstagramOAuthStateMock.mockReturnValue("state-456");
+    instagramOAuthServerConfigMock.mockReturnValue({ appId: "app", appSecret: "secret", redirectUri: "https://example.com/callback" });
+    const eq = vi.fn().mockReturnThis();
+    const query = { select: vi.fn().mockReturnThis(), eq, maybeSingle: vi.fn().mockResolvedValue({ data: { id: "11111111-1111-4111-8111-111111111111", ig_user_id: "ig-1" }, error: null }) };
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(query) } as never);
+    const response = await GET(new NextRequest("https://auditlayermedia.com/api/auth/instagram/start?connection_id=11111111-1111-4111-8111-111111111111&return_to=/subjects"));
+    expect(query.select).toHaveBeenCalledWith("id,ig_user_id::text");
+    expect(eq).toHaveBeenCalledWith("user_id", "owner-123");
+    expect(JSON.parse(response.cookies.get("alm_instagram_oauth_state")!.value)).toMatchObject({ connectionId: "11111111-1111-4111-8111-111111111111", igUserId: "ig-1", returnTo: "/subjects" });
+    query.maybeSingle.mockResolvedValue({ data: null as never, error: null });
+    const denied = await GET(new NextRequest("https://auditlayermedia.com/api/auth/instagram/start?connection_id=11111111-1111-4111-8111-111111111111"));
+    expect(new URL(denied.headers.get("location")!).searchParams.get("instagram_error")).toBe("connection_unavailable");
+    expect(denied.cookies.get("alm_instagram_oauth_state")).toBeUndefined();
+  });
+  it.each(["https://evil.test", "//evil.test", "/admin", "/subjects/../admin", "/subjects?next=evil", "/settings/connections%0a"])("rejects unsafe return path %s", async (returnTo) => {
+    getSessionMock.mockResolvedValue({ id: "owner-123" } as never);
+    createInstagramOAuthStateMock.mockReturnValue("state-456");
+    instagramOAuthServerConfigMock.mockReturnValue({ appId: "app", appSecret: "secret", redirectUri: "https://example.com/callback" });
+    const response = await GET(new NextRequest(`https://auditlayermedia.com/api/auth/instagram/start?return_to=${encodeURIComponent(returnTo)}`));
+    expect(JSON.parse(response.cookies.get("alm_instagram_oauth_state")!.value).returnTo).toBe("/settings/connections");
+  });
   it("sets a short-lived secure user-bound state cookie and requests only approved scopes", async () => {
     getSessionMock.mockResolvedValue({ id: "owner-123" } as never);
     createInstagramOAuthStateMock.mockReturnValue("state-456");
@@ -53,7 +79,9 @@ describe("Instagram OAuth start route", () => {
       "instagram_business_basic,instagram_business_manage_insights",
     );
     expect(location.searchParams.get("state")).toBe("state-456");
-    expect(setCookie).toContain("alm_instagram_oauth_state=owner-123%3Astate-456");
+    const intent = JSON.parse(response.cookies.get("alm_instagram_oauth_state")!.value);
+    expect(intent).toMatchObject({ ownerId: "owner-123", state: "state-456", returnTo: "/settings/connections" });
+    expect(intent.expiresAt).toBeGreaterThan(Date.now());
     expect(setCookie).toContain("Max-Age=600");
     expect(setCookie).toContain("Path=/api/auth/instagram/callback");
     expect(setCookie).toContain("HttpOnly");
