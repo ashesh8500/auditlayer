@@ -8,6 +8,13 @@ function read(relativePath: string): string {
 }
 
 describe("Instagram public trust surfaces", () => {
+  it("directs deletion and connection help to Connections and describes preserved history", () => {
+    for (const page of ["privacy", "support", "data-deletion"]) {
+      const source = read(`src/app/${page}/page.tsx`);
+      expect(source).toContain('/settings/connections');
+      expect(source).toContain('report history');
+    }
+  });
   it("describes optional read-only reach use and truthful unavailable metrics", () => {
     const privacy = read("src/app/privacy/page.tsx");
     const support = read("src/app/support/page.tsx");

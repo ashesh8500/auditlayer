@@ -22,10 +22,11 @@ export default async function ReadPage({
     .from("audits")
     .select("id, user_id, status, handle, report_path")
     .eq("id", id)
+    .eq("user_id", profile.id)
     .maybeSingle();
 
   if (!audit) notFound();
-  if (audit.user_id !== profile.id && profile.role !== "admin") notFound();
+  if (audit.user_id !== profile.id) notFound();
   if (audit.status !== "ready" || !audit.report_path) notFound();
 
   return (

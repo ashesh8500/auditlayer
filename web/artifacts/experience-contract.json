@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scanRoot": "web/",
   "routes": {
-    "total": 28,
+    "total": 29,
     "files": [
       "src/app/(app)/accounts/[id]/page.tsx",
       "src/app/(app)/accounts/page.tsx",
@@ -13,6 +13,7 @@
       "src/app/(app)/dashboard/page.tsx",
       "src/app/(app)/preview-setup/page.tsx",
       "src/app/(app)/settings/ai-connections/page.tsx",
+      "src/app/(app)/settings/connections/page.tsx",
       "src/app/(app)/subjects/[id]/page.tsx",
       "src/app/(app)/subjects/page.tsx",
       "src/app/admin/audits/[id]/page.tsx",
@@ -40,9 +41,12 @@
       "src/app/(app)/audits/new/loading.tsx",
       "src/app/(app)/dashboard/loading.tsx",
       "src/app/(app)/loading.tsx",
-      "src/app/(app)/subjects/[id]/loading.tsx"
+      "src/app/(app)/subjects/[id]/loading.tsx",
+      "src/app/(app)/subjects/loading.tsx"
     ],
-    "error": [],
+    "error": [
+      "src/app/(app)/subjects/error.tsx"
+    ],
     "globalError": [
       "src/app/global-error.tsx"
     ]
@@ -61,6 +65,7 @@
       "src/components/ui/textarea.tsx"
     ],
     "shared": [
+      "src/components/admin-run-health.tsx",
       "src/components/alm-skeleton.tsx",
       "src/components/app-header.tsx",
       "src/components/brand.tsx",
@@ -98,25 +103,25 @@
         {
           "rule": "semantic-color",
           "path": "src/app/login/login-form.tsx",
-          "line": 121,
+          "line": 125,
           "detail": "hardcoded hex #4285F4"
         },
         {
           "rule": "semantic-color",
           "path": "src/app/login/login-form.tsx",
-          "line": 125,
+          "line": 129,
           "detail": "hardcoded hex #34A853"
         },
         {
           "rule": "semantic-color",
           "path": "src/app/login/login-form.tsx",
-          "line": 129,
+          "line": 133,
           "detail": "hardcoded hex #FBBC05"
         },
         {
           "rule": "semantic-color",
           "path": "src/app/login/login-form.tsx",
-          "line": 133,
+          "line": 137,
           "detail": "hardcoded hex #EA4335"
         }
       ],
@@ -133,13 +138,13 @@
     },
     "panel": {
       "status": "exceptions",
-      "findings": 45,
+      "findings": 46,
       "violations": [],
       "exceptions": [
         {
           "rule": "panel",
           "path": "src/components/intelligence/customer-wait-state.tsx",
-          "line": 194,
+          "line": 207,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
@@ -151,19 +156,19 @@
         {
           "rule": "panel",
           "path": "src/components/intelligence/intelligence-wizard.tsx",
-          "line": 759,
+          "line": 767,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/components/intelligence/intelligence-wizard.tsx",
-          "line": 843,
+          "line": 851,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/components/intelligence/intelligence-wizard.tsx",
-          "line": 1042,
+          "line": 1050,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
@@ -181,7 +186,7 @@
         {
           "rule": "panel",
           "path": "src/components/live-timeline.tsx",
-          "line": 353,
+          "line": 352,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
@@ -277,43 +282,49 @@
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/audit-actions.tsx",
-          "line": 57,
+          "line": 62,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/audit-actions.tsx",
-          "line": 86,
+          "line": 91,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/audit-actions.tsx",
-          "line": 118,
+          "line": 123,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/audit-actions.tsx",
-          "line": 146,
+          "line": 151,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/operator-panel.tsx",
-          "line": 73,
+          "line": 77,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/page.tsx",
-          "line": 124,
+          "line": 126,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/app/admin/audits/[id]/page.tsx",
-          "line": 167,
+          "line": 143,
+          "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
+        },
+        {
+          "rule": "panel",
+          "path": "src/app/admin/audits/[id]/page.tsx",
+          "line": 177,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
@@ -337,7 +348,7 @@
         {
           "rule": "panel",
           "path": "src/app/admin/page.tsx",
-          "line": 49,
+          "line": 55,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
@@ -403,7 +414,7 @@
         {
           "rule": "panel",
           "path": "src/app/page.tsx",
-          "line": 161,
+          "line": 162,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         }
       ],
@@ -484,37 +495,37 @@
         {
           "rule": "button",
           "path": "src/components/intelligence/intelligence-wizard.tsx",
-          "line": 702,
+          "line": 709,
           "detail": "raw <button> without shared Button or explicit focus+target (\n                key={ch.id}\n                type=\"button\"\n )"
         },
         {
           "rule": "button",
           "path": "src/components/intelligence/intelligence-wizard.tsx",
-          "line": 762,
+          "line": 770,
           "detail": "raw <button> without shared Button or explicit focus+target (\n                  type=\"button\"\n                  className)"
         },
         {
           "rule": "button",
           "path": "src/components/intelligence/intelligence-wizard.tsx",
-          "line": 1027,
+          "line": 1035,
           "detail": "raw <button> without shared Button or explicit focus+target (\n                key={ch.id}\n                type=\"button\"\n )"
         },
         {
           "rule": "button",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 137,
+          "line": 194,
           "detail": "raw <button> without shared Button or explicit focus+target (\n            key={tab}\n            role=\"tab\"\n            ar)"
         },
         {
           "rule": "button",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 490,
+          "line": 568,
           "detail": "raw <button> without shared Button or explicit focus+target (\n                  type=\"button\"\n                  onClick={)"
         },
         {
           "rule": "button",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 675,
+          "line": 753,
           "detail": "raw <button> without shared Button or explicit focus+target (\n              type=\"button\"\n              onClick={() =)"
         },
         {
@@ -610,19 +621,19 @@
         {
           "rule": "banner",
           "path": "src/components/intelligence/intelligence-wizard.tsx",
-          "line": 735,
+          "line": 743,
           "detail": "banner-like surface via border-l-[3px]; prefer ExperienceBanner"
         },
         {
           "rule": "banner",
           "path": "src/components/live-timeline.tsx",
-          "line": 400,
+          "line": 399,
           "detail": "banner-like surface via color-mix(in oklch; prefer ExperienceBanner"
         },
         {
           "rule": "banner",
           "path": "src/components/live-timeline.tsx",
-          "line": 401,
+          "line": 400,
           "detail": "banner-like surface via color-mix(in oklch; prefer ExperienceBanner"
         }
       ],
@@ -658,13 +669,12 @@
       "exceptionIds": [
         "state-loading-enterprise-static",
         "state-loading-public-static",
-        "state-login-static-list",
-        "state-no-route-error-files"
+        "state-login-static-list"
       ]
     },
     "focus": {
       "status": "exceptions",
-      "findings": 10,
+      "findings": 11,
       "violations": [],
       "exceptions": [
         {
@@ -676,19 +686,25 @@
         {
           "rule": "focus",
           "path": "src/components/instagram-connect.tsx",
-          "line": 110,
+          "line": 105,
           "detail": "interactive element without alm-focus/focus-visible treatment"
         },
         {
           "rule": "focus",
           "path": "src/components/instagram-connect.tsx",
-          "line": 135,
+          "line": 137,
           "detail": "interactive element without alm-focus/focus-visible treatment"
         },
         {
           "rule": "focus",
           "path": "src/components/instagram-connect.tsx",
-          "line": 138,
+          "line": 156,
+          "detail": "interactive element without alm-focus/focus-visible treatment"
+        },
+        {
+          "rule": "focus",
+          "path": "src/components/instagram-connect.tsx",
+          "line": 159,
           "detail": "interactive element without alm-focus/focus-visible treatment"
         },
         {
@@ -706,19 +722,19 @@
         {
           "rule": "focus",
           "path": "src/app/privacy/page.tsx",
-          "line": 91,
+          "line": 92,
           "detail": "interactive element without alm-focus/focus-visible treatment"
         },
         {
           "rule": "focus",
           "path": "src/app/privacy/page.tsx",
-          "line": 139,
+          "line": 140,
           "detail": "interactive element without alm-focus/focus-visible treatment"
         },
         {
           "rule": "focus",
           "path": "src/app/privacy/page.tsx",
-          "line": 150,
+          "line": 151,
           "detail": "interactive element without alm-focus/focus-visible treatment"
         },
         {
@@ -739,7 +755,7 @@
     },
     "target": {
       "status": "exceptions",
-      "findings": 38,
+      "findings": 40,
       "violations": [],
       "exceptions": [
         {
@@ -757,13 +773,13 @@
         {
           "rule": "target",
           "path": "src/components/instagram-connect.tsx",
-          "line": 135,
+          "line": 156,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/components/instagram-connect.tsx",
-          "line": 138,
+          "line": 159,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
@@ -781,43 +797,55 @@
         {
           "rule": "target",
           "path": "src/components/intelligence/intelligence-wizard.tsx",
-          "line": 702,
+          "line": 698,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/components/intelligence/intelligence-wizard.tsx",
-          "line": 762,
+          "line": 709,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/components/intelligence/intelligence-wizard.tsx",
-          "line": 1027,
+          "line": 770,
+          "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
+        },
+        {
+          "rule": "target",
+          "path": "src/components/intelligence/intelligence-wizard.tsx",
+          "line": 1035,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 137,
+          "line": 194,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 490,
+          "line": 568,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 675,
+          "line": 753,
+          "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
+        },
+        {
+          "rule": "target",
+          "path": "src/components/intelligence/subject-home.tsx",
+          "line": 985,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/components/live-timeline.tsx",
-          "line": 354,
+          "line": 353,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
@@ -859,13 +887,13 @@
         {
           "rule": "target",
           "path": "src/app/admin/audits/[id]/audit-actions.tsx",
-          "line": 182,
+          "line": 187,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/app/admin/audits/[id]/operator-panel.tsx",
-          "line": 135,
+          "line": 159,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
@@ -937,19 +965,19 @@
         {
           "rule": "target",
           "path": "src/app/privacy/page.tsx",
-          "line": 91,
+          "line": 92,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/app/privacy/page.tsx",
-          "line": 139,
+          "line": 140,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/app/privacy/page.tsx",
-          "line": 150,
+          "line": 151,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
@@ -995,7 +1023,6 @@
   ],
   "correctionTips": [
     "Add a loading boundary if the enterprise page becomes dynamic.",
-    "Add a route-level error.tsx under src/app/(app)/ if per-route recovery UX is needed; the contract will then report it.",
     "Add alm-focus if the browser probe shows no visible focus.",
     "Add alm-focus to inline prose links if a keyboard-contrast regression is observed in the browser probe.",
     "Add loading boundaries if any public route becomes dynamic.",

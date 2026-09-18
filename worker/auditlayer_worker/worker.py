@@ -2,17 +2,27 @@
 
 from __future__ import annotations
 
+import random
 import time
 import traceback
+
+import httpx
+from postgrest.exceptions import APIError
 
 from .account_homes import get_report_bundle_version
 from .config import WorkerSettings
 from .core import PROMPT_VERSION, AuditRecord
 from .generation import HermesReportGenerator, MockReportGenerator, ReportGenerator
 from .hermes_runtime import HermesRuntime
-from .observability import log_event, start_health_server
+from .observability import WorkerHealth, log_event, start_health_server
 from .pipeline import GenerationPipeline, SupabaseEventSink
 from .supabase_client import AppSettings, SupabaseGateway
+
+
+# An observation budget, not an enforced provider timeout. Covers generation,
+# correction and finalization; cannot be renewed by phase/event heartbeats.
+# Exceeding it reports 503 but does not interrupt an ambiguous finalization.
+ACTIVE_JOB_HEALTH_BUDGET_SECONDS = 900.0
 
 
 def build_generator(
@@ -43,6 +53,20 @@ def build_generator(
     )
 
 
+def _is_transient_control_plane_error(exc: Exception) -> bool:
+    # Do not catch all TransportError/OSError: local protocol, configuration,
+    # filesystem permissions and programming failures need operator correction.
+    if isinstance(exc, (httpx.NetworkError, httpx.TimeoutException, httpx.RemoteProtocolError)):
+        return True
+    # PostgREST wraps non-JSON HTTP errors using a numeric (or string) code.
+    # PGRST003 is pool acquisition timeout. Unknown/schema/auth codes stay fatal.
+    if isinstance(exc, APIError):
+        return str(exc.code) in {"408", "429", "500", "502", "503", "504", "PGRST003"}
+    return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code in {
+        408, 429, 500, 502, 503, 504,
+    }
+
+
 def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
     gateway = SupabaseGateway(settings)
     runtime = HermesRuntime(settings)
@@ -54,10 +78,11 @@ def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
         hermes_mode=runtime.mode,
     )
 
+    consecutive_failures = 0
     try:
         while True:
             try:
-                worked = _drain_once(settings, gateway, runtime)
+                worked = _drain_once(settings, gateway, runtime, health=health)
                 retried = gateway.sweep_retryable()
                 if retried:
                     log_event("audits_requeued", count=retried)
@@ -68,11 +93,30 @@ def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
                 if crashed_runs:
                     log_event("stale_generation_runs_reaped", count=crashed_runs)
                 runtime.tick_idle(worked)
-                health.heartbeat(worked=worked)
+                # A returned failed job is not a successful health recovery.
+                # A subsequent successful idle poll or job can recover health.
+                health.heartbeat(
+                    worked=worked, error_type=health.last_error_type if worked else "",
+                )
+                if consecutive_failures:
+                    log_event("worker_loop_recovered", consecutive_failures=consecutive_failures)
+                consecutive_failures = 0
             except Exception as exc:
                 health.heartbeat(worked=False, error_type=type(exc).__name__)
                 log_event("worker_loop_failed", level="error", error_type=type(exc).__name__)
-                raise
+                if once or not _is_transient_control_plane_error(exc):
+                    raise
+                consecutive_failures += 1
+                ceiling = min(30.0, 2.0 ** min(consecutive_failures - 1, 5))
+                delay = random.uniform(ceiling / 2, ceiling)
+                log_event("worker_loop_retrying", level="warning",
+                          error_type=type(exc).__name__,
+                          consecutive_failures=consecutive_failures,
+                          retry_after_seconds=delay)
+                # Start a fresh atomic claim; never replay a claimed job or a
+                # possibly committed write after losing its response.
+                time.sleep(delay)
+                continue
             if once:
                 return
             if not worked:
@@ -83,7 +127,8 @@ def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
 
 
 def _drain_once(
-    settings: WorkerSettings, gateway: SupabaseGateway, runtime: HermesRuntime
+    settings: WorkerSettings, gateway: SupabaseGateway, runtime: HermesRuntime,
+    *, health: WorkerHealth,
 ) -> bool:
     app_settings = gateway.get_app_settings()
     generator = build_generator(settings, app_settings, runtime=runtime)
@@ -91,11 +136,17 @@ def _drain_once(
 
     audit_row = gateway.claim_next_queued()
     if audit_row is not None:
-        audit = AuditRecord.from_row(audit_row)
-        sink = SupabaseEventSink(gateway, audit.id)
-        log_event("audit_claimed", audit_id=audit.id, handle=audit.handle)
-        summary = pipeline.run(audit, sink, gateway=gateway, token_cap=app_settings.token_cap,
-                              cost_cap_usd=app_settings.cost_cap_usd)
+        health.start_job(kind="audit", budget_seconds=ACTIVE_JOB_HEALTH_BUDGET_SECONDS)
+        error_type = "AuditJobInterrupted"
+        try:
+            audit = AuditRecord.from_row(audit_row)
+            sink = SupabaseEventSink(gateway, audit.id)
+            log_event("audit_claimed", audit_id=audit.id, handle=audit.handle)
+            summary = pipeline.run(audit, sink, gateway=gateway, token_cap=app_settings.token_cap,
+                                   cost_cap_usd=app_settings.cost_cap_usd)
+            error_type = "" if summary.status in {"ready", "needs_review"} else "AuditJobFailed"
+        finally:
+            health.end_job(error_type=error_type)
         log_event(
             "audit_finished",
             audit_id=audit.id,
@@ -113,7 +164,13 @@ def _drain_once(
 
     refinement_row = gateway.claim_next_refinement()
     if refinement_row is not None:
-        _process_refinement(settings, gateway, pipeline, refinement_row)
+        health.start_job(kind="refinement", budget_seconds=ACTIVE_JOB_HEALTH_BUDGET_SECONDS)
+        error_type = "RefinementJobInterrupted"
+        try:
+            succeeded = _process_refinement(settings, gateway, pipeline, refinement_row)
+            error_type = "" if succeeded else "RefinementJobFailed"
+        finally:
+            health.end_job(error_type=error_type)
         return True
 
     return False
@@ -121,7 +178,7 @@ def _drain_once(
 
 def _process_refinement(
     settings: WorkerSettings, gateway: SupabaseGateway, pipeline: GenerationPipeline, row: dict
-) -> None:
+) -> bool:
     refinement_id = str(row["id"])
     audit_id = str(row["audit_id"])
     section = row.get("section", "")
@@ -137,15 +194,17 @@ def _process_refinement(
     audit_rows = audit_res.data or []
     if not audit_rows:
         gateway.update_refinement(refinement_id, status="failed", error="audit not found")
-        return
+        return False
     audit = AuditRecord.from_row(audit_rows[0])
     report_path = audit_rows[0].get("report_path")
 
     sink = SupabaseEventSink(gateway, audit_id)
+    finalization_started = False
     try:
         current_html = _download_report(gateway, settings, report_path)
         new_html, _t_in, _t_out = pipeline.refine(audit, current_html, section, instruction, sink)
         new_report_path, _ = gateway.upload_report(audit_id, new_html)
+        finalization_started = True
         new_version = gateway.finalize_refinement_report(
             audit_id=audit_id,
             refinement_id=refinement_id,
@@ -159,7 +218,13 @@ def _process_refinement(
             "refinement",
             f"Section '{section}' saved as report version {new_version}",
         )
+        return True
     except Exception as exc:  # noqa: BLE001
+        if finalization_started:
+            # The RPC may have committed (or only the subsequent event failed).
+            # Never overwrite done with failed or replay generation. Leave the
+            # row for reconciliation and let the loop classify the exception.
+            raise
         log_event(
             "refinement_failed",
             level="error",
@@ -177,6 +242,7 @@ def _process_refinement(
             actor="worker",
         )
         gateway.update_refinement(refinement_id, status="failed", error=public_error)
+        return False
 
 
 def _download_report(gateway: SupabaseGateway, settings: WorkerSettings, report_path: str | None) -> str:

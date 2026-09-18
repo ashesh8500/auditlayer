@@ -15,33 +15,27 @@ from auditlayer_worker.supabase_client import (
 )
 
 
-class _Query:
-    def __init__(self, table: str, calls: list[tuple]) -> None:
-        self.table = table
-        self.calls = calls
-        self.data = [{"id": "account-1"}] if table == "accounts" else []
-
-    def upsert(self, fields, **kwargs):
-        self.calls.append((self.table, "upsert", fields, kwargs))
-        return self
-
-    def update(self, fields):
-        self.calls.append((self.table, "update", fields, {}))
-        return self
-
-    def eq(self, *_args):
-        return self
-
-    def execute(self):
-        return self
+@pytest.fixture(autouse=True)
+def no_live_graph_calls(monkeypatch):
+    attempts = []
+    def forbidden(*args, **kwargs):
+        attempts.append(True)
+        raise AssertionError("signal freshness tests must not make HTTP requests")
+    monkeypatch.setattr("httpx.Client.send", forbidden)
+    yield
+    assert not attempts, "unexpected network attempt (even if swallowed by production code)"
 
 
 class _Client:
     def __init__(self) -> None:
-        self.calls: list[tuple] = []
+        self.calls: list[dict] = []
 
-    def table(self, name: str) -> _Query:
-        return _Query(name, self.calls)
+    def table(self, name: str):
+        raise AssertionError("cache writes must be atomic RPCs, never table writes")
+
+    def rpc(self, name, payload):
+        self.calls.append(payload)
+        return SimpleNamespace(execute=lambda: SimpleNamespace(data="version-1"))
 
 
 def _audit():
@@ -55,6 +49,7 @@ def _audit():
 
 def _metrics():
     return SimpleNamespace(
+        _credential_fence=("connection-1", "version-1"),
         profile=SimpleNamespace(followers_count=1000),
         avg_engagement_rate=2.5,
         avg_likes=40.0,
@@ -73,18 +68,14 @@ def test_reusing_research_does_not_slide_cache_expiry() -> None:
         research_refreshed=False,
     )
 
-    account_fields = gateway.client.calls[0][2]
-    assert account_fields == {
-        "user_id": "user-1",
-        "handle": "creator",
-        "platform": "instagram",
-        "ownership_status": "connected",
-    }
+    payload = gateway.client.calls[0]
+    assert payload["p_connection_id"] == "connection-1"
+    assert payload["p_credential_version"] == "version-1"
+    assert payload["p_payload"]["research_refreshed"] is False
 
 
 def test_fresh_research_gets_bounded_24_hour_expiry() -> None:
     gateway = SimpleNamespace(client=_Client())
-    before = datetime.now(timezone.utc)
 
     _link_account_and_progression(
         gateway,
@@ -94,11 +85,10 @@ def test_fresh_research_gets_bounded_24_hour_expiry() -> None:
         research_refreshed=True,
     )
 
-    account_fields = gateway.client.calls[0][2]
-    expiry = datetime.fromisoformat(account_fields["cache_valid_until"])
-    ttl_hours = (expiry - before).total_seconds() / 3600
-    assert 23.9 <= ttl_hours <= 24.1
-    assert account_fields["research_snapshot"] == "fresh evidence"
+    # The DB now owns the clock/24h TTL (verified in PostgreSQL tests).
+    payload = gateway.client.calls[0]["p_payload"]
+    assert payload["research_refreshed"] is True
+    assert payload["research_snapshot"] == "fresh evidence"
 
 
 def test_public_audit_target_is_not_promoted_to_workspace_account() -> None:
@@ -119,6 +109,7 @@ def test_public_audit_target_is_not_promoted_to_workspace_account() -> None:
 def test_account_progression_preserves_unavailable_counts_and_real_zero(value) -> None:
     gateway = SimpleNamespace(client=_Client())
     metrics = SimpleNamespace(
+        _credential_fence=("connection-1", "version-1"),
         profile=SimpleNamespace(followers_count=value),
         avg_engagement_rate=value,
         avg_likes=value,
@@ -132,11 +123,7 @@ def test_account_progression_preserves_unavailable_counts_and_real_zero(value) -
         research_refreshed=False,
     )
 
-    progression_fields = next(
-        fields
-        for table, operation, fields, _kwargs in gateway.client.calls
-        if table == "account_progression" and operation == "upsert"
-    )
+    progression_fields = gateway.client.calls[0]["p_payload"]
     if value is None:
         assert progression_fields["followers"] is None
         assert progression_fields["engagement"] is None
@@ -153,10 +140,12 @@ def test_connected_instagram_failure_refuses_stale_fallback() -> None:
     gateway = MagicMock()
     gateway.get_instagram_token.return_value = InstagramConnectionLookup(
         state=InstagramConnectionState.USABLE,
+        connection_id="connection-1",
         token="opaque-direct-token",
         ig_user_id=123,
-        expires_at="2026-09-18T00:00:00+00:00",
+        expires_at=(datetime.now(timezone.utc) + timedelta(days=60)).isoformat(),
         graph_api_family="instagram",
+        credential_version="version-1",
     )
     sink = MagicMock()
 
@@ -239,10 +228,12 @@ def test_connected_instagram_failure_preserves_graph_error_class() -> None:
     gateway = MagicMock()
     gateway.get_instagram_token.return_value = InstagramConnectionLookup(
         state=InstagramConnectionState.USABLE,
+        connection_id="connection-1",
         token="opaque-direct-token",
         ig_user_id=123,
-        expires_at="2026-09-18T00:00:00+00:00",
+        expires_at=(datetime.now(timezone.utc) + timedelta(days=60)).isoformat(),
         graph_api_family="instagram",
+        credential_version="version-1",
     )
     sink = MagicMock()
 
@@ -266,6 +257,7 @@ def test_auth_permission_failure_persists_reconnect_required_before_failing_clos
         ig_user_id=123,
         expires_at="2099-01-01T00:00:00+00:00",
         graph_api_family="instagram",
+        credential_version="version-1",
     )
     gateway.mark_instagram_connection_reconnect_required.return_value = True
     sink = MagicMock()
@@ -284,6 +276,7 @@ def test_auth_permission_failure_persists_reconnect_required_before_failing_clos
     gateway.mark_instagram_connection_reconnect_required.assert_called_once_with(
         user_id="user-1",
         connection_id="connection-1",
+        credential_version="version-1",
     )
     sink.emit.assert_any_call(
         "failed",
@@ -307,6 +300,7 @@ def test_reconnect_transition_failure_is_observed_without_exposing_private_detai
         ig_user_id=123,
         expires_at="2099-01-01T00:00:00+00:00",
         graph_api_family="instagram",
+        credential_version="version-1",
     )
     transition_error = RuntimeError("private connection persistence detail")
     gateway.mark_instagram_connection_reconnect_required.side_effect = transition_error
@@ -337,10 +331,12 @@ def test_live_instagram_snapshot_refreshes_connection_health() -> None:
     gateway = MagicMock()
     gateway.get_instagram_token.return_value = InstagramConnectionLookup(
         state=InstagramConnectionState.USABLE,
+        connection_id="connection-1",
         token="opaque-direct-token",
         ig_user_id=123,
-        expires_at="2026-09-18T00:00:00+00:00",
+        expires_at=(datetime.now(timezone.utc) + timedelta(days=60)).isoformat(),
         graph_api_family="instagram",
+        credential_version="version-1",
     )
     sink = MagicMock()
     profile = SimpleNamespace(
@@ -374,6 +370,8 @@ def test_live_instagram_snapshot_refreshes_connection_health() -> None:
         followers_count=1110,
         media_count=42,
         observed_at="2026-07-19T00:00:00+00:00",
+        connection_id="connection-1",
+        credential_version="version-1",
     )
     api_events = [
         call.args[1]
@@ -397,10 +395,12 @@ def test_live_instagram_event_and_snapshot_keep_missing_counts_unavailable() -> 
     gateway = MagicMock()
     gateway.get_instagram_token.return_value = InstagramConnectionLookup(
         state=InstagramConnectionState.USABLE,
+        connection_id="connection-1",
         token="opaque-direct-token",
         ig_user_id=123,
         expires_at="2099-01-01T00:00:00+00:00",
         graph_api_family="instagram",
+        credential_version="version-1",
     )
     sink = MagicMock()
     profile = SimpleNamespace(
@@ -432,6 +432,8 @@ def test_live_instagram_event_and_snapshot_keep_missing_counts_unavailable() -> 
         followers_count=None,
         media_count=None,
         observed_at="2026-07-19T00:00:00+00:00",
+        connection_id="connection-1",
+        credential_version="version-1",
     )
     sink.emit.assert_any_call(
         "researching",
@@ -450,6 +452,7 @@ def test_token_refresh_auth_failure_marks_reconnect_and_skips_metrics_fetch() ->
         ig_user_id=123,
         expires_at=(datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
         graph_api_family="instagram",
+        credential_version="version-1",
     )
     gateway.mark_instagram_connection_reconnect_required.return_value = True
     sink = MagicMock()
@@ -472,6 +475,7 @@ def test_token_refresh_auth_failure_marks_reconnect_and_skips_metrics_fetch() ->
     gateway.mark_instagram_connection_reconnect_required.assert_called_once_with(
         user_id="user-1",
         connection_id="connection-1",
+        credential_version="version-1",
     )
     get_metrics.assert_not_called()
     capture.assert_any_call(
@@ -491,10 +495,12 @@ def test_token_refresh_failure_is_captured_and_valid_token_still_loads_metrics()
     gateway = MagicMock()
     gateway.get_instagram_token.return_value = InstagramConnectionLookup(
         state=InstagramConnectionState.USABLE,
+        connection_id="connection-1",
         token="opaque-direct-token",
         ig_user_id=123,
         expires_at=(datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
         graph_api_family="instagram",
+        credential_version="version-1",
     )
     sink = MagicMock()
     metrics = SimpleNamespace(
@@ -536,10 +542,12 @@ def test_snapshot_persistence_failure_is_captured_without_blocking_live_metrics(
     gateway = MagicMock()
     gateway.get_instagram_token.return_value = InstagramConnectionLookup(
         state=InstagramConnectionState.USABLE,
+        connection_id="connection-1",
         token="opaque-direct-token",
         ig_user_id=123,
-        expires_at="2026-09-18T00:00:00+00:00",
+        expires_at=(datetime.now(timezone.utc) + timedelta(days=60)).isoformat(),
         graph_api_family="instagram",
+        credential_version="version-1",
     )
     persist_error = RuntimeError("private persistence detail")
     gateway.refresh_instagram_connection.side_effect = persist_error

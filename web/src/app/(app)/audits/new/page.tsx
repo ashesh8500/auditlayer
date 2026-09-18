@@ -6,7 +6,7 @@ import {
   auditLimitForProfile,
   USAGE_STATUSES,
   effectivePlanForProfile,
-  type AuditStatus,
+
 } from "@/lib/domain";
 import { IntelligenceWizard } from "@/components/intelligence/intelligence-wizard";
 import {
@@ -30,10 +30,11 @@ export default async function NewAuditPage({
   const { subject: subjectParam } = await searchParams;
   const supabase = await createClient();
 
-  const { data: audits } = await supabase.from("audits").select("status");
-  const usage = (audits ?? []).filter((a) =>
-    USAGE_STATUSES.includes(a.status as AuditStatus),
-  ).length;
+  const { count, error } = await supabase.from("audits")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", profile.id).in("status", USAGE_STATUSES);
+  if (error || count === null) throw new Error("Audit usage could not be loaded. Please try again.");
+  const usage = count;
   const limit = auditLimitForProfile(profile as any);
 
   // Server-side guard: bounce capped users to the dashboard's upgrade path.

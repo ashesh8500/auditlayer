@@ -148,6 +148,7 @@ class InstagramMetrics:
     posting_cadence: str = ""
     top_content_types: list[str] = field(default_factory=list)
     _raw: dict[str, Any] | None = None
+    _credential_fence: tuple[str | None, str | None] | None = field(default=None, repr=False)
 
 
 @dataclass

@@ -184,6 +184,7 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
         </Link>
       </header>
 
+      <p className="text-xs text-muted-foreground">Intelligence preview: latest 5 runs, up to 30 recommendations and 20 brief suggestions. Audit history below is not limited to this preview.</p>
       <nav
         className="flex flex-wrap gap-1 border-b border-border"
         role="tablist"
@@ -297,7 +298,9 @@ function OverviewTab({
                     {ch.reconnectRequired ? "Reconnect Instagram" : ch.connected ? "Connected" : "Public research"}
                   </p>
                 </div>
-                <Badge
+                {ch.reconnectRequired ? (
+                  <Link href="/settings/connections" className="shrink-0 text-sm font-semibold text-[color:var(--accent)] hover:underline">Reconnect</Link>
+                ) : <Badge
                   tone={
                     ch.reconnectRequired
                       ? "warning"
@@ -315,7 +318,7 @@ function OverviewTab({
                     : ch.ownershipStatus === "observed"
                       ? "Observed"
                       : "Managed"}
-                </Badge>
+                </Badge>}
               </li>
             ))}
           </ul>
@@ -404,8 +407,9 @@ function OverviewTab({
           <h2 className="text-base font-semibold">Report archive</h2>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Immutable outputs pinned to past intelligence runs.
+          {reports.length} audit run{reports.length === 1 ? "" : "s"} loaded, including linked legacy history. Ready runs open reports; other runs show their current status.
         </p>
+        {reports.length === 0 && <p className="mt-4 text-sm text-muted-foreground">No audit history yet.</p>}
         <ul className="mt-4 divide-y divide-border border-y border-border">
           {reports.map((report) => (
             <li
@@ -414,7 +418,8 @@ function OverviewTab({
             >
               <div>
                 <p className="text-sm font-semibold">
-                  {report.channelLabel} · v{report.reportVersion}
+                  {report.channelLabel} · {report.status ?? "ready"}
+                  {(!report.status || report.status === "ready") && ` · v${report.reportVersion}`}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {report.promptVersion
@@ -427,7 +432,7 @@ function OverviewTab({
                 href={report.href}
                 className="text-xs font-semibold text-[color:var(--accent)] hover:underline"
               >
-                Open report
+                {!report.status || report.status === "ready" ? "Open report" : "View run"}
               </Link>
             </li>
           ))}

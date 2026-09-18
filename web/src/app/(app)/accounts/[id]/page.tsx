@@ -271,7 +271,7 @@ export default async function AccountDetailPage({
             />
           </dl>
           {!live && ownedAccount.platform === "instagram" && (
-            <Link href="/settings/ai-connections" className="mt-5 block">
+            <Link href="/settings/connections" className="mt-5 block">
               <Button variant="outline" className="w-full">
                 Connect Instagram
               </Button>

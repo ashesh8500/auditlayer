@@ -28,16 +28,17 @@ export default async function AuditDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireProfile();
+  const profile = await requireProfile();
   const supabase = await createClient();
 
   const { data: audit } = await supabase
     .from("audits")
     .select("*")
     .eq("id", id)
+    .eq("user_id", profile.id)
     .maybeSingle();
 
-  if (!audit) notFound();
+  if (!audit || audit.user_id !== profile.id) notFound();
 
   const limitations = Array.isArray(audit.limitations)
     ? (audit.limitations as string[])
@@ -124,32 +125,31 @@ async function ReadyReport({
   };
   supabase: Awaited<ReturnType<typeof createClient>>;
 }) {
-  const { data: refinementRows } = await supabase
-    .from("refinements")
-    .select("id, section, instruction, status, error, created_at")
-    .eq("audit_id", auditId)
-    .order("created_at", { ascending: false });
-
-  const { data: versionRows } = await (supabase as any)
-    .from("audit_report_versions")
-    .select(
-      "id, version, prompt_version, change_type, changed_section, change_summary, created_at",
-    )
-    .eq("audit_id", auditId)
-    .order("version", { ascending: false });
-
-  // Fetch share links (table may not exist yet if migration hasn't been run)
-  let shareLinks: ShareLinkRow[] = [];
-  try {
-    const { data } = await (supabase as any)
-      .from("share_links")
-      .select("*")
-      .eq("audit_id", auditId)
-      .order("created_at", { ascending: false });
-    shareLinks = (data ?? []) as ShareLinkRow[];
-  } catch {
-    // Table doesn't exist yet — no share links
-  }
+  // The parent has already authorized this audit. These independent reads
+  // share that boundary, but must not add three sequential database trips.
+  const [{ data: refinementRows }, { data: versionRows }, shareResult] =
+    await Promise.all([
+      supabase
+        .from("refinements")
+        .select("id, section, instruction, status, error, created_at")
+        .eq("audit_id", auditId)
+        .order("created_at", { ascending: false }),
+      (supabase as any)
+        .from("audit_report_versions")
+        .select(
+          "id, version, prompt_version, change_type, changed_section, change_summary, created_at",
+        )
+        .eq("audit_id", auditId)
+        .order("version", { ascending: false }),
+      Promise.resolve(
+        (supabase as any)
+          .from("share_links")
+          .select("*")
+          .eq("audit_id", auditId)
+          .order("created_at", { ascending: false }),
+      ).catch(() => ({ data: [] })),
+    ]);
+  const shareLinks = (shareResult.data ?? []) as ShareLinkRow[];
 
   return (
     <div className="space-y-6">

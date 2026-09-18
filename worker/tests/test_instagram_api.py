@@ -522,65 +522,35 @@ def test_instagram_token_refresh_window_is_seven_days():
 
 
 def test_gateway_persists_refreshed_instagram_token():
-    class Query:
-        def __init__(self):
-            self.values = None
-            self.filters = []
-
-        def update(self, values):
-            self.values = values
-            return self
-
-        def eq(self, *args):
-            self.filters.append(args)
-            return self
-
-        def execute(self):
-            return SimpleNamespace(data=[])
-
-    query = Query()
+    from unittest.mock import MagicMock
     gateway = object.__new__(SupabaseGateway)
-    gateway.client = SimpleNamespace(table=lambda _name: query)
+    gateway.client = MagicMock()
+    gateway.client.rpc.return_value.execute.return_value.data = "next-version"
+    assert gateway.update_instagram_token(
+        user_id="customer-1", ig_user_id=123, token="IGA_new",
+        expires_at="2099-01-01T00:00:00+00:00",
+        connection_id="connection-1", credential_version="version-1",
+    ) == "next-version"
+    gateway.client.table.assert_not_called()
+    gateway.client.rpc.assert_called_once_with("write_instagram_worker_state", {
+        "p_user_id": "customer-1", "p_connection_id": "connection-1",
+        "p_credential_version": "version-1", "p_action": "token",
+        "p_payload": {"token": "IGA_new", "expires_at": "2099-01-01T00:00:00+00:00"},
+    })
 
-    gateway.update_instagram_token(
-        user_id="customer-1",
-        ig_user_id=123,
-        token="IGA_new",
-        expires_at="2026-09-18T00:00:00+00:00",
-    )
 
-    assert query.values["long_lived_token"] == "IGA_new"
-    assert query.values["long_lived_expires_at"] == "2026-09-18T00:00:00+00:00"
-    assert ("user_id", "customer-1") in query.filters
-    assert ("ig_user_id", 123) in query.filters
-
-
-def test_gateway_marks_reconnect_required_with_owner_and_connection_ids_only():
-    calls = []
-
-    class Rpc:
-        def execute(self):
-            return SimpleNamespace(data=True)
-
-    class Client:
-        def rpc(self, name, args):
-            calls.append((name, args))
-            return Rpc()
-
+def test_gateway_marks_reconnect_required_with_owner_and_lifetime_fence():
+    from unittest.mock import MagicMock
     gateway = object.__new__(SupabaseGateway)
-    gateway.client = Client()
-
-    marked = gateway.mark_instagram_connection_reconnect_required(
-        user_id="customer-1",
-        connection_id="connection-1",
-    )
-
-    assert marked is True
-    assert calls == [(
-        "mark_instagram_connection_reconnect_required",
-        {"p_user_id": "customer-1", "p_connection_id": "connection-1"},
-    )]
-
+    gateway.client = MagicMock()
+    gateway.client.rpc.return_value.execute.return_value.data = "version-1"
+    assert gateway.mark_instagram_connection_reconnect_required(
+        user_id="customer-1", connection_id="connection-1", credential_version="version-1",
+    ) is True
+    gateway.client.rpc.assert_called_once_with("write_instagram_worker_state", {
+        "p_user_id": "customer-1", "p_connection_id": "connection-1",
+        "p_credential_version": "version-1", "p_action": "reconnect", "p_payload": {},
+    })
 
 
 def _make_media(

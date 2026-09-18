@@ -71,6 +71,7 @@ class InstagramConnectionLookup:
     ig_user_id: int | None = None
     expires_at: str = ""
     graph_api_family: str | None = None
+    credential_version: str | None = None
 
 
 class SupabaseGateway:
@@ -105,13 +106,13 @@ class SupabaseGateway:
     # -- instagram token ---------------------------------------------------
 
     def get_instagram_token(
-        self, ig_username: str, user_id: str
+        self, ig_username: str, user_id: str, *, audit_id: str | None = None
     ) -> InstagramConnectionLookup:
         res = (
             self.client.table("instagram_connections")
             .select(
                 "id, ig_user_id, long_lived_token, long_lived_expires_at, "
-                "graph_api_family, connection_status, is_active"
+                "graph_api_family, connection_status, is_active, credential_version"
             )
             .eq("ig_username", ig_username)
             .eq("user_id", user_id)
@@ -121,6 +122,28 @@ class SupabaseGateway:
         )
         rows = res.data or []
         if not rows:
+            # Disconnect deletes credentials, not the managed identity. Resolve
+            # the durable audit association first (handles can change), always
+            # checking ownership on both sides of the association.
+            account_id = None
+            if audit_id:
+                audits = (self.client.table("audits").select("account_id")
+                          .eq("id", audit_id).eq("user_id", user_id)
+                          .limit(1).execute()).data or []
+                if audits:
+                    account_id = audits[0].get("account_id")
+            accounts = (self.client.table("accounts")
+                        .select("ownership_status, instagram_user_id, ig_connection_id")
+                        .eq("user_id", user_id).eq("platform", "instagram"))
+            accounts = (accounts.eq("id", account_id) if account_id
+                        else accounts.eq("handle", ig_username))
+            retained = accounts.limit(1).execute().data or []
+            if retained and (
+                retained[0].get("ownership_status") in {"connected", "managed"}
+                or retained[0].get("instagram_user_id") is not None
+                or retained[0].get("ig_connection_id") is not None
+            ):
+                return InstagramConnectionLookup(InstagramConnectionState.RECONNECT_REQUIRED)
             return InstagramConnectionLookup(InstagramConnectionState.NOT_FOUND)
         row = rows[0]
         connection_id = str(row["id"]) if row.get("id") else None
@@ -171,63 +194,48 @@ class SupabaseGateway:
             ig_user_id=parsed_ig_user_id,
             expires_at=str(expires or ""),
             graph_api_family=str(graph_api_family),
+            credential_version=row.get("credential_version"),
         )
 
-    def update_instagram_token(
-        self,
-        *,
-        user_id: str,
-        ig_user_id: int,
-        token: str,
-        expires_at: str,
-    ) -> None:
-        """Persist a refreshed direct Instagram Login token."""
-        self.client.table("instagram_connections").update(
-            {
-                "long_lived_token": token,
-                "long_lived_expires_at": expires_at,
-                "updated_at": _utcnow(),
-            }
-        ).eq("user_id", user_id).eq("ig_user_id", ig_user_id).execute()
+    def write_instagram_worker_state(self, *, user_id, connection_id,
+                                     credential_version, action, payload):
+        """Atomic ownership/lifetime fence; missing context never falls back."""
+        if not connection_id or not credential_version:
+            return None
+        result = self.client.rpc("write_instagram_worker_state", {
+            "p_user_id": user_id, "p_connection_id": connection_id,
+            "p_credential_version": credential_version,
+            "p_action": action, "p_payload": payload,
+        }).execute()
+        return result.data
+
+    def update_instagram_token(self, *, user_id, ig_user_id, token, expires_at,
+                               connection_id=None, credential_version=None):
+        return self.write_instagram_worker_state(
+            user_id=user_id, connection_id=connection_id,
+            credential_version=credential_version, action="token",
+            payload={"token": token, "expires_at": expires_at},
+        )
 
     def mark_instagram_connection_reconnect_required(
-        self,
-        *,
-        user_id: str,
-        connection_id: str,
+        self, *, user_id, connection_id, credential_version=None,
     ) -> bool:
-        """Persist a bounded reconnect-required transition for one owner row."""
-        result = self.client.rpc(
-            "mark_instagram_connection_reconnect_required",
-            {
-                "p_user_id": user_id,
-                "p_connection_id": connection_id,
-            },
-        ).execute()
-        return result.data is True
+        return self.write_instagram_worker_state(
+            user_id=user_id, connection_id=connection_id,
+            credential_version=credential_version, action="reconnect", payload={},
+        ) is not None
 
     def refresh_instagram_connection(
-        self,
-        *,
-        user_id: str,
-        ig_user_id: int,
-        account_type: str,
-        followers_count: int | None,
-        media_count: int | None,
-        observed_at: str,
-    ) -> None:
-        """Make connection health agree with the live snapshot used by an audit."""
-        self.client.table("instagram_connections").update(
-            {
-                "account_type": account_type or None,
-                "followers_count": followers_count,
-                "media_count": media_count,
-                "last_refreshed_at": observed_at,
-                "updated_at": _utcnow(),
-            }
-        ).eq("user_id", user_id).eq("ig_user_id", ig_user_id).eq(
-            "is_active", True
-        ).execute()
+        self, *, user_id, ig_user_id, account_type, followers_count,
+        media_count, observed_at, connection_id=None, credential_version=None,
+    ):
+        return self.write_instagram_worker_state(
+            user_id=user_id, connection_id=connection_id,
+            credential_version=credential_version, action="snapshot",
+            payload={"account_type": account_type or None,
+                     "followers_count": followers_count, "media_count": media_count,
+                     "observed_at": observed_at},
+        )
 
     # -- RPC claim helpers -------------------------------------------------
 
@@ -268,17 +276,14 @@ class SupabaseGateway:
         """Atomically requeue eligible failures and block exhausted audits."""
         from .core import MAX_RETRIES, RETRY_BACKOFF_BASE_SECONDS
 
-        try:
-            res = self.client.rpc(
-                "sweep_retryable_audits",
-                {
-                    "p_max_retries": MAX_RETRIES,
-                    "p_transient_delay_seconds": 60,
-                    "p_base_delay_seconds": RETRY_BACKOFF_BASE_SECONDS,
-                },
-            ).execute()
-        except Exception:
-            return 0
+        res = self.client.rpc(
+            "sweep_retryable_audits",
+            {
+                "p_max_retries": MAX_RETRIES,
+                "p_transient_delay_seconds": 60,
+                "p_base_delay_seconds": RETRY_BACKOFF_BASE_SECONDS,
+            },
+        ).execute()
         data = res.data or {}
         if isinstance(data, list):
             data = data[0] if data else {}
@@ -434,20 +439,28 @@ class SupabaseGateway:
         template_version: str = "master-skeleton-v1",
         intelligence_run_id: str | None = None,
     ) -> int:
-        response = self.client.rpc(
-            "finalize_initial_report",
-            {
-                "p_audit_id": audit_id,
-                "p_delivery_status": delivery_status,
-                "p_report_path": report_path,
-                "p_prompt_version": prompt_version,
-                "p_template_version": template_version,
-                "p_agent_bundle_version": agent_bundle_version,
-                "p_intelligence_run_id": intelligence_run_id,
-            },
-        ).execute()
-        value = response.data[0] if isinstance(response.data, list) else response.data
-        return int(value)
+        payload = {
+            "p_audit_id": audit_id,
+            "p_delivery_status": delivery_status,
+            "p_report_path": report_path,
+            "p_prompt_version": prompt_version,
+            "p_template_version": template_version,
+            "p_agent_bundle_version": agent_bundle_version,
+            "p_intelligence_run_id": intelligence_run_id,
+        }
+        try:
+            response = self.client.rpc("finalize_initial_report", payload).execute()
+            value = response.data[0] if isinstance(response.data, list) else response.data
+            return int(value)
+        except Exception as rpc_error:
+            existing = self._reconcile_report_version(payload, rpc_error)
+            if existing is not None:
+                return existing
+            # An empty readback is not proof that an in-flight transaction will
+            # never commit. Do not replay initial finalization or mark it failed.
+            raise ReportFinalizationOutcomeUnknown(
+                "could not determine whether initial report finalization committed"
+            ) from rpc_error
 
     def finalize_regenerated_report(
         self,

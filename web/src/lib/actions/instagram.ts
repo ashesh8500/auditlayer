@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireUser } from "@/lib/auth";
 import { captureWebFailure } from "@/lib/sentry";
@@ -27,9 +28,12 @@ export async function disconnectInstagram(formData: FormData) {
       status: "failed",
       errorClass: "InstagramDisconnectError",
     });
-    throw disconnectError;
+    redirect("/settings/connections?instagram_error=disconnect_failed");
   }
 
   revalidatePath("/accounts");
   revalidatePath("/dashboard");
+  revalidatePath("/settings/connections");
+  revalidatePath("/subjects", "layout");
+  redirect("/settings/connections?disconnected=1");
 }

@@ -433,7 +433,9 @@ class GenerationPipeline:
                         tokens_out=spent_tokens_out,
                         cost_usd=spent_cost,
                         model=spent_model,
-                        research_cache=checkpoint if not nonretryable else "",
+                        **_checkpoint_cache(
+                            gateway, audit, ig_future, checkpoint if not nonretryable else ""
+                        ),
                     )
                 if gateway is not None and generation_run_id is not None:
                     try:
@@ -825,7 +827,7 @@ def _start_instagram_fetch(gateway, audit, sink):
 
         try:
             token_info = (
-                gateway.get_instagram_token(audit.handle, audit.user_id)
+                gateway.get_instagram_token(audit.handle, audit.user_id, audit_id=audit.id)
                 if audit.user_id
                 else None
             )
@@ -878,6 +880,7 @@ def _start_instagram_fetch(gateway, audit, sink):
                     or not gateway.mark_instagram_connection_reconnect_required(
                         user_id=audit.user_id,
                         connection_id=token_info.connection_id,
+                        credential_version=credential_version,
                     )
                 ):
                     raise RuntimeError("instagram_reconnect_transition_failed")
@@ -900,6 +903,7 @@ def _start_instagram_fetch(gateway, audit, sink):
                 event_type="instagram_reconnect_required",
             )
 
+        credential_version = token_info.credential_version
         token = token_info.token
         ig_user_id = token_info.ig_user_id
         expires_at = token_info.expires_at
@@ -918,12 +922,15 @@ def _start_instagram_fetch(gateway, audit, sink):
                 refreshed_expires_at = (
                     datetime.now(timezone.utc) + timedelta(seconds=expires_in)
                 ).isoformat()
-                gateway.update_instagram_token(
+                next_version = gateway.update_instagram_token(
                     user_id=audit.user_id,
                     ig_user_id=ig_user_id,
                     token=refreshed_token,
                     expires_at=refreshed_expires_at,
+                    connection_id=token_info.connection_id,
+                    credential_version=credential_version,
                 )
+                credential_version = next_version
                 client.close()
                 client = InstagramAPIClient(
                     refreshed_token,
@@ -963,6 +970,7 @@ def _start_instagram_fetch(gateway, audit, sink):
 
         try:
             metrics = client.get_full_metrics(ig_user_id)
+            metrics._credential_fence = (token_info.connection_id, credential_version)
             if audit.user_id:
                 profile = metrics.profile
                 try:
@@ -973,6 +981,8 @@ def _start_instagram_fetch(gateway, audit, sink):
                         followers_count=profile.followers_count,
                         media_count=profile.media_count,
                         observed_at=profile.fetched_at,
+                        connection_id=token_info.connection_id,
+                        credential_version=credential_version,
                     )
                 except Exception as exc:
                     capture_worker_failure(
@@ -1085,6 +1095,33 @@ def _extract_overall_score(report_html: str) -> int | None:
     return score if 0 <= score <= 100 else None
 
 
+def _checkpoint_cache(gateway, audit, ig_future, checkpoint) -> dict:
+    """Checkpoint connected research only inside the credential-fenced RPC.
+
+    If metrics have not resolved, do not wait or speculate about ownership.
+    A public/non-Instagram audit retains the ordinary checkpoint path.
+    """
+    if ig_future is None:
+        return {"research_cache": checkpoint}
+    if not ig_future.done():
+        return {}
+    try:
+        metrics = ig_future.result()
+        if metrics is None:
+            return {"research_cache": checkpoint}
+        fence = getattr(metrics, "_credential_fence", None)
+        if fence and fence[0] and fence[1]:
+            gateway.client.rpc("write_instagram_worker_state", {
+                "p_user_id": audit.user_id, "p_connection_id": fence[0],
+                "p_credential_version": fence[1], "p_action": "cache",
+                "p_payload": {"audit_id": audit.id, "research_cache": checkpoint},
+            }).execute()
+    except Exception as exc:
+        log_event("research_checkpoint_skipped", level="warning",
+                  audit_id=audit.id, error_type=type(exc).__name__)
+    return {}
+
+
 def _link_account_and_progression(
     gateway,
     audit,
@@ -1096,102 +1133,31 @@ def _link_account_and_progression(
 ) -> None:
     """Update a connected workspace account after a successful audit.
 
-    Public audit targets belong in ``audits`` and must never be promoted into
-    the user's Accounts workspace. A connected metrics result is the proof
-    that this handle belongs to an owner-scoped Instagram connection.
+    Public targets are never promoted into Accounts. The metrics carry the
+    lifetime observed at token lookup; only the database, under the same owner
+    lock as disconnect/OAuth, can authorize this write. Never upsert by handle.
     """
-    if ig_metrics is None:
+    fence = getattr(ig_metrics, "_credential_fence", None)
+    if not fence or not fence[0] or not fence[1]:
         return
     try:
-        account_fields = {
-            "user_id": audit.user_id,
-            "handle": audit.handle,
-            "platform": audit.platform,
-            "ownership_status": "connected",
-        }
-        if research_refreshed:
-            account_fields.update(
-                {
-                    "last_researched_at": _utcnow(),
-                    # Research is a bounded evidence blob. Volatile Instagram
-                    # metrics are sourced from the live connection snapshot.
-                    "research_snapshot": (
-                        research_cache[:10000] if research_cache else None
-                    ),
-                    "cache_valid_until": (
-                        datetime.now(timezone.utc) + timedelta(hours=24)
-                    ).isoformat(),
-                }
-            )
-        account = (
-            gateway.client.table("accounts")
-            .upsert(
-                account_fields,
-                on_conflict="user_id,handle,platform",
-            )
-            .execute()
-        )
-        account_id = (account.data or [{}])[0].get("id")
-        if not account_id:
-            return
-
-        # Link the audit to this account.
-        gateway.client.table("audits").update(
-            {"account_id": account_id}
-        ).eq("id", audit.id).execute()
-
-        # Every scored report contributes a progression point. Connected
-        # metrics enrich it when available; the score itself is locally owned.
-        if ig_metrics is not None or score is not None:
-            profile = getattr(ig_metrics, "profile", None) if ig_metrics is not None else None
-            followers_value = (
-                getattr(profile, "followers_count", None)
-                if profile is not None
-                else None
-            )
-            engagement_value = (
-                getattr(ig_metrics, "avg_engagement_rate", None)
-                if ig_metrics is not None
-                else None
-            )
-            likes_value = (
-                getattr(ig_metrics, "avg_likes", None)
-                if ig_metrics is not None
-                else None
-            )
-            comments_value = (
-                getattr(ig_metrics, "avg_comments", None)
-                if ig_metrics is not None
-                else None
-            )
-            gateway.client.table("account_progression").upsert(
-                {
-                    "account_id": account_id,
-                    "audit_id": audit.id,
-                    "followers": (
-                        int(followers_value)
-                        if followers_value is not None
-                        else None
-                    ),
-                    "engagement": (
-                        float(engagement_value)
-                        if engagement_value is not None
-                        else None
-                    ),
-                    "avg_likes": (
-                        float(likes_value)
-                        if likes_value is not None
-                        else None
-                    ),
-                    "avg_comments": (
-                        float(comments_value)
-                        if comments_value is not None
-                        else None
-                    ),
-                    "score": score,
-                },
-                on_conflict="audit_id",
-            ).execute()
+        profile = getattr(ig_metrics, "profile", None)
+        gateway.client.rpc("write_instagram_worker_state", {
+            "p_user_id": audit.user_id,
+            "p_connection_id": fence[0],
+            "p_credential_version": fence[1],
+            "p_action": "progression",
+            "p_payload": {
+                "audit_id": audit.id,
+                "research_refreshed": research_refreshed,
+                "research_snapshot": research_cache[:10000] if research_cache else None,
+                "followers": getattr(profile, "followers_count", None),
+                "engagement": getattr(ig_metrics, "avg_engagement_rate", None),
+                "avg_likes": getattr(ig_metrics, "avg_likes", None),
+                "avg_comments": getattr(ig_metrics, "avg_comments", None),
+                "score": score,
+            },
+        }).execute()
     except Exception as exc:
         log_event(
             "account_progression_link_failed",

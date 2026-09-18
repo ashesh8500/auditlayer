@@ -7,6 +7,7 @@ import { captureWebFailure } from "@/lib/sentry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { disconnectInstagram } from "./instagram";
 
+vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(`redirect:${url}`); } }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/sentry", () => ({ captureWebFailure: vi.fn() }));
@@ -32,14 +33,14 @@ describe("disconnectInstagram", () => {
     const formData = new FormData();
     formData.set("connection_id", "connection-456");
 
-    await disconnectInstagram(formData);
+    await expect(disconnectInstagram(formData)).rejects.toThrow("redirect:/settings/connections?disconnected=1");
 
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(rpc).toHaveBeenCalledWith("disconnect_instagram_connection", {
       p_user_id: "owner-123",
       p_connection_id: "connection-456",
     });
-    expect(revalidatePathMock.mock.calls).toEqual([["/accounts"], ["/dashboard"]]);
+    expect(revalidatePathMock.mock.calls).toEqual([["/accounts"], ["/dashboard"], ["/settings/connections"], ["/subjects", "layout"]]);
   });
 
   it("does not construct an admin client when the connection id is absent", async () => {
@@ -55,7 +56,7 @@ describe("disconnectInstagram", () => {
     const formData = new FormData();
     formData.set("connection_id", "connection-456");
 
-    await expect(disconnectInstagram(formData)).rejects.toThrow("instagram_disconnect_failed");
+    await expect(disconnectInstagram(formData)).rejects.toThrow("redirect:/settings/connections?instagram_error=disconnect_failed");
 
     expect(captureWebFailureMock).toHaveBeenCalledWith(expect.any(Error), {
       surface: "instagram_persistence",

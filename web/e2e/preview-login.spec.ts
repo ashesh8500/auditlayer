@@ -15,10 +15,10 @@ test.describe("preview test login", () => {
   test.skip(!secret, "PREVIEW_TEST_LOGIN_SECRET not set");
 
   test("API establishes a session and unlocks /subjects", async ({
-    request,
     page,
   }) => {
-    const res = await request.post("/api/auth/preview-login", {
+    // page.request shares the browser context cookie jar; the request fixture does not.
+    const res = await page.request.post("/api/auth/preview-login", {
       headers: { "x-preview-login-secret": secret },
       data: { next: "/subjects" },
     });

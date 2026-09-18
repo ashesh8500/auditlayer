@@ -75,7 +75,7 @@ export default function PrivacyPage() {
           <li>If Instagram does not return an approved metric, we show it as unavailable rather than zero.</li>
           <li>Your connection data is protected and is never exposed to another customer.</li>
           <li>Connected Instagram data is associated only with your AuditLayerMedia account.</li>
-          <li>Disconnecting removes the saved connection immediately.</li>
+          <li>Disconnecting from <Link href="/settings/connections" className="underline">Connections</Link> deletes stored Instagram access. Subjects and report history remain until you request their deletion.</li>
         </ul>
         <p>
           See the <Link href="/data-deletion" className="text-[color:var(--accent)] hover:underline">Instagram and account data deletion instructions</Link>.
