@@ -29,7 +29,21 @@ function isProtected(pathname: string): boolean {
 export async function updateSession(
   request: NextRequest,
 ): Promise<NextResponse> {
+  // OAuth verifier cookies are host-only. Normalize the public alias before
+  // rendering login or initiating any flow that returns to the canonical host.
+  if (request.nextUrl.hostname === "www.auditlayermedia.com") {
+    const canonical = request.nextUrl.clone();
+    canonical.hostname = "auditlayermedia.com";
+    canonical.protocol = "https:";
+    canonical.port = "";
+    return NextResponse.redirect(canonical, 308);
+  }
+
   let response = NextResponse.next({ request });
+
+  // The callback authenticates by exchanging the new code itself. Refreshing
+  // a revoked previous session here deletes the fresh PKCE verifier first.
+  if (request.nextUrl.pathname === "/auth/callback") return response;
 
   if (!isSupabaseConfigured()) {
     return response;
@@ -44,11 +58,16 @@ export async function updateSession(
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
+          // Passive refresh must not cancel an independent in-flight sign-in.
+          // Continue clearing revoked session cookies, never its PKCE verifier.
+          const sessionCookies = cookiesToSet.filter(
+            ({ name }) => !/-code-verifier(?:\.\d+)?$/.test(name),
+          );
+          sessionCookies.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
           response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
+          sessionCookies.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           );
         },
