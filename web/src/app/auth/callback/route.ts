@@ -38,7 +38,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=unconfigured`);
   }
 
-  let response = NextResponse.redirect(`${origin}${next}`);
+  const response = NextResponse.redirect(`${origin}${next}`);
+
+  // Start the explicit authentication exchange without the previous session.
+  // A revoked refresh token must not erase this login's fresh PKCE verifier.
+  // Retain writes in this request-local jar so trial redemption sees the newly
+  // verified session, not the old one. Never trust the verifier as a session.
+  const authCookies = new Map(
+    request.cookies.getAll().map(({ name, value }) =>
+      [name, { name, value: /-code-verifier(?:\.\d+)?$/.test(name) ? value : "" }],
+    ),
+  );
 
   const supabase = createServerClient<Database>(
     supabaseUrl(),
@@ -46,16 +56,14 @@ export async function GET(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll();
+          return [...authCookies.values()];
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-          response = NextResponse.redirect(`${origin}${next}`);
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            authCookies.set(name, { name, value });
+            request.cookies.set(name, value);
+            response.cookies.set(name, value, options);
+          });
         },
       },
     },

@@ -115,7 +115,7 @@ export async function signInWithGoogle(formData: FormData): Promise<void> {
   // Persist trial token through the Google OAuth redirect
   await persistTrialCookie(formData.get("trial"));
 
-  const supabase = await createClient();
+  const supabase = await createClient({ freshSignIn: true });
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {

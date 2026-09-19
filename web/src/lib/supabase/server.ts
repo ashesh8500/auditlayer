@@ -11,8 +11,13 @@ import type { Database } from "./types";
  * Note: in Server Components the cookie store is read-only, so writes are
  * swallowed. Token refresh writes happen in middleware / Route Handlers.
  */
-export async function createClient() {
+export async function createClient({ freshSignIn = false }: { freshSignIn?: boolean } = {}) {
   const cookieStore = await cookies();
+  // Keep cookie names for obsolete-chunk cleanup, but never refresh the old
+  // session while establishing a new one. This jar is request-local.
+  const signInCookies = new Map(cookieStore.getAll().map(({ name, value }) =>
+    [name, { name, value: /-code-verifier(?:\.\d+)?$/.test(name) ? value : "" }],
+  ));
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,11 +25,12 @@ export async function createClient() {
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll();
+          return freshSignIn ? [...signInCookies.values()] : cookieStore.getAll();
         },
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
+              signInCookies.set(name, { name, value });
               cookieStore.set(name, value, options);
             });
           } catch {
