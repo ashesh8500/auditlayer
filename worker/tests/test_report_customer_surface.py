@@ -30,11 +30,12 @@ def test_refinement_removes_legacy_accounting_but_preserves_sources(tmp_path):
     assert tokens_in > 0 and tokens_out > 0
 
 
-def test_upgrade_link_selects_extended_plan_on_canonical_site():
+def test_report_link_uses_current_pricing_without_legacy_upsell():
     audit = AuditRecord(id="links", handle="fictional", platform="instagram", goal="growth")
     html = _mock_report_html(audit)
-    assert 'href="https://auditlayermedia.com/pricing?plan=pro"' in html
-    assert 'href="https://auditlayermedia.com/pricing"' not in html
+    assert 'href="https://auditlayermedia.com/pricing"' in html
+    assert 'pricing?plan=pro' not in html
+    assert '$50/month' not in html
 
 
 def test_metadata_cleanup_does_not_erase_active_markup_before_validation():

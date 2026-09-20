@@ -15,7 +15,11 @@ def test_refinement_prompt_contains_selected_rendered_content_and_sources(report
     document = core.assemble_structured_report_html(audit, json.dumps({'sections': sections}))
     document = _append_evidence_sources(document, [('SOURCE_MARKER', 'https://example.test/proof', 'public_research')], connected_metrics=False)
     prompt = core.build_refinement_prompt(audit, document, headings[selected], 'Clarify while preserving evidence')
-    assert sections[selected]['lede'] in prompt
+    if headings[selected] == 'Get the Execution Plan':
+        assert 'Review current pricing' in prompt
+        assert sections[selected]['lede'] not in prompt
+    else:
+        assert sections[selected]['lede'] in prompt
     assert 'SOURCE_MARKER' in prompt
     assert 'https://example.test/proof' in prompt
     assert '<style' not in prompt and '@media' not in prompt

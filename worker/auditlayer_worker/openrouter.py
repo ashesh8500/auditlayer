@@ -227,10 +227,18 @@ def _complete(settings, messages, model, *, toolsets=(), max_tokens=32000,
         record("openrouter_receipt_persistence_failed")
         raise ProviderCallError("openrouter_response_rejected", telemetry)
     if is_research:
-        from .research import annotation_evidence
+        from .research import annotation_evidence, persist_evidence
+        from datetime import datetime, timezone
         try:
-            content = annotation_evidence(choice.get("message", {}).get("annotations"), *research_subject)
-        except ValueError as exc:
+            annotations = choice.get("message", {}).get("annotations")
+            # Preserve exact bounded annotations BEFORE admission, including
+            # quarantined rows. Raw data never enters audit caches or telemetry.
+            persist_evidence(settings.output_dir, 'raw-' + telemetry['attempt_id'], {
+                'observed_at': datetime.now(timezone.utc).isoformat(),
+                'correlation_id': correlation_id, 'annotations': annotations,
+            })
+            content = annotation_evidence(annotations, *research_subject)
+        except (ValueError, TypeError, OSError, RuntimeError) as exc:
             telemetry.update(status="failed", customer_charge_usd=0)
             record("openrouter_receipt_persistence_failed")
             raise ProviderCallError("openrouter_annotations_rejected", telemetry) from exc

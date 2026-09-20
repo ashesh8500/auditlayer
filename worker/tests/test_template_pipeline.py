@@ -495,7 +495,8 @@ def test_structured_report_keeps_unavailable_scores_truthful(sample_audit):
     html = assemble_structured_report_html(sample_audit, json.dumps(payload))
 
     assert '<span class="sd-overall">N/A</span>' in html
-    assert '<span class="sd-value red">N/A</span>' in html
+    assert '<span>Data needed</span>' in html
+    assert 'width:0%' not in html
 
 
 def test_structured_report_computes_weighted_overall_score_locally(sample_audit):

@@ -8,7 +8,7 @@ import pytest
 pytestmark = pytest.mark.usefixtures("fake_agent_root")
 from test_runtime_sql_integration import db, Client, literal
 from test_openrouter_research import POLICY, research_response
-from test_generation_runtime import _payload
+from test_factual_report import narrow_payload as _payload
 
 
 def research_audit(db):
@@ -65,6 +65,9 @@ def test_research_ordinary_path(db, tmp_path, monkeypatch, mode):
         assert 'GENERATED NOT EVIDENCE' not in str(request.messages)
         if mode=='report_timeout': raise TimeoutError('unknown report liability')
         assert 'weekly cooking tutorials' in str(request.messages)
+        cache = json.loads(db.sql(f"select research_cache from audits where id='{aid}'"))
+        assert cache['web'][0]['source_id'] == 'WEB#1'
+        assert cache['web'][0]['description'] in str(request.messages)
         content='{}' if mode=='correction' and len(calls)==2 else _payload()
         return dict(model=MODEL,id='offline-report',choices=[dict(finish_reason='stop',message=dict(content=content))],usage=dict(prompt_tokens=100,completion_tokens=50,cost=.00002))
     monkeypatch.setattr('auditlayer_worker.openrouter._SDKCall.complete',sdk_complete)

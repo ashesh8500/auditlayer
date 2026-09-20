@@ -354,6 +354,9 @@ class GenerationPipeline:
                     else:
                         # Explicit local qualification only; cannot replace SQL admission.
                         inference_client.inference_recorder = local_inference_recorder if not persist_report and gateway is None else None
+                    self.generator.evidence_recorder = (
+                        lambda payload: _persist_admitted_evidence(gateway, audit, ig_future, payload)
+                    ) if gateway is not None and persist_report else None
                 result = self.generator.generate(
                     audit, hb.progress,
                     research_cache=research_cache,
@@ -1124,6 +1127,24 @@ def _extract_overall_score(report_html: str) -> int | None:
         return None
     score = int(match.group(1))
     return score if 0 <= score <= 100 else None
+
+
+def _persist_admitted_evidence(gateway, audit, ig_future, checkpoint):
+    """Pre-analysis audit cache. Connected writes cannot bypass OAuth lifetime."""
+    metrics = ig_future.result() if ig_future is not None else None
+    if metrics is None:
+        gateway.update_audit(audit.id, research_cache=checkpoint)
+        return
+    fence = getattr(metrics, '_credential_fence', None)
+    if not fence or not fence[0] or not fence[1]:
+        raise RuntimeError('connected evidence checkpoint requires credential fence')
+    response = gateway.client.rpc('write_instagram_worker_state', {
+        'p_user_id': audit.user_id, 'p_connection_id': fence[0],
+        'p_credential_version': fence[1], 'p_action': 'cache',
+        'p_payload': {'audit_id': audit.id, 'research_cache': checkpoint},
+    }).execute()
+    if response.data != fence[1]:
+        raise RuntimeError('connected evidence checkpoint rejected')
 
 
 def _checkpoint_cache(gateway, audit, ig_future, checkpoint) -> dict:

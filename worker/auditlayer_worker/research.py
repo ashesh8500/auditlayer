@@ -55,6 +55,16 @@ def research_messages(handle, platform):
             {'role': 'user', 'content': json.dumps({'subject': handle, 'platform': platform})}]
 
 
+def non_subject_content(text):
+    import re
+    import unicodedata
+    text = unicodedata.normalize('NFKC', text)
+    return bool(re.search(
+        r'\b(?:fictional|fictitious|hypothetical|illustrative|synthetic|mock|demo)\b'
+        r'|\b(?:sample|example|demonstration)\s+(?:\w+\s+){0,2}(?:report|audit|account|brief|data|score|metrics)\b'
+        r'|\bno\s+(?:real\s+)?client\s+data\b|\brepresentative\s+report\s+structure\b', text, re.I))
+
+
 def research_row(row, handle, platform):
     """One live/cache filter. Citations are data; no URL is fetched here."""
     import ipaddress
@@ -62,6 +72,10 @@ def research_row(row, handle, platform):
     from urllib.parse import urlsplit, unquote
     limits = {'url': 2000, 'title': 500, 'description': 12000}
     if any(not isinstance(row.get(k), str) or len(row[k].encode('utf-8')) > n for k, n in limits.items()):
+        return None
+    # Whole-excerpt quarantine: flattening loses DOM boundaries, so stripping
+    # just a demo heading cannot safely attribute the remaining numbers/prose.
+    if non_subject_content(row['title'] + '\n' + row['description']):
         return None
     url = row['url']
     try:
@@ -110,6 +124,38 @@ def research_row(row, handle, platform):
                     evidence_mode='openrouter_exa')
     except (ValueError, TypeError):
         return None
+
+
+def persist_evidence(output_dir, name, value):
+    """Private, immutable local evidence; never part of receipts/report uploads."""
+    import json
+    import os
+    import re
+    from pathlib import Path
+    if not re.fullmatch(r'[a-z0-9-]{1,120}', name):
+        raise ValueError('invalid evidence artifact name')
+    encoded = json.dumps(value, ensure_ascii=False, allow_nan=False).encode('utf-8')
+    if len(encoded) > 64000:
+        raise ValueError('oversized evidence artifact')
+    directory = Path(output_dir) / 'research-evidence'
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.fchmod(fd, 0o700)
+        filename = name + '.json'
+        out = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd)
+        with os.fdopen(out, 'wb') as stream:
+            stream.write(encoded)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.fsync(fd)
+        check = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
+        with os.fdopen(check, 'rb') as stream:
+            if stream.read() != encoded:
+                raise RuntimeError('evidence readback failed')
+    finally:
+        os.close(fd)
+    return directory / filename
 
 
 def annotation_evidence(annotations, handle, platform):

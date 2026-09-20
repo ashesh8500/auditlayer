@@ -178,7 +178,8 @@ def evaluate_report_quality(
 
     if "</html>" not in lowered or "<section" not in lowered:
         blockers.append("incomplete report document")
-    if "@{handle}" in report_html or "{{" in report_html or "}}" in report_html:
+    if ("@{handle}" in report_html or "{{" in report_html or "}}" in report_html
+            or re.search(r"\[(?:milestone|insert[^\]]*|target|placeholder)\]", visible, re.I)):
         blockers.append("unresolved template placeholder")
     if re.search(r"<(script|iframe|object|embed)\b", report_html, flags=re.I):
         blockers.append("active content survived sanitization")

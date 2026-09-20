@@ -162,7 +162,9 @@ INSTAGRAM_LIMITATION = (
 # v1.14 — Require factual attributable snippets; enforce commercial quote bounds.
 # v1.15 — Opt-in pinned OpenRouter Exa annotations; strict subject/platform
 # evidence filtering and visible extractive provenance; report bounds unchanged.
-PROMPT_VERSION = "1.15"
+# v1.16 — Quarantine demo evidence; exact-excerpt factual form, unrated scores,
+# platform fail-closed scope, private evidence snapshots and neutral pricing CTA.
+PROMPT_VERSION = "1.16"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework
@@ -1168,6 +1170,8 @@ def assemble_structured_report_html(
         if not (heading.startswith("Road to ") if required_heading == "Road to [Milestone]" else heading == required_heading):
             raise ValueError(f"Structured report heading {index + 1} is invalid")
         lede = _structured_text(section.get("lede"), "lede", 360)
+        if heading == 'Get the Execution Plan':
+            lede = 'Review current pricing and available options on the pricing page.'
         esc = html_lib.escape
         parts = [f"<section><h2>{esc(heading)}</h2>"]
         instagram_key_metrics = (
@@ -1200,14 +1204,17 @@ def assemble_structured_report_html(
         if suppress_unverified_scores and heading in {"Executive Summary", "Score Breakdown", "Key Metrics"}:
             clean_items = [(title, body, "N/A") for title, body, _ in clean_items]
         if not connected and heading == "Executive Summary":
-            scored = all(value.isdigit() and 0 <= int(value) <= 100 for _, _, value in clean_items)
+            scored = bool(clean_items) and all(value.isdigit() and 0 <= int(value) <= 100 for _, _, value in clean_items)
             overall: int | str = calculate_weighted_overall_score(clean_items) if scored else "N/A"
             suffix = '<span>/ 100</span>' if scored else ""
             parts.append('<div class="score-diagram"><div class="sd-header"><span class="sd-label">Overall Score</span>'
                          f'<span class="sd-overall">{overall}{suffix}</span></div>')
             for title, _, value in clean_items:
                 known_score = value.isdigit() and 0 <= int(value) <= 100
-                score = int(value) if known_score else 0
+                if not known_score:
+                    parts.append(f'<div class="sd-row"><span class="sd-label">{esc(title)}</span><span>Data needed</span></div>')
+                    continue
+                score = int(value)
                 color = "green" if score >= 70 else "amber" if score >= 40 else "red"
                 display_score: int | str = score if known_score else "N/A"
                 parts.append(f'<div class="sd-row"><span class="sd-label">{esc(title)}</span><div class="sd-track">'
@@ -1242,8 +1249,8 @@ def assemble_structured_report_html(
                 parts.append("</div>")
         elif not connected and heading == "Content Calendar & Creative Board":
             pillars = ("Educational & Strategy", "Portfolio & Proof", "Engagement & Community", "Growth & Reach")
-            for number in range(10):
-                title, body, value = clean_items[number % len(clean_items)] if clean_items else ("Content idea", lede, "")
+            for number in range(len(clean_items)):
+                title, body, value = clean_items[number]
                 parts.append(f'<div class="idea-card"><div class="idea-meta">{esc(pillars[min(number // 3, 3)])}</div>'
                              f'<h4>{esc(title)}</h4><p>{esc(body)}</p>' +
                              (f'<div class="idea-meta">{esc(value)}</div>' if value else "") + "</div>")
@@ -1252,10 +1259,9 @@ def assemble_structured_report_html(
                 parts.append(f'<div class="timeline-item"><div class="t-dot accent"></div><div class="t-content">'
                              f'<h4>{esc(title)}</h4><p>{esc(body)}</p></div></div>')
         elif not connected and heading == "Get the Execution Plan":
-            parts.append('<div class="upgrade-box"><h3>Standard diagnosis → Extended operating system</h3>')
-            for title, body, value in clean_items:
-                parts.append(f'<p><strong>{esc(title)}</strong> {esc(body)} {esc(value)}</p>')
-            parts.append('<a class="cta-btn" href="https://auditlayermedia.com/pricing?plan=pro">Upgrade to Extended — $50/month</a></div>')
+            # Pricing and entitlements are owned by the current pricing page.
+            # Never render model-authored upsell promises or stale plan prices.
+            parts.append('<div class="upgrade-box"><a class="cta-btn" href="https://auditlayermedia.com/pricing">View current pricing</a></div>')
         elif not connected:
             for number, (title, body, value) in enumerate(clean_items, 1):
                 parts.append('<div class="rec-card">')
@@ -1280,13 +1286,13 @@ def assemble_structured_report_html(
                 if not isinstance(row, list) or len(row) != len(clean_headers):
                     raise ValueError("Structured report table row is invalid")
                 clean_rows.append([_structured_text(value, "table cell", 120) for value in row])
-            if not instagram_key_metrics:
+            if not instagram_key_metrics and heading != 'Get the Execution Plan':
                 render_table(parts, heading, clean_headers, clean_rows)
 
         callout = section.get("callout")
         if callout is not None:
             clean_callout = _structured_text(callout, "callout", 240)
-            if not instagram_key_metrics:
+            if not instagram_key_metrics and heading != 'Get the Execution Plan':
                 parts.append(f'<div class="callout accent"><p>{esc(clean_callout)}</p></div>')
         parts.append("</section>")
         rendered.append("".join(parts))

@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 from test_openrouter_production import settings
 from test_openrouter_research import research_pin,research_response
-from test_generation_runtime import _payload
+from test_factual_report import narrow_payload as _payload
 
 
 def test_qualification_harness_is_dry_by_default_and_never_replays(settings,tmp_path,monkeypatch):
@@ -28,8 +28,28 @@ def test_qualification_harness_is_dry_by_default_and_never_replays(settings,tmp_
     assert dry['status']=='dry_run' and not dispatches and not (tmp_path/'run').exists()
     result=qualify(settings,candidate,tmp_path/'run',execute=True)
     assert result['status']=='candidate_pass',result
+    assert result['factual_checks']['contract_validated'] is True
+    assert result['factual_checks']['artifact_matches'] is True
+    assert result['factual_checks']['raw_annotations_preserved'] is True
+    assert result['factual_checks']['admitted_evidence_preserved'] is True
+    assert result['qualification_scope'] == 'extractive_contract_only'
     assert dispatches==[True,False]
     assert result['settlement_preview']['customer_debit_microusd']==21821
     assert json.loads((tmp_path/'run/result.json').read_text())==result
     with pytest.raises(FileExistsError): qualify(settings,candidate,tmp_path/'run',execute=True)
     assert dispatches==[True,False]
+    # Ready/quality=100 cannot rescue missing or mutated qualification evidence.
+    from auditlayer_worker.qualify_research import factual_checks
+    from pathlib import Path
+    audit = SimpleNamespace(id=result['summary']['audit_id'], handle='example', platform='instagram')
+    summary = SimpleNamespace(report_path=result['summary']['report_path'])
+    report = Path(summary.report_path)
+    original = report.read_text()
+    report.write_text(original + '<p>Unsupported new claim</p>')
+    assert not factual_checks(tmp_path/'run', audit, summary)['artifact_matches']
+    report.write_text(original)
+    raw = next((tmp_path/'run/research-evidence').glob('raw-*.json'))
+    held = raw.with_suffix('.held')
+    raw.rename(held)
+    assert not all(factual_checks(tmp_path/'run', audit, summary).values())
+    held.rename(raw)

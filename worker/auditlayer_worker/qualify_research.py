@@ -34,6 +34,36 @@ def _durable_json(path, value):
         raise RuntimeError('qualification receipt readback failed')
 
 
+def factual_checks(output, audit, summary):
+    """Read back artifacts; a ready flag or a 100 structural score is not proof."""
+    from hashlib import sha256
+    from . import factual
+    from .research import annotation_evidence
+    checks = dict(contract_validated=False, artifact_matches=False,
+                  raw_annotations_preserved=False, admitted_evidence_preserved=False,
+                  platform_scope_supported=audit.platform != 'website')
+    try:
+        files = Path(output) / 'research-evidence'
+        raw = [json.loads(p.read_text()) for p in files.glob('raw-*.json')]
+        admitted = [json.loads(p.read_text()) for p in files.glob('admitted-*.json')]
+        proofs = [json.loads(p.read_text()) for p in files.glob('factual-*.json')]
+        if len(raw) != 1 or len(admitted) != 1 or len(proofs) != 1:
+            return checks
+        proof = proofs[0]
+        # Re-run admission on the exact captured provider annotations, rather
+        # than trusting counts, source labels or a validator success marker.
+        rebuilt = factual.packet(json.loads(annotation_evidence(raw[0]['annotations'], audit.handle, audit.platform)), audit)
+        checks['raw_annotations_preserved'] = raw[0]['correlation_id'] == 'audit-' + audit.id
+        checks['admitted_evidence_preserved'] = (admitted[0]['audit_id'] == audit.id
+            and rebuilt == admitted[0]['packet'] == proof['packet'])
+        factual.parse(json.dumps(proof['form']), rebuilt, connected=proof['connected'])
+        checks['contract_validated'] = proof['audit_id'] == audit.id and proof['version'] == factual.VERSION
+        checks['artifact_matches'] = sha256(Path(summary.report_path).read_bytes()).hexdigest() == proof['report_sha256']
+    except (ValueError, TypeError, KeyError, OSError):
+        pass
+    return checks
+
+
 def qualify(settings, candidate, output, *, execute=False):
     """Run the production pipeline with an exclusive local, read-backed ledger.
 
@@ -75,11 +105,13 @@ def qualify(settings, candidate, output, *, execute=False):
         local_inference_recorder=record)
     calls = generator.client._inference_receipts
     preview = terminal_payload(audit.id, config.worker_id, pin, summary, calls)
-    qualified = (summary.status == 'ready' and summary.evidence_items > 0
+    checks = factual_checks(output, audit, summary)
+    qualified = (all(checks.values()) and summary.status == 'ready' and summary.evidence_items > 0
                  and any(c.get('stage') == 'research' and c.get('status') == 'completed' for c in calls)
                  and all(c.get('cost_source') == 'provider_actual' for c in calls))
     result = dict(status='candidate_pass' if qualified else 'candidate_blocked',
-                  launch_qualified=False, summary=asdict(summary),
+                  launch_qualified=False, qualification_scope='extractive_contract_only',
+                  factual_checks=checks, summary=asdict(summary),
                   receipts=safe_receipts(calls), settlement_preview=preview)
     _durable_json(output/'result.json', result)
     return result

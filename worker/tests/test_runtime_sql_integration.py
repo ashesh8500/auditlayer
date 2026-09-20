@@ -117,7 +117,10 @@ def test_actual_ordinary_worker_claim_to_settlement(db,tmp_path,monkeypatch,mode
     from auditlayer_worker.hermes_runtime import HermesRuntime
     from auditlayer_worker.observability import WorkerHealth
     from auditlayer_worker.worker import _drain_once
-    from test_generation_runtime import _payload
+    def _payload():
+        return json.dumps({'observations': [{'source_id': 'WEB#1',
+            'excerpt': 'Example publishes weekly tutorials with 1000 subscribers.'}],
+            'actions': ['inventory', 'measure']})
     from auditlayer_worker.openrouter import MODEL
     aid,quote=commercial_audit(db,max_calls=1 if mode=="call_cap" else 2,max_input=1 if mode=="input_cap" else 32000)
     monkeypatch.setattr('auditlayer_worker.config.load_env_files',lambda:None)
@@ -172,7 +175,7 @@ def test_actual_ordinary_worker_claim_to_settlement(db,tmp_path,monkeypatch,mode
             assert _drain_once(settings,gateway,runtime,health=WorkerHealth())
     finally: runtime.shutdown()
     row=json.loads(db.sql(f"select to_jsonb(a) from audits a where id='{aid}'"))
-    expected='blocked' if mode in ('timeout','call_cap','input_cap') else 'needs_review' if mode=='review' else 'running' if mode in ('kill','unknown_finalization') else 'ready'
+    expected='blocked' if mode in ('timeout','call_cap','input_cap','review') else 'running' if mode in ('kill','unknown_finalization') else 'ready'
     assert row['status']==expected,row
     receipt=json.loads(db.sql(f"select coalesce(terminal_payload,'null'::jsonb) from workspace_credit_reservations where id='{quote['id']}'"))
     if mode in ('kill','unknown_finalization'):
@@ -181,10 +184,10 @@ def test_actual_ordinary_worker_claim_to_settlement(db,tmp_path,monkeypatch,mode
     else:
         assert receipt['outcome']==('success' if expected=='ready' else 'failure')
         assert receipt['customer_debit_microusd']==(600 if expected=='ready' else 0)
-        assert receipt['actual_upstream_microusd']==(None if mode=='timeout' else 0 if mode=='input_cap' else 400 if mode=='correction' else 200)
+        assert receipt['actual_upstream_microusd']==(None if mode=='timeout' else 0 if mode in ('input_cap','review') else 400 if mode=='correction' else 200)
     assert db.sql(f"select count(*) from audit_report_versions where audit_id='{aid}'")==('1' if expected in ('ready','needs_review') else '0')
     dispatched=(tmp_path/'dispatches').read_text().count('dispatch') if (tmp_path/'dispatches').exists() else 0
-    assert dispatched==(0 if mode=='input_cap' else 2 if mode=='correction' else 1)
+    assert dispatched==(0 if mode in ('input_cap','review') else 2 if mode=='correction' else 1)
     db.sql('select reap_stale_running(-1); select sweep_retryable_audits(3,0,0)')
     # A restart through the exact production drain must not start a fresh run.
     assert not _drain_once(settings,gateway,runtime,health=WorkerHealth())
