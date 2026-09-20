@@ -7,9 +7,14 @@ const { refresh, invalidate } = vi.hoisted(() => ({ refresh:vi.fn(), invalidate:
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
 vi.mock('@/components/workspace-resources', () => ({ useWorkspaceResources: () => ({ invalidate }) }));
 let root:Root;
-let result:ReturnType<typeof useRefinementStatus>;
+const captured:{ current: ReturnType<typeof useRefinementStatus> | null } = { current:null };
 const row = { id: 'r', section:'Key Gaps', instruction:'Shorten it', status:'running', error:'', created_at:'' };
-function Probe({ rows = [row] }) { result = useRefinementStatus('a', rows, 1); return null; }
+// Publish the hook result from an effect, never during render (React purity rule).
+function Probe({ rows = [row] }) {
+  const value = useRefinementStatus('a', rows, 1);
+  React.useEffect(() => { captured.current = value; });
+  return null;
+}
 beforeEach(() => {
   vi.useFakeTimers();
   Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT:true });
@@ -21,7 +26,7 @@ it('observes pending, refreshes version once and never polls terminal rows', asy
   const fetcher = vi.fn().mockResolvedValue({ ok:true, json:async () => ({ refinements:[{...row,status:'done'}], reportVersion:2, reportReady:true }) });
   vi.stubGlobal('fetch',fetcher);
   await act(async () => root.render(<Probe />));
-  expect(result.reportVersion).toBe(2);
+  expect(captured.current!.reportVersion).toBe(2);
   expect(refresh).toHaveBeenCalledTimes(1);
   expect(invalidate).toHaveBeenCalledWith('reports');
   await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
