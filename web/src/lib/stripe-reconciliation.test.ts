@@ -18,6 +18,7 @@ function snapshot(overrides: Partial<StripeSubscriptionSnapshot> = {}): StripeSu
     customerId: "cus_123",
     status: "active",
     priceId: "price_pro",
+    currentPeriodStartEpoch: 1_747_321_600,
     currentPeriodEndEpoch: 1_750_000_000,
     profileId: PROFILE_ID,
     ...overrides,
@@ -225,4 +226,16 @@ describe("stripe subscription reconciliation reducer", () => {
     if (result.kind !== "command") return;
     expect(result.command.profileId).toBeNull();
   });
+});
+
+it("rejects missing/reversed/fractional exact Stripe windows", () => {
+  for (const fields of [{ currentPeriodStartEpoch: null }, { currentPeriodStartEpoch: 1_750_000_000 }, { currentPeriodStartEpoch: 1.5 }]) {
+    expect(reduceStripeSubscriptionEvent(event({ subscription: snapshot(fields) }))).toMatchObject({ kind: "correction", code: "malformed_period" });
+  }
+});
+it("includes the exact start in the digest even when the end did not change", () => {
+  const first = reduceStripeSubscriptionEvent(event());
+  const changed = reduceStripeSubscriptionEvent(event({ subscription: snapshot({ currentPeriodStartEpoch: 1_747_321_601 }) }));
+  expect(first.kind).toBe("command"); expect(changed.kind).toBe("command");
+  if (first.kind === "command" && changed.kind === "command") expect(first.command.digest).not.toBe(changed.command.digest);
 });

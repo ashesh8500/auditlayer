@@ -218,14 +218,6 @@ export const EXPERIENCE_EXCEPTIONS: ExperienceException[] = [
     correctionTip: "Re-point terminal/delayed panels at ExperienceState primitives when the audit page is next touched.",
   },
   {
-    id: "panel-live-timeline-legacy",
-    rule: "panel",
-    path: "src/components/live-timeline.tsx",
-    owner: "product-design",
-    reason: "Timeline event surfaces predate the contract.",
-    correctionTip: "Adopt Card/alm-panel on next timeline touch.",
-  },
-  {
     id: "panel-share-links-legacy",
     rule: "panel",
     path: "src/components/share-links.tsx",
@@ -479,15 +471,6 @@ export const EXPERIENCE_EXCEPTIONS: ExperienceException[] = [
       "The intake wizard's 'previously observed targets' note is a contextual inline notice inside the sacrosanct three-screen flow; not migrated by this card.",
     correctionTip: "Migrate to ExperienceBanner during the wizard restyle card.",
   },
-  {
-    id: "banner-live-timeline-event",
-    rule: "banner",
-    path: "src/components/live-timeline.tsx",
-    owner: "product-design",
-    reason:
-      "Timeline event notices are color-mix tone rows driven by dynamic status colors; converting them to a static banner primitive would lose event semantics.",
-    correctionTip: "Migrate to a tone-driven ExperienceBanner variant on next timeline touch.",
-  },
   // --- state ---------------------------------------------------------------
   {
     id: "state-loading-public-static",
@@ -626,14 +609,6 @@ export const EXPERIENCE_EXCEPTIONS: ExperienceException[] = [
     correctionTip: "Verify with TARGET_44_PX_PROBE; bump to min-h-10 if flagged.",
   },
   {
-    id: "target-live-timeline-summary",
-    rule: "target",
-    path: "src/components/live-timeline.tsx",
-    owner: "product-design",
-    reason: "Timeline 'full event log' disclosure is a compact summary control.",
-    correctionTip: "Verify with TARGET_44_PX_PROBE on next timeline touch.",
-  },
-  {
     id: "target-carousel-arrows",
     rule: "target",
     path: "src/components/testimonial-carousel.tsx",
@@ -657,14 +632,6 @@ export const EXPERIENCE_EXCEPTIONS: ExperienceException[] = [
     reason:
       "Subject-home tab switches and score expanders are dense intelligence-surface controls predating the contract.",
     correctionTip: "Verify with TARGET_44_PX_PROBE during subject-surface work.",
-  },
-  {
-    id: "target-share-report-view-reset",
-    rule: "target",
-    path: "src/app/s/[token]/share-report-view.tsx",
-    owner: "product-design",
-    reason: "Share-page reset is a compact text control in a token-scoped surface.",
-    correctionTip: "Verify with TARGET_44_PX_PROBE on next share-surface touch.",
   },
 ];
 
@@ -822,8 +789,17 @@ function scanHeader(pages: string[], webRoot: string): RuleReport {
   for (const file of pages) {
     const rel = relative(webRoot, file);
     const content = readFileSync(file, "utf8");
+    // These thin route entries delegate rendering to real resource views. Check
+    // their source, rather than exempting the route or adding a duplicate h1.
+    const delegates = [
+      ["ReportsLibrary", "reports-library"],
+      ["ConnectionsLibrary", "connections-library"],
+      ["SubjectsLibrary", "subjects-library"],
+    ];
+    const rendered = [content, ...delegates.filter(([name]) => content.includes(`<${name}`))
+      .map(([, path]) => readFileSync(join(webRoot, `src/components/${path}.tsx`), "utf8"))].join("\n");
     const hasHeaderConstruct =
-      content.includes("PageHeader") || content.includes("alm-kicker") || /<h1\b/.test(content);
+      rendered.includes("PageHeader") || rendered.includes("alm-kicker") || /<h1\b/.test(rendered);
     if (hasHeaderConstruct) continue;
     const exc = exceptionFor("header", rel);
     const finding: Finding = {

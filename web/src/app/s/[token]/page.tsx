@@ -1,11 +1,14 @@
-import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import { Brand } from "@/components/brand";
 
 import { getAuditForShare } from "@/lib/share-access";
 import { ShareReportView } from "./share-report-view";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Shared Report — AuditLayerMedia",
+  referrer: "no-referrer",
+  robots: { index: false, follow: false },
 };
 
 export default async function SharePage({
@@ -23,10 +26,7 @@ export default async function SharePage({
   return (
     <ShareReportView
       token={token}
-      auditHandle={result.audit.handle}
-      mode={result.mode}
       needsVerification={"needsVerification" in result}
-      email={"link" in result ? result.link.email : null}
     />
   );
 }
@@ -63,6 +63,7 @@ function ShareError({ error }: { error: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-6">
       <div className="text-center">
+        <Brand className="mb-4" />
         <h1 className="text-xl font-bold tracking-tight">{msg.title}</h1>
         <p className="mt-3 text-sm text-muted-foreground">{msg.body}</p>
         <div className="mt-6 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">

@@ -129,6 +129,7 @@ describe("rpcSubmitEntitledAuditBatch", () => {
       idempotencyKey: "retry-window-key",
       audits: [
         {
+          briefVersionId: "brief-1",
           channelType: "instagram",
           channelLocator: "auditlayermedia",
           handle: "auditlayermedia",
@@ -159,6 +160,7 @@ describe("rpcSubmitEntitledAuditBatch", () => {
           p_idempotency_key: "retry-window-key",
           p_audits: [
             {
+              brief_version_id: "brief-1",
               channel_type: "instagram",
               channel_locator: "auditlayermedia",
               handle: "auditlayermedia",

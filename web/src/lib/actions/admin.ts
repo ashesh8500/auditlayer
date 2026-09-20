@@ -1,13 +1,13 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/lib/auth";
+import { bumpResourceRevision } from "@/lib/resources/mutation-revision";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured, siteUrl } from "@/lib/env";
 import type { AuditEventPhase } from "@/lib/domain";
-import type { Json } from "@/lib/supabase/types";
 import {
   executeFounderTransition,
   type FounderTransitionAction,
@@ -81,6 +81,7 @@ async function runFounderTransition(
 
   if (!result.ok) return { status: "error", message: result.message };
 
+  await bumpResourceRevision("reports");
   revalidatePath(`/admin/audits/${auditId}`);
   return { status: "ok", message: successMessage };
 }
@@ -172,22 +173,20 @@ export async function updateSettings(
   if (!isSupabaseAdminConfigured())
     return { status: "error", message: "Not configured." };
 
-  const hermes_model = String(formData.get("hermes_model") ?? "").trim();
+  const hermes_model = "deepseek-v4-flash";
+  const submittedModel = String(formData.get("hermes_model") ?? hermes_model).trim();
   const tokenCap = Number(formData.get("token_cap"));
   const costCap = Number(formData.get("cost_cap_usd"));
   const toolsetsRaw = String(formData.get("enabled_toolsets") ?? "");
 
-  if (!hermes_model)
-    return { status: "error", message: "Model is required." };
-  if (!Number.isFinite(tokenCap) || tokenCap <= 0)
-    return { status: "error", message: "Token cap must be a positive number." };
-  if (!Number.isFinite(costCap) || costCap < 0)
-    return { status: "error", message: "Cost cap must be zero or positive." };
+  if (submittedModel !== hermes_model || toolsetsRaw.trim())
+    return { status: "error", message: "Production uses DeepSeek V4 Flash with tool-free inference." };
+  if (!Number.isSafeInteger(tokenCap) || tokenCap < 120_000)
+    return { status: "error", message: "Token cap must be an integer of at least 120000." };
+  if (!Number.isFinite(costCap) || costCap <= 0)
+    return { status: "error", message: "Cost cap must be positive." };
 
-  const enabled_toolsets = toolsetsRaw
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean) as unknown as Json;
+  const enabled_toolsets: string[] = [];
 
   const { error } = await createAdminClient()
     .from("app_settings")
@@ -206,14 +205,14 @@ export async function updateSettings(
 
 /**
  * Manual report upload — preserves Narin's hand-built workflow. Stores the HTML
- * in the private `reports` bucket at `<auditId>/report.html`, attaches it to the
- * audit, and marks it ready. Admin-only, via the service-role client.
+ * as a unique private object, then commits version + pointer + event together.
+ * Ambiguous finalization never deletes the possibly committed object.
  */
 export async function uploadManualReport(
   _prev: AdminActionState,
   formData: FormData,
 ): Promise<AdminActionState> {
-  await requireAdmin();
+  const actor = await requireAdmin();
   if (!isSupabaseAdminConfigured())
     return { status: "error", message: "Not configured." };
 
@@ -227,199 +226,22 @@ export async function uploadManualReport(
     return { status: "error", message: "Report exceeds the 10 MB limit." };
 
   const admin = createAdminClient();
-  const path = `${auditId}/report.html`;
+  const path = `${auditId}/manual/${randomUUID()}.html`;
   const { error: uploadError } = await admin.storage
     .from("reports")
-    .upload(path, file, { contentType: "text/html", upsert: true });
+    .upload(path, file, { contentType: "text/html", upsert: false });
   if (uploadError)
     return { status: "error", message: uploadError.message };
 
-  const { error } = await admin
-    .from("audits")
-    .update({ status: "ready", report_path: path })
-    .eq("id", auditId);
-  if (error) return { status: "error", message: error.message };
+  const { error } = await (admin as any).rpc("admin_finalize_manual_report", {
+    p_actor_id: actor.id, p_audit_id: auditId, p_report_path: path,
+  });
+  if (error) return { status: "error", message: `Finalization not confirmed: ${error.message}. Check report history before retrying.` };
 
-  await logEvent(auditId, "report_uploaded", "uploaded", path);
-  await logEvent(auditId, "report_ready", "succeeded", "Manual report attached.");
+  await bumpResourceRevision("reports");
   revalidatePath(`/admin/audits/${auditId}`);
   revalidatePath(`/audits/${auditId}`);
   return { status: "ok", message: "Report uploaded and marked ready." };
-}
-
-/** Update a user's plan (admin-only). */
-export async function updateUserPlan(
-  _prev: AdminActionState,
-  formData: FormData,
-): Promise<AdminActionState> {
-  const adminProfile = await requireAdmin();
-  if (!isSupabaseAdminConfigured())
-    return { status: "error", message: "Not configured." };
-
-  const profileId = String(formData.get("profileId") ?? "");
-  const plan = String(formData.get("plan") ?? "").trim() as any;
-  const reason = String(formData.get("reason") ?? "").trim();
-
-  if (!profileId || !plan || !reason)
-    return { status: "error", message: "Profile, plan, and reason are required." };
-
-  const validPlans = ["free", "starter", "pro", "enterprise"];
-  if (!validPlans.includes(plan))
-    return { status: "error", message: `Invalid plan: ${plan}.` };
-
-  const admin = createAdminClient();
-
-  // Fetch current plan
-  const { data: profileRow, error: fetchError } = await admin
-    .from("profiles")
-    .select("plan")
-    .eq("id", profileId)
-    .maybeSingle();
-
-  if (fetchError || !profileRow)
-    return { status: "error", message: fetchError?.message || "Profile not found." };
-
-  const fromPlan = profileRow.plan;
-
-  // Update plan
-  const { error: updateError } = await admin
-    .from("profiles")
-    .update({ plan })
-    .eq("id", profileId);
-
-  if (updateError)
-    return { status: "error", message: updateError.message };
-
-  // Log admin action
-  try {
-    await (admin as any).from("admin_actions").insert({
-      actor_id: adminProfile.id,
-      target_user_id: profileId,
-      action: "plan_change",
-      detail: { from: fromPlan, to: plan, reason },
-    });
-  } catch (e: any) {
-    console.error("admin_actions insert failed (plan_change):", e.message);
-  }
-
-  revalidatePath(`/admin/users/${profileId}`);
-  return { status: "ok", message: `Plan changed from ${fromPlan} to ${plan}.` };
-}
-
-/** Adjust a user's gifted audit count (admin-only). */
-export async function adjustGiftedAudits(
-  _prev: AdminActionState,
-  formData: FormData,
-): Promise<AdminActionState> {
-  const adminProfile = await requireAdmin();
-  if (!isSupabaseAdminConfigured())
-    return { status: "error", message: "Not configured." };
-
-  const profileId = String(formData.get("profileId") ?? "");
-  const amountRaw = String(formData.get("amount") ?? "");
-  const reason = String(formData.get("reason") ?? "").trim();
-  const amount = parseInt(amountRaw, 10);
-
-  if (!profileId || !reason || isNaN(amount) || amount === 0)
-    return { status: "error", message: "Profile, non-zero amount, and reason are required." };
-
-  const admin = createAdminClient();
-
-  // Fetch current gifted_audits
-  const { data: profileRow, error: fetchError } = await admin
-    .from("profiles")
-    .select("gifted_audits")
-    .eq("id", profileId)
-    .maybeSingle();
-
-  if (fetchError || !profileRow)
-    return { status: "error", message: fetchError?.message || "Profile not found." };
-
-  const currentGifted = (profileRow as any).gifted_audits ?? 0;
-  const newGifted = Math.max(0, currentGifted + amount);
-
-  // Update gifted_audits
-  const { error: updateError } = await admin
-    .from("profiles")
-    .update({ gifted_audits: newGifted })
-    .eq("id", profileId);
-
-  if (updateError)
-    return { status: "error", message: updateError.message };
-
-  // Log admin action
-  try {
-    await (admin as any).from("admin_actions").insert({
-      actor_id: adminProfile.id,
-      target_user_id: profileId,
-      action: "gifted_adjust",
-      detail: { from: currentGifted, to: newGifted, adjustment: amount, reason },
-    });
-  } catch (e: any) {
-    console.error("admin_actions insert failed (gifted_adjust):", e.message);
-  }
-
-  revalidatePath(`/admin/users/${profileId}`);
-  return { status: "ok", message: `Gifted audits adjusted from ${currentGifted} to ${newGifted}.` };
-}
-
-/** Set a user's account type (admin-only). */
-export async function setAccountType(
-  _prev: AdminActionState,
-  formData: FormData,
-): Promise<AdminActionState> {
-  const adminProfile = await requireAdmin();
-  if (!isSupabaseAdminConfigured())
-    return { status: "error", message: "Not configured." };
-
-  const profileId = String(formData.get("profileId") ?? "");
-  const accountType = String(formData.get("account_type") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim();
-
-  if (!profileId || !reason)
-    return { status: "error", message: "Profile, account type, and reason are required." };
-
-  const validTypes = ["standard", "trial", "comp"];
-  if (!validTypes.includes(accountType))
-    return { status: "error", message: `Invalid account type: ${accountType}.` };
-
-  const admin = createAdminClient();
-
-  // Fetch current account_type
-  const { data: profileRow, error: fetchError } = await admin
-    .from("profiles")
-    .select("account_type")
-    .eq("id", profileId)
-    .maybeSingle();
-
-  if (fetchError || !profileRow)
-    return { status: "error", message: fetchError?.message || "Profile not found." };
-
-  const fromType = (profileRow as any).account_type ?? "standard";
-
-  // Update account_type
-  const { error: updateError } = await admin
-    .from("profiles")
-    .update({ account_type: accountType })
-    .eq("id", profileId);
-
-  if (updateError)
-    return { status: "error", message: updateError.message };
-
-  // Log admin action
-  try {
-    await (admin as any).from("admin_actions").insert({
-      actor_id: adminProfile.id,
-      target_user_id: profileId,
-      action: "account_type_change",
-      detail: { from: fromType, to: accountType, reason },
-    });
-  } catch (e: any) {
-    console.error("admin_actions insert failed (account_type_change):", e.message);
-  }
-
-  revalidatePath(`/admin/users/${profileId}`);
-  return { status: "ok", message: `Account type changed from ${fromType} to ${accountType}.` };
 }
 
 /** Atomically assign founder-managed access, including manual enterprise users. */
@@ -434,22 +256,23 @@ export async function setUserAccess(
   const profileId = String(formData.get("profileId") ?? "");
   const plan = String(formData.get("plan") ?? "");
   const accountType = String(formData.get("account_type") ?? "");
-  const giftedAudits = Number(formData.get("gifted_audits"));
+  const giftedDelta = Number(formData.get("gifted_delta") ?? 0);
   const reason = String(formData.get("reason") ?? "").trim();
-  if (!profileId || !reason || !Number.isInteger(giftedAudits) || giftedAudits < 0) {
-    return { status: "error", message: "User, non-negative credits, and a reason are required." };
+  if (!profileId || !reason || !Number.isSafeInteger(giftedDelta)) {
+    return { status: "error", message: "User, integer credit adjustment, and a reason are required." };
   }
 
-  const { error } = await (createAdminClient() as any).rpc("admin_set_access", {
+  const { error } = await (createAdminClient() as any).rpc("admin_assign_access_delta", {
     p_actor_id: actor.id,
     p_target_user_id: profileId,
     p_plan: plan,
     p_account_type: accountType,
-    p_gifted_audits: giftedAudits,
+    p_gifted_delta: giftedDelta,
     p_reason: reason,
   });
   if (error) return { status: "error", message: error.message };
 
+  await bumpResourceRevision("reports");
   revalidatePath(`/admin/users/${profileId}`);
   revalidatePath("/admin/users");
   return { status: "ok", message: "Access assignment saved and logged." };

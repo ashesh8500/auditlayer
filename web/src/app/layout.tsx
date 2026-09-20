@@ -26,6 +26,10 @@ export const metadata: Metadata = {
   ),
   title: "AuditLayerMedia — Social media competitive intelligence",
   description: PUBLIC_METADATA_DESCRIPTION,
+  icons: { icon: [
+    { url: "/brand/alm-icon.svg", type: "image/svg+xml", sizes: "32x32" },
+    { url: "/brand/alm-favicon.svg", type: "image/svg+xml", sizes: "16x16" },
+  ] },
   openGraph: {
     type: "website",
     siteName: "AuditLayerMedia",

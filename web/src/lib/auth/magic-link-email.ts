@@ -11,8 +11,7 @@ function magicLinkHtml(signInUrl: string): string {
       <tr><td align="center">
         <table role="presentation" width="100%" style="max-width:480px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;">
           <tr><td style="padding:32px 32px 8px;font-size:15px;font-weight:700;">
-            <span style="display:inline-block;width:32px;height:32px;border-radius:8px;background:#0d9488;color:#fff;font-family:monospace;font-size:12px;line-height:32px;text-align:center;">AL</span>
-            AuditLayer
+            <span role="img" aria-label="AuditLayerMedia" style="display:inline-block;background:#fff;color:#14241f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;letter-spacing:-1.2px;line-height:30px;">ALM<span style="color:#0f766e;">.</span></span>
           </td></tr>
           <tr><td style="padding:8px 32px 0;">
             <h1 style="margin:0 0 8px;font-size:22px;">Your secure sign-in link</h1>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { presentReportHtml } from "@/lib/report-presentation";
 
 import { getAuditForShare, incrementShareView } from "@/lib/share-access";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -49,7 +50,7 @@ export async function GET(
     );
   }
 
-  const html = await data.text();
+  const html = presentReportHtml(await data.text(), new URL(_request.url).origin);
 
   // Increment view count (fire-and-forget)
   incrementShareView(token).catch(() => {});
@@ -58,7 +59,8 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "private, no-cache",
+      "Cache-Control": "private, no-store",
+      "Referrer-Policy": "no-referrer",
     },
   });
 }

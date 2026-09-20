@@ -3,6 +3,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { safeNext, loginRecoveryUrl } from "@/lib/auth/redirects";
+import { claimTrial, type ClaimState } from "@/lib/auth/claim-trial";
+import { bumpResourceRevision } from "@/lib/resources/mutation-revision";
 
 import {
   isBrandedMagicLinkConfigured,
@@ -26,13 +29,6 @@ export interface AuthFormState {
 
 const emailSchema = z.email({ error: "Enter a valid email address." });
 
-function safeNext(next: FormDataEntryValue | null): string {
-  const value = typeof next === "string" ? next : "";
-  // Only allow same-site relative paths to prevent open redirects.
-  if (value.startsWith("/") && !value.startsWith("//") && !value.includes("\\")) return value;
-  return "/dashboard";
-}
-
 /** Persist the trial token cookie to survive the auth redirect flow. */
 async function persistTrialCookie(trial: FormDataEntryValue | null): Promise<void> {
   const token = typeof trial === "string" ? trial.trim() : "";
@@ -40,7 +36,7 @@ async function persistTrialCookie(trial: FormDataEntryValue | null): Promise<voi
   const cookieStore = await cookies();
   cookieStore.set(TRIAL_COOKIE, token, {
     path: "/",
-    httpOnly: false,
+    httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -107,7 +103,7 @@ export async function signInWithMagicLink(
 
 export async function signInWithGoogle(formData: FormData): Promise<void> {
   if (!isSupabaseConfigured()) {
-    redirect("/login?error=unconfigured");
+    redirect(loginRecoveryUrl(formData.get("next"), "unconfigured", String(formData.get("trial") ?? "")));
   }
 
   const next = safeNext(formData.get("next"));
@@ -124,7 +120,7 @@ export async function signInWithGoogle(formData: FormData): Promise<void> {
   });
 
   if (error || !data?.url) {
-    redirect("/login?error=oauth");
+    redirect(loginRecoveryUrl(next, "oauth", String(formData.get("trial") ?? "")));
   }
 
   redirect(data.url);
@@ -137,15 +133,18 @@ export async function signInWithPreviewTestUser(
   formData: FormData,
 ): Promise<void> {
   if (!isPreviewLoginAllowed()) {
-    redirect("/login?error=preview_login_disabled");
+    redirect(loginRecoveryUrl(formData.get("next"), "preview_login_disabled", String(formData.get("trial") ?? "")));
   }
 
   const next = safeNext(formData.get("next"));
   const result = await establishPreviewTestSession();
   if (!result.ok) {
-    redirect(`/login?error=preview_login&detail=${encodeURIComponent(result.error)}`);
+    redirect(loginRecoveryUrl(next, "preview_login", String(formData.get("trial") ?? "")));
   }
-  redirect(next);
+  await bumpResourceRevision("reports");
+  await bumpResourceRevision("subjects");
+  const trial = String(formData.get("trial") ?? "");
+  redirect(trial ? loginRecoveryUrl(next, undefined, trial) : next);
 }
 
 export async function signOut(): Promise<void> {
@@ -154,6 +153,11 @@ export async function signOut(): Promise<void> {
     await supabase.auth.signOut();
   }
   redirect("/");
+}
+
+/** Explicit POST keeps trial mutation out of GET rendering and link prefetch. */
+export async function claimTrialAccess(_prev: ClaimState, formData: FormData): Promise<ClaimState> {
+  return claimTrial(String(formData.get("trial") ?? ""));
 }
 
 /** Normal Supabase password authentication, including isolated review accounts. */
@@ -174,5 +178,9 @@ export async function signInWithPassword(
   if (error || !data.user) {
     return { status: "error", message: "Unable to sign in. Check your email and password." };
   }
-  redirect(safeNext(formData.get("next")));
+  await bumpResourceRevision("reports");
+  await bumpResourceRevision("subjects");
+  const trial = String(formData.get("trial") ?? "");
+  const next = safeNext(formData.get("next"));
+  redirect(trial ? loginRecoveryUrl(next, undefined, trial) : next);
 }

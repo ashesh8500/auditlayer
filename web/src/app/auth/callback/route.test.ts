@@ -11,6 +11,55 @@ const encoded = (v: unknown) => "base64-" + Buffer.from(JSON.stringify(v)).toStr
 const session = { access_token: "test-access", refresh_token: "test-refresh", token_type: "bearer", expires_in: 3600, expires_at: Math.floor(Date.now()/1000)+3600, user: { id: "test-user", aud: "authenticated", email: "tester@example.invalid" } };
 function request() { return new NextRequest("https://auditlayermedia.com/auth/callback?code=provider-code&next=/settings/connections", { headers: { cookie: `${key}=${encoded({...session, expires_at: 1, refresh_token: "revoked"})}; ${key}-code-verifier=${encoded("fresh-verifier")}` } }); }
 beforeEach(() => { state.fetched=[]; vi.stubGlobal("fetch",vi.fn(async (input: string | URL | Request) => { const url=String(input); state.fetched.push(url); if(url.includes("grant_type=pkce")) return new Response(JSON.stringify(session),{status:200,headers:{"Content-Type":"application/json"}}); return new Response(JSON.stringify({code:"refresh_token_not_found",message:"Invalid refresh token"}),{status:400,headers:{"Content-Type":"application/json"}}); })); });
+
+it("keeps protected pathname plus search inside next only", async () => {
+ const response = await updateSession(new NextRequest("https://auditlayermedia.com/audits/new?subject=abc&channel=ig"));
+ const url = new URL(response.headers.get("location")!);
+ expect(url.searchParams.get("next")).toBe("/audits/new?subject=abc&channel=ig");
+ expect(url.searchParams.has("subject")).toBe(false);
+});
+it("auth failures retain safe destination and trial context", async () => {
+ const req = new NextRequest("https://auditlayermedia.com/auth/callback?next=" + encodeURIComponent("/audits/new?subject=abc"), {headers: {cookie: "alm_trial_token=invite"}});
+ const response = await GET(req);
+ const url = new URL(response.headers.get("location")!);
+ expect(url.searchParams.get("next")).toBe("/audits/new?subject=abc");
+ expect(url.searchParams.get("trial")).toBe("invite");
+ expect(url.searchParams.get("error")).toBe("auth");
+});
+it("successful OAuth leads to explicit authenticated trial claim, not a silent success", async () => {
+ const req = request(); req.cookies.set("alm_trial_token", "invite");
+ const response = await GET(req);
+ const url = new URL(response.headers.get("location")!);
+ expect(url.pathname).toBe("/login");
+ expect(url.searchParams.get("trial")).toBe("invite");
+ expect(response.cookies.get(key)?.value).toBeTruthy();
+});
+
+
+it("magic-link success preserves trial claim and next just like OAuth", async () => {
+ vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify(session),{status:200,headers:{"Content-Type":"application/json"}}));
+ const req=new NextRequest("https://auditlayermedia.com/auth/callback?token_hash=test-hash&type=magiclink&next="+encodeURIComponent("/pricing?plan=pro"),{headers:{cookie:"alm_trial_token=invite"}});
+ const response=await GET(req);
+ const url=new URL(response.headers.get("location")!);
+ expect(url.searchParams.get("trial")).toBe("invite");
+ expect(url.searchParams.get("next")).toBe("/pricing?plan=pro");
+ expect(response.cookies.get(key)?.value).toBeTruthy();
+ expect(response.cookies.get("alm-reports-revision")?.value).toBeTruthy();
+ expect(response.cookies.get("alm-subjects-revision")?.value).toBeTruthy();
+});
+it("expired magic link preserves recovery context without a session or trial success",async()=>{
+ const log=vi.spyOn(console,"error").mockImplementation(()=>{});
+ try {
+ const req=new NextRequest("https://auditlayermedia.com/auth/callback?token_hash=expired&type=magiclink&next="+encodeURIComponent("/audits/new?subject=abc"),{headers:{cookie:"alm_trial_token=invite"}});
+ const response=await GET(req);const url=new URL(response.headers.get("location")!);
+ expect(url.searchParams.get("error")).toBe("auth");
+ expect(url.searchParams.get("trial")).toBe("invite");
+ expect(url.searchParams.get("next")).toBe("/audits/new?subject=abc");
+ expect(response.cookies.get(key)).toBeUndefined();
+ expect(response.cookies.get("alm-reports-revision")).toBeUndefined();
+ } finally {log.mockRestore();}
+});
+
 it("fresh PKCE callback succeeds despite a revoked previous session",async()=>{const response=await GET(request());expect(response.headers.get("location")).toBe("https://auditlayermedia.com/settings/connections");expect(state.fetched.some(u=>u.includes("grant_type=pkce"))).toBe(true);expect(state.fetched.some(u=>u.includes("grant_type=refresh_token"))).toBe(false);expect(response.cookies.get(key)?.value).toBeTruthy();});
 it("passive session refresh preserves an in-flight verifier while clearing revoked session cookies", async () => {
   const callback = request();

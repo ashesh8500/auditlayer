@@ -166,7 +166,7 @@ export function decideShareAccess(
   }
   if (state.expiresAt !== null && state.expiresAt !== undefined) {
     const expires = new Date(state.expiresAt);
-    if (!Number.isNaN(expires.getTime()) && expires.getTime() <= now.getTime()) {
+    if (Number.isNaN(expires.getTime()) || expires.getTime() <= now.getTime()) {
       return { allow: false, reason: "expired" };
     }
   }
@@ -174,12 +174,8 @@ export function decideShareAccess(
 
   if (state.mode === "public") return { allow: true, mode: "public" };
 
-  // Email mode: either the link was explicitly verified (verified_at) or the
-  // current session carries the verified cookie for this exact token.
-  const verified =
-    (state.verifiedAt !== null && state.verifiedAt !== undefined) ||
-    state.hasVerifiedSession;
-  if (verified) return { allow: true, mode: "email" };
+  // verifiedAt is historical telemetry, never authorization for this visitor.
+  if (state.mode === "email" && state.hasVerifiedSession) return { allow: true, mode: "email" };
   return { allow: false, reason: "needs_verification" };
 }
 
@@ -318,8 +314,8 @@ export function shareRoutesForToken(token: string): readonly string[] {
  * alone is never sent to `/api/share/{token}/report`, which would silently
  * break the verified email flow. The token-scoped cookie name already isolates
  * one token from another, so the single path that covers BOTH routes is `/`.
- * The value is a bare `verified` marker; no share content or credential lives
- * in the cookie.
+ * The value is an opaque random session credential; only its hash is stored
+ * server-side, bound to this link, its recipient and a bounded expiry.
  */
 export function shareCookiePath(_token: string): string {
   return "/";

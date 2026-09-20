@@ -8,13 +8,14 @@ import { signInWithPassword, type AuthFormState } from "./actions";
 
 const initialState: AuthFormState = { status: "idle" };
 
-export function PasswordLoginForm({ next }: { next: string }) {
+export function PasswordLoginForm({ next, trial }: { next: string; trial?: string }) {
   const [state, action, pending] = useActionState(signInWithPassword, initialState);
   return (
     <details className="border-t border-border pt-4">
       <summary className="flex min-h-11 cursor-pointer items-center justify-center text-center text-sm font-medium underline alm-focus">Sign in with a password</summary>
       <form action={action} className="mt-4 space-y-3">
         <input type="hidden" name="next" value={next} />
+        {trial && <input type="hidden" name="trial" value={trial} />}
         <div className="space-y-1.5">
           <Label htmlFor="password-email">Email address</Label>
           <Input id="password-email" name="email" type="email" autoComplete="username" required />

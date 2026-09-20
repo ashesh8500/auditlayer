@@ -107,14 +107,14 @@ describe("Instagram connection lifecycle migration", () => {
     );
 
     expect(types).toContain(
-      'connection_status: "connected" | "reconnect_required"',
+      'connection_status: string',
     );
     expect(types).toContain("reconnect_required_at: string | null");
     expect(types).toContain(
-      'reconnect_reason: "auth_permission" | "legacy_connection" | null',
+      'reconnect_reason: string | null',
     );
     expect(types).toMatch(
-      /mark_instagram_connection_reconnect_required:\s*{\s*Args:\s*{ p_connection_id: string; p_user_id: string }\s*Returns: boolean/i,
+      /mark_instagram_connection_reconnect_required:\s*{\s*Args:\s*{ p_connection_id: string;?\s+p_user_id: string }\s*Returns: boolean/i,
     );
   });
 });

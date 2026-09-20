@@ -30,10 +30,12 @@ import {
 
 export type SubjectListSource = "live";
 
+export type BrandContextVersion = LivingBriefVersion & { confirmed?: boolean; authorLabel?: string };
+
 export type SubjectHomeBundle = {
   subject: SubjectSummary;
   channels: ChannelSummary[];
-  briefVersions: LivingBriefVersion[];
+  briefVersions: BrandContextVersion[];
   proposals: LivingBriefProposal[];
   scores: ScoreEvidence[];
   recommendations: RecommendationSummary[];
@@ -146,7 +148,7 @@ export async function listChannelsForSubject(
 export async function listBriefVersionsForSubject(
   subjectId: string,
   subjectType: SubjectType,
-): Promise<LivingBriefVersion[]> {
+): Promise<BrandContextVersion[]> {
   if (!isSupabaseConfigured()) throw new Error("Subject data could not be loaded. Please retry.");
     const profile = await requireProfile();
     const supabase = await createClient();
@@ -156,7 +158,7 @@ export async function listBriefVersionsForSubject(
     const briefs = await readSubjectPages((a, b) => supabase
       .from("living_brief_versions")
       .select(
-        "id, subject_id, version, identity, audience, positioning, offers, goals, constraints, experiments, decisions, confirmed, created_at",
+        "id, subject_id, version, identity, audience, positioning, offers, goals, constraints, experiments, decisions, confirmed, created_by, created_at",
       )
       .eq("subject_id", subjectId)
       .order("version", { ascending: false }).order("id").range(a, b));
@@ -165,7 +167,9 @@ export async function listBriefVersionsForSubject(
       subjectId: row.subject_id,
       version: row.version,
       content: projectLivingBriefContent(subjectType, row),
-      source: row.confirmed ? ("user" as const) : ("user" as const),
+      source: "user" as const, // Compatibility field; author/confirmation below are authoritative for UI.
+      confirmed: row.confirmed,
+      authorLabel: row.created_by === profile.id ? "You" : "Unknown",
       parentVersionId: null,
       changeSummary: null,
       createdAt: row.created_at,
@@ -230,7 +234,7 @@ export async function getSubjectHomeBundle(
       (proposal) => ({
         id: proposal.id,
         subjectId: proposal.subject_id,
-        parentVersionId: briefVersions[0]?.id ?? "",
+        parentVersionId: briefVersions.find(v => v.version === proposal.base_version)?.id ?? "",
         baseVersion: proposal.base_version,
         path: proposal.path,
         operation: proposal.operation as LivingBriefProposal["operation"],

@@ -1,13 +1,9 @@
 /**
- * Domain calibration mirrored from the legacy worker source of truth
- * (`legacy/src/auditlayer/domain.py`). The Python Hermes worker remains the
- * authoritative owner of the audit decision; this TypeScript port powers:
- *   - lightweight, read-only client-side intake hints (handle normalization,
- *     platform detection, credential prompts), and
- *   - the server-side intake decision used when creating an `audits` row.
- *
- * Keep these in lock-step with the contract enums in
- * `docs/architecture-contract.md`.
+ * Client-safe calibration and report vocabulary mirrored with the worker.
+ * Commercial allowance is authoritative in audit_allowance/submit_entitled_audit
+ * SQL, not lifetime JavaScript counters. The worker trusts accepted reservations
+ * and must not re-check allowance at execution or retry time.
+ * Keep calibration enums aligned with docs/architecture-contract.md.
  */
 
 export type AuditStatus =
@@ -96,15 +92,18 @@ export function isAdminUnlimited(role: string | null | undefined): boolean {
   return role === "admin";
 }
 
-/** Effective audit cap for a profile (admins → enterprise allowance, gifted → unlimited). */
+/** Effective plan cap only; read audit_allowance for usage, gifts and remaining access. */
 export function auditLimitForProfile(profile: {
   plan: Plan;
   role: string;
   gifted_audits?: number;
+  account_type?: string;
+  trial_plan?: Plan | null;
+  trial_expires_at?: string | null;
 }): number {
   if (isAdminUnlimited(profile.role)) return PLAN_LIMITS.enterprise;
-  if (profile.gifted_audits && profile.gifted_audits > 0) return Infinity;
-  return PLAN_LIMITS[profile.plan];
+  // Display helper only: authoritative remaining allowance comes from audit_allowance.
+  return PLAN_LIMITS[effectivePlanForProfile(profile)];
 }
 
 /** Plan passed to intake calibration (admins treated as enterprise). */
@@ -363,7 +362,7 @@ export const USAGE_STATUSES: AuditStatus[] = [
 ];
 
 /** Maximum number of automatic retries for failed audits (mirrors worker MAX_RETRIES). */
-export const MAX_RETRIES = 3;
+export const MAX_RETRIES = 1;
 
 /** Human-readable retry status for failed audits. */
 export function retryStatusLabel(retryCount: number): string {

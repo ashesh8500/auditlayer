@@ -76,6 +76,7 @@ export interface SubmitBatchInput {
 }
 
 export interface EntitledBatchAuditInput {
+  briefVersionId?: string | null;
   channelType?: string | null;
   channelLocator?: string | null;
   handle: string;
@@ -261,29 +262,13 @@ export async function rpcLinkSubjectChannel(
   return String(data);
 }
 
-export async function rpcSubmitAuditBatch(
-  admin: AdminClient,
-  input: SubmitBatchInput,
-): Promise<string> {
-  const { data, error } = await admin.rpc("submit_audit_batch", {
-    p_user_id: input.userId,
-    p_subject_id: input.subjectId,
-    p_idempotency_key: input.idempotencyKey,
-    p_audit_ids: input.auditIds,
-  });
-  if (error || !data) {
-    throw new Error(error?.message ?? "submit_audit_batch failed");
-  }
-  return String(data);
-}
-
 export async function rpcSubmitEntitledAuditBatch(
   admin: AdminClient,
   input: SubmitEntitledBatchInput,
 ): Promise<{ batchId: string; auditIds: string[]; subjectId: string }> {
   const { data, error } = await admin.rpc("submit_entitled_audit_batch_v2", {
     p_user_id: input.userId,
-    p_subject_id: input.subjectId,
+    p_subject_id: input.subjectId as string, // SQL accepts NULL for an atomic draft subject.
     p_subject_draft: input.subjectDraft
       ? {
           name: input.subjectDraft.name,
@@ -294,6 +279,7 @@ export async function rpcSubmitEntitledAuditBatch(
       : null,
     p_idempotency_key: input.idempotencyKey,
     p_audits: input.audits.map((audit) => ({
+      brief_version_id: audit.briefVersionId ?? null,
       channel_type: audit.channelType ?? null,
       channel_locator: audit.channelLocator ?? null,
       handle: audit.handle,

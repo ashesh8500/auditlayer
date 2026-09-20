@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { isPreviewLoginAllowed, previewTestUserPassword } from "@/lib/env";
 import { Brand } from "@/components/brand";
+import { safeNext as normalizeNext } from "@/lib/auth/redirects";
+import { TrialClaimForm } from "./trial-claim-form";
 import { LoginForm } from "./login-form";
 
 export const metadata = {
@@ -17,8 +19,8 @@ export default async function LoginPage({
 }) {
   const { next, error, trial } = await searchParams;
   const user = await getSession();
-  const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/accounts";
-  if (user) redirect(safeNext);
+  const safeNext = normalizeNext(next);
+  if (user && !trial && !error) redirect(safeNext);
 
   return (
     <main className="grid min-h-screen bg-background lg:grid-cols-[1.05fr_0.95fr]">
@@ -57,13 +59,13 @@ export default async function LoginPage({
             </p>
           )}
 
-          <LoginForm
+          {user && trial ? <TrialClaimForm trial={trial} next={safeNext} /> : <LoginForm
             next={safeNext}
             trial={trial ?? undefined}
             previewLogin={
               isPreviewLoginAllowed() && Boolean(previewTestUserPassword())
             }
-          />
+          />}
         </div>
 
         <p className="mt-6 text-xs leading-5 text-muted-foreground">
