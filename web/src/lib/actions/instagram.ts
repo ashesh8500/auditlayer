@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { bumpResourceRevision } from "@/lib/resources/mutation-revision";
 import { redirect } from "next/navigation";
 
 import { requireUser } from "@/lib/auth";
@@ -31,6 +32,7 @@ export async function disconnectInstagram(formData: FormData) {
     redirect("/settings/connections?instagram_error=disconnect_failed");
   }
 
+  await Promise.all([bumpResourceRevision("connections"), bumpResourceRevision("subjects"), bumpResourceRevision("reports")]);
   revalidatePath("/accounts");
   revalidatePath("/dashboard");
   revalidatePath("/settings/connections");

@@ -19,14 +19,14 @@ export async function AppHeader() {
 
         <nav aria-label="Account navigation" className="flex min-w-0 items-center gap-0.5 text-sm sm:gap-1">
           <Button asChild variant="ghost" size="sm">
-            <Link href="/subjects">
+            <Link href="/subjects" prefetch={true}>
               <Building2 className="size-4 sm:hidden" />
               <span className="hidden sm:inline">Subjects</span>
               <span className="sr-only sm:hidden">Subjects</span>
             </Link>
           </Button>
           <Button asChild variant="ghost" size="sm">
-            <Link href="/dashboard">
+            <Link href="/dashboard" prefetch={true}>
               <Files className="size-4 sm:hidden" />
               <span className="hidden sm:inline">Reports</span>
               <span className="sr-only sm:hidden">Reports</span>
@@ -40,7 +40,7 @@ export async function AppHeader() {
             </Link>
           </Button>
           <Button asChild variant="ghost" size="sm">
-            <Link href="/settings/connections">
+            <Link href="/settings/connections" prefetch={true}>
               <Plug className="size-4 sm:hidden" />
               <span className="hidden sm:inline">Connections</span>
               <span className="sr-only sm:hidden">Connections</span>

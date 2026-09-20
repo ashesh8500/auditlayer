@@ -51,7 +51,13 @@
       "path": "web/src/lib/actions/admin.ts",
       "kind": "ts_update_status",
       "expected": ["ready"],
-      "note": "W010: approve/requeue/block delegate to the canonical founder transition matrix and founder_transition_audit RPC (declared below); admin.ts retains only the direct uploadManualReport ready write."
+      "required_patterns": ["\\.rpc\\(\"admin_finalize_manual_report\",", "\\.rpc\\(\"founder_transition_audit\","],
+      "delegate": {
+        "id": "manual_report_rpc",
+        "path": "supabase/migrations/20260919204034_admin_transactional_controls.sql",
+        "kind": "sql_status_literals"
+      },
+      "note": "Manual ready writes now belong to the transactional admin_finalize_manual_report RPC; founder transitions remain declared separately."
     },
     {
       "id": "founder_transition_matrix",
@@ -138,7 +144,7 @@
     },
     {
       "id": "dashboard_filters",
-      "path": "web/src/app/(app)/dashboard/page.tsx",
+      "path": "web/src/components/reports-library.tsx",
       "kind": "ts_string_array",
       "symbol": "FILTERABLE_STATUSES",
       "expected": ["all", "running", "ready", "queued", "failed", "needs_review", "draft", "blocked"],
@@ -147,7 +153,7 @@
     },
     {
       "id": "dashboard_active",
-      "path": "web/src/app/(app)/dashboard/page.tsx",
+      "path": "web/src/components/reports-library.tsx",
       "kind": "ts_status_includes",
       "expected": ["queued", "running", "needs_review"],
       "projection": "customer"
@@ -181,18 +187,21 @@
       "projection": "customer"
     },
     {
-      "id": "audits_action",
-      "path": "web/src/lib/actions/audits.ts",
-      "kind": "ts_status_comparisons",
-      "expected": ["queued"],
-      "projection": "customer"
-    },
-    {
       "id": "progress_route",
       "path": "web/src/app/api/audits/[id]/progress/route.ts",
       "kind": "ts_progress_route",
-      "expected_audit": ["ready", "failed", "blocked", "needs_review"],
-      "expected_progress": ["succeeded", "failed", "delayed", "preparing", "analyzing", "finalizing"],
+      "required_patterns": [
+        "import\\s*\\{\\s*projectCustomerStatus\\s*\\}\\s*from\\s*\"@/lib/intelligence/client-status\"",
+        "const projected = projectCustomerStatus\\(\\s*audit\\.status as AuditStatus,",
+        "return NextResponse\\.json\\(\\{\\s*phase: projected\\.phase,\\s*terminal: projected\\.terminal,\\s*message: projected\\.message,\\s*startedAt: projected\\.startedAt,\\s*\\}"
+      ],
+      "delegate": {
+        "id": "customer_status_projection",
+        "path": "web/src/lib/intelligence/client-status.ts",
+        "kind": "ts_customer_projection"
+      },
+      "expected_audit": ["queued", "running", "ready", "failed", "blocked", "needs_review"],
+      "expected_progress": ["delayed", "preparing", "analyzing", "finalizing"],
       "projection": "customer"
     },
     {
@@ -286,7 +295,7 @@
           "symbol": "PHASES"
         },
         {
-          "path": "web/src/lib/supabase/types.ts",
+          "path": "web/src/lib/domain.ts",
           "kind": "ts_type_union",
           "symbol": "AuditEventPhase"
         },

@@ -3,10 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>@{handle} — AuditLayer Standard Report</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<title>@{handle} — AuditLayerMedia Standard Report</title>
 <style>
   :root {
     --bg: #fafaf8;
@@ -142,6 +139,32 @@
   .creative-card .pillar { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 8px; }
   .creative-card h4 { font-size: 0.9rem; margin-bottom: 6px; }
   .creative-card .format-tag { display: inline-block; font-size: 0.7rem; background: var(--accent-muted); color: var(--accent-hover); padding: 2px 8px; border-radius: 4px; margin-top: 8px; }
+  /* Keep the document readable; only comparison regions scroll sideways. */
+  body { overflow-wrap: anywhere; }
+  .container { width: 100%; min-width: 0; }
+  section, .report-header, .report-footer, .alm-sources,
+  .metric-grid > *, .sw-grid > *, .pricing-grid > *, .creative-grid > *,
+  .t-content, .sd-track { min-width: 0; }
+  .sw-grid, .pricing-grid, .creative-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .table-scroll { width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; }
+  .table-scroll .data-table { min-width: 560px; }
+  .table-scroll .calendar-grid { min-width: 560px; }
+  .alm-sources { margin-top: 32px; }
+  .alm-sources ul { padding-left: 20px; }
+  @media (max-width: 600px) {
+    .container { padding: 32px 20px 64px; }
+    .report-header h1 { font-size: 1.9rem; }
+    .sw-grid, .pricing-grid, .creative-grid { grid-template-columns: minmax(0, 1fr); }
+    .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .metric-card { padding: 16px 10px; }
+    .score-diagram { padding: 20px 14px; }
+    .sd-row { gap: 8px; }
+    .sd-label, .sd-name { width: 42%; }
+    .sd-value, .sd-num { flex-shrink: 0; }
+    .sd-header { flex-wrap: wrap; gap: 8px; }
+    .upgrade-box { padding: 24px 16px; }
+    .cta-btn, .cta-button { max-width: 100%; }
+  }
   /* Print */
   @media print {
     body { background: white; }
@@ -149,17 +172,18 @@
     .sw-card, .rec-card, .metric-card, .idea-card { break-inside: avoid; }
     section { break-inside: avoid; }
     .upgrade-box { break-inside: avoid; }
+    .table-scroll { overflow: visible; }
+    .table-scroll .data-table, .table-scroll .calendar-grid { min-width: 0; }
   }
 </style>
 </head>
 <body>
 
 <!-- ═══════════ ALM BRAND RIBBON ═══════════ -->
-<div style="width:100%;background:linear-gradient(135deg,#0d9488,#0f766e);padding:10px 0;text-align:center;border-bottom:1px solid rgba(255,255,255,0.12);">
-  <div style="max-width:720px;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:center;gap:10px;">
-    <span style="font-family:'Inter',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.16em;color:#fff;text-transform:uppercase;">AuditLayerMedia</span>
-    <span style="display:inline-block;width:5px;height:5px;background:rgba(255,255,255,0.45);border-radius:50%;margin:0 4px;"></span>
-    <span style="font-family:'Inter',sans-serif;font-size:12px;font-weight:400;color:rgba(255,255,255,0.82);letter-spacing:0.03em;">@{handle} · {platform} Audit · {date}</span>
+<div style="width:100%;background:#fffdf8;padding:10px 0;text-align:center;border-bottom:1px solid #dcd7ca;">
+  <div style="max-width:720px;margin:0 auto;padding:0 20px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;">
+    <svg class="alm-wordmark" width="55" height="30" style="display:inline-block;vertical-align:middle;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 55.0523 30" role="img" aria-label="AuditLayerMedia"><path transform="translate(0.0000 24) scale(0.01171875 -0.01171875)" d="M1133 0 1008 360H471L346 0H51L565 1409H913L1425 0ZM739 1192 733 1170Q723 1134 709.0 1088.0Q695 1042 537 582H942L803 987L760 1123Z" fill="#14241f"/><path transform="translate(16.1320 24) scale(0.01171875 -0.01171875)" d="M137 0V1409H432V228H1188V0Z" fill="#14241f"/><path transform="translate(29.5922 24) scale(0.01171875 -0.01171875)" d="M1307 0V854Q1307 883 1307.5 912.0Q1308 941 1317 1161Q1246 892 1212 786L958 0H748L494 786L387 1161Q399 929 399 854V0H137V1409H532L784 621L806 545L854 356L917 582L1176 1409H1569V0Z" fill="#14241f"/><path transform="translate(48.3844 24) scale(0.01171875 -0.01171875)" d="M139 0V305H428V0Z" fill="#0f766e"/></svg>
+    <span style="font-family:'Inter',sans-serif;font-size:12px;font-weight:400;color:#52635c;letter-spacing:0.03em;">@{handle} · {platform} Audit · {date}</span>
   </div>
 </div>
 
@@ -167,7 +191,7 @@
 
   <!-- ========== HEADER ========== -->
   <div class="report-header">
-    <div class="label">AuditLayer Standard Report</div>
+    <div class="label">AuditLayerMedia Standard Report</div>
     <h1>@{handle}</h1>
     <div class="subtitle">{full_name} — {title} · {location}</div>
     <div class="meta">
@@ -222,10 +246,10 @@
 
   <!-- ========== FOOTER ========== -->
   <div class="report-footer">
-    <p style="font-weight:700;color:var(--accent);font-size:0.9rem;">AuditLayerMedia</p>
+    <svg class="alm-wordmark" width="55" height="30" style="display:inline-block;vertical-align:middle;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 55.0523 30" role="img" aria-label="AuditLayerMedia"><path transform="translate(0.0000 24) scale(0.01171875 -0.01171875)" d="M1133 0 1008 360H471L346 0H51L565 1409H913L1425 0ZM739 1192 733 1170Q723 1134 709.0 1088.0Q695 1042 537 582H942L803 987L760 1123Z" fill="#14241f"/><path transform="translate(16.1320 24) scale(0.01171875 -0.01171875)" d="M137 0V1409H432V228H1188V0Z" fill="#14241f"/><path transform="translate(29.5922 24) scale(0.01171875 -0.01171875)" d="M1307 0V854Q1307 883 1307.5 912.0Q1308 941 1317 1161Q1246 892 1212 786L958 0H748L494 786L387 1161Q399 929 399 854V0H137V1409H532L784 621L806 545L854 356L917 582L1176 1409H1569V0Z" fill="#14241f"/><path transform="translate(48.3844 24) scale(0.01171875 -0.01171875)" d="M139 0V305H428V0Z" fill="#0f766e"/></svg>
+    <p style="font-weight:700;color:#14241f;font-size:0.9rem;">AuditLayerMedia</p>
     <p>@auditlayermedia on Instagram</p>
     <p style="font-size:0.72rem;">Follow us for social media optimization tips</p>
-    <!-- PROMPT_VERSION_LINE -->
   </div>
 
 </div>

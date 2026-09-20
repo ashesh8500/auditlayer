@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { bumpResourceRevision } from "@/lib/resources/mutation-revision";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -181,6 +182,7 @@ export async function GET(request: NextRequest) {
     }
     if (dbError) throw new Error("instagram_connection_store_failed");
 
+  await Promise.all([bumpResourceRevision("connections"), bumpResourceRevision("subjects"), bumpResourceRevision("reports")]);
     revalidatePath("/settings/connections");
     revalidatePath("/subjects", "layout");
     revalidatePath("/accounts", "layout");

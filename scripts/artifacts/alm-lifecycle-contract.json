@@ -398,6 +398,11 @@
       "status": "ok"
     },
     {
+      "delegate": {
+        "id": "manual_report_rpc",
+        "kind": "sql_status_literals",
+        "path": "supabase/migrations/20260919204034_admin_transactional_controls.sql"
+      },
       "expected": [
         "ready"
       ],
@@ -619,7 +624,7 @@
       "id": "dashboard_filters",
       "kind": "ts_string_array",
       "note": "consumer; projection=customer",
-      "path": "web/src/app/(app)/dashboard/page.tsx",
+      "path": "web/src/components/reports-library.tsx",
       "status": "ok"
     },
     {
@@ -636,7 +641,7 @@
       "id": "dashboard_active",
       "kind": "ts_status_includes",
       "note": "consumer; projection=customer",
-      "path": "web/src/app/(app)/dashboard/page.tsx",
+      "path": "web/src/components/reports-library.tsx",
       "status": "ok"
     },
     {
@@ -692,19 +697,11 @@
       "status": "ok"
     },
     {
-      "expected": [
-        "queued"
-      ],
-      "extracted": [
-        "queued"
-      ],
-      "id": "audits_action",
-      "kind": "ts_status_comparisons",
-      "note": "consumer; projection=customer",
-      "path": "web/src/lib/actions/audits.ts",
-      "status": "ok"
-    },
-    {
+      "delegate": {
+        "id": "customer_status_projection",
+        "kind": "ts_customer_projection",
+        "path": "web/src/lib/intelligence/client-status.ts"
+      },
       "expected": [
         "analyzing",
         "blocked",
@@ -713,8 +710,9 @@
         "finalizing",
         "needs_review",
         "preparing",
+        "queued",
         "ready",
-        "succeeded"
+        "running"
       ],
       "extracted": [
         "analyzing",
@@ -724,8 +722,9 @@
         "finalizing",
         "needs_review",
         "preparing",
+        "queued",
         "ready",
-        "succeeded"
+        "running"
       ],
       "id": "progress_route",
       "kind": "ts_progress_route",
@@ -744,15 +743,15 @@
     }
   ],
   "summary": {
-    "assertions": 66,
-    "consumers": 14,
+    "assertions": 65,
+    "consumers": 13,
     "producers": 9,
     "projections": [
       "customer",
       "founder"
     ],
     "separate_vocabularies": 13,
-    "sources": 26,
+    "sources": 25,
     "states": 7,
     "status": "passed"
   },

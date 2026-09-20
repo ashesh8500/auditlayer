@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import type { BrandContextVersion } from "@/lib/intelligence/subjects";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   CheckCircle2,
@@ -34,7 +36,6 @@ import { LivingBriefEditor } from "@/components/intelligence/living-brief-editor
 import type {
   SubjectSummary,
   ChannelSummary,
-  LivingBriefVersion,
   LivingBriefProposal,
   LivingBriefContent,
   ScoreEvidence,
@@ -46,7 +47,7 @@ import type {
 
 const TABS = [
   ["overview", "Overview"],
-  ["brief", "Living Brief"],
+  ["brief", "Brand Context"],
   ["scores", "Scores"],
   ["recommendations", "Recommendations"],
 ] as const;
@@ -56,7 +57,7 @@ interface SubjectHomeProps {
   data: {
     subject: SubjectSummary;
     channels: ChannelSummary[];
-    briefVersions: LivingBriefVersion[];
+    briefVersions: BrandContextVersion[];
     proposals: LivingBriefProposal[];
     scores: ScoreEvidence[];
     recommendations: RecommendationSummary[];
@@ -66,6 +67,7 @@ interface SubjectHomeProps {
 }
 
 export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
+  const router = useRouter();
   const subject = data.subject;
   const channels = data.channels;
   const briefVersions = data.briefVersions;
@@ -80,7 +82,7 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
   >("overview");
   const [proposalState, setProposalState] = useState<
     Record<string, LivingBriefProposal["status"]>
-  >(() => Object.fromEntries(proposals.map((p) => [p.id, p.status])));
+  >({});
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -102,7 +104,7 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
   >(null);
   const [resolvingRecId, setResolvingRecId] = useState<string | null>(null);
 
-  const currentBrief = briefVersions[0] ?? null;
+  const currentBrief = briefVersions.find(v => v.confirmed === true) ?? null;
   const pendingProposals = proposals.filter(
     (p) => (proposalState[p.id] ?? p.status) === "proposed",
   );
@@ -111,16 +113,16 @@ export function SubjectHome({ subjectId, data }: SubjectHomeProps) {
     setProposalError(null);
     setResolvingId(id);
     startTransition(async () => {
-      const result = await resolveBriefProposalAction({
-        proposalId: id,
-        status,
-      });
-      setResolvingId(null);
-      if (!result.ok) {
-        setProposalError(result.error);
-        return;
-      }
-      setProposalState((prev) => ({ ...prev, [id]: status }));
+      try {
+        const result = await resolveBriefProposalAction({ proposalId: id, status });
+        if (!result.ok) { setProposalError(result.error); return; }
+        setProposalState((prev) => ({ ...prev, [id]: status }));
+        // Accepting a suggestion creates a new immutable brief version. Refresh
+        // both the brief and the remaining proposal bases, not just the badge.
+        router.refresh();
+      } catch {
+        setProposalError("Could not update this suggestion. Please try again.");
+      } finally { setResolvingId(null); }
     });
   };
 
@@ -256,7 +258,7 @@ function OverviewTab({
   pendingProposalCount,
 }: {
   channels: ChannelSummary[];
-  currentBrief: LivingBriefVersion | null;
+  currentBrief: BrandContextVersion | null;
   recommendations: RecommendationSummary[];
   recommendationDecisions: Record<string, RecommendationDecision>;
   sinceLast: SinceLastAuditItem[];
@@ -328,7 +330,7 @@ function OverviewTab({
       <section>
         <div className="flex items-center gap-2">
           <BookOpen className="size-4 text-[color:var(--accent)]" />
-          <h2 className="text-base font-semibold">Living Brief</h2>
+          <h2 className="text-base font-semibold">Brand Context</h2>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
           The strategy every audit reads through — sharper brief, sharper report.
@@ -349,7 +351,7 @@ function OverviewTab({
           </div>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">
-            No brief yet — open the Living Brief tab to set who you serve and
+            No brief yet — open the Brand Context tab to set who you serve and
             what success looks like.
           </p>
         )}
@@ -422,9 +424,6 @@ function OverviewTab({
                   {(!report.status || report.status === "ready") && ` · v${report.reportVersion}`}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {report.promptVersion
-                    ? `Method ${report.promptVersion} · `
-                    : ""}
                   {new Date(report.createdAt).toLocaleDateString()}
                 </p>
               </div>
@@ -455,7 +454,7 @@ function BriefTab({
 }: {
   subjectId: string;
   subjectType: SubjectSummary["type"];
-  versions: LivingBriefVersion[];
+  versions: BrandContextVersion[];
   proposals: LivingBriefProposal[];
   proposalState: Record<string, LivingBriefProposal["status"]>;
   proposalError: string | null;
@@ -467,12 +466,13 @@ function BriefTab({
     versions[0]?.id ?? null,
   );
   const [editing, setEditing] = useState(false);
-  const current = versions[0] ?? null;
+  const current = versions.find(v => v.confirmed === true) ?? null;
 
-  const currentFieldValue = (path: string): string => {
-    if (!current) return "";
+  const currentFieldValue = (path: string, baseVersion: number): string => {
+    const base = versions.find(v => v.version === baseVersion);
+    if (!base) return "";
     const key = path.replace(/^\/+/, "").split(/[./]/)[0] ?? "";
-    const content = current.content;
+    const content = base.content;
     const map: Record<string, keyof LivingBriefContent> = {
       identity: "identity",
       vision: "vision",
@@ -499,9 +499,9 @@ function BriefTab({
     <div className="space-y-10">
       <section className="space-y-4">
         <div>
-          <h2 className="text-base font-semibold">Living Brief</h2>
+          <h2 className="text-base font-semibold">Brand Context</h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Your Living Brief is the strategy AuditLayer uses to interpret every
+            Your Brand Context is the strategy AuditLayer uses to interpret every
             audit for this subject. Keep it current — who you are, who you serve,
             how you stand out, and what matters next. Changes create a new
             version; past reports stay unchanged.
@@ -515,7 +515,7 @@ function BriefTab({
             className="font-semibold"
             onClick={() => setEditing(true)}
           >
-            {current ? "Edit Living Brief" : "Create Living Brief"}
+            {current ? "Edit Brand Context" : "Create Brand Context"}
           </Button>
         ) : (
           <LivingBriefEditor
@@ -533,7 +533,7 @@ function BriefTab({
             <p className="text-sm font-semibold">
               Current · v{current.version}
             </p>
-            <Badge tone="accent">Active</Badge>
+            <Badge tone="accent">Confirmed</Badge>
           </div>
           <LivingBriefView content={current.content} showEmptyPlaceholders />
         </section>
@@ -570,17 +570,18 @@ function BriefTab({
                   onClick={() =>
                     setExpanded(expanded === v.id ? null : v.id)
                   }
-                  className="w-full text-left"
+                  aria-expanded={expanded === v.id}
+                  className="min-h-11 w-full text-left alm-focus"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-semibold">
                       v{v.version}
-                      {i === 0 ? " · Current" : ""}
+                      {v.id === current?.id ? " · Current confirmed" : ""}
                     </p>
                     <Badge
-                      tone={v.source === "user" ? "accent" : "warning"}
+                      tone={v.confirmed === true ? "accent" : "warning"}
                     >
-                      {v.source === "user" ? "Owner edit" : "From proposal"}
+                      {v.confirmed === true ? "Confirmed" : v.confirmed === false ? "Unconfirmed" : "Confirmation unknown"} · {v.authorLabel || "Author unknown"}
                     </Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -591,13 +592,14 @@ function BriefTab({
                     })}
                   </p>
                 </button>
-                {expanded === v.id && i > 0 && (
+                {expanded === v.id && (
                   <div className="mt-3 space-y-3">
                     {v.changeSummary && (
                       <p className="text-sm italic text-muted-foreground">
                         {v.changeSummary}
                       </p>
                     )}
+                    {!v.changeSummary && <p className="text-xs text-muted-foreground">Change summary and edit source were not recorded.</p>}
                     <LivingBriefView content={v.content} />
                   </div>
                 )}
@@ -614,7 +616,7 @@ function BriefTab({
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
           When an audit suggests a change to your strategy, it lands here for
-          you to accept or reject — nothing rewrites the Living Brief until you
+          you to accept or reject — nothing rewrites the Brand Context until you
           decide.
         </p>
         {proposalError && (
@@ -622,14 +624,14 @@ function BriefTab({
         )}
         {proposals.length === 0 ? (
           <EmptyState
-            title="No open suggestions"
+            title="No suggestions recorded"
             detail="When an audit suggests brief updates, they appear here."
           />
         ) : (
           <ul className="divide-y divide-border border-y border-border">
             {proposals.map((p) => {
               const status = proposalState[p.id] ?? p.status;
-              const before = currentFieldValue(p.path);
+              const before = currentFieldValue(p.path, p.baseVersion);
               const busy = resolving && resolvingId === p.id;
               return (
                 <li key={p.id} className="space-y-3 py-4">
@@ -655,10 +657,11 @@ function BriefTab({
                       {briefPathLabel(p.path)}
                     </span>
                   </div>
+                  {!versions.some(v => v.version === p.baseVersion) && <p className="text-xs text-muted-foreground">Base version {p.baseVersion} unavailable; comparison unknown.</p>}
                   {before ? (
                     <div className="space-y-1">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Current
+                        Base version {p.baseVersion}
                       </p>
                       <p className="text-sm leading-relaxed text-muted-foreground line-through decoration-border">
                         {before}
@@ -724,14 +727,7 @@ function ScoresTab({ scores }: { scores: ScoreEvidence[] }) {
     );
   }
 
-  const numericScores = scores.filter((s) => s.score != null);
-  const overall =
-    numericScores.length > 0
-      ? Math.round(
-          numericScores.reduce((sum, s) => sum + (s.score ?? 0), 0) /
-            numericScores.length,
-        )
-      : null;
+  const overall = scores.find(s => s.dimensionId === "overall")?.score ?? null;
 
   return (
     <section className="space-y-6">
@@ -1042,7 +1038,7 @@ function EmptyState({ title, detail }: { title: string; detail: string }) {
 
 const CHANGE_REASON_LABELS: Record<string, string> = {
   evidence_changed: "Moved because evidence changed.",
-  brief_changed: "Moved because the Living Brief lens changed.",
+  brief_changed: "Moved because the Brand Context lens changed.",
   methodology_changed: "Moved because methodology changed.",
   prior_error_corrected: "Moved because a prior correction landed.",
   new: "New score — no previous baseline.",

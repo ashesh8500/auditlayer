@@ -7,13 +7,13 @@
 
 import { revalidatePath } from "next/cache";
 
+import { workspaceIntentBlocker } from "@/lib/workspace/intake";
+import { loadAuditAllowance } from "@/lib/allowance";
+import { bumpResourceRevision } from "@/lib/resources/mutation-revision";
 import { requireProfile } from "@/lib/auth";
 import {
-  allowedReportTypesForProfile,
   detectPlatform,
-  effectivePlanForProfile,
   evaluateIntake,
-  USAGE_STATUSES,
   type Goal,
   type Platform,
   type ReportType,
@@ -35,7 +35,7 @@ import {
   type RecommendationDecisionValue,
 } from "@/lib/intelligence/api";
 import { buildBatchFingerprint } from "@/lib/intelligence/batch-idempotency";
-import { canonicalizeWebsiteLocator } from "@/lib/intelligence/channel-locator";
+import { canonicalizeWebsiteLocator, channelDedupeKey } from "@/lib/intelligence/channel-locator";
 import { contentToKernelPayload } from "@/lib/intelligence/brief-project";
 import {
   listBriefVersionsForSubject,
@@ -56,6 +56,8 @@ const UUID_RE =
 
 export async function prepareAndSubmitIntelligenceBatch(input: {
   submission: BatchSubmission;
+  /** Explicit opt-in only; never infer a credit contract from an old plan. */
+  workspaceIntent?: unknown;
   channelLocators: string[];
   /** Required when submission.subjectId is a client draft (`new-…`). */
   newSubjectName?: string;
@@ -81,9 +83,10 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
   }
 
   const profile = await requireProfile();
+  if (Object.prototype.hasOwnProperty.call(input, "workspaceIntent")) {
+    return { ok: false, mode: "live", error: workspaceIntentBlocker(input.workspaceIntent, profile.id) };
+  }
   const admin = createAdminClient();
-  const plan = effectivePlanForProfile(profile as never);
-  const allowed = allowedReportTypesForProfile(profile as never);
 
   try {
     const existingSubjectId = UUID_RE.test(input.submission.subjectId)
@@ -151,6 +154,8 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
       idempotencyKey,
     });
     if (committedRetry) {
+      await bumpResourceRevision("reports");
+      await bumpResourceRevision("subjects");
       return {
         ok: true,
         mode: "live",
@@ -173,15 +178,29 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
       }
     }
 
-    const { count } = await admin
-      .from("audits")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", profile.id)
-      .in("status", USAGE_STATUSES);
-    const usage = count ?? 0;
-    const giftedAudits = Number(
-      (profile as { gifted_audits?: number }).gifted_audits ?? 0,
-    );
+    const allowance = await loadAuditAllowance(admin, profile.id);
+    const plan = allowance.effective_plan;
+    const allowed = allowance.allowed_report_types;
+    if (existingSubjectId) {
+      const channels = await listChannelsForSubject(existingSubjectId);
+      for (const intent of auditIntents) {
+        const channel = channels.find((entry) => entry.id === intent.channelId) ?? channels.find((entry) =>
+          intent.channelType === entry.platform && channelDedupeKey(entry.platform, entry.url || entry.handle) === channelDedupeKey(entry.platform, intent.channelLocator));
+        if (!channel && !UUID_RE.test(intent.channelId)) continue; // new manually entered target
+        if (!channel || channel.reconnectRequired || channel.ownershipStatus === "observed") {
+          return { ok: false, mode: "live", error: "This channel is unavailable. Reconnect or manage it before submitting." };
+        }
+        // Resolve existing channel identity from the authorized DB row, not browser metadata.
+        intent.channelLocator = channel.url || channel.handle;
+        intent.channelType = channel.platform;
+        intent.platform = channel.platform === "website" ? "unknown" : channel.platform;
+      }
+    }
+    if (allowance.remaining !== null && input.submission.requests.length > allowance.remaining) {
+      return { ok: false, mode: "live", error: allowance.window_valid
+        ? "Your current access has reached its audit limit. Review your plan or wait for your next billing period."
+        : "Your billing period is being reconciled. Refresh shortly or contact support." };
+    }
 
     const plannedAudits: EntitledBatchAuditInput[] = [];
     const goal: Goal = "growth";
@@ -202,7 +221,17 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
       const channelType = intent.channelType;
       const platform = intent.platform as Platform;
 
-      const decision = evaluateIntake(
+      // An explicit website is not a social handle. Keep its host/path intact;
+      // the worker still enforces DNS/private-network/SSRF restrictions.
+      const website = channelType === "website" ? canonicalizeWebsiteLocator(locator) : null;
+      if (website && (!/^https:\/\/[^/]+/.test(website) || !new URL(website).hostname.includes("."))) {
+        return { ok: false, mode: "live", error: "Enter a valid public website address." };
+      }
+      const decision = website ? {
+        accepted: true, normalizedHandle: website, platform: "unknown" as Platform,
+        status: "queued", limitations: [] as string[], milestoneLabel: null,
+        reasons: [] as string[],
+      } : evaluateIntake(
         {
           handle: locator,
           goal,
@@ -210,9 +239,7 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
           platform,
           plan,
         },
-        usage + plannedAudits.length,
-        null,
-        Math.max(0, giftedAudits - plannedAudits.length),
+        0, // Quota is owned by audit_allowance + locked atomic SQL, not calibration.
       );
       if (!decision.accepted) {
         return {
@@ -222,7 +249,9 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
         };
       }
 
-      const normalizedHandle = decision.normalizedHandle || locator;
+      const normalizedHandle = channelType === "website"
+        ? canonicalizeWebsiteLocator(locator)
+        : decision.normalizedHandle || locator;
       const locatorForLink = channelType
         ? channelType === "website"
           ? canonicalizeWebsiteLocator(normalizedHandle)
@@ -232,11 +261,12 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
         channelType: channelType ?? null,
         channelLocator: locatorForLink,
         handle: normalizedHandle,
-        platform: decision.platform,
+        platform: channelType === "website" ? "unknown" : decision.platform,
         goal,
         reportType,
         context: changeNotes,
-        status: decision.status,
+        status: channelType === "website" ? "queued" : decision.status,
+        briefVersionId: input.submission.briefVersionId || null,
         limitations: decision.limitations,
         milestoneLabel: decision.milestoneLabel,
         forceRefresh: request.forceRefresh,
@@ -255,6 +285,10 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
       audits: plannedAudits,
     });
 
+    await bumpResourceRevision("reports");
+    await bumpResourceRevision("subjects");
+    revalidatePath("/subjects");
+    revalidatePath("/dashboard");
     return {
       ok: true,
       mode: "live",
@@ -265,6 +299,9 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Batch submit failed unexpectedly.";
+    if (message.includes("billing_period_unreconciled")) {
+      return { ok: false, mode: "live", error: "Your billing period is being reconciled. Refresh shortly or contact support." };
+    }
     if (message.includes("audit_limit_reached")) {
       return {
         ok: false,
@@ -283,7 +320,7 @@ export async function prepareAndSubmitIntelligenceBatch(input: {
 export async function resolveBriefProposalAction(input: {
   proposalId: string;
   status: "accepted" | "rejected";
-}): Promise<{ ok: true; mode: "live" } | { ok: false; error: string }> {
+}): Promise<{ ok: true; mode: "live"; subjectId: string; refresh: true } | { ok: false; error: string }> {
   if (!UUID_RE.test(input.proposalId)) {
     return { ok: false, error: "Invalid proposal." };
   }
@@ -294,12 +331,25 @@ export async function resolveBriefProposalAction(input: {
   try {
     const profile = await requireProfile();
     const admin = createAdminClient();
+    const { data: proposal, error: proposalError } = await admin.from("context_update_proposals")
+      .select("subject_id").eq("id", input.proposalId).maybeSingle();
+    if (proposalError || !proposal) return { ok: false, error: "Proposal not found." };
+    const { data: owner } = await admin.from("subjects").select("id")
+      .eq("id", proposal.subject_id).eq("user_id", profile.id).maybeSingle();
+    if (!owner) return { ok: false, error: "Proposal not found." };
     await rpcResolveContextUpdateProposal(admin, {
       proposalId: input.proposalId,
       status: input.status,
       userId: profile.id,
     });
-    return { ok: true, mode: "live" };
+    const { data: resolved, error: readError } = await admin.from("context_update_proposals")
+      .select("status").eq("id", input.proposalId).maybeSingle();
+    if (readError || resolved?.status !== input.status) throw new Error("Decision could not be verified.");
+    await bumpResourceRevision("subjects");
+    revalidatePath(`/subjects/${proposal.subject_id}`);
+    revalidatePath("/subjects");
+    revalidatePath("/audits/new");
+    return { ok: true, mode: "live", subjectId: proposal.subject_id, refresh: true };
   } catch (err) {
     return {
       ok: false,
@@ -372,6 +422,7 @@ export async function saveLivingBriefVersionAction(input: {
     revalidatePath(`/subjects/${input.subjectId}`);
     revalidatePath("/subjects");
     revalidatePath("/audits/new");
+    await bumpResourceRevision("subjects");
 
     return { ok: true, versionId, version: nextVersion };
   } catch (err) {
@@ -493,7 +544,9 @@ export async function recordRecommendationDecisionAction(input: {
 
     if (plan.action === "noop") {
       if (plan.reason === "duplicate" && plan.decisionId) {
-        // Idempotent retry of an already-recorded decision: zero writes.
+        // Recovered success also invalidates a possibly stale subject view.
+        await bumpResourceRevision("subjects");
+        // Idempotent retry of an already-recorded decision: zero database writes.
         return {
           ok: true,
           decisionId: plan.decisionId,
@@ -507,6 +560,7 @@ export async function recordRecommendationDecisionAction(input: {
     }
 
     const decisionId = await rpcRecordDecision(admin, plan.call);
+    await bumpResourceRevision("subjects");
     revalidatePath(`/subjects/${input.subjectId}`);
     revalidatePath("/subjects");
 

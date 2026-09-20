@@ -140,14 +140,14 @@ describe("share-link access states", () => {
     expect(decision).toEqual({ allow: true, mode: "public" });
   });
 
-  it("email link verified via verified_at → allow", () => {
+  it("email link global verified_at never authorizes another visitor", () => {
     const decision = decideShareAccess(
       shareState({
         mode: "email",
         verifiedAt: "2026-08-01T00:00:00Z",
       }),
     );
-    expect(decision).toEqual({ allow: true, mode: "email" });
+    expect(decision).toEqual({ allow: false, reason: "needs_verification" });
   });
 
   it("email link verified via session cookie → allow", () => {

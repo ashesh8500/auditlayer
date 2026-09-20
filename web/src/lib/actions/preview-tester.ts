@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { bumpResourceRevision } from "@/lib/resources/mutation-revision";
 
 import { requireProfile } from "@/lib/auth";
 import {
@@ -56,6 +57,7 @@ export async function setPreviewTesterPlan(
     };
   }
 
+  await bumpResourceRevision("reports");
   revalidatePath("/subjects");
   revalidatePath("/audits/new");
   revalidatePath("/dashboard");
@@ -77,6 +79,7 @@ export async function reseedPreviewDemoSubjects(
 
   try {
     const result = await seedPreviewDemoSubjects(profile.id, { force: true });
+    await bumpResourceRevision("subjects");
     revalidatePath("/subjects");
     revalidatePath("/audits/new");
     revalidatePath("/preview-setup");

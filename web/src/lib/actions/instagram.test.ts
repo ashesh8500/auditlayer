@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+const bump = vi.hoisted(()=>vi.fn());
+vi.mock("@/lib/resources/mutation-revision",()=>({bumpResourceRevision:bump}));
 
 import { revalidatePath } from "next/cache";
 
@@ -19,6 +21,7 @@ const revalidatePathMock = vi.mocked(revalidatePath);
 const captureWebFailureMock = vi.mocked(captureWebFailure);
 
 beforeEach(() => {
+  bump.mockReset();
   requireUserMock.mockReset();
   createAdminClientMock.mockReset();
   revalidatePathMock.mockReset();
@@ -35,6 +38,7 @@ describe("disconnectInstagram", () => {
 
     await expect(disconnectInstagram(formData)).rejects.toThrow("redirect:/settings/connections?disconnected=1");
 
+    expect(bump.mock.calls.map(([name])=>name).sort()).toEqual(["connections","reports","subjects"]);
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(rpc).toHaveBeenCalledWith("disconnect_instagram_connection", {
       p_user_id: "owner-123",
@@ -48,6 +52,7 @@ describe("disconnectInstagram", () => {
 
     expect(createAdminClientMock).not.toHaveBeenCalled();
     expect(revalidatePathMock).not.toHaveBeenCalled();
+    expect(bump).not.toHaveBeenCalled();
   });
 
   it("captures a failed owner-scoped disconnect with fixed safe dimensions", async () => {

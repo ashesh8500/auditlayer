@@ -6,53 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-// Application-level event vocabulary; preserve this preamble when regenerating.
-export type AuditEventPhase =
-  | "intake"
-  | "queued"
-  | "approved"
-  | "started"
-  | "researching"
-  | "metrics"
-  | "peers"
-  | "scoring"
-  | "composing"
-  | "uploaded"
-  | "succeeded"
-  | "failed"
-  | "refinement"
-
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       account_progression: {
@@ -116,6 +70,7 @@ export type Database = {
           id: string
           ig_connection_id: string | null
           ig_metrics_snapshot: string | null
+          instagram_user_id: number | null
           last_researched_at: string | null
           ownership_status: string
           platform: string
@@ -132,6 +87,7 @@ export type Database = {
           id?: string
           ig_connection_id?: string | null
           ig_metrics_snapshot?: string | null
+          instagram_user_id?: number | null
           last_researched_at?: string | null
           ownership_status?: string
           platform?: string
@@ -148,6 +104,7 @@ export type Database = {
           id?: string
           ig_connection_id?: string | null
           ig_metrics_snapshot?: string | null
+          instagram_user_id?: number | null
           last_researched_at?: string | null
           ownership_status?: string
           platform?: string
@@ -405,6 +362,7 @@ export type Database = {
           account_id: string | null
           admin_notes: string
           agent_bundle_version: string | null
+          brief_version_id: string | null
           claimed_at: string | null
           claimed_by: string | null
           context: string
@@ -437,6 +395,7 @@ export type Database = {
           account_id?: string | null
           admin_notes?: string
           agent_bundle_version?: string | null
+          brief_version_id?: string | null
           claimed_at?: string | null
           claimed_by?: string | null
           context?: string
@@ -469,6 +428,7 @@ export type Database = {
           account_id?: string | null
           admin_notes?: string
           agent_bundle_version?: string | null
+          brief_version_id?: string | null
           claimed_at?: string | null
           claimed_by?: string | null
           context?: string
@@ -503,6 +463,13 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audits_brief_version_id_fkey"
+            columns: ["brief_version_id"]
+            isOneToOne: false
+            referencedRelation: "living_brief_versions"
             referencedColumns: ["id"]
           },
           {
@@ -934,10 +901,11 @@ export type Database = {
         Row: {
           access_token: string | null
           account_type: string | null
-          connection_status: "connected" | "reconnect_required"
+          connection_status: string
           created_at: string
+          credential_version: string
           followers_count: number | null
-          graph_api_family: "instagram" | "facebook" | null
+          graph_api_family: string | null
           id: string
           ig_user_id: number
           ig_username: string
@@ -946,7 +914,7 @@ export type Database = {
           long_lived_expires_at: string
           long_lived_token: string
           media_count: number | null
-          reconnect_reason: "auth_permission" | "legacy_connection" | null
+          reconnect_reason: string | null
           reconnect_required_at: string | null
           updated_at: string
           user_id: string
@@ -954,10 +922,11 @@ export type Database = {
         Insert: {
           access_token?: string | null
           account_type?: string | null
-          connection_status?: "connected" | "reconnect_required"
+          connection_status?: string
           created_at?: string
+          credential_version?: string
           followers_count?: number | null
-          graph_api_family?: "instagram" | "facebook" | null
+          graph_api_family?: string | null
           id?: string
           ig_user_id: number
           ig_username: string
@@ -966,7 +935,7 @@ export type Database = {
           long_lived_expires_at: string
           long_lived_token: string
           media_count?: number | null
-          reconnect_reason?: "auth_permission" | "legacy_connection" | null
+          reconnect_reason?: string | null
           reconnect_required_at?: string | null
           updated_at?: string
           user_id: string
@@ -974,10 +943,11 @@ export type Database = {
         Update: {
           access_token?: string | null
           account_type?: string | null
-          connection_status?: "connected" | "reconnect_required"
+          connection_status?: string
           created_at?: string
+          credential_version?: string
           followers_count?: number | null
-          graph_api_family?: "instagram" | "facebook" | null
+          graph_api_family?: string | null
           id?: string
           ig_user_id?: number
           ig_username?: string
@@ -986,7 +956,7 @@ export type Database = {
           long_lived_expires_at?: string
           long_lived_token?: string
           media_count?: number | null
-          reconnect_reason?: "auth_permission" | "legacy_connection" | null
+          reconnect_reason?: string | null
           reconnect_required_at?: string | null
           updated_at?: string
           user_id?: string
@@ -1508,6 +1478,7 @@ export type Database = {
           account_type: string
           created_at: string | null
           current_period_end: string | null
+          current_period_start: string | null
           email: string | null
           full_name: string
           gifted_audits: number
@@ -1527,6 +1498,7 @@ export type Database = {
           account_type?: string
           created_at?: string | null
           current_period_end?: string | null
+          current_period_start?: string | null
           email?: string | null
           full_name?: string
           gifted_audits?: number
@@ -1546,6 +1518,7 @@ export type Database = {
           account_type?: string
           created_at?: string | null
           current_period_end?: string | null
+          current_period_start?: string | null
           email?: string | null
           full_name?: string
           gifted_audits?: number
@@ -1577,6 +1550,7 @@ export type Database = {
           command_type: string
           created_at: string
           current_period_end_epoch: number | null
+          current_period_start_epoch: number | null
           customer_id: string
           digest: string
           id: string
@@ -1594,6 +1568,7 @@ export type Database = {
           command_type: string
           created_at?: string
           current_period_end_epoch?: number | null
+          current_period_start_epoch?: number | null
           customer_id: string
           digest: string
           id?: string
@@ -1611,6 +1586,7 @@ export type Database = {
           command_type?: string
           created_at?: string
           current_period_end_epoch?: number | null
+          current_period_start_epoch?: number | null
           customer_id?: string
           digest?: string
           id?: string
@@ -1744,41 +1720,62 @@ export type Database = {
       refinements: {
         Row: {
           audit_id: string
+          base_report_version: number | null
           claimed_at: string | null
           claimed_by: string | null
+          cost_usd: number | null
           created_at: string | null
           error: string
           id: string
           instruction: string
+          lease_expires_at: string | null
           section: string
           status: string
+          tokens_in: number | null
+          tokens_out: number | null
           updated_at: string | null
+          usage_estimated: boolean | null
+          usage_status: string
           user_id: string | null
         }
         Insert: {
           audit_id: string
+          base_report_version?: number | null
           claimed_at?: string | null
           claimed_by?: string | null
+          cost_usd?: number | null
           created_at?: string | null
           error?: string
           id?: string
           instruction: string
+          lease_expires_at?: string | null
           section: string
           status?: string
+          tokens_in?: number | null
+          tokens_out?: number | null
           updated_at?: string | null
+          usage_estimated?: boolean | null
+          usage_status?: string
           user_id?: string | null
         }
         Update: {
           audit_id?: string
+          base_report_version?: number | null
           claimed_at?: string | null
           claimed_by?: string | null
+          cost_usd?: number | null
           created_at?: string | null
           error?: string
           id?: string
           instruction?: string
+          lease_expires_at?: string | null
           section?: string
           status?: string
+          tokens_in?: number | null
+          tokens_out?: number | null
           updated_at?: string | null
+          usage_estimated?: boolean | null
+          usage_status?: string
           user_id?: string | null
         }
         Relationships: [
@@ -2000,8 +1997,12 @@ export type Database = {
           revoked_at: string | null
           token: string
           updated_at: string
+          verification_attempts: number
           verification_code: string | null
           verification_code_expires: string | null
+          verification_send_count: number
+          verification_sent_at: string | null
+          verification_window_at: string | null
           verified_at: string | null
           view_count: number
         }
@@ -2016,8 +2017,12 @@ export type Database = {
           revoked_at?: string | null
           token: string
           updated_at?: string
+          verification_attempts?: number
           verification_code?: string | null
           verification_code_expires?: string | null
+          verification_send_count?: number
+          verification_sent_at?: string | null
+          verification_window_at?: string | null
           verified_at?: string | null
           view_count?: number
         }
@@ -2032,8 +2037,12 @@ export type Database = {
           revoked_at?: string | null
           token?: string
           updated_at?: string
+          verification_attempts?: number
           verification_code?: string | null
           verification_code_expires?: string | null
+          verification_send_count?: number
+          verification_sent_at?: string | null
+          verification_window_at?: string | null
           verified_at?: string | null
           view_count?: number
         }
@@ -2050,6 +2059,38 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_sessions: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          session_hash: string
+          share_link_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          session_hash: string
+          share_link_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          session_hash?: string
+          share_link_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_sessions_share_link_id_fkey"
+            columns: ["share_link_id"]
+            isOneToOne: false
+            referencedRelation: "share_links"
             referencedColumns: ["id"]
           },
         ]
@@ -2232,6 +2273,21 @@ export type Database = {
         Args: { p_audit_id: string; p_batch_id: string }
         Returns: undefined
       }
+      admin_assign_access_delta: {
+        Args: {
+          p_account_type: string
+          p_actor_id: string
+          p_gifted_delta: number
+          p_plan: string
+          p_reason: string
+          p_target_user_id: string
+        }
+        Returns: Json
+      }
+      admin_finalize_manual_report: {
+        Args: { p_actor_id: string; p_audit_id: string; p_report_path: string }
+        Returns: Json
+      }
       admin_set_access: {
         Args: {
           p_account_type: string
@@ -2274,6 +2330,7 @@ export type Database = {
         }
         Returns: string
       }
+      audit_allowance: { Args: { p_user_id: string }; Returns: Json }
       backfill_connected_subjects: {
         Args: never
         Returns: {
@@ -2281,10 +2338,28 @@ export type Database = {
           detail: string
         }[]
       }
+      backfill_stripe_period_start: {
+        Args: {
+          p_customer_id: string
+          p_end_epoch: number
+          p_start_epoch: number
+          p_subscription_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       brief_path_is_protected: { Args: { p_path: string }; Returns: boolean }
       brief_path_tokens: { Args: { p_path: string }; Returns: string[] }
       claim_next_queued: { Args: { worker_id: string }; Returns: Json }
       claim_next_refinement: { Args: { worker_id: string }; Returns: Json }
+      classify_instagram_subject_link: {
+        Args: { p_account_id: string; p_user_id: string }
+        Returns: {
+          channel_id: string
+          classification: string
+          subject_id: string
+        }[]
+      }
       create_audit_batch: {
         Args: {
           p_idempotency_key: string
@@ -2308,6 +2383,16 @@ export type Database = {
       disconnect_instagram_connection: {
         Args: { p_connection_id: string; p_user_id: string }
         Returns: undefined
+      }
+      enqueue_report_refinement: {
+        Args: {
+          p_audit_id: string
+          p_instruction: string
+          p_report_version: number
+          p_section: string
+          p_user_id: string
+        }
+        Returns: string
       }
       finalize_initial_report: {
         Args: {
@@ -2347,6 +2432,18 @@ export type Database = {
         }
         Returns: number
       }
+      finalize_regenerated_report: {
+        Args: {
+          p_agent_bundle_version: string
+          p_audit_id: string
+          p_delivery_status: string
+          p_intelligence_run_id?: string
+          p_prompt_version: string
+          p_report_path: string
+          p_template_version: string
+        }
+        Returns: number
+      }
       founder_transition_audit: {
         Args: {
           p_action: string
@@ -2373,6 +2470,7 @@ export type Database = {
         }
         Returns: string
       }
+      instagram_locator_key: { Args: { p_locator: string }; Returns: string }
       is_admin: { Args: never; Returns: boolean }
       is_share_link_valid: { Args: { p_token: string }; Returns: string }
       link_subject_channel: {
@@ -2395,16 +2493,51 @@ export type Database = {
       }
       owns_audit: { Args: { target_audit_id: string }; Returns: boolean }
       owns_subject: { Args: { target_subject_id: string }; Returns: boolean }
-      persist_instagram_connection: {
+      persist_instagram_connection:
+        | {
+            Args: {
+              p_account_type: string
+              p_followers_count: number
+              p_ig_user_id: number
+              p_ig_username: string
+              p_long_lived_expires_at: string
+              p_long_lived_token: string
+              p_media_count: number
+              p_user_id: string
+            }
+            Returns: {
+              account_id: string
+              connection_id: string
+            }[]
+          }
+        | {
+            Args: {
+              p_account_type: string
+              p_followers_count: number
+              p_graph_api_family: string
+              p_ig_user_id: number
+              p_ig_username: string
+              p_long_lived_expires_at: string
+              p_long_lived_token: string
+              p_media_count: number
+              p_user_id: string
+            }
+            Returns: {
+              account_id: string
+              connection_id: string
+            }[]
+          }
+      persist_targeted_instagram_connection: {
         Args: {
           p_account_type: string
-          p_followers_count: number | null
-          p_graph_api_family: "instagram" | "facebook"
+          p_expected_connection_id: string
+          p_followers_count: number
+          p_graph_api_family: string
           p_ig_user_id: number
           p_ig_username: string
           p_long_lived_expires_at: string
           p_long_lived_token: string
-          p_media_count: number | null
+          p_media_count: number
           p_user_id: string
         }
         Returns: {
@@ -2421,9 +2554,22 @@ export type Database = {
         Returns: number
       }
       reap_stale_running: { Args: { cutoff_minutes?: number }; Returns: number }
+      reconcile_instagram_subject_link: {
+        Args: {
+          p_account_id: string
+          p_expected_channel_id?: string
+          p_expected_classification: string
+          p_user_id: string
+        }
+        Returns: {
+          channel_id: string
+          subject_id: string
+        }[]
+      }
       reconcile_stripe_subscription: {
         Args: {
           p_current_period_end_epoch: number
+          p_current_period_start_epoch: number
           p_customer_id: string
           p_digest: string
           p_event_created: number
@@ -2513,6 +2659,20 @@ export type Database = {
         Args: { p_customer_state: string; p_detail?: string; p_run_id: string }
         Returns: undefined
       }
+      share_email_challenge: {
+        Args: {
+          p_action: string
+          p_email: string
+          p_hash: string
+          p_session_hash?: string
+          p_token: string
+        }
+        Returns: string
+      }
+      share_session_valid: {
+        Args: { p_session_hash: string; p_token: string }
+        Returns: boolean
+      }
       start_intelligence_run: {
         Args: {
           p_batch_id?: string
@@ -2536,25 +2696,6 @@ export type Database = {
         }
         Returns: string
       }
-      submit_entitled_audit_batch: {
-        Args: {
-          p_audits: Json
-          p_idempotency_key: string
-          p_subject_id: string
-          p_user_id: string
-        }
-        Returns: Json
-      }
-      submit_entitled_audit_batch_v2: {
-        Args: {
-          p_audits: Json
-          p_idempotency_key: string
-          p_subject_draft: Json | null
-          p_subject_id: string | null
-          p_user_id: string
-        }
-        Returns: Json
-      }
       submit_entitled_audit: {
         Args: {
           p_context: string
@@ -2569,6 +2710,25 @@ export type Database = {
         }
         Returns: Json
       }
+      submit_entitled_audit_batch: {
+        Args: {
+          p_audits: Json
+          p_idempotency_key: string
+          p_subject_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      submit_entitled_audit_batch_v2: {
+        Args: {
+          p_audits: Json
+          p_idempotency_key: string
+          p_subject_draft: Json
+          p_subject_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       sweep_retryable_audits: {
         Args: {
           p_base_delay_seconds?: number
@@ -2577,7 +2737,18 @@ export type Database = {
         }
         Returns: Json
       }
+      sweep_stale_refinements: { Args: never; Returns: number }
       upsert_evidence: { Args: { p_items: Json }; Returns: string[] }
+      write_instagram_worker_state: {
+        Args: {
+          p_action: string
+          p_connection_id: string
+          p_credential_version: string
+          p_payload: Json
+          p_user_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
@@ -2596,12 +2767,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2625,11 +2796,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2650,11 +2821,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2675,11 +2846,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2692,11 +2863,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2706,9 +2877,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

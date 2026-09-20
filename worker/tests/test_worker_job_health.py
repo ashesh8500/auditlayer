@@ -128,12 +128,26 @@ def test_refinement_ambiguous_completion_never_overwrites_done(monkeypatch, boun
         gateway.finalize_refinement_report.return_value = 2
         gateway.emit_event.side_effect = [httpx.ReadTimeout("event response lost"), None]
     with pytest.raises(httpx.ReadTimeout):
-        worker._process_refinement(settings, gateway, pipeline, {
+        worker._process_refinement_attempt(settings, gateway, pipeline, {
             "id": "refinement-1", "audit_id": "audit-1", "section": "Summary",
         })
     gateway.update_refinement.assert_not_called()
     assert pipeline.refine.call_count == 1
     assert gateway.finalize_refinement_report.call_count == 1
+
+
+def test_refinement_known_noncommit_is_terminal_not_ambiguous(monkeypatch):
+    from auditlayer_worker.supabase_client import ReportFinalizationRejected
+    settings, gateway, _, _, pipeline = job_harness(monkeypatch)
+    gateway.client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [gateway.claim_next_queued.return_value]
+    pipeline.refine.return_value = ('<html>new</html>', 10, 5)
+    gateway.upload_report.return_value = ('new.html', '')
+    monkeypatch.setattr(worker, '_download_report', lambda *a: '<html>old</html>')
+    monkeypatch.setattr(worker, 'get_report_bundle_version', lambda *a: 'test')
+    settings.alm_profile_bundle_root = 'unused'
+    gateway.finalize_refinement_report.side_effect = ReportFinalizationRejected('base changed')
+    assert worker._process_refinement_attempt(settings, gateway, pipeline, {'id':'r','audit_id':'a','section':'Summary'}) is False
+    assert gateway.update_refinement.call_args.kwargs['status'] == 'failed'
 
 
 @pytest.mark.parametrize("operation", [

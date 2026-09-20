@@ -1,0 +1,17 @@
+import { beforeEach, expect, it, vi } from 'vitest';
+const state=vi.hoisted(()=>({owner:'owner-a' as string|null,auditOwner:'owner-a',pin:'run-old' as string|null,storage:vi.fn(),filters:[] as unknown[][]}));
+vi.mock('@/lib/auth',()=>({getProfile:async()=>state.owner?{id:state.owner}:null}));
+vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({from(table:string){
+ const filters:Record<string,unknown>={};
+ const q={select:()=>q,eq:(key:string,value:unknown)=>{filters[key]=value;state.filters.push([table,key,value]);return q},order:()=>q,abortSignal:()=>q,maybeSingle:()=>Promise.resolve(result()),then:(resolve:(x:unknown)=>unknown)=>Promise.resolve(result()).then(resolve)};
+ function result(){return {error:null,data:table==='audits'?(filters.user_id===state.auditOwner?{id:'a',handle:'fixture',status:'ready',report_version:2,report_path:'latest'}:null):table==='audit_report_versions'?[{version:1,report_path:'old',created_at:'2026-09-01',change_type:'initial',changed_section:null,intelligence_run_id:state.pin},{version:2,report_path:'latest',created_at:'2026-09-19',change_type:'refinement',changed_section:'X',intelligence_run_id:null}]:table==='intelligence_runs'?{subject_id:'subject-a',status:'completed',brief_version:3,evidence_snapshot_id:'old-snapshot',methodology_version:'method-old'}:table==='subjects'?{id:'subject-a'}:null};}return q;
+}})}));
+vi.mock('@/lib/supabase/admin',()=>({createAdminClient:()=>({storage:{from:()=>({download:state.storage})}})}));
+import { GET } from './route';
+beforeEach(()=>{state.owner='owner-a';state.auditOwner='owner-a';state.pin='run-old';state.filters=[];state.storage.mockReset().mockImplementation(async(path:string)=>({data:new Blob([`<body><h2>${path}</h2></body>`]),error:null}));});
+const get=(search='')=>GET(new Request(`http://reader.test/api/resources/report/a${search}`),{params:Promise.resolve({id:'a'})});
+it('authorizes root owner before history or storage, including privileged viewers',async()=>{state.auditOwner='other';expect((await get('?version=1')).status).toBe(404);expect(state.storage).not.toHaveBeenCalled();expect(state.filters.every(([table])=>table==='audits')).toBe(true)});
+it('reads exact historical run rather than latest subject evidence',async()=>{const res=await get('?version=1');expect(res.status).toBe(200);const dto=await res.json();expect(dto.version).toBe(1);expect(dto.latestVersion).toBe(2);expect(dto.evidenceSnapshotId).toBe('old-snapshot');expect(dto.contextVersion).toBe(3);expect(state.storage).toHaveBeenCalledWith('old');expect(state.filters).toContainEqual(['intelligence_runs','id','run-old']);expect(dto).not.toHaveProperty('report_path');expect(dto).not.toHaveProperty('wallet')});
+it('metadata refresh never downloads immutable bytes',async()=>{const dto=await (await get('?metadata=1&version=1')).json();expect(dto).not.toHaveProperty('html');expect(state.storage).not.toHaveBeenCalled()});
+it('legacy provenance stays unknown',async()=>{state.pin=null;const dto=await (await get('?version=1')).json();expect(dto.contextVersion).toBeNull();expect(dto.evidenceSnapshotId).toBeNull();expect(state.filters.some(([table])=>table==='intelligence_runs')).toBe(false)});
+it.each(['0','01','-1','1e0','999'])('rejects absent or malformed version %s',async version=>{expect([400,404]).toContain((await get(`?version=${version}`)).status);expect(state.storage).not.toHaveBeenCalled()});

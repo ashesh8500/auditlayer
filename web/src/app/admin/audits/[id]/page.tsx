@@ -1,3 +1,4 @@
+import { ReportFrame } from "@/components/report-frame";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -124,7 +125,7 @@ export default async function AdminAuditDetail({
         {audit.status === "ready" && audit.report_path ? (
           <div className="mt-3 grid items-start gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,0.8fr)]">
             <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card">
-              <iframe
+              <ReportFrame
                 src={`/api/audits/${id}/report`}
                 title={`Audit report for @${audit.handle}`}
                 sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"

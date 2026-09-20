@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { loadAuditContext } from "@/lib/audit-context";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpen } from "lucide-react";
 
@@ -6,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import { ExperienceBanner } from "@/components/ui/experience-banner";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { isSupabaseAdminConfigured } from "@/lib/env";
+import { editableReportSections } from "@/lib/refinement";
+import { SHARE_LINK_PUBLIC_COLUMNS, projectShareLink } from "@/lib/share-link-public";
 import {
   PLATFORM_LABELS,
   type AuditStatus,
@@ -44,8 +50,8 @@ export default async function AuditDetailPage({
     ? (audit.limitations as string[])
     : [];
   const status = audit.status as AuditStatus;
+  const isWebLocator = /^https?:\/\//i.test(audit.handle);
   const reportVersion = Number((audit as any).report_version ?? 1);
-  const promptVersion = String((audit as any).prompt_version ?? "—");
 
   return (
     <main className="alm-shell py-8 sm:py-12 animate-page-in">
@@ -58,11 +64,11 @@ export default async function AuditDetailPage({
       </Link>
 
       <header className="mt-5 grid gap-5 border-b border-border pb-7 sm:grid-cols-[1fr_auto] sm:items-end">
-        <div className="flex flex-wrap items-center gap-3 justify-between">
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">@{audit.handle}</h1>
+        <div className="flex min-w-0 flex-wrap items-center gap-3 justify-between">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h1 className="min-w-0 max-w-full wrap-anywhere text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">{isWebLocator ? audit.handle : `@${audit.handle}`}</h1>
             <span className="text-sm text-muted-foreground">
-              {PLATFORM_LABELS[audit.platform as Platform] ?? audit.platform}
+              {isWebLocator && audit.platform === "unknown" ? "Website" : PLATFORM_LABELS[audit.platform as Platform] ?? audit.platform}
             </span>
           </div>
           <div className="sm:text-right">
@@ -70,7 +76,7 @@ export default async function AuditDetailPage({
             <StatusBadge status={status} />
             {status === "ready" && (
               <p className="mt-2 font-mono text-[0.65rem] text-muted-foreground">
-                Report v{reportVersion} · Method {promptVersion}
+                Report v{reportVersion}
               </p>
             )}
           </div>
@@ -81,6 +87,8 @@ export default async function AuditDetailPage({
           </p>
         )}
       </header>
+
+      <Suspense fallback={null}><AuditContext auditId={id} ownerId={profile.id} supabase={supabase} /></Suspense>
 
       {limitations.length > 0 && (
         <ExperienceBanner
@@ -113,6 +121,17 @@ export default async function AuditDetailPage({
   );
 }
 
+async function AuditContext({ auditId, ownerId, supabase }: {auditId:string;ownerId:string;supabase:Awaited<ReturnType<typeof createClient>>}) {
+  let context;
+  try { context = await loadAuditContext(supabase, auditId, ownerId); }
+  catch { return <ExperienceBanner tone="warning" className="mt-4">Related reports could not be loaded. <Link href="/subjects" className="underline">View subjects</Link></ExperienceBanner>; }
+  if (!context) return null;
+  return <nav aria-label="Subject and related reports" className="mt-4 space-y-3 text-sm">
+    <Link className="alm-focus font-semibold text-[color:var(--accent)] underline" href={`/subjects/${context.subject.id}`}>{context.subject.name}</Link>
+    {context.audits.length > 1 && <ul className="flex flex-wrap gap-3">{context.audits.map(item=><li key={item.id}><Link aria-current={item.id===auditId?'page':undefined} className="alm-focus inline-flex min-h-11 max-w-full flex-wrap items-center gap-2 rounded-[var(--radius)] border border-border px-3" href={`/audits/${item.id}`}><span className="break-all">{item.handle}</span><StatusBadge status={item.status as AuditStatus}/></Link></li>)}</ul>}
+  </nav>;
+}
+
 async function ReadyReport({
   auditId,
   audit,
@@ -121,13 +140,19 @@ async function ReadyReport({
   auditId: string;
   audit: {
     report_path: string | null;
+    report_version?: number | null;
     id: string;
   };
   supabase: Awaited<ReturnType<typeof createClient>>;
 }) {
+  if (!audit.report_path) return (
+    <ExperienceBanner tone="warning" title="Report unavailable">
+      The report file is unavailable. <Link href="/support" className="underline">Contact support</Link> for help recovering it.
+    </ExperienceBanner>
+  );
   // The parent has already authorized this audit. These independent reads
   // share that boundary, but must not add three sequential database trips.
-  const [{ data: refinementRows }, { data: versionRows }, shareResult] =
+  const [{ data: refinementRows }, { data: versionRows }, shareResult, reportHtml] =
     await Promise.all([
       supabase
         .from("refinements")
@@ -144,11 +169,18 @@ async function ReadyReport({
       Promise.resolve(
         (supabase as any)
           .from("share_links")
-          .select("*")
+          .select(SHARE_LINK_PUBLIC_COLUMNS)
           .eq("audit_id", auditId)
           .order("created_at", { ascending: false }),
-      ).catch(() => ({ data: [] })),
+      ).catch(() => ({ data: [], error: true })),
+      (async () => {
+        if (!isSupabaseAdminConfigured()) return null;
+        const { data, error } = await createAdminClient().storage.from("reports").download(audit.report_path!);
+        if (error || !data) return null;
+        return data.text();
+      })().catch(() => null),
     ]);
+  if (!reportHtml) return <ExperienceBanner tone="warning" title="Report unavailable">The report file could not be loaded. Reload to try again, or <Link href="/support" className="underline">contact support</Link>.</ExperienceBanner>;
   const shareLinks = (shareResult.data ?? []) as ShareLinkRow[];
 
   return (
@@ -191,7 +223,6 @@ async function ReadyReport({
                       : version.version > 1
                         ? "Full regeneration"
                         : "Initial generation"}
-                    {version.prompt_version ? ` · Method ${version.prompt_version}` : ""}
                     {` · ${new Date(version.created_at).toLocaleString()}`}
                   </p>
                 </div>
@@ -215,17 +246,19 @@ async function ReadyReport({
         <div>
           <ReportViewer
             auditId={auditId}
-            reportReady={Boolean(audit.report_path)}
+            reportReady={true}
+            reportVersion={audit.report_version ?? 0}
+            editableSections={editableReportSections(reportHtml)}
             refinements={(refinementRows ?? []) as RefinementRow[]}
           />
         </div>
 
         {/* Right column: Share links (and any other actions) — stacks below on mobile */}
         <div className="space-y-6 lg:pt-[2.625rem]">
-          <ShareLinks
+          {shareResult.error ? <ExperienceBanner tone="warning" title="Sharing is temporarily unavailable">Reload this page to try again. Your existing links have not changed.</ExperienceBanner> : <ShareLinks
             auditId={auditId}
-            links={(shareLinks ?? []) as ShareLinkRow[]}
-          />
+            links={shareLinks.map(projectShareLink)}
+          />}
         </div>
       </div>
     </div>

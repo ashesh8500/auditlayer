@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+const bump = vi.hoisted(()=>vi.fn());
+vi.mock("@/lib/resources/mutation-revision",()=>({bumpResourceRevision:bump}));
 
 import { NextRequest } from "next/server";
 
@@ -42,6 +44,7 @@ function callbackRequest(query = "code=code-123&state=state-456", intent: Record
 }
 
 beforeEach(() => {
+  bump.mockReset();
   isSupabaseConfiguredMock.mockReset();
   createClientMock.mockReset();
   createAdminClientMock.mockReset();
@@ -273,6 +276,7 @@ describe("Instagram OAuth callback route", () => {
       p_graph_api_family: "instagram",
     });
     expect(location.pathname).toBe("/settings/connections");
+    expect(bump.mock.calls.map(([name])=>name).sort()).toEqual(["connections","reports","subjects"]);
     expect(revalidatePath).toHaveBeenCalledWith("/settings/connections");
     expect(revalidatePath).toHaveBeenCalledWith("/subjects", "layout");
     expect(location.searchParams.get("instagram_connected")).toBe("reviewer_business");

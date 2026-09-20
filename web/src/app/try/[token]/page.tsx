@@ -59,6 +59,9 @@ export default async function TryPage({
           </div>
           <h1 className="text-xl font-bold tracking-tight">{err.title}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{err.body}</p>
+          <Link href={`/login?trial=${encodeURIComponent(token)}`} className="alm-focus mt-4 inline-flex min-h-11 items-center text-sm underline">
+            Already claimed? Sign in to check your invite
+          </Link>
           <Link
             href="/"
             className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--accent)] hover:underline"

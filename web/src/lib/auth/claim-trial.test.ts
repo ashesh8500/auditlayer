@@ -1,0 +1,14 @@
+import { beforeEach, expect, it, vi } from "vitest";
+const m = vi.hoisted(() => ({ user: { id: "owner" } as {id:string}|null, rpc: vi.fn(), profile: null as {trial_link_id:string}|null, offer: null as {id:string}|null, bump: vi.fn(), set: vi.fn() }));
+vi.mock("server-only", () => ({}));
+vi.mock("@/lib/supabase/server", () => ({createClient: async () => ({auth:{getUser: async () => ({data:{user:m.user}, error:null})}})}));
+vi.mock("@/lib/supabase/admin", () => ({createAdminClient: () => ({rpc:m.rpc, from: (table:string) => { const q = {select:()=>q,eq:()=>q,maybeSingle:async()=>({data:table === "profiles" ? m.profile : m.offer,error:null})}; return q; }})}));
+vi.mock("@/lib/resources/mutation-revision", () => ({bumpResourceRevision:m.bump}));
+vi.mock("next/headers", () => ({cookies:async()=>({set:m.set})}));
+import { claimTrial } from "./claim-trial";
+beforeEach(()=>{m.user={id:"owner"};m.profile=null;m.offer=null;m.rpc.mockReset();m.bump.mockReset();m.set.mockReset();});
+it("requires verified authentication before privileged redemption",async()=>{m.user=null;expect((await claimTrial("invite")).status).toBe("error");expect(m.rpc).not.toHaveBeenCalled();});
+it("uses the canonical atomic RPC and bumps resources only on confirmed success",async()=>{m.rpc.mockResolvedValue({data:{trial_link_id:"offer"},error:null});expect((await claimTrial("invite")).status).toBe("success");expect(m.rpc).toHaveBeenCalledWith("redeem_trial_link",{p_token:"invite",p_user_id:"owner"});expect(m.bump.mock.calls).toEqual([["reports"],["subjects"]]);expect(m.set).toHaveBeenCalled();});
+it("same offer replay does not add credits again",async()=>{m.profile={trial_link_id:"offer"};m.offer={id:"offer"};expect((await claimTrial("invite")).message).toMatch(/already claimed/);expect(m.rpc).not.toHaveBeenCalled();});
+it.each(["trial_expired","trial_revoked","trial_exhausted","trial_already_redeemed"])("surfaces %s without success or clearing retry context",async message=>{m.rpc.mockResolvedValue({data:null,error:{message}});const result=await claimTrial("invite");expect(result.status).toBe("error");expect(result.message).toBeTruthy();expect(m.bump).not.toHaveBeenCalled();expect(m.set).not.toHaveBeenCalled();});
+it("a transport failure is retryable, not a claimed trial",async()=>{m.rpc.mockRejectedValue(new Error("private detail"));expect(await claimTrial("invite")).toMatchObject({status:"error"});expect(m.bump).not.toHaveBeenCalled();});

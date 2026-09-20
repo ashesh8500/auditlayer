@@ -90,19 +90,28 @@ function sanitizeUntrustedText(value: string, max: number): string {
     .slice(0, max);
 }
 
+const ENTITY_DECODE: Record<string, string> = {
+  "&nbsp;": " ",
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+};
+
 function reportText(html: string): string {
+  // End tags tolerate whitespace/junk (</script >, </script\t\n bar>) so no script body survives.
   const text = html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-    .replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style[^>]*>/gi, " ")
+    .replace(/<template\b[^>]*>[\s\S]*?<\/template[^>]*>/gi, " ")
     .replace(/<!--([\s\S]*?)-->/g, " ")
     .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
+    // Single pass: text that reads like an entity after decoding is never
+    // decoded twice, so this cannot reconstruct markup from escaped input.
+    .replace(/&(nbsp|amp|lt|gt|quot|#39);/gi, (match) =>
+      ENTITY_DECODE[match.toLowerCase()] ?? match,
+    )
     .replace(/\s+/g, " ")
     .trim();
   return sanitizeUntrustedText(text, MAX_REPORT_TEXT);

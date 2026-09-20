@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { presentReportHtml } from "@/lib/report-presentation";
 
 import { getAuditForViewer } from "@/lib/audit-access";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -50,7 +51,7 @@ export async function GET(
     );
   }
 
-  const html = await data.text();
+  const html = presentReportHtml(await data.text(), new URL(_request.url).origin);
 
   return new NextResponse(html, {
     status: 200,

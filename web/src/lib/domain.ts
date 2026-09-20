@@ -1,13 +1,9 @@
 /**
- * Domain calibration mirrored from the legacy worker source of truth
- * (`legacy/src/auditlayer/domain.py`). The Python Hermes worker remains the
- * authoritative owner of the audit decision; this TypeScript port powers:
- *   - lightweight, read-only client-side intake hints (handle normalization,
- *     platform detection, credential prompts), and
- *   - the server-side intake decision used when creating an `audits` row.
- *
- * Keep these in lock-step with the contract enums in
- * `docs/architecture-contract.md`.
+ * Client-safe calibration and report vocabulary mirrored with the worker.
+ * Commercial allowance is authoritative in audit_allowance/submit_entitled_audit
+ * SQL, not lifetime JavaScript counters. The worker trusts accepted reservations
+ * and must not re-check allowance at execution or retry time.
+ * Keep calibration enums aligned with docs/architecture-contract.md.
  */
 
 export type AuditStatus =
@@ -96,15 +92,18 @@ export function isAdminUnlimited(role: string | null | undefined): boolean {
   return role === "admin";
 }
 
-/** Effective audit cap for a profile (admins → enterprise allowance, gifted → unlimited). */
+/** Effective plan cap only; read audit_allowance for usage, gifts and remaining access. */
 export function auditLimitForProfile(profile: {
   plan: Plan;
   role: string;
   gifted_audits?: number;
+  account_type?: string;
+  trial_plan?: Plan | null;
+  trial_expires_at?: string | null;
 }): number {
   if (isAdminUnlimited(profile.role)) return PLAN_LIMITS.enterprise;
-  if (profile.gifted_audits && profile.gifted_audits > 0) return Infinity;
-  return PLAN_LIMITS[profile.plan];
+  // Display helper only: authoritative remaining allowance comes from audit_allowance.
+  return PLAN_LIMITS[effectivePlanForProfile(profile)];
 }
 
 /** Plan passed to intake calibration (admins treated as enterprise). */
@@ -195,15 +194,45 @@ export function normalizeHandle(handle: string): string {
   return cleaned;
 }
 
+const PLATFORM_HOSTS: ReadonlyArray<readonly [Platform, readonly string[]]> = [
+  ["tiktok", ["tiktok.com"]],
+  ["youtube", ["youtube.com", "youtu.be"]],
+  ["x", ["x.com", "twitter.com"]],
+  ["linkedin", ["linkedin.com"]],
+  ["instagram", ["instagram.com"]],
+];
+
+/** Hostname of a URL or bare domain input; null when the input has no host. */
+function hostnameOf(value: string): string | null {
+  const candidate = value.includes("://") ? value : `https://${value}`;
+  try {
+    const host = new URL(candidate).hostname.toLowerCase();
+    return host.includes(".") ? host : null;
+  } catch {
+    return null;
+  }
+}
+
+function hostMatchesPlatform(host: string, domains: readonly string[]): boolean {
+  return domains.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
 export function detectPlatform(handleOrUrl: string): Platform {
   const value = handleOrUrl.toLowerCase();
-  if (value.includes("tiktok.com")) return "tiktok";
-  if (value.includes("youtube.com") || value.includes("youtu.be"))
-    return "youtube";
-  if (value.includes("x.com") || value.includes("twitter.com")) return "x";
-  if (value.includes("linkedin.com")) return "linkedin";
-  if (value.includes("instagram.com")) return "instagram";
   const trimmed = value.trim();
+  // A platform is recognised only by the host of URL-shaped input, never by a
+  // substring: 'evil.com/instagram.com' and 'instagram.com.evil.com' are not
+  // Instagram. Bare handles keep the original Instagram defaults below.
+  const urlShaped = /^[a-z][a-z0-9+.-]*:\/\//.test(trimmed)
+    || /^[a-z0-9_.-]+\.[a-z]{2,}(?:[/?#].*)?$/.test(trimmed);
+  if (urlShaped) {
+    const host = hostnameOf(trimmed);
+    if (host) {
+      for (const [platform, domains] of PLATFORM_HOSTS) {
+        if (hostMatchesPlatform(host, domains)) return platform;
+      }
+    }
+  }
   if (trimmed.startsWith("@")) return "instagram";
   // Bare username — default to Instagram. Accepts dotted handles like
   // 'dr.truptikaji'. Only reject strings that look like domains
@@ -363,7 +392,7 @@ export const USAGE_STATUSES: AuditStatus[] = [
 ];
 
 /** Maximum number of automatic retries for failed audits (mirrors worker MAX_RETRIES). */
-export const MAX_RETRIES = 3;
+export const MAX_RETRIES = 1;
 
 /** Human-readable retry status for failed audits. */
 export function retryStatusLabel(retryCount: number): string {

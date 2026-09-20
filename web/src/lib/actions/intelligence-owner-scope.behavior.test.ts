@@ -9,6 +9,8 @@ const state = vi.hoisted(() => ({
   submitAtomicBatch: vi.fn(),
   listChannels: vi.fn(),
   listBriefs: vi.fn(),
+  allowance: vi.fn(),
+  bump: vi.fn(),
 }));
 
 function clientFactory() {
@@ -54,6 +56,8 @@ function clientFactory() {
   };
 }
 
+vi.mock("@/lib/allowance", () => ({ loadAuditAllowance: state.allowance }));
+vi.mock("@/lib/resources/mutation-revision", () => ({ bumpResourceRevision: state.bump }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/auth", () => ({
@@ -93,13 +97,15 @@ const RECOMMENDATION_ID = "22222222-2222-4222-8222-222222222222";
 
 describe("customer subject actions under a broad admin database policy", () => {
   beforeEach(() => {
+    state.allowance.mockReset().mockResolvedValue({ effective_plan: "enterprise", allowed_report_types: ["pulse", "standard", "extended", "enterprise", "blueprint"], remaining: null, window_valid: true });
+    state.bump.mockReset().mockResolvedValue(undefined);
     state.subjectOwned = false;
     state.filters.length = 0;
     state.recordDecision.mockReset();
     state.createSubject.mockReset();
     state.lookupBatchRetry.mockReset();
     state.submitAtomicBatch.mockReset();
-    state.listChannels.mockReset();
+    state.listChannels.mockReset().mockResolvedValue([]);
     state.listBriefs.mockReset();
   });
 
@@ -369,4 +375,32 @@ describe("customer subject actions under a broad admin database policy", () => {
       error: "Could not record that decision.",
     });
   });
+});
+
+it("preserves canonical website host/path through the action and pins the selected brief", async () => {
+  state.subjectOwned = true;
+  state.listChannels.mockResolvedValue([]);
+  state.allowance.mockResolvedValue({ effective_plan: "pro", allowed_report_types: ["extended"], remaining: 1, window_valid: true });
+  state.lookupBatchRetry.mockResolvedValue(null);
+  state.submitAtomicBatch.mockResolvedValue({ subjectId: SUBJECT_ID, batchId: "batch", auditIds: ["audit"] });
+  const result = await prepareAndSubmitIntelligenceBatch({
+    submission: { subjectId: SUBJECT_ID, briefVersionId: RECOMMENDATION_ID, changeNotes: "Notes", requests: [{ channelId: "manual", reportType: "extended", forceRefresh: false }] },
+    channelLocators: ["https://Example.com/services?campaign=test"],
+    channelMeta: [{ channelType: "website", locator: "https://Example.com/services?campaign=test" }],
+  });
+  expect(result.ok).toBe(true);
+  expect(state.submitAtomicBatch).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ audits: [expect.objectContaining({
+    handle: "https://example.com/services", channelLocator: "https://example.com/services", platform: "unknown", status: "queued", briefVersionId: RECOMMENDATION_ID,
+  })] }));
+  expect(state.bump).toHaveBeenCalledWith("reports");
+  expect(state.bump).toHaveBeenCalledWith("subjects");
+});
+it("uses the database allowance rather than base-profile lifetime prechecks", async () => {
+  state.subjectOwned = true;
+  state.lookupBatchRetry.mockResolvedValue(null);
+  state.allowance.mockResolvedValue({ effective_plan: "pro", allowed_report_types: ["extended"], remaining: 0, window_valid: true });
+  state.submitAtomicBatch.mockClear();
+  const result = await prepareAndSubmitIntelligenceBatch({ submission: { subjectId: SUBJECT_ID, briefVersionId: "", changeNotes: "", requests: [{ channelId: "manual", reportType: "extended", forceRefresh: false }] }, channelLocators: ["example"] });
+  expect(result.ok).toBe(false);
+  expect(state.submitAtomicBatch).not.toHaveBeenCalled();
 });

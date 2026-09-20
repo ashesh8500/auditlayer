@@ -1,11 +1,13 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
+import { shareHash, shareSecurityRpc } from "@/lib/share-security";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SHARE_LINK_PUBLIC_COLUMNS, type ShareLinkPublic } from "@/lib/share-link-public";
 import { isSupabaseAdminConfigured } from "@/lib/env";
 import {
   decideShareAccess,
+  isValidShareToken,
   shareCookiePath,
   shareSessionCookieName,
 } from "@/lib/access-boundary";
@@ -30,21 +32,7 @@ type AuditRow = {
   updated_at: string;
 };
 
-export type ShareLinkRow = {
-  id: string;
-  audit_id: string;
-  token: string;
-  mode: "public" | "email";
-  email: string | null;
-  verified_at: string | null;
-  verification_code: string | null;
-  verification_code_expires: string | null;
-  created_by: string;
-  created_at: string;
-  expires_at: string | null;
-  revoked_at: string | null;
-  view_count: number;
-};
+export type ShareLinkRow = ShareLinkPublic;
 
 export type ShareAccessResult =
   | { audit: AuditRow; link: ShareLinkRow; mode: "public" }
@@ -58,9 +46,14 @@ export type ShareAccessResult =
  * `/api/share/{token}/report` (see `shareCookiePath`).
  */
 export async function getShareSession(token: string): Promise<boolean> {
+  if (!isValidShareToken(token) || !isSupabaseAdminConfigured()) return false;
   const cookieStore = await cookies();
-  const cookie = cookieStore.get(shareSessionCookieName(token));
-  return cookie?.value === "verified";
+  const value = cookieStore.get(shareSessionCookieName(token))?.value;
+  if (!value || !/^[A-Za-z0-9_-]{43}$/.test(value)) return false;
+  try {
+    const { data, error } = await shareSecurityRpc("share_session_valid", { p_token: token, p_session_hash: shareHash(value) });
+    return !error && data === true;
+  } catch { return false; }
 }
 
 /**
@@ -68,13 +61,14 @@ export async function getShareSession(token: string): Promise<boolean> {
  * The path is the canonical `shareCookiePath` (covers the landing page AND the
  * report route); the token-scoped name isolates one share from another.
  */
-export async function setShareSession(token: string): Promise<void> {
+export async function setShareSession(token: string, session: string): Promise<void> {
+  if (!isValidShareToken(token) || !/^[A-Za-z0-9_-]{43}$/.test(session)) throw new Error("Invalid session");
   const cookieStore = await cookies();
-  cookieStore.set(shareSessionCookieName(token), "verified", {
+  cookieStore.set(shareSessionCookieName(token), session, {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge: 60 * 60 * 24, // DB expiry and revocation are checked on every request
     path: shareCookiePath(token),
   });
 }
@@ -93,12 +87,13 @@ export async function setShareSession(token: string): Promise<void> {
 export async function getAuditForShare(
   token: string
 ): Promise<ShareAccessResult> {
+  if (!isValidShareToken(token)) return { error: "invalid" };
   if (!isSupabaseAdminConfigured()) return { error: "not_found" };
 
   const admin = createAdminClient();
-  const { data: link } = await (admin as any)
+  const { data: link } = await admin
     .from("share_links")
-    .select("*")
+    .select(SHARE_LINK_PUBLIC_COLUMNS)
     .eq("token", token)
     .maybeSingle();
 
@@ -154,8 +149,7 @@ export async function getAuditForShare(
     return { audit: audit as any, link: linkRow as ShareLinkRow, mode: "public" };
   }
 
-  // Email mode reached the allow state only via verified_at or the verified
-  // session cookie — return the verified variant.
+  // Only an authoritative token-bound session grants email-mode access.
   return {
     audit: audit as any,
     link: linkRow as ShareLinkRow,
@@ -167,8 +161,8 @@ export async function getAuditForShare(
 /** Increment view count for a share link. Called when the report is served. */
 export async function incrementShareView(token: string): Promise<void> {
   try {
-    const supabase = await createClient();
-    await (supabase as any).rpc("increment_share_view", { p_token: token });
+    const admin = createAdminClient();
+    await admin.rpc("increment_share_view", { p_token: token });
   } catch {
     // Function may not exist yet if migration hasn't been run
   }

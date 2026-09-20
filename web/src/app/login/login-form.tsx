@@ -36,6 +36,7 @@ export function LoginForm({
     <div className="space-y-5">
       {previewLogin && (
         <form action={signInWithPreviewTestUser}>
+          {trial && <input type="hidden" name="trial" value={trial} />}
           <input type="hidden" name="next" value={next} />
           <Button
             type="submit"
@@ -109,7 +110,7 @@ export function LoginForm({
         </form>
       )}
 
-      <PasswordLoginForm next={next} />
+      <PasswordLoginForm next={next} trial={trial} />
 
       <p className="text-center text-xs text-muted-foreground">
         Free Pulse audit · no credit card required

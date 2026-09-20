@@ -37,17 +37,25 @@ def resolve_subject_context(gateway: Any, audit_id: str) -> dict[str, Any] | Non
         if not subject_id:
             return None
 
-        brief_version = 1
+        audit_rows = (gateway.client.table("audits").select("brief_version_id")
+                      .eq("id", audit_id).limit(1).execute()).data or []
+        pinned_id = audit_rows[0].get("brief_version_id") if audit_rows else None
+        if not pinned_id:
+            # Legacy reports have no proven used brief. The ledger requires a
+            # real version; omit optional provenance rather than invent latest.
+            log_event("intelligence_brief_unknown", audit_id=audit_id)
+            return None
         briefs = (
             gateway.client.table("living_brief_versions")
             .select("version")
             .eq("subject_id", subject_id)
-            .order("version", desc=True)
+            .eq("id", pinned_id)
             .limit(1)
             .execute()
         )
-        if briefs.data:
-            brief_version = int(briefs.data[0].get("version") or 1)
+        if not briefs.data:
+            return None
+        brief_version = int(briefs.data[0]["version"])
 
         return {
             "subject_id": str(subject_id),

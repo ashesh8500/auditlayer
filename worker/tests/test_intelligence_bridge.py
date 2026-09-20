@@ -37,11 +37,16 @@ def test_resolve_subject_context_reads_batch_and_brief():
         )
     )
     brief_chain = MagicMock()
-    brief_chain.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = SimpleNamespace(
+    brief_chain.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(
         data=[{"version": 3}]
     )
 
+    audit_chain = MagicMock()
+    audit_chain.select.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(data=[{"brief_version_id": "pinned-v1"}])
+
     def table(name: str):
+        if name == "audits":
+            return audit_chain
         if name == "batch_audits":
             return batch_chain
         if name == "living_brief_versions":
@@ -54,6 +59,13 @@ def test_resolve_subject_context_reads_batch_and_brief():
     assert ctx["subject_id"] == "11111111-1111-1111-1111-111111111111"
     assert ctx["batch_id"] == "batch-1"
     assert ctx["brief_version"] == 3
+    brief_chain.select.return_value.eq.return_value.eq.assert_called_once_with('id', 'pinned-v1')
+    brief_chain.select.return_value.eq.return_value.order.assert_not_called()
+    # Editing latest while running cannot influence this exact-id lookup.
+    audit_chain.select.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(data=[{'brief_version_id': None}])
+    brief_chain.reset_mock()
+    assert resolve_subject_context(gateway, 'audit-1') is None
+    brief_chain.select.assert_not_called()
 
 
 def test_maybe_commit_subject_ledger_noops_without_subject():
@@ -101,11 +113,16 @@ def test_maybe_commit_subject_ledger_commits_run_and_score():
         )
     )
     brief_chain = MagicMock()
-    brief_chain.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = SimpleNamespace(
+    brief_chain.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(
         data=[{"version": 1}]
     )
 
+    audit_chain = MagicMock()
+    audit_chain.select.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(data=[{"brief_version_id": "pinned-v1"}])
+
     def table(name: str):
+        if name == "audits":
+            return audit_chain
         if name == "batch_audits":
             return batch_chain
         if name == "living_brief_versions":

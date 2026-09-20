@@ -1,0 +1,329 @@
+"use client";
+import { useWorkspaceQuery } from "./workspace-resources";
+import { ResourceStatus } from "./resource-status";
+import type { ReportsDTO } from "@/lib/resources/dto";
+import Link from "next/link";
+import { ArrowRight, ArrowUpRight, Filter, Plus, SlidersHorizontal } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { ExperienceBanner, type ExperienceBannerTone } from "@/components/ui/experience-banner";
+import { StatusBadge } from "@/components/status-badge";
+import {
+  isAdminUnlimited,
+  PLATFORM_LABELS,
+  retryStatusLabel,
+  STATUS_LABELS,
+  type AuditStatus,
+  type Platform,
+} from "@/lib/domain";
+import {
+  startStarterCheckout,
+  startProCheckout,
+  openBillingPortal,
+} from "@/lib/actions/billing";
+
+
+
+const targetLabel = (handle: string) => /^https?:\/\//i.test(handle) ? handle : `@${handle.replace(/^@/, "")}`;
+
+const BILLING_MESSAGES: Record<string, { tone: ExperienceBannerTone; text: string }> = {
+  success: {
+    tone: "success",
+    text: "Checkout returned. Your plan updates after payment confirmation. Refresh to check your current access.",
+  },
+  allowance: { tone: "warning", text: "Your current audit allowance is used. Review your plan below, or wait for your next billing period." },
+  cancelled: { tone: "warning", text: "Checkout cancelled. No charge was made." },
+  unconfigured: {
+    tone: "warning",
+    text: "Billing isn't configured yet. Reach out and we'll sort it.",
+  },
+  error: { tone: "danger", text: "Something went wrong starting checkout." },
+};
+
+// All known audit statuses for filter pills
+const FILTERABLE_STATUSES: (AuditStatus | "all")[] = [
+  "all",
+  "running",
+  "ready",
+  "queued",
+  "failed",
+  "needs_review",
+  "draft",
+  "blocked",
+];
+
+export function ReportsLibrary({ params }: { params: { billing?: string; status?: string; page?: string } }) {
+  const { billing, status: statusFilter } = params;
+  const page = /^\d{1,6}$/.test(params.page ?? "") ? Math.max(1, Number(params.page)) : 1;
+  const pageSize = 24;
+  const query = useWorkspaceQuery<ReportsDTO>("reports", new URLSearchParams({ page: String(page), status: statusFilter || "all" }).toString());
+  if (!query.data) return <ResourceStatus query={query} label="Reports" />;
+  const { profile, audits: auditRows, usage, allowance, count: totalAudits } = query.data;
+  const list = auditRows;
+  const pageHref = (next: number) => `/dashboard?${new URLSearchParams({ page: String(next), ...(statusFilter ? { status: statusFilter } : {}) })}`;
+
+  const limit = allowance.limit ?? Infinity;
+  const atCap = !allowance.can_submit;
+  const billingMsg = billing ? BILLING_MESSAGES[billing] : undefined;
+  const activeAudit = auditRows.find((audit) =>
+    ["queued", "running", "needs_review"].includes(audit.status),
+  );
+  const latestReady = auditRows.find((audit) => audit.status === "ready");
+
+  return (
+    <main data-testid="reports-content" className="alm-shell py-8 sm:py-12 animate-page-in">
+      <ResourceStatus query={query} label="Reports" />
+      {billingMsg && (
+        <ExperienceBanner tone={billingMsg.tone} className="mb-6">
+          {billingMsg.text}
+        </ExperienceBanner>
+      )}
+
+      <div className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-7">
+        <div>
+          <p className="alm-kicker">Report library</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+            {profile.full_name ? `${profile.full_name.split(" ")[0]}'s reports` : "Your reports"}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">Active work and completed intelligence, organised by account.</p>
+        </div>
+        <Link href="/audits/new">
+          <Button size="lg" disabled={atCap} className="font-medium">
+            <Plus className="size-4" />
+            New audit
+          </Button>
+        </Link>
+      </div>
+
+
+      {page === 1 && !statusFilter && (activeAudit || latestReady) && (
+        <section className="mt-8 grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
+          {activeAudit ? (
+            <Link href={`/audits/${activeAudit.id}`} className="group min-w-0 bg-[color:var(--forest)] p-6 text-white shadow-[var(--shadow-lg)] sm:p-8 alm-focus">
+              <div className="flex items-center justify-between gap-4">
+                <span className="font-mono text-xs font-semibold uppercase tracking-[0.13em] text-[color:var(--teal-on-forest)]">Active audit · {STATUS_LABELS[activeAudit.status as AuditStatus]}</span>
+                <ArrowUpRight className="size-5 text-white/50 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </div>
+              <h2 className="mt-10 break-words [overflow-wrap:anywhere] text-3xl font-semibold tracking-tight">{targetLabel(activeAudit.handle)}</h2>
+              <p className="mt-2 max-w-lg text-sm text-white/60">{activeAudit.status === "needs_review" ? "A founder review is needed before research can continue." : "Open the audit to follow verified worker phases and current progress."}</p>
+
+            </Link>
+          ) : (
+            <Link href={`/audits/${latestReady!.id}`} className="group min-w-0 bg-[color:var(--forest)] p-6 text-white shadow-[var(--shadow-lg)] sm:p-8 alm-focus">
+              <span className="font-mono text-xs font-semibold uppercase tracking-[0.13em] text-[color:var(--teal-on-forest)]">Latest report · v{latestReady!.report_version ?? 1}</span>
+              <h2 className="mt-10 break-words [overflow-wrap:anywhere] text-3xl font-semibold tracking-tight">{targetLabel(latestReady!.handle)}</h2>
+              <p className="mt-2 text-sm text-white/60">Your report is ready to read, share, refine, or download.</p>
+              <span className="mt-8 inline-flex items-center gap-2 text-sm font-medium">Open report <ArrowRight className="size-4" /></span>
+            </Link>
+          )}
+          <aside className="alm-panel flex flex-col justify-between p-6">
+            <div><p className="alm-kicker">Next action</p><h2 className="mt-4 text-xl font-semibold">{activeAudit ? "Stay with the current run" : "Start another account review"}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{activeAudit ? "The status view updates from real audit events. No action is needed unless review is requested." : "Use a Pulse audit for a focused diagnostic or a full report for deeper strategy."}</p></div>
+            <Link href={activeAudit ? `/audits/${activeAudit.id}` : "/audits/new"} className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--accent)]">{activeAudit ? "View status" : "New Audit"}<ArrowRight className="size-4" /></Link>
+          </aside>
+        </section>
+      )}
+
+      {/* Usage + plan */}
+      <section className="mt-6 grid gap-4 sm:grid-cols-[1.4fr_1fr]">
+        <div className="alm-panel rounded-[var(--radius)] p-5 shadow-none">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              Audit usage
+            </span>
+            <span className="font-mono text-sm">
+              {usage} /{" "}
+              {isAdminUnlimited(profile.role) || limit >= 10_000 ? "∞" : limit}
+            </span>
+          </div>
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-[color:var(--accent)] transition-all"
+              style={{
+                width: `${Math.min(100, limit ? (usage / limit) * 100 : 0)}%`,
+              }}
+            />
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {allowance.window_kind === "stripe" ? `Current billing period · ${allowance.window_start?.slice(0, 10)} to ${allowance.window_end?.slice(0, 10)}` : "Current access · lifetime usage"}
+            {allowance.trial_active ? ` · Trial ends ${allowance.trial_expires_at?.slice(0, 10)}` : ""}
+            {allowance.gifts > 0 ? ` · ${allowance.gifts} gifted runs available` : ""}
+            {!allowance.window_valid ? " · Billing period awaiting confirmation" : ""}
+          </p>
+          <p className="mt-3 text-xs text-muted-foreground capitalize">
+            {isAdminUnlimited(profile.role)
+              ? "Founder · unlimited audits"
+              : `${allowance.effective_plan} plan`}
+            {profile.subscription_status &&
+            profile.subscription_status !== "trial"
+              ? ` · ${profile.subscription_status}`
+              : ""}
+          </p>
+        </div>
+
+        <div className="alm-panel rounded-[var(--radius)] p-5 shadow-none">
+          <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Plan
+          </span>
+          <div className="mt-3 flex flex-col gap-2">
+            {!isAdminUnlimited(profile.role) &&
+              profile.plan !== "pro" &&
+              profile.plan !== "enterprise" && (
+              <form action={startProCheckout}>
+                <Button type="submit" size="sm" className="w-full font-medium">
+                  Upgrade to Pro · $50/mo
+                </Button>
+              </form>
+            )}
+            {profile.plan === "free" && (
+              <form action={startStarterCheckout}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="outline"
+                  className="w-full font-medium"
+                >
+                  Starter · $30/mo
+                </Button>
+              </form>
+            )}
+            {profile.hasBilling && (
+              <form action={openBillingPortal}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="ghost"
+                  className="w-full"
+                >
+                  Manage billing
+                </Button>
+              </form>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <p className="mt-6 text-sm text-muted-foreground">Need to connect or reconnect Instagram? <Link href="/settings/connections" className="font-semibold text-[color:var(--accent)]">Manage Connections</Link></p>
+
+      {/* Audit list */}
+      <section className="mt-10">
+        <div className="mb-4 flex items-end justify-between gap-4">
+          <div><p className="alm-kicker">Report library</p><h2 className="mt-1 text-xl font-semibold tracking-tight">All audits</h2></div>
+          {<span className="font-mono text-xs text-muted-foreground">{totalAudits} {statusFilter && statusFilter !== "all" ? "matching reports" : "total"}</span>}
+        </div>
+        {list.length === 0 && !statusFilter && page === 1 ? (
+          /* Enhanced empty state */
+          <div className="rounded-[var(--radius)] border border-dashed border-border bg-card p-12 text-center">
+            <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-[color:var(--accent-muted)]">
+              <SlidersHorizontal className="size-6 text-[color:var(--accent)]" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground">Your research desk is ready</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground leading-relaxed">
+              Start with a free Pulse audit for a score, key gaps, and three immediate moves. No credit card required.
+            </p>
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <Link href="/audits/new">
+                <Button size="lg" className="font-semibold">
+                  <Plus className="size-4" />
+                  Run a Free Pulse Audit
+                </Button>
+              </Link>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Instagram · TikTok · YouTube · X · LinkedIn
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Status filter pills */}
+            {totalAudits > 0 && (
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <Filter className="size-3.5 text-muted-foreground shrink-0" />
+                {FILTERABLE_STATUSES.map((s) => {
+                  const isActive =
+                    (s === "all" && !statusFilter) || s === statusFilter;
+                  return (
+                    <Link
+                      key={s}
+                      href={`/dashboard${s === "all" ? "" : `?status=${s}`}`}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                        isActive
+                          ? "border-[color:var(--accent)] bg-[color:var(--accent-muted)] text-[color:var(--accent)]"
+                          : "border-border bg-card text-muted-foreground hover:border-[color:var(--accent)]/30 hover:text-foreground"
+                      }`}
+                    >
+                      {s === "all" ? "All" : STATUS_LABELS[s as AuditStatus]}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+
+            {list.length === 0 && statusFilter ? (
+              <div className="rounded-[var(--radius)] border border-dashed border-border bg-card p-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No audits with status &ldquo;{STATUS_LABELS[statusFilter as AuditStatus] || statusFilter}&rdquo;.
+                </p>
+                <Link href="/dashboard" className="mt-3 inline-block">
+                  <Button variant="ghost" size="sm">Clear filter</Button>
+                </Link>
+              </div>
+            ) : (
+              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {list.map((audit) => (
+                  <li key={audit.id} className="min-w-0">
+                    <Link
+                      href={`/audits/${audit.id}`}
+                      className="group alm-panel flex flex-col rounded-xl p-5 shadow-none transition-all duration-200 hover:border-[color:var(--accent)]/50 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate font-bold text-base">
+                              {targetLabel(audit.handle)}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {PLATFORM_LABELS[audit.platform as Platform] ??
+                              audit.platform}
+                          </p>
+                        </div>
+                        <StatusBadge status={audit.status as AuditStatus} />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between pt-3 border-t border-border">
+                        <div className="min-w-0">
+                          {audit.milestone_label && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {audit.milestone_label}
+                            </p>
+                          )}
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">
+                            {new Date(audit.created_at ?? "").toLocaleDateString(
+                              "en-US",
+                              { month: "short", day: "numeric", year: "numeric" },
+                            )}
+                            {audit.status === "ready" ? ` · Report v${audit.report_version ?? 1}` : ""}
+                          </p>
+                        </div>
+                        <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 shrink-0" />
+                      </div>
+                      {audit.status === "failed" && (
+                        <div className="mt-2 text-[10px] font-medium text-[color:var(--red)]">
+                          {retryStatusLabel(audit.retry_count ?? 0)}
+                        </div>
+                      )}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+        {<nav aria-label="Report pages" className="mt-6 flex gap-4 text-sm">
+          {page > 1 && <Link href={pageHref(page - 1)}>Previous</Link>}
+          <span>Page {page}</span>
+          {page * pageSize < totalAudits && <Link href={pageHref(page + 1)}>Next</Link>}
+        </nav>}
+      </section>
+    </main>
+  );
+}

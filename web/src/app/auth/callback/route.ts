@@ -8,16 +8,13 @@ import {
   supabaseAnonKey,
   supabaseUrl,
 } from "@/lib/env";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { randomUUID } from "node:crypto";
+import { safeNext, loginRecoveryUrl } from "@/lib/auth/redirects";
 import type { Database } from "@/lib/supabase/types";
 
 const AUTH_NEXT_COOKIE = "auth_next";
 const TRIAL_TOKEN_COOKIE = "alm_trial_token";
 
-function safeNext(value: string | null | undefined): string {
-  if (value?.startsWith("/") && !value.startsWith("//")) return value;
-  return "/dashboard";
-}
 
 /**
  * Auth callback for Google OAuth (`code` PKCE exchange) and magic links
@@ -34,11 +31,14 @@ export async function GET(request: NextRequest) {
     searchParams.get("next") ?? cookieStore.get(AUTH_NEXT_COOKIE)?.value,
   );
 
+  const trialToken = request.cookies.get(TRIAL_TOKEN_COOKIE)?.value;
+  const recovery = (error: string) => NextResponse.redirect(`${origin}${loginRecoveryUrl(next, error, trialToken)}`);
+
   if (!isSupabaseConfigured()) {
-    return NextResponse.redirect(`${origin}/login?error=unconfigured`);
+    return recovery("unconfigured");
   }
 
-  const response = NextResponse.redirect(`${origin}${next}`);
+  const response = NextResponse.redirect(`${origin}${trialToken ? loginRecoveryUrl(next, undefined, trialToken) : next}`);
 
   // Start the explicit authentication exchange without the previous session.
   // A revoked refresh token must not erase this login's fresh PKCE verifier.
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       console.error("[auth/callback] exchangeCodeForSession failed:", error.message);
-      return NextResponse.redirect(`${origin}/login?error=auth`);
+      return recovery("auth");
     }
   } else if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({
@@ -82,34 +82,18 @@ export async function GET(request: NextRequest) {
     });
     if (error) {
       console.error("[auth/callback] verifyOtp failed:", error.message);
-      return NextResponse.redirect(`${origin}/login?error=auth`);
+      return recovery("auth");
     }
   } else {
-    return NextResponse.redirect(`${origin}/login?error=auth`);
+    return recovery("auth");
   }
 
-  // Process trial token cookie if present (both OAuth and magic link paths)
-  const trialToken = request.cookies.get(TRIAL_TOKEN_COOKIE)?.value;
-  if (trialToken) {
-    try {
-      const admin = createAdminClient();
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { error: redemptionError } = await (admin as any).rpc(
-          "redeem_trial_link",
-          { p_token: trialToken, p_user_id: user.id },
-        );
-        if (redemptionError) {
-          console.error("[auth/callback] trial redemption failed:", redemptionError.message);
-        }
-      }
-    } catch (e: any) {
-      console.error("[auth/callback] trial token processing failed:", e.message);
-    }
-
-    // Always clear the trial token cookie
-    response.cookies.set(TRIAL_TOKEN_COOKIE, "", { maxAge: 0, path: "/" });
+  // Trial redemption is an explicit authenticated POST on the claim screen.
+  // Never clear an unclaimed invite or imply sign-in also granted entitlements.
+  for (const resource of ["reports", "subjects"] as const) {
+    response.cookies.set(`alm-${resource}-revision`, randomUUID(), {
+      httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/",
+    });
   }
 
   response.cookies.set(AUTH_NEXT_COOKIE, "", { maxAge: 0, path: "/" });

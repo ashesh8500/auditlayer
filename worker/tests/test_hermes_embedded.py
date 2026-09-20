@@ -185,7 +185,7 @@ def test_refine_returns_all_keys(settings_inprocess) -> None:
         mock_agent_cls.return_value = mock_agent
         result = embedded.refine(
             mock_audit,
-            "<html><body><section>original</section></body></html>",
+            "<html><body><section><h2>strengths</h2><p>original</p></section></body></html>",
             "strengths",
             "Make it stronger",
             MagicMock(),

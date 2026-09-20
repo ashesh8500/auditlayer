@@ -12,7 +12,7 @@ import type {
   BatchReview,
   ChannelSummary,
 } from "./types";
-import type { Plan } from "../domain";
+import type { Plan, ReportType } from "../domain";
 import { allowedReportTypes } from "../domain";
 
 export interface BatchValidationResult {
@@ -31,6 +31,7 @@ export function validateBatch(
   channels: ChannelSummary[],
   plan: Plan,
   inFlightChannelIds: Set<string> = new Set(),
+  entitledTypes?: ReportType[],
 ): BatchValidationResult {
   const errors: string[] = [];
 
@@ -39,7 +40,7 @@ export function validateBatch(
   }
 
   const channelById = new Map(channels.map((c) => [c.id, c]));
-  const allowedTypes = allowedReportTypes(plan);
+  const allowedTypes = entitledTypes ?? allowedReportTypes(plan);
   const seenChannelIds = new Set<string>();
   const duplicateChannelNames: string[] = [];
   const entitlementWarnings: string[] = [];
@@ -51,6 +52,10 @@ export function validateBatch(
     if (!channel) {
       errors.push(`Channel ${req.channelId} not found for this subject.`);
       continue;
+    }
+
+    if (channel.reconnectRequired || channel.ownershipStatus === "observed") {
+      errors.push("Reconnect or manage this channel before submitting.");
     }
 
     // No duplicate channels within batch

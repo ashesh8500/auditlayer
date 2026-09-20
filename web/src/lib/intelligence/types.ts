@@ -188,7 +188,7 @@ export interface RecommendationSummary {
 
 export interface BatchAuditRequest {
   channelId: string;
-  reportType: "pulse" | "standard" | "extended" | "blueprint";
+  reportType: "pulse" | "standard" | "extended" | "enterprise" | "blueprint";
   forceRefresh: boolean;
 }
 

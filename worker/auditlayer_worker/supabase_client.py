@@ -306,6 +306,9 @@ class SupabaseGateway:
         """
         return self._claim_via_rpc("claim_next_refinement")
 
+    def sweep_stale_refinements(self) -> int:
+        return int(self.client.rpc("sweep_stale_refinements", {}).execute().data or 0)
+
     # -- writes ------------------------------------------------------------
 
     def update_audit(self, audit_id: str, **fields: Any) -> None:
@@ -314,7 +317,10 @@ class SupabaseGateway:
 
     def update_refinement(self, refinement_id: str, **fields: Any) -> None:
         fields["updated_at"] = _utcnow()
-        self.client.table("refinements").update(fields).eq("id", refinement_id).execute()
+        query = self.client.table("refinements").update(fields).eq("id", refinement_id)
+        if fields.get("status") == "failed":
+            query = query.eq("status", "running")
+        query.execute()
 
     def emit_event(
         self,
@@ -427,6 +433,34 @@ class SupabaseGateway:
         del version  # Display versions are allocated atomically in Postgres.
         path = f"{audit_id}/revisions/{uuid4().hex}.html"
         return self._upload(self.settings.reports_bucket, path, html.encode("utf-8"), "text/html")
+
+    def upload_workspace_report(
+        self, audit_id: str, attempt_id: str, html: str
+    ) -> str:
+        """Deterministic path per attempt: a retry re-uploads identical bytes.
+
+        Never allocates a fresh object merely because a response was lost, and
+        never accepts a caller-chosen path or provider-authored HTML.
+        """
+        from uuid import UUID
+
+        path = f"{audit_id}/workspace/{UUID(attempt_id).hex}.html"
+        stored, _ = self._upload(self.settings.reports_bucket, path, html.encode("utf-8"), "text/html")
+        return stored
+
+    def workspace_rpc(self, name: str, payload: Mapping[str, Any]) -> Any:
+        """Service-only workspace RPC. Ambiguous transport errors are NOT retried."""
+        if name not in {
+            "workspace_execution_admit",
+            "workspace_execution_dispatch",
+            "workspace_execution_finish",
+            "workspace_execution_publish",
+            "workspace_execution_revoke",
+        }:
+            raise ValueError("unsupported workspace RPC")
+        response = self.client.rpc(name, {"p": dict(payload)}).execute()
+        data = response.data
+        return data[0] if isinstance(data, list) else data
 
     def finalize_initial_report(
         self,
@@ -556,22 +590,38 @@ class SupabaseGateway:
         template_version: str = "master-skeleton-v1",
         intelligence_run_id: str | None = None,
     ) -> int:
-        response = self.client.rpc(
-            "finalize_refinement_report",
-            {
-                "p_audit_id": audit_id,
-                "p_refinement_id": refinement_id,
-                "p_report_path": report_path,
-                "p_prompt_version": prompt_version,
-                "p_template_version": template_version,
-                "p_agent_bundle_version": agent_bundle_version,
-                "p_changed_section": changed_section or "",
-                "p_change_summary": change_summary[:500],
-                "p_intelligence_run_id": intelligence_run_id,
-            },
-        ).execute()
-        value = response.data[0] if isinstance(response.data, list) else response.data
-        return int(value)
+        payload = {
+            "p_audit_id": audit_id, "p_refinement_id": refinement_id,
+            "p_report_path": report_path, "p_prompt_version": prompt_version,
+            "p_template_version": template_version,
+            "p_agent_bundle_version": agent_bundle_version,
+            "p_changed_section": changed_section or "",
+            "p_change_summary": change_summary[:500],
+            "p_intelligence_run_id": intelligence_run_id,
+        }
+        for attempt in range(2):
+            try:
+                response = self.client.rpc("finalize_refinement_report", payload).execute()
+                value = response.data[0] if isinstance(response.data, list) else response.data
+                return int(value)
+            except Exception as rpc_error:
+                try:
+                    rows = (self.client.table("audit_report_versions")
+                            .select("version,report_path,prompt_version,template_version,agent_bundle_version,intelligence_run_id")
+                            .eq("audit_id", audit_id).eq("source_refinement_id", refinement_id)
+                            .limit(1).execute()).data or []
+                except Exception as read_error:
+                    raise ReportFinalizationOutcomeUnknown("refinement commit readback unavailable") from read_error
+                if rows:
+                    expected = {"report_path": report_path, "prompt_version": prompt_version,
+                                "template_version": template_version, "agent_bundle_version": agent_bundle_version,
+                                "intelligence_run_id": intelligence_run_id}
+                    if any(rows[0].get(k) != v for k, v in expected.items()):
+                        raise ReportFinalizationOutcomeUnknown("refinement provenance conflict") from rpc_error
+                    return int(rows[0]["version"])
+                if attempt:
+                    raise ReportFinalizationRejected("refinement finalization did not commit") from rpc_error
+        raise AssertionError("unreachable")
 
 
     def _upload(self, bucket: str, path: str, data: bytes, content_type: str) -> tuple[str, str]:

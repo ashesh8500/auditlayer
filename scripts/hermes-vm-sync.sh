@@ -3,7 +3,9 @@
 # Requires SSH host `hermes-vm` in ~/.ssh/config (see docs/hermes-vm.md).
 set -euo pipefail
 
-HOST="${HERMES_VM_HOST:-hermes-vm}"
+: "${HERMES_VM_HOST:?Set HERMES_VM_HOST explicitly for development credential sync}"
+[[ "${CONFIRM_DEV_CREDENTIAL_SYNC:-}" = yes ]] || { echo 'Development-only credential transfer requires CONFIRM_DEV_CREDENTIAL_SYNC=yes; this is not a production deploy.' >&2; exit 1; }
+HOST="$HERMES_VM_HOST"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "== Syncing AuditLayer → ${HOST} =="
@@ -72,7 +74,7 @@ ssh "${HOST}" 'chmod +x ~/projects/auditlayer/infra/hermes-vm/bootstrap.sh'
 
 echo ""
 echo "Running remote bootstrap..."
-ssh "${HOST}" 'bash ~/projects/auditlayer/infra/hermes-vm/bootstrap.sh'
+ssh "${HOST}" 'HERMES_VM_REPO="$HOME/projects/auditlayer" bash ~/projects/auditlayer/infra/hermes-vm/bootstrap.sh'
 
 echo ""
 echo "Done. SSH in: ssh ${HOST}"

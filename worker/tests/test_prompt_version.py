@@ -16,7 +16,7 @@ def test_prompt_version_is_non_empty():
     """PROMPT_VERSION is a non-empty string like '0.6'."""
     assert isinstance(PROMPT_VERSION, str)
     assert len(PROMPT_VERSION) > 0
-    assert PROMPT_VERSION == "1.8"
+    assert PROMPT_VERSION == "1.12"
 
 
 def test_build_prompt_footer_line_includes_all_fields():
@@ -47,17 +47,17 @@ def test_build_prompt_footer_line_uses_custom_timestamp():
     assert "2026-07-12 14:30 UTC" in footer
 
 
-def test_mock_report_html_has_placeholder():
-    """Mock report HTML includes the PROMPT_VERSION_LINE placeholder."""
+def test_mock_report_html_has_no_internal_placeholder():
+    """Canonical artifacts do not carry an internal generation placeholder."""
     audit = AuditRecord(
         id="test-ver-1", handle="test_user", platform="instagram", goal="growth",
     )
     html = _mock_report_html(audit)
-    assert "<!-- PROMPT_VERSION_LINE -->" in html
+    assert "<!-- PROMPT_VERSION_LINE -->" not in html
 
 
-def test_mock_pipeline_injects_prompt_version_footer(tmp_path):
-    """The mock pipeline replaces PROMPT_VERSION_LINE placeholder with the real footer."""
+def test_mock_pipeline_keeps_accounting_internal(tmp_path):
+    """Accounting remains in the summary, not the customer artifact."""
     from dataclasses import replace
 
     settings = replace(
@@ -87,9 +87,12 @@ def test_mock_pipeline_injects_prompt_version_footer(tmp_path):
 
     # Placeholder should be gone
     assert "<!-- PROMPT_VERSION_LINE -->" not in html
-    # Real footer should be present
-    assert f"Prompt v{PROMPT_VERSION}" in html
-    assert "tokens" in html
+    assert summary.tokens_in == 18000
+    assert summary.tokens_out == 22000
+    assert summary.cost_usd > 0
+    # No technical metadata is written into the customer artifact.
+    assert "Prompt v" not in html
+    assert "tokens" not in html
 
 
 def test_audit_record_parses_prompt_version():

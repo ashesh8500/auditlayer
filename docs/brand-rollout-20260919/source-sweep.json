@@ -1,0 +1,13 @@
+{
+  "brand_callsites": {
+    "web/src/components/app-header.tsx": 1,
+    "web/src/components/immersive-report.tsx": 1,
+    "web/src/components/public-shell.tsx": 2,
+    "web/src/app/try/[token]/page.tsx": 1,
+    "web/src/app/login/page.tsx": 2,
+    "web/src/app/oauth/consent/page.tsx": 2,
+    "web/src/app/s/[token]/page.tsx": 1,
+    "web/src/app/s/[token]/share-report-view.tsx": 1
+  },
+  "stale_logo_tsx_files": []
+}

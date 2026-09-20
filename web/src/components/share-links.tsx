@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { shareLinkStatus } from "@/lib/share-link-public";
 import { Copy, Link2, Lock, Trash2, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -15,9 +16,6 @@ import {
 
 const initial: ShareActionState = { status: "idle" };
 
-function copyToClipboard(text: string) {
-  navigator.clipboard.writeText(text).catch(() => {});
-}
 
 function shareUrl(token: string): string {
   return `${window.location.origin}/s/${token}`;
@@ -39,8 +37,14 @@ export function ShareLinks({
     initial
   );
 
-  const activeLinks = links.filter((l) => !l.revoked_at);
-  const revokedLinks = links.filter((l) => l.revoked_at);
+  const [copyStatus, setCopyStatus] = useState("");
+  const [copyFallback, setCopyFallback] = useState("");
+  async function copyToClipboard(text: string) {
+    try { await navigator.clipboard.writeText(text); setCopyStatus("Link copied."); setCopyFallback(""); }
+    catch { setCopyStatus("Copy failed. Select and copy the link below."); setCopyFallback(text); }
+  }
+  const activeLinks = links.filter((l) => shareLinkStatus(l) === "active");
+  const revokedLinks = links.filter((l) => shareLinkStatus(l) !== "active");
 
   return (
     <section className="rounded-[var(--radius)] border border-border bg-card p-5">
@@ -73,7 +77,7 @@ export function ShareLinks({
             </select>
           </div>
 
-          <div className="flex-1 space-y-1.5">
+          <div className="min-w-0 flex-1 space-y-1.5">
             <Label htmlFor="share-email" className="text-xs">
               Email (for email-gated)
             </Label>
@@ -97,14 +101,14 @@ export function ShareLinks({
           </p>
         )}
         {createState.status === "ok" && createState.link && (
-          <div className="flex items-center gap-2 rounded-md bg-[color:var(--green-muted)] px-3 py-2">
-            <span className="text-xs font-mono text-[color:var(--green)]">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-md bg-[color:var(--green-muted)] px-3 py-2">
+            <span className="min-w-0 break-all text-xs font-mono text-[color:var(--green)]">
               {shareUrl(createState.link.token)}
             </span>
             <button
               type="button"
               onClick={() => copyToClipboard(shareUrl(createState.link!.token))}
-              className="ml-auto flex items-center gap-1 text-xs text-[color:var(--green)] hover:underline"
+              className="ml-auto flex min-h-11 min-w-11 items-center justify-center gap-1 text-xs text-[color:var(--green)] hover:underline focus-visible:outline-2"
             >
               <Copy className="size-3" />
               Copy
@@ -128,7 +132,7 @@ export function ShareLinks({
                   ) : (
                     <Lock className="size-3.5 text-muted-foreground" />
                   )}
-                  <span className="font-mono text-xs">
+                  <span className="min-w-0 break-all font-mono text-xs">
                     /s/{link.token}
                   </span>
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -136,12 +140,12 @@ export function ShareLinks({
                   </span>
                 </div>
                 {link.mode === "email" && link.email && (
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  <p className="mt-0.5 break-all text-[10px] text-muted-foreground">
                     {link.email}{" "}
-                    {link.verified_at ? "✓ verified" : "— pending"}
+                    — email verification required
                   </p>
                 )}
-                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                <p className="mt-0.5 break-all text-[10px] text-muted-foreground">
                   {link.view_count} view{link.view_count !== 1 ? "s" : ""}
                 </p>
               </div>
@@ -150,7 +154,7 @@ export function ShareLinks({
                 <button
                   type="button"
                   onClick={() => copyToClipboard(shareUrl(link.token))}
-                  className="text-muted-foreground hover:text-foreground"
+                  className="flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-2"
                   title="Copy link"
                 >
                   <Copy className="size-3.5" />
@@ -162,7 +166,7 @@ export function ShareLinks({
                   <button
                     type="submit"
                     disabled={revoking}
-                    className="text-muted-foreground hover:text-[color:var(--red)]"
+                    className="flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-[color:var(--red)] focus-visible:outline-2"
                     title="Revoke link"
                   >
                     <Trash2 className="size-3.5" />
@@ -178,22 +182,24 @@ export function ShareLinks({
       {revokedLinks.length > 0 && (
         <details className="mt-3">
           <summary className="cursor-pointer text-[10px] text-muted-foreground">
-            {revokedLinks.length} revoked link
+            {revokedLinks.length} inactive link
             {revokedLinks.length !== 1 ? "s" : ""}
           </summary>
           <ul className="mt-2 space-y-1">
             {revokedLinks.map((link) => (
               <li
                 key={link.id}
-                className="text-[10px] text-muted-foreground line-through"
+                className="break-all text-[10px] text-muted-foreground"
               >
-                /s/{link.token} — {link.mode}
+                /s/{link.token} — {link.mode} — {shareLinkStatus(link)}
               </li>
             ))}
           </ul>
         </details>
       )}
 
+      <p role="status" className="mt-2 break-words text-xs text-muted-foreground">{copyStatus || (revokeState.status === "ok" ? revokeState.message : "")}</p>
+      {copyFallback && <textarea aria-label="Share link to copy" readOnly value={copyFallback} onFocus={(event) => event.target.select()} className="mt-2 min-h-20 w-full min-w-0 break-all rounded border p-2 text-xs" />}
       {revokeState.status === "error" && (
         <p className="mt-2 text-xs text-[color:var(--red)]">
           {revokeState.message}

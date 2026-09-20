@@ -535,11 +535,16 @@ def _gateway_with_subject() -> tuple[MagicMock, MagicMock]:
         )
     )
     brief_chain = MagicMock()
-    brief_chain.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = SimpleNamespace(
+    brief_chain.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(
         data=[{"version": 1}]
     )
 
+    audit_chain = MagicMock()
+    audit_chain.select.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(data=[{"brief_version_id": "pinned-brief"}])
+
     def table(name: str):
+        if name == "audits":
+            return audit_chain
         if name == "batch_audits":
             return batch_chain
         if name == "living_brief_versions":

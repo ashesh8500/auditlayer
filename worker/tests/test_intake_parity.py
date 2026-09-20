@@ -92,6 +92,18 @@ def test_normalize_handle_parity(raw_input: str, expected: str) -> None:
         ("site.com", Platform.UNKNOWN),
         ("example.org", Platform.UNKNOWN),
         ("store.shop", Platform.UNKNOWN),
+        # Platform domains must be the URL host, never a substring anywhere
+        ("evil.com/instagram.com", Platform.UNKNOWN),
+        ("instagram.com.evil.com", Platform.UNKNOWN),
+        ("https://instagram.com.evil.com/user", Platform.UNKNOWN),
+        ("https://evil.com/youtube.com/@channel", Platform.UNKNOWN),
+        # Legitimate hosts, including subdomains, still resolve
+        ("https://www.instagram.com/user", Platform.INSTAGRAM),
+        ("instagram.com/user", Platform.INSTAGRAM),
+        ("www.tiktok.com/@creator", Platform.TIKTOK),
+        ("https://m.youtube.com/@channel", Platform.YOUTUBE),
+        ("https://www.linkedin.com/in/user", Platform.LINKEDIN),
+        ("search?q=instagram.com", Platform.UNKNOWN),
     ],
 )
 def test_detect_platform_parity(raw_input: str, expected: Platform) -> None:

@@ -1,0 +1,78 @@
+[
+  {
+    "viewport": 320,
+    "passed": true,
+    "consoleErrors": [],
+    "checks": [
+      "navigation/back",
+      "report reading",
+      "save/unsave/persistence",
+      "evidence/escape",
+      "outline scroll",
+      "brand detail",
+      "review validation and truthful confirmation",
+      "settings/transparency",
+      "connection boundary",
+      "saved empty state",
+      "horizontal overflow",
+      "root text scaling"
+    ]
+  },
+  {
+    "viewport": 390,
+    "passed": true,
+    "consoleErrors": [],
+    "checks": [
+      "navigation/back",
+      "report reading",
+      "save/unsave/persistence",
+      "evidence/escape",
+      "outline scroll",
+      "brand detail",
+      "review validation and truthful confirmation",
+      "settings/transparency",
+      "connection boundary",
+      "saved empty state",
+      "horizontal overflow",
+      "root text scaling"
+    ]
+  },
+  {
+    "viewport": 430,
+    "passed": true,
+    "consoleErrors": [],
+    "checks": [
+      "navigation/back",
+      "report reading",
+      "save/unsave/persistence",
+      "evidence/escape",
+      "outline scroll",
+      "brand detail",
+      "review validation and truthful confirmation",
+      "settings/transparency",
+      "connection boundary",
+      "saved empty state",
+      "horizontal overflow",
+      "root text scaling"
+    ]
+  },
+  {
+    "viewport": 1280,
+    "passed": true,
+    "consoleErrors": [],
+    "checks": [
+      "navigation/back",
+      "report reading",
+      "save/unsave/persistence",
+      "evidence/escape",
+      "outline scroll",
+      "brand detail",
+      "review validation and truthful confirmation",
+      "settings/transparency",
+      "connection boundary",
+      "saved empty state",
+      "horizontal overflow",
+      "root text scaling"
+    ]
+  }
+]

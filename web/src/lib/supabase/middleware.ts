@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { safeNext } from "@/lib/auth/redirects";
 import type { Database } from "./types";
 import {
   isSupabaseConfigured,
@@ -83,8 +84,10 @@ export async function updateSession(
   const { pathname } = request.nextUrl;
   if (!user && isProtected(pathname)) {
     const url = request.nextUrl.clone();
+    const next = safeNext(pathname + request.nextUrl.search);
     url.pathname = "/login";
-    url.searchParams.set("next", pathname);
+    url.search = "";
+    url.searchParams.set("next", next);
     return NextResponse.redirect(url);
   }
 

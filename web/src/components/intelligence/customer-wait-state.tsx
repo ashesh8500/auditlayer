@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, CircleDashed, Loader2, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
+import { useWorkspaceResources } from "@/components/workspace-resources";
 import { Button } from "@/components/ui/button";
 import { projectCustomerStatus, CUSTOMER_PHASE_LABELS } from "@/lib/intelligence/client-status";
 import { progressStepState } from "@/lib/intelligence/progress-step-state";
@@ -41,11 +42,22 @@ const DELAYED_TERMINAL_THRESHOLD_MS = 20 * 60 * 1000; // 20 min → terminal del
 
 // ---- Component ----
 
-export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitStateProps) {
+export function CustomerWaitState(props: WaitStateProps) {
+  return <WaitState key={`${props.auditId}:${props.internalStatus}`} {...props} />;
+}
+
+function WaitState({ auditId, internalStatus, startedAt }: WaitStateProps) {
   const router = useRouter();
+  const resources = useWorkspaceResources();
+  const invalidateRef = useRef(resources?.invalidate);
+  useEffect(() => { invalidateRef.current = resources?.invalidate; }, [resources?.invalidate]);
   const [progress, setProgress] = useState<ProgressPayload | null>(null);
-  const [pollCount, setPollCount] = useState(0);
-  const pollRef = useRef(false);
+  const [checkVersion, setCheckVersion] = useState(0);
+  const [checking, setChecking] = useState(false);
+  const [observationError, setObservationError] = useState<number | null>(null);
+  const refreshRef = useRef(router.refresh);
+  useEffect(() => { refreshRef.current = router.refresh; }, [router.refresh]);
+  const readyRef = useRef<string | null>(null);
 
   const customerStatus = progress
     ? {
@@ -87,31 +99,70 @@ export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitSt
     customerStatus.terminal,
   );
 
-  const poll = useCallback(async () => {
-    if (pollRef.current) return;
-    pollRef.current = true;
-    try {
-      const res = await fetch(`/api/audits/${auditId}/progress`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return;
-      const body = (await res.json()) as ProgressPayload;
-      setProgress(body);
-      setPollCount((c) => c + 1);
-      if (body.terminal === "ready") {
-        router.refresh();
-      }
-    } finally {
-      pollRef.current = false;
-    }
-  }, [auditId, router]);
-
   useEffect(() => {
-    if (isTerminal) return;
+    if (projectCustomerStatus(internalStatus, [], startedAt).terminal && checkVersion === 0) return;
+    let disposed = false;
+    let stopped = false;
+    let attempts = 0;
+    let failures = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
+    const visible = () => !document.hidden && navigator.onLine;
+    const pause = () => {
+      clearTimeout(timer);
+      controller?.abort();
+      controller = undefined;
+    };
+    const poll = async () => {
+      if (disposed || stopped || !visible() || controller) return;
+      const request = new AbortController();
+      controller = request;
+      setChecking(true);
+      try {
+        const res = await fetch(`/api/audits/${auditId}/progress`, { cache: "no-store", signal: request.signal });
+        if (res.status === 401 || res.status === 403 || res.status === 404) {
+          if (!disposed && !request.signal.aborted) setObservationError(res.status);
+          stopped = true; return;
+        }
+        if (!res.ok) throw new Error("Progress unavailable");
+        const body = (await res.json()) as ProgressPayload;
+        if (disposed || request.signal.aborted) return;
+        setObservationError(null);
+        failures = 0;
+        attempts++;
+        setProgress(body);
+        if (body.terminal) stopped = true;
+        if (body.terminal === "ready" && readyRef.current !== auditId) {
+          readyRef.current = auditId;
+          void invalidateRef.current?.("reports");
+          refreshRef.current();
+        }
+      } catch {
+        if (!disposed && !request.signal.aborted) { failures++; setObservationError(503); }
+      } finally {
+        if (!disposed) setChecking(false);
+        if (controller === request) controller = undefined;
+        if (!disposed && !stopped && !request.signal.aborted && visible()) {
+          timer = setTimeout(poll, Math.min(60000, 8000 * 2 ** Math.min(failures, 3)) * (failures ? 1 : attempts > 30 ? 2 : 1));
+        }
+      }
+    };
+    const resume = () => {
+      pause();
+      // Delay resumes too: rapid visibility toggles must not create a request storm.
+      if (visible() && !stopped) timer = setTimeout(poll, 8000);
+    };
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("online", resume);
+    window.addEventListener("offline", resume);
     void poll();
-    const interval = setInterval(() => void poll(), 8000);
-    return () => clearInterval(interval);
-  }, [isTerminal, poll, pollCount]); // restart on terminal change
+    return () => {
+      disposed = true; pause();
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("online", resume);
+      window.removeEventListener("offline", resume);
+    };
+  }, [auditId, internalStatus, startedAt, checkVersion]);
 
   return (
     <div className="space-y-8" role="status" aria-live="polite" aria-label="Audit progress">
@@ -189,12 +240,11 @@ export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitSt
             </div>
             <h2 className="text-lg font-semibold">Taking longer than expected</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Your audit is still running but hasn&apos;t completed within the expected window.
-              A founder has been notified. You can leave this page — we&apos;ll email you when
-              it&apos;s ready.
+              This audit has not reported completion within the expected window.
+              Check again for the latest recorded status.
             </p>
             <p className="text-xs text-muted-foreground">
-              No action is needed from you. The worker will keep processing.
+              Checking status does not restart generation or bypass review.
             </p>
           </div>
         ) : customerStatus.terminal ? (
@@ -215,12 +265,26 @@ export function CustomerWaitState({ auditId, internalStatus, startedAt }: WaitSt
               {customerStatus.message}
             </p>
             <p className="text-xs text-muted-foreground">
-              Most audits complete within 2–5 minutes. You can leave this page —
-              we&apos;ll email you when it&apos;s done.
+              This page checks for recorded progress while it is open and online.
+              You can return from Reports to check later.
             </p>
           </div>
         )}
       </div>
+
+      {(observationError || delayedHard || (isTerminal && customerStatus.terminal !== "ready")) && (
+        <section className="mx-auto max-w-md space-y-3 text-center" aria-label="Progress recovery">
+          {observationError && <p role="alert" className="text-sm text-muted-foreground">
+            {observationError === 401 ? "Your session could not be verified. Sign in again to check this report." : observationError === 403 || observationError === 404 ? "This report is unavailable to this account. Check your access or return to Reports." : "Progress could not be loaded. You can check again."}
+          </p>}
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button variant="outline" disabled={checking} onClick={() => setCheckVersion(v => v + 1)}>{checking ? "Checking…" : "Check again"}</Button>
+            {observationError === 401 && <Button asChild variant="outline"><Link href={`/login?error=session&next=${encodeURIComponent(`/audits/${auditId}`)}`}>Sign in again</Link></Button>}
+            <Button asChild variant="outline"><Link href="/dashboard">Back to Reports</Link></Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Checking only reads status; it does not restart or approve an audit.</p>
+        </section>
+      )}
 
       {/* Terminal: show CTA to view report */}
       {customerStatus.terminal === "ready" && (
@@ -254,8 +318,7 @@ function TerminalState({
           </div>
           <h2 className="text-lg font-semibold">Report ready</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Your report has been generated and verified. All evidence links are intact
-            and the scores have been computed.
+            Generation is marked complete. Open the report to review its findings and evidence limits.
           </p>
         </div>
       );
@@ -267,8 +330,8 @@ function TerminalState({
           </div>
           <h2 className="text-lg font-semibold">Generation failed</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Something went wrong during generation. A founder has been notified and
-            will look into it. You don&apos;t need to take any action.
+            Generation reported a failure. Check again after a retry has been arranged,
+            or return to Reports. Checking status does not start another paid run.
           </p>
         </div>
       );
@@ -281,8 +344,8 @@ function TerminalState({
           <h2 className="text-lg font-semibold">Audit blocked</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {phase === "preparing"
-              ? "This audit needs a founder review before it can run. We'll reach out if anything is needed."
-              : "Generation stopped before the report could be finalized. A founder is reviewing it; you don't need to take any action."}
+              ? "This audit needs founder review before it can run. Check again after review."
+              : "Generation stopped before the report could be finalized. Check again after the issue has been resolved."}
           </p>
         </div>
       );
@@ -294,8 +357,8 @@ function TerminalState({
           </div>
           <h2 className="text-lg font-semibold">Awaiting founder review</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            We couldn&apos;t detect which platform this handle belongs to. A founder
-            will confirm the platform, then generation starts.
+            This audit is waiting for founder review. Check again after review to see
+            whether it has been approved to continue.
           </p>
         </div>
       );

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Bot, Database, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Brand } from "@/components/brand";
 import { WORKSPACE_ACCOUNT_STATUSES } from "@/lib/account-ownership";
 import { getSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -42,6 +43,7 @@ export default async function OAuthConsentPage({
     <main className="min-h-screen bg-background px-4 py-10 sm:py-16">
       <div className="mx-auto max-w-lg overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card shadow-[var(--shadow-md)]">
         <div className="border-b border-border bg-[color:var(--accent-muted)] px-6 py-6 sm:px-8">
+          <Brand className="mb-3" />
           <div className="flex items-center gap-3">
             <span className="grid size-11 place-items-center rounded-full bg-card text-[color:var(--accent)] shadow-[var(--shadow)]">
               <Bot className="size-5" />
@@ -110,6 +112,7 @@ function ConsentError({ message }: { message: string }) {
   return (
     <main className="grid min-h-screen place-items-center bg-background px-4">
       <div className="max-w-md rounded-[var(--radius)] border border-border bg-card p-8 text-center shadow-[var(--shadow)]">
+        <Brand className="mb-4" />
         <h1 className="text-xl font-semibold">Connection unavailable</h1>
         <p className="mt-2 text-sm text-muted-foreground">{message}</p>
       </div>

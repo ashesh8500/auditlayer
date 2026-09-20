@@ -8,7 +8,10 @@ import sys
 import json
 import time
 import multiprocessing
+import signal
+import ctypes
 from concurrent.futures import ThreadPoolExecutor, wait
+from multiprocessing.connection import wait as wait_process
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Callable, Iterable
@@ -299,6 +302,81 @@ def _managed_search_results(
     return results[:8]
 
 
+def _refinement_process(operation, sender, parent_pid: int) -> None:
+    """Linux worker isolation: no orphan paid call if the supervisor dies."""
+    try:
+        os.setsid()
+        # PR_SET_PDEATHSIG; check the parent again to close the fork/prctl race.
+        if ctypes.CDLL(None, use_errno=True).prctl(1, signal.SIGKILL, 0, 0, 0) != 0:
+            raise RuntimeError('Cannot install refinement parent-death fence')
+        if os.getppid() != parent_pid:
+            os._exit(70)
+        sender.send(('result', bool(operation())))
+    except BaseException as exc:
+        sender.send(('error', type(exc).__name__))
+    finally:
+        sender.close()
+
+
+def run_bounded_refinement(operation, *, deadline: float) -> bool:
+    """One attempt, including lock wait, I/O, retries and persistence.
+
+    Reuses the managed-search fork/Pipe containment pattern, not the cooperative
+    intelligence thread deadline (which cannot stop an active paid call).
+    The parent owns the home lock until the child is dead and reaped. Never retry
+    an operation here. Only a small terminal boolean/error crosses the pipe;
+    accounting and ambiguous-commit reconciliation remain in the attempt.
+    """
+    remaining = deadline - time.monotonic()
+    if remaining <= 0 or not HERMES_HOME_LOCK.acquire(timeout=remaining):
+        raise TimeoutError('Refinement deadline exhausted waiting for home lock')
+    receiver = sender = process = None
+    started = False
+    try:
+        context = multiprocessing.get_context('fork')
+        receiver, sender = context.Pipe(duplex=False)
+        process = context.Process(target=_refinement_process,
+                                  args=(operation, sender, os.getpid()), daemon=True)
+        if time.monotonic() >= deadline:
+            raise TimeoutError('Refinement deadline exhausted before start')
+        process.start()
+        started = True
+        sender.close()
+        if not receiver.poll(max(0.0, deadline - time.monotonic())):
+            raise TimeoutError('Refinement total deadline exceeded; no automatic replay')
+        try:
+            kind, result = receiver.recv()
+        except EOFError as exc:
+            raise RuntimeError('Refinement child exited; outcome unknown, no replay') from exc
+        if kind != 'result':
+            raise RuntimeError(f'Refinement child failed ({result}); no replay')
+        return result
+    finally:
+        if sender is not None:
+            sender.close()
+        if receiver is not None:
+            receiver.close()
+        if started and process is not None:
+            # Wait on the sentinel without reaping the group leader, so its
+            # PID cannot be reused between the TERM and group KILL signals.
+            process.terminate()
+            wait_process([process.sentinel], timeout=.25)
+            # Kill the whole isolated group, including any unexpected descendant.
+            try:
+                if process.pid is not None:
+                    os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            if process.is_alive():
+                process.kill()
+            process.join(timeout=.5)
+            if process.is_alive():
+                # Fail-stop: never return a reusable worker with an active child.
+                os._exit(70)
+            process.close()
+        HERMES_HOME_LOCK.release()
+
+
 class InProcessHermesClient:
     """Drop-in replacement for :class:`~auditlayer_worker.hermes.HermesClient`."""
 
@@ -430,6 +508,9 @@ class InProcessHermesClient:
 
         if self.settings.hermes_provider != "deepseek" or model != "deepseek-v4-flash":
             raise RuntimeError("AuditLayer embedded generation requires DeepSeek V4 Flash")
+
+        if tuple(toolsets):
+            raise ValueError("AuditLayer inference is tool-free")
 
         HERMES_HOME_LOCK.acquire()
         previous_home = self._scope_hermes_home()

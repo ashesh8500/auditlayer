@@ -7,11 +7,17 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/intelligence/subjects", () => ({ listSubjectsForUser: async () => ({ subjects: [] }), listChannelsForSubject: vi.fn(), listBriefVersionsForSubject: vi.fn() }));
 vi.mock("@/components/intelligence/intelligence-wizard", () => ({ IntelligenceWizard: () => null }));
 Object.assign(globalThis, { React });
-it("counts only this owner's usage without downloading capped rows", async () => {
-  const q = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), then: (resolve: (v: unknown) => unknown) => resolve({ data: [], count: 1, error: null }) };
-  vi.mocked(createClient).mockResolvedValue({ from: () => q } as never);
+it("reads canonical owner allowance without an independent lifetime count", async () => {
+  const rpc = vi.fn().mockResolvedValue({ data: { effective_plan: "pro", allowed_report_types: ["pulse", "standard", "extended"], usage: 0, can_submit: true }, error: null });
+  vi.mocked(createClient).mockResolvedValue({ rpc } as never);
   await NewAuditPage({ searchParams: Promise.resolve({}) });
-  expect(q.eq).toHaveBeenCalledWith("user_id", "admin-owner");
-  expect(q.select).toHaveBeenCalledWith("id", { count: "exact", head: true });
-  expect(q.in).toHaveBeenCalledWith("status", expect.any(Array));
+  expect(rpc).toHaveBeenCalledWith("audit_allowance", { p_user_id: "admin-owner" });
+});
+it("keeps exhausted intake reachable for safe lost-response retries", async () => {
+  const rpc = vi.fn().mockResolvedValue({ data: { effective_plan: "free", allowed_report_types: ["pulse"], usage: 1, can_submit: false, window_valid: true }, error: null });
+  vi.mocked(createClient).mockResolvedValue({ rpc } as never);
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const html = renderToStaticMarkup(await NewAuditPage({ searchParams: Promise.resolve({}) }));
+  expect(html).toContain("Your current audit allowance is used");
+  expect(html).not.toContain("unconfigured");
 });

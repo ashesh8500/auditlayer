@@ -1,0 +1,59 @@
+{
+  "version": "P-01.v1",
+  "contract_version": "workspace.v1",
+  "currency": "USD",
+  "money_unit": "microusd",
+  "monthly_price_microusd": 129000000,
+  "included_microusd": 30000000,
+  "display": {
+    "credits_per_usd": 100,
+    "included_credits": 3000,
+    "microusd_per_credit": 10000,
+    "redeemable_for_cash": false
+  },
+  "retail_reference_multiplier": 3,
+  "topup_microusd": 10000000,
+  "purchased_cycle_cap_microusd": 70000000,
+  "consumption_cycle_cap_microusd": 100000000,
+  "run_reservation_cap_microusd": 15000000,
+  "upstream_exposure_cycle_cap_microusd": 60000000,
+  "max_owners": 1,
+  "max_brands": 1,
+  "renewal_boundary": "confirmed_stripe_subscription_period",
+  "included_expiry": "stripe_period_end",
+  "purchased_expiry": {
+    "proposed_calendar_months": 12,
+    "status": "legal_unresolved"
+  },
+  "allocation_order": [
+    "included_earliest_expiry",
+    "purchased_earliest_expiry"
+  ],
+  "auto_reload": false,
+  "automatic_legacy_conversion": false,
+  "silent_model_fallback": false,
+  "legacy_report_entitlements": "preserve_purchased_contract",
+  "billable_path": "successful_path_once",
+  "retry_and_terminal_failure_cost": "absorbed_by_alm",
+  "ambiguous_usage": "pending_reconciliation",
+  "upstream_exposure_includes": [
+    "successful_path",
+    "retries",
+    "terminal_failures",
+    "outstanding_reservations"
+  ],
+  "reservation": "atomic_customer_and_upstream_worst_case_before_dispatch",
+  "unused_holds": "release",
+  "cancellation": {
+    "stop_new_schedules": true,
+    "stop_renewal": true,
+    "unconsumed_purchased_refund": "idempotent_request_subject_to_final_policy"
+  },
+  "enrollment_enabled": false,
+  "enrollment_blockers": [
+    "final_customer_terms",
+    "retention_deletion_policy",
+    "lawful_purchased_lot_expiry",
+    "verified_model_rate_catalog"
+  ]
+}
