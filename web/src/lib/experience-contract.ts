@@ -383,6 +383,15 @@ export const EXPERIENCE_EXCEPTIONS: ExperienceException[] = [
       "Subject detail delegates its heading to SubjectHome, which renders the canonical h1 for the subject.",
     correctionTip: "Recheck with a DOM query (h1 count) in the release-gate browser probe.",
   },
+  {
+    id: "header-workflows-delegated",
+    rule: "header",
+    path: "src/app/(app)/workflows/page.tsx",
+    owner: "product-design",
+    reason:
+      "Brand reviews page delegates its heading to WorkflowsLibrary, which renders the canonical h1.",
+    correctionTip: "Recheck with a DOM query (h1 count) in the release-gate browser probe.",
+  },
   // --- button --------------------------------------------------------------
   {
     id: "button-carousel-arrows",

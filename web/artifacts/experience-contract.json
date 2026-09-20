@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scanRoot": "web/",
   "routes": {
-    "total": 30,
+    "total": 32,
     "files": [
       "src/app/(app)/accounts/[id]/page.tsx",
       "src/app/(app)/accounts/page.tsx",
@@ -13,9 +13,11 @@
       "src/app/(app)/dashboard/page.tsx",
       "src/app/(app)/preview-setup/page.tsx",
       "src/app/(app)/settings/ai-connections/page.tsx",
+      "src/app/(app)/settings/billing/page.tsx",
       "src/app/(app)/settings/connections/page.tsx",
       "src/app/(app)/subjects/[id]/page.tsx",
       "src/app/(app)/subjects/page.tsx",
+      "src/app/(app)/workflows/page.tsx",
       "src/app/admin/audits/[id]/page.tsx",
       "src/app/admin/benchmarks/page.tsx",
       "src/app/admin/page.tsx",
@@ -91,6 +93,8 @@
       "src/components/status-badge.tsx",
       "src/components/subjects-library.tsx",
       "src/components/testimonial-carousel.tsx",
+      "src/components/workflows/workflow-owner.tsx",
+      "src/components/workflows/workflows-library.tsx",
       "src/components/workspace-resources.tsx"
     ]
   },
@@ -103,22 +107,9 @@
       "exceptionIds": []
     },
     "semantic-color": {
-      "status": "violations",
-      "findings": 6,
-      "violations": [
-        {
-          "rule": "semantic-color",
-          "path": "src/components/brand.tsx",
-          "line": 27,
-          "detail": "hardcoded hex #fffdf8"
-        },
-        {
-          "rule": "semantic-color",
-          "path": "src/components/brand.tsx",
-          "line": 27,
-          "detail": "hardcoded hex #14241f"
-        }
-      ],
+      "status": "exceptions",
+      "findings": 4,
+      "violations": [],
       "exceptions": [
         {
           "rule": "semantic-color",
@@ -224,13 +215,13 @@
         {
           "rule": "panel",
           "path": "src/components/report-viewer.tsx",
-          "line": 73,
+          "line": 74,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
           "rule": "panel",
           "path": "src/components/report-viewer.tsx",
-          "line": 90,
+          "line": 91,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
@@ -272,7 +263,7 @@
         {
           "rule": "panel",
           "path": "src/app/(app)/accounts/[id]/page.tsx",
-          "line": 366,
+          "line": 365,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         },
         {
@@ -465,28 +456,9 @@
       ]
     },
     "header": {
-      "status": "violations",
-      "findings": 6,
-      "violations": [
-        {
-          "rule": "header",
-          "path": "src/app/(app)/dashboard/page.tsx",
-          "line": 1,
-          "detail": "page has no PageHeader/alm-kicker/h1 construct"
-        },
-        {
-          "rule": "header",
-          "path": "src/app/(app)/settings/connections/page.tsx",
-          "line": 1,
-          "detail": "page has no PageHeader/alm-kicker/h1 construct"
-        },
-        {
-          "rule": "header",
-          "path": "src/app/(app)/subjects/page.tsx",
-          "line": 1,
-          "detail": "page has no PageHeader/alm-kicker/h1 construct"
-        }
-      ],
+      "status": "exceptions",
+      "findings": 4,
+      "violations": [],
       "exceptions": [
         {
           "rule": "header",
@@ -502,6 +474,12 @@
         },
         {
           "rule": "header",
+          "path": "src/app/(app)/workflows/page.tsx",
+          "line": 1,
+          "detail": "page has no PageHeader/alm-kicker/h1 construct"
+        },
+        {
+          "rule": "header",
           "path": "src/app/admin/benchmarks/page.tsx",
           "line": 1,
           "detail": "page has no PageHeader/alm-kicker/h1 construct"
@@ -510,26 +488,14 @@
       "exceptionIds": [
         "header-client-delegated",
         "header-immersive-read",
-        "header-subject-home-delegated"
+        "header-subject-home-delegated",
+        "header-workflows-delegated"
       ]
     },
     "button": {
-      "status": "violations",
-      "findings": 21,
-      "violations": [
-        {
-          "rule": "button",
-          "path": "src/components/report-viewer.tsx",
-          "line": 149,
-          "detail": "raw <button> without shared Button or explicit focus+target ( type=\"button\" className=\"underline\" onClick={() =)"
-        },
-        {
-          "rule": "button",
-          "path": "src/components/resource-status.tsx",
-          "line": 8,
-          "detail": "raw <button> without shared Button or explicit focus+target ( type=\"button\" disabled={query.isFetching} onClick={() =)"
-        }
-      ],
+      "status": "exceptions",
+      "findings": 19,
+      "violations": [],
       "exceptions": [
         {
           "rule": "button",
@@ -570,13 +536,13 @@
         {
           "rule": "button",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 570,
+          "line": 568,
           "detail": "raw <button> without shared Button or explicit focus+target (\n                  type=\"button\"\n                  onClick={)"
         },
         {
           "rule": "button",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 755,
+          "line": 749,
           "detail": "raw <button> without shared Button or explicit focus+target (\n              type=\"button\"\n              onClick={() =)"
         },
         {
@@ -705,21 +671,14 @@
       ]
     },
     "focus": {
-      "status": "violations",
-      "findings": 12,
-      "violations": [
-        {
-          "rule": "focus",
-          "path": "src/components/workspace-resources.tsx",
-          "line": 33,
-          "detail": "interactive element without alm-focus/focus-visible treatment"
-        }
-      ],
+      "status": "exceptions",
+      "findings": 11,
+      "violations": [],
       "exceptions": [
         {
           "rule": "focus",
           "path": "src/components/immersive-report.tsx",
-          "line": 130,
+          "line": 189,
           "detail": "interactive element without alm-focus/focus-visible treatment"
         },
         {
@@ -749,7 +708,7 @@
         {
           "rule": "focus",
           "path": "src/components/report-viewer.tsx",
-          "line": 63,
+          "line": 64,
           "detail": "interactive element without alm-focus/focus-visible treatment"
         },
         {
@@ -793,27 +752,20 @@
       ]
     },
     "target": {
-      "status": "violations",
-      "findings": 36,
-      "violations": [
-        {
-          "rule": "target",
-          "path": "src/components/report-viewer.tsx",
-          "line": 149,
-          "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
-        },
-        {
-          "rule": "target",
-          "path": "src/components/resource-status.tsx",
-          "line": 8,
-          "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
-        }
-      ],
+      "status": "exceptions",
+      "findings": 34,
+      "violations": [],
       "exceptions": [
         {
           "rule": "target",
           "path": "src/components/immersive-report.tsx",
-          "line": 130,
+          "line": 166,
+          "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
+        },
+        {
+          "rule": "target",
+          "path": "src/components/immersive-report.tsx",
+          "line": 189,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
@@ -867,19 +819,13 @@
         {
           "rule": "target",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 570,
+          "line": 749,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
           "rule": "target",
           "path": "src/components/intelligence/subject-home.tsx",
-          "line": 755,
-          "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
-        },
-        {
-          "rule": "target",
-          "path": "src/components/intelligence/subject-home.tsx",
-          "line": 987,
+          "line": 981,
           "detail": "interactive element without declared 40px+ target (static floor; 44px is browser-only)"
         },
         {
@@ -1074,17 +1020,6 @@
     "Resize to 44px if the browser probe flags them.",
     "Reuse Card/alm-panel on next touch.",
     "Reuse Card/alm-panel when consent screen is restyled.",
-    "Rule button: fix src/components/report-viewer.tsx:149 (raw <button> without shared Button or explicit focus+target ( type=\"button\" className=\"underline\" onClick={() =)).",
-    "Rule button: fix src/components/resource-status.tsx:8 (raw <button> without shared Button or explicit focus+target ( type=\"button\" disabled={query.isFetching} onClick={() =)).",
-    "Rule focus: fix src/components/workspace-resources.tsx:33 (interactive element without alm-focus/focus-visible treatment).",
-    "Rule header: fix src/app/(app)/dashboard/page.tsx:1 (page has no PageHeader/alm-kicker/h1 construct).",
-    "Rule header: fix src/app/(app)/settings/connections/page.tsx:1 (page has no PageHeader/alm-kicker/h1 construct).",
-    "Rule header: fix src/app/(app)/subjects/page.tsx:1 (page has no PageHeader/alm-kicker/h1 construct).",
-    "Rule semantic-color: fix src/components/brand.tsx:27 (hardcoded hex #14241f).",
-    "Rule semantic-color: fix src/components/brand.tsx:27 (hardcoded hex #fffdf8).",
-    "Rule target: fix src/components/report-viewer.tsx:149 (interactive element without declared 40px+ target (static floor; 44px is browser-only)).",
-    "Rule target: fix src/components/resource-status.tsx:8 (interactive element without declared 40px+ target (static floor; 44px is browser-only)).",
-    "Stale exception target-share-report-view-reset (target) no longer matches any finding — remove it from EXPERIENCE_EXCEPTIONS.",
     "Verify all wizard targets in the browser probe during the wizard restyle.",
     "Verify h1 presence inside the rendered report HTML with the release-gate browser probe.",
     "Verify immersive focus ring in the browser probe.",

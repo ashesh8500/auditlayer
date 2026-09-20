@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useActionState } from "react";
+import { Button } from "@/components/ui/button";
 import { workflowCommand, type WorkflowCommandState } from "@/lib/actions/workflows";
 import type { WorkflowResourceView } from "@/lib/workflows/dto";
 
@@ -40,12 +41,12 @@ function WorkflowRow({ row }: { row: Workflow }) {
         <li>Model {String(row?.model?.model ?? "")} ({String(row?.model?.provider ?? "")}) · rate {String(row?.rate_card_version ?? "")} · method {String(row?.method_version ?? "")}</li>
         <li>Ceilings {money(row?.customer_max)} customer / {money(row?.upstream_max)} upstream</li>
       </ul>
-      <form action={action} className="flex gap-2">
+      <form action={action} className="flex flex-wrap gap-2">
         <input type="hidden" name="workflow_id" value={String(row?.id ?? "")} />
         <input type="hidden" name="version_id" value={String(row?.version_id ?? "")} />
-        <button name="command" value="pause" type="submit">Pause</button>
-        <button name="command" value="activate" type="submit">Resume after grants</button>
-        <button name="command" value="cancel" type="submit">Cancel</button>
+        <Button type="submit" name="command" value="pause" variant="outline">Pause</Button>
+        <Button type="submit" name="command" value="activate" variant="outline">Resume after grants</Button>
+        <Button type="submit" name="command" value="cancel" variant="destructive">Cancel</Button>
       </form>
       {state.status === "error" ? <p role="alert">{state.message}</p> : null}
       {state.status === "ok" ? <p role="status">{state.message}</p> : null}
