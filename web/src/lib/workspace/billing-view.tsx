@@ -4,18 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useWorkspaceResources } from "@/components/workspace-resources";
 import { fencedJson, metadataOptions, resourceKey } from "@/lib/resources/workspace";
 import { type Wallet, validate } from "@/lib/workspace-contracts";
-import { enrollment, modelCatalog } from "./catalog";
+import { parseCommercialWallet, type CommercialWallet } from "@/lib/commercial-wallet";
+import { modelCatalog } from "./catalog";
+import { CommercialOffers } from "@/components/commercial-offers";
 
-export function WorkspaceOffer() {
-  return <section aria-label="Workspace credits" className="my-6 rounded-lg border p-5">
-    <h2 className="text-xl font-semibold">Workspace — $129/month</h2>
-    <p>One owner, one brand. 3,000 included credits ($30 usage value). 100 credits = $1 usage value, not cash.</p>
-    <p className="mt-3 font-medium">Not available for enrollment</p>
-    <ul>{enrollment.blockers.map(reason=><li key={reason}>{reason}</li>)}</ul>
-    <p className="mt-3">Explicit $10 top-ups; no auto-reload. Maximum $70 new purchases and $100 consumption per billing cycle; maximum $15 reserved per run.</p>
-    <p>Existing reports, gifts and trial access are unchanged. No report counts are converted into credits.</p>
-  </section>;
-}
+export function WorkspaceOffer() { return <CommercialOffers />; }
 export function ModelAvailability() {
   return <section aria-label="Model availability"><h2 className="text-xl font-semibold">Model candidates</h2>
     <p>No model is qualified for workspace credit execution yet. Existing report generation remains under its existing contract.</p>
@@ -32,8 +25,8 @@ export function WorkspaceBilling() {
   const query=useQuery({ ...metadataOptions,
     queryKey:resourceKey(scope.ownerId,"wallet","workspace.v1"),
     queryFn:async({signal})=>{
-      const result=await fencedJson<{ownerId:string;fetchedAt:string;wallet:Wallet|null}>("/api/resources/wallet",scope.ownerId,signal);
-      if(result.wallet) result.wallet=validate("Wallet",result.wallet);
+      const result=await fencedJson<{ownerId:string;fetchedAt:string;wallet:Wallet|CommercialWallet|null}>("/api/resources/wallet",scope.ownerId,signal);
+      if(result.wallet) result.wallet="pricing_version" in result.wallet ? parseCommercialWallet(result.wallet) : validate("Wallet",result.wallet);
       return result;
     },
   });
@@ -45,8 +38,8 @@ export function WorkspaceBilling() {
       {query.data && !wallet && <p>No workspace credit contract. Continue using your existing report access.</p>}
       {wallet && <><p>Saved balance: {usd(wallet.balance.microusd)}; reserved: {usd(wallet.reserved.microusd)}.</p>
         <p>Available usage value: {usd(wallet.balance.microusd-wallet.reserved.microusd)}. Admission rechecks expiry and limits.</p>
-        <p>Last confirmed billing period: {wallet.stripe_period_start} to {wallet.stripe_period_end}.</p>
-        <ul>{wallet.lots.map(lot=><li key={lot.id}>{lot.kind}: {usd(lot.balance.microusd)} remaining; expires {lot.expires_at}</li>)}</ul></>}
+        {"pricing_version" in wallet ? <p>{wallet.period_source === "calendar_month_utc" ? "Free allowance period (UTC calendar month)" : "Confirmed Stripe billing period"}: {wallet.period_start} to {wallet.period_end}. Pricing: {wallet.pricing_version}.</p> : <p>Last confirmed billing period: {wallet.stripe_period_start} to {wallet.stripe_period_end}.</p>}
+        <ul>{wallet.lots.map(lot=><li key={lot.id}>{lot.kind}: {usd(lot.balance.microusd)} remaining{lot.expires_at ? `; expires ${lot.expires_at}` : "; no expiry recorded"}</li>)}</ul></>}
       <button className="alm-focus min-h-11 underline" disabled={query.isFetching} onClick={()=>void query.refetch({cancelRefetch:false})}>Refresh wallet</button>
     </section><ModelAvailability /></div>;
 }

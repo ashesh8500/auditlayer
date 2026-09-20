@@ -163,16 +163,6 @@ export const EXPERIENCE_EXCEPTIONS: ExperienceException[] = [
   },
   // --- panel ---------------------------------------------------------------
   {
-    id: "panel-marketing-legacy",
-    rule: "panel",
-    path: "src/app/page.tsx",
-    owner: "product-design",
-    reason:
-      "Marketing landing cards use inline panel styling with a distinct editorial rhythm; the card's bounded migration preserves the landing visual system.",
-    correctionTip:
-      "If the landing is ever rebuilt, route its surfaces through Card/alm-panel; do not assert compliance for marketing fixtures.",
-  },
-  {
     id: "panel-enterprise-legacy",
     rule: "panel",
     path: "src/app/enterprise/page.tsx",
