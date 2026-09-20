@@ -4,7 +4,7 @@ import {requireProfile} from "@/lib/auth";
 import {createAdminClient} from "@/lib/supabase/admin";
 import {createClient} from "@/lib/supabase/server";
 const request=z.object({subject_id:z.uuid(),brief_id:z.uuid(),channel_id:z.uuid(),goal:z.string().trim().min(1).max(200),report_type:z.literal("standard")});
-const quote=z.object({id:z.uuid(),retail_microusd:z.number().int().positive(),expires_at:z.iso.datetime()});
+const quote=z.object({id:z.uuid(),retail_microusd:z.number().int().positive(),expires_at:z.iso.datetime({offset:true})});
 type RPC={rpc(name:string,args:{p:Record<string,unknown>}):Promise<{data:unknown;error:unknown}>};
 const unavailable={ok:false as const,error:"Report execution is not available until the evidence and bounded runtime checks pass."};
 export async function quoteCommercialReport(input:unknown) {

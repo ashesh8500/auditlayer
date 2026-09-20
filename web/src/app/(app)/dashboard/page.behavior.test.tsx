@@ -1,6 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, it, vi } from "vitest";
+import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import Page from "./page";
 import { GET } from "@/app/api/resources/reports/route";
@@ -13,7 +14,7 @@ async function DashboardPage(props: Parameters<typeof Page>[0]) {
   vi.mocked(useWorkspaceQuery).mockReturnValue({ data: response.ok ? dto : undefined, error: response.ok ? null : new Error("Unavailable"), dataUpdatedAt: 0, refetch: vi.fn() } as never);
   return Page(props);
 }
-vi.mock("@/lib/auth", () => ({ getProfile: async () => ({ id: "owner", role: "admin", plan: "pro" }) }));
+vi.mock("@/lib/auth", () => ({ getProfile: vi.fn(async () => ({ id: "owner", role: "admin", plan: "pro" })) }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/actions/billing", () => ({ startStarterCheckout: vi.fn(), startProCheckout: vi.fn(), openBillingPortal: vi.fn() }));
 vi.mock("@/lib/actions/instagram", () => ({ disconnectInstagram: vi.fn() }));
@@ -27,6 +28,14 @@ beforeEach(() => {
     const q: any = { table, abortSignal: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), range: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), then: (resolve: (v: unknown) => unknown) => resolve(result) };
     queries.push(q); return q;
   } } as never);
+});
+it("offers current enrollment rather than a second legacy subscription to commercial customers", async () => {
+  vi.mocked(getProfile).mockResolvedValueOnce({id:"owner",role:"user",plan:"free",commercial_plan:"brand",subscription_status:"active",stripe_customer_id:"cus_owner"} as never);
+  const html = renderToStaticMarkup(await DashboardPage({searchParams:Promise.resolve({})}));
+  expect(html).not.toContain("Starter · $30/mo");
+  expect(html).not.toContain("Upgrade to Pro");
+  expect(html).toContain('href="/commercial"');
+  expect(html).toContain("Manage billing");
 });
 it("shows load errors without claiming an empty report library", async () => {
   result = { data: [], count: null, error: { code: "unavailable" } };

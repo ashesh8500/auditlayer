@@ -35,7 +35,24 @@ import {
  * Plan/subscription columns are NEVER written from the browser — only the
  * webhook (service-role) reconciles them.
  */
+type CheckoutRPC = {rpc(name:string,args:{p:Record<string,unknown>}):Promise<{data:unknown;error:unknown}>};
 const checkoutDeps: CheckoutIntentDeps = {
+  reserve: async (owner, plan) => {
+    const db = createAdminClient() as unknown as CheckoutRPC;
+    const result = await db.rpc("commercial_checkout_reserve", {p:{owner_id:owner,plan}});
+    if (result.error || !result.data) throw new Error("checkout_admission_failed");
+    return result.data as {id:string;customer_id:string|null;session_id:string|null};
+  },
+  bind: async (owner, intent, session) => {
+    const db = createAdminClient() as unknown as CheckoutRPC;
+    const result = await db.rpc("commercial_checkout_bind", {p:{owner_id:owner,id:intent,session_id:session}});
+    if (result.error || result.data !== intent) throw new Error("checkout_binding_unverified");
+  },
+  existing: async (session) => {
+    const stripe = getStripe();
+    if (!stripe) throw new Error("missing_stripe");
+    return stripe.checkout.sessions.retrieve(session);
+  },
   getProfile: async (): Promise<CheckoutProfile> => {
     const profile = await requireProfile();
     return {
@@ -71,8 +88,8 @@ const checkoutDeps: CheckoutIntentDeps = {
 /**
  * Start a Stripe Checkout session for a self-serve plan upgrade.
  *
- * One deterministic checkout intent: the same profile+plan+offer-contract
- * version yields the same non-secret Stripe idempotency keys, existing
+ * One owner-wide pending checkout intent, shared with commercial enrollment,
+ * supplies the hosted-session idempotency key. Bound sessions and existing
  * customer links are reused, the service-role profile-link update is verified
  * before any session is requested, and every failure returns a bounded
  * recovery redirect (never success). `profiles.plan` is never written here;

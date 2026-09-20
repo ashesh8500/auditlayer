@@ -48,9 +48,9 @@ export async function reconcileCommercialEvent(event:Stripe.Event,stripe:Stripe)
  if(authority.error || !authority.data || typeof authority.data!=="object") return pending;
  const outcome=authority.data as {applied:boolean;code:string};
  if(!invoice) return outcome.code==="awaiting_checkout"?pending:{status:"reconciled",...outcome};
- // Exact profile/period checks in the grant RPC remain authoritative even on a
- // duplicate or same-second replay. Stale invoices cannot resurrect a cycle.
- if(!outcome.applied && !["duplicate","replay","profile_event_not_newer"].includes(outcome.code)) return pending;
+ // A stale invoice is eligible only when SQL explicitly attests exact locked
+ // current authority. Payment confirmation still verifies invoice facts.
+ if(!outcome.applied && !["duplicate","replay","profile_event_not_newer","current_authority"].includes(outcome.code)) return pending;
  const hex=createHash("sha256").update(`commercial-invoice:${invoice.id}`).digest("hex");
  const commandId=`${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-a${hex.slice(17,20)}-${hex.slice(20,32)}`;
  const command={id:commandId,payload:{owner_id:metadata.profile_id,command_id:commandId,payment_id:invoice.id,customer_id:id(subscription.customer),subscription_id:subscription.id,period_start:start,period_end:end,kind:"included",amount_microusd:commercial.plans[plan].monthly_credits*10000,paid_microusd:commercialPrice(plan).cents*10000,policy_version:"P-01.v1",pricing_version:commercial.version,commercial_plan:plan,price_id:items[0].price.id,terms_version:commercial.version}};

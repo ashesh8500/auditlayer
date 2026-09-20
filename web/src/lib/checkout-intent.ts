@@ -12,7 +12,13 @@
  * orchestration can be exercised deterministically through injected/recordable
  * boundaries without any live provider call.
  *
- * Idempotency keys
+ * New sessions first reserve the shared commercial_checkouts owner lock. A
+ * bound session is retrieved, while unbound retries use checkout:legacy:<intent>.
+ * SQL stops ambiguous retries after 23 hours; signed expiry frees capacity.
+ * The legacy pure key helpers below remain available for historical consumers
+ * and customer creation, but no longer govern new hosted-session admission.
+ *
+ * Historical idempotency keys
  * ---------------
  * `customerIdempotencyKey` and `sessionIdempotencyKey` are bounded SHA-256 hex
  * digests (fixed 64-hex length after a fixed domain prefix) derived ONLY from
@@ -143,8 +149,8 @@ export interface CheckoutSessionParams {
   customer: string;
   line_items: Array<{ price: string; quantity: number }>;
   client_reference_id: string;
-  metadata: { profile_id: string; plan: string };
-  subscription_data: { metadata: { profile_id: string; plan: string } };
+  metadata: { profile_id: string; plan: string; checkout_intent_id: string };
+  subscription_data: { metadata: { profile_id: string; plan: string; checkout_intent_id: string } };
   success_url: string;
   cancel_url: string;
   allow_promotion_codes: boolean;
@@ -168,7 +174,7 @@ export interface CheckoutStripeBoundary {
       create(
         params: CheckoutSessionParams,
         options: { idempotencyKey: string },
-      ): Promise<{ url: string | null }>;
+      ): Promise<{ id: string; url: string | null }>;
     };
   };
 }
@@ -181,6 +187,9 @@ export interface ProfileLinkResult {
 
 /** Injected boundaries the orchestration uses (recordable in tests). */
 export interface CheckoutIntentDeps {
+  reserve(owner: string, plan: PurchasablePlan): Promise<{id:string;customer_id:string|null;session_id?:string|null}>;
+  bind(owner: string, intent: string, session: string): Promise<void>;
+  existing(session: string): Promise<{status:string|null;url:string|null}>;
   getProfile(): Promise<CheckoutProfile>;
   getStripe(): CheckoutStripeBoundary | null;
   getPriceId(plan: PurchasablePlan): string | undefined;
@@ -198,6 +207,7 @@ export type CheckoutRecoveryOutcome = "unconfigured" | "error";
 
 /** Exact reason behind a bounded recovery (recorded in the evidence artifact). */
 export type CheckoutRecoveryCode =
+  | "checkout_admission_failed"
   | "missing_stripe"
   | "missing_price"
   | "unsupported_plan"
@@ -266,7 +276,19 @@ export async function runCheckoutIntent(
 
   const keys = checkoutIntentKeys(profile.id, plan);
 
-  let customerId = profile.stripe_customer_id;
+  let intent: Awaited<ReturnType<CheckoutIntentDeps["reserve"]>>;
+  try {
+    intent = await deps.reserve(profile.id, plan);
+    if (!intent.id) throw new Error("reservation_missing");
+    if (intent.session_id) {
+      const session = await deps.existing(intent.session_id);
+      if (session.status !== "open" || !session.url) throw new Error("checkout_requires_reconciliation");
+      return {kind:"redirect",url:session.url};
+    }
+  } catch {
+    return recovery("error", "checkout_admission_failed");
+  }
+  let customerId = intent.customer_id;
   if (!customerId) {
     // Fail early: without a service-role client we cannot persist the link, so
     // creating a provider customer would be a wasted/duplicate provider object.
@@ -295,7 +317,7 @@ export async function runCheckoutIntent(
     if (!link.data) return recovery("error", "profile_link_no_row");
   }
 
-  let session: { url: string | null };
+  let session: { id: string; url: string | null };
   try {
     session = await stripe.checkout.sessions.create(
       {
@@ -303,17 +325,19 @@ export async function runCheckoutIntent(
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
         client_reference_id: profile.id,
-        metadata: { profile_id: profile.id, plan },
-        subscription_data: { metadata: { profile_id: profile.id, plan } },
+        metadata: { profile_id: profile.id, plan, checkout_intent_id: intent.id },
+        subscription_data: { metadata: { profile_id: profile.id, plan, checkout_intent_id: intent.id } },
         success_url: `${deps.siteUrl()}/dashboard?billing=success`,
         cancel_url: `${deps.siteUrl()}/dashboard?billing=cancelled`,
         allow_promotion_codes: true,
       },
-      { idempotencyKey: keys.sessionIdempotencyKey },
+      { idempotencyKey: `checkout:legacy:${intent.id}` },
     );
   } catch {
     return recovery("error", "session_failed");
   }
+
+  try { await deps.bind(profile.id, intent.id, session.id); } catch { return recovery("error", "checkout_admission_failed"); }
 
   if (!session.url) return recovery("error", "missing_session_url");
 

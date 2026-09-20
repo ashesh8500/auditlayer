@@ -99,7 +99,7 @@ class RecordingCheckoutFixture {
           create: async (params, options) => {
             this.sessionCalls.push({ params, options });
             if (this.sessionError) throw this.sessionError;
-            return { url: this.sessionUrl };
+            return { id: "cs_fixture", url: this.sessionUrl };
           },
         },
       },
@@ -108,6 +108,11 @@ class RecordingCheckoutFixture {
 
   deps(): CheckoutIntentDeps {
     return {
+      // Unbound/ambiguous reservation fixture; bound replay is covered by the
+      // production action admission test and full-chain SQL handler tracer.
+      reserve: async () => ({id:"fixture-intent",customer_id:this.profile.stripe_customer_id}),
+      bind: async () => {},
+      existing: async () => ({status:"open",url:this.sessionUrl}),
       getProfile: async () => this.profile,
       getStripe: () => (this.stripeConfigured ? this.stripe : null),
       getPriceId: (plan) =>
@@ -253,7 +258,7 @@ describe("runCheckoutIntent — existing customer reuse", () => {
     expect(fx.sessionCalls.length).toBe(1);
     expect(fx.sessionCalls[0].params.customer).toBe("cus_existing");
     expect(fx.sessionCalls[0].options.idempotencyKey).toBe(
-      sessionIdempotencyKey(PROFILE_ID, "pro"),
+      "checkout:legacy:fixture-intent",
     );
   });
 
@@ -266,6 +271,7 @@ describe("runCheckoutIntent — existing customer reuse", () => {
     expect(Object.keys(fx.sessionCalls[0].params.metadata)).toEqual([
       "profile_id",
       "plan",
+      "checkout_intent_id",
     ]);
   });
 });
@@ -289,7 +295,7 @@ describe("runCheckoutIntent — first creation", () => {
     expect(fx.sessionCalls.length).toBe(1);
     expect(fx.sessionCalls[0].params.customer).toBe("cus_fixture_1");
     expect(fx.sessionCalls[0].options.idempotencyKey).toBe(
-      sessionIdempotencyKey(PROFILE_ID, "pro"),
+      "checkout:legacy:fixture-intent",
     );
   });
 
@@ -342,7 +348,7 @@ describe("runCheckoutIntent — duplicate / retry", () => {
       fx.sessionCalls[1].options.idempotencyKey,
     );
     expect(fx.sessionCalls[1].options.idempotencyKey).toBe(
-      sessionIdempotencyKey(PROFILE_ID, "pro"),
+      "checkout:legacy:fixture-intent",
     );
   });
 
