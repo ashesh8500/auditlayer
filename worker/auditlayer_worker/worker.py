@@ -164,7 +164,19 @@ def _drain_once(
             run_settings = settings
             if pin is not None:
                 from .commercial import pinned_settings, terminal_payload
-                run_settings = pinned_settings(settings, app_settings, pin)
+                try:
+                    run_settings = pinned_settings(settings, app_settings, pin)
+                except RuntimeError as exc:
+                    if not pin.get('research_policy'):
+                        raise
+                    # Admission has claimed the quote, but no provider dispatch
+                    # or generator exists yet. Terminal zero is known here only.
+                    gateway.update_audit(audit.id, status='blocked', admin_notes=str(exc))
+                    gateway.emit_event(audit.id, 'failed', str(exc), event_type='research_admission_rejected')
+                    gateway.commercial_execution_finish(pin['reservation_id'], terminal_payload(
+                        audit.id, settings.worker_id, pin, None, []))
+                    error_type = 'ResearchAdmissionRejected'
+                    return True
                 audit.context = gateway.commercial_brief_context(audit_row, pin)
                 # A fresh client is essential: no inherited reservation or mutable
                 # settings from the legacy runtime. No research occurs in build.

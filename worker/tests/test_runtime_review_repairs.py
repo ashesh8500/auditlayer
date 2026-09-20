@@ -57,6 +57,8 @@ def test_missing_migration_fence_fails_closed():
         gateway.record_report_inference_calls('run-1',calls)
 
 import pytest
+
+pytestmark = pytest.mark.usefixtures("fake_agent_root")
 from test_generation_runtime import _Client, _payload, _generator, _audit
 from auditlayer_worker.generation import GenerationStageError
 

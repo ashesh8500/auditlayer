@@ -160,7 +160,9 @@ INSTAGRAM_LIMITATION = (
 # v1.13 — Hold evidence-free reports; unverified data-only drafts use N/A scores
 #         and review status. OpenRouter refinements use a strict JSON envelope.
 # v1.14 — Require factual attributable snippets; enforce commercial quote bounds.
-PROMPT_VERSION = "1.14"
+# v1.15 — Opt-in pinned OpenRouter Exa annotations; strict subject/platform
+# evidence filtering and visible extractive provenance; report bounds unchanged.
+PROMPT_VERSION = "1.15"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework

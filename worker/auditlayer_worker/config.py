@@ -49,6 +49,8 @@ def _default_worker_id() -> str:
         return "unknown"
 
 
+from .research import ResearchPolicy
+
 @dataclass(frozen=True)
 class WorkerSettings:
     supabase_url: str | None
@@ -83,6 +85,7 @@ class WorkerSettings:
     max_input_tokens: int = 32000
     max_inference_calls: int = 2
     commercial_execution: bool = False
+    research_policy: "ResearchPolicy | None" = None
     data_api_allowance_usd: float = 0.12
 
     @classmethod

@@ -221,6 +221,7 @@ class GenerationPipeline:
         persist_report: bool = True,
         run_kind: str = "production",
         workspace_execution=None,
+        local_inference_recorder=None,
     ) -> RunSummary:
         # Explicit opt-in only. Never discover providers or substitute a workspace
         # model for legacy paid/gift/trial/queued work. The workspace port has its
@@ -351,7 +352,8 @@ class GenerationPipeline:
                             raise GenerationStageError(stage="admission", error_code="inference_ledger_unavailable", retryable=False)
                         inference_client.inference_recorder = lambda calls: gateway.record_report_inference_calls(generation_run_id, calls)
                     else:
-                        inference_client.inference_recorder = None  # Explicit local/benchmark no-persistence path.
+                        # Explicit local qualification only; cannot replace SQL admission.
+                        inference_client.inference_recorder = local_inference_recorder if not persist_report and gateway is None else None
                 result = self.generator.generate(
                     audit, hb.progress,
                     research_cache=research_cache,

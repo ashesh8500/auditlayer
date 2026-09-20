@@ -435,6 +435,12 @@ class InProcessHermesClient:
 
     def collect_research(self, audit) -> str:
         """Run a fixed, parallel web sweep without an open-ended model loop."""
+        if self.settings.research_policy is not None:
+            if self.inference_recorder is None:
+                raise RuntimeError("research requires a durable recorder")
+            from .openrouter import research
+            return research(self.settings, audit, reservation=self._inference_reservation,
+                            on_receipt=self._record_inference).content
         research_deadline = time.monotonic() + RESEARCH_TOTAL_SECONDS
         handle = str(audit.handle).strip().lstrip("@")
         platform = str(audit.platform).strip()

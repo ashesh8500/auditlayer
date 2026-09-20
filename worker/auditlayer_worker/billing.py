@@ -36,6 +36,24 @@ class InferenceReservation:
     tokens: int = 0
     usd: float = 0.0
     calls: int = 0
+    research_calls: int = 0
+
+    def reserve_research(self, settings):
+        import math
+        policy = settings.research_policy
+        if policy is None or self.research_calls or self.calls:
+            raise InferenceReservationError('research reservation unavailable')
+        tokens = policy.context_tokens + policy.output_tokens
+        cost = (policy.context_tokens * settings.price_in_per_mtok
+                + policy.output_tokens * settings.price_out_per_mtok) / 1_000_000 + policy.search_fee_microusd / 1_000_000
+        if (not math.isfinite(cost) or cost <= 0 or not math.isfinite(settings.cost_cap_usd)
+                or self.tokens + tokens > settings.token_cap
+                or self.usd + cost > settings.cost_cap_usd):
+            raise InferenceReservationError('research reservation budget exhausted')
+        self.tokens += tokens
+        self.usd += cost
+        self.research_calls += 1
+        return cost
 
     def reserve(self, settings, messages, max_tokens):
         import math

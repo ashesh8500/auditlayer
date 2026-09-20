@@ -8,6 +8,8 @@ from types import SimpleNamespace
 import uuid
 import pytest
 
+pytestmark = pytest.mark.usefixtures("fake_agent_root")
+
 ROOT = Path(__file__).resolve().parents[2]
 
 class Database:

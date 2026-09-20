@@ -13,10 +13,10 @@ MODEL = "deepseek/deepseek-v4-flash-0731"
 
 
 @pytest.fixture
-def settings(monkeypatch):
+def settings(monkeypatch, fake_agent_root):
     monkeypatch.setattr("auditlayer_worker.config.load_env_files", lambda: None)
     return replace(WorkerSettings.from_env(), hermes_provider="openrouter", hermes_model=MODEL,
-                   hermes_mode="inprocess")
+                   hermes_mode="inprocess", hermes_agent_root=fake_agent_root)
 
 
 def test_product_sdk_dispatch_is_explicit_and_records_actual_cost(settings, monkeypatch):

@@ -194,11 +194,8 @@ def _safe_evidence_sources(payload: object) -> list[EvidenceSource]:
         if url in seen:
             continue
         title = str(row.get("title") or parsed.netloc).strip()[:160]
-        mode = (
-            "public_search_index"
-            if row.get("evidence_mode") == "public_search_index"
-            else "public_research"
-        )
+        mode = row.get("evidence_mode") if row.get("evidence_mode") in (
+            "public_search_index", "openrouter_exa") else "public_research"
         sources.append((title or parsed.netloc, url, mode))
         seen.add(url)
         if len(sources) >= 5:
@@ -219,7 +216,7 @@ def _append_evidence_sources(
                 html_lib.escape(mode, quote=True),
                 "Public search index snapshot · "
                 if mode == "public_search_index"
-                else "Public research · ",
+                else "OpenRouter Exa extracted source · " if mode == "openrouter_exa" else "Public research · ",
                 html_lib.escape(url, quote=True),
                 html_lib.escape(title),
             )
@@ -253,8 +250,14 @@ def _filter_evidence_payload(
     if not isinstance(payload, dict) or not isinstance(payload.get("web"), list):
         return {"web": []}
     filtered: list[dict[str, str]] = []
-    for row in payload["web"]:
+    for row in payload["web"][:8]:
         if not isinstance(row, dict):
+            continue
+        if row.get('evidence_mode') == 'openrouter_exa':
+            from .research import research_row
+            candidate = research_row(row, handle, platform)
+            if candidate and not any(x['url'] == candidate['url'] for x in filtered):
+                filtered.append(candidate)
             continue
         candidate = {
             "url": str(row.get("url") or "")[:2000],
@@ -276,8 +279,8 @@ def _filter_evidence_payload(
             continue
         if not _is_subject_relevant(candidate, handle, platform):
             continue
-        if row.get("evidence_mode") == "public_search_index":
-            candidate["evidence_mode"] = "public_search_index"
+        if row.get("evidence_mode") in ("public_search_index", "openrouter_exa"):
+            candidate["evidence_mode"] = row["evidence_mode"]
         filtered.append(candidate)
         if len(filtered) >= 8:
             break
@@ -454,6 +457,12 @@ class HermesReportGenerator:
                     "research", "research_failed", retryable=True, cause=exc
                 ) from exc
             timed("research", started)
+            research_calls = [dict(c) for c in getattr(self.client, "_inference_receipts", [])
+                              if c.get("stage") == "research"]
+            if research_calls:
+                stage_timings["_inference"] = research_calls
+                total_tokens_in += sum(c.get("tokens_in") or 0 for c in research_calls)
+                total_tokens_out += sum(c.get("tokens_out") or 0 for c in research_calls)
         else:
             stage_timings["research"] = 0.0
 
