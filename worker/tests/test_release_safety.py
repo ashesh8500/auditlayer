@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from auditlayer_worker.config import WorkerSettings
-from auditlayer_worker.core import AuditRecord, inject_prompt_footer
+from auditlayer_worker.core import AuditRecord, strip_internal_report_metadata
 from auditlayer_worker.generation import MockReportGenerator
 from auditlayer_worker.pipeline import GenerationPipeline, PrintEventSink, SupabaseEventSink
 from auditlayer_worker.supabase_client import SupabaseGateway
@@ -64,12 +64,9 @@ def test_heartbeat_event_refreshes_audit_lease() -> None:
     gateway.update_audit.assert_called_once_with("audit-1")
 
 
-def test_prompt_footer_is_inserted_without_model_placeholder() -> None:
+def test_metadata_cleanup_does_not_modify_a_clean_report() -> None:
     html = "<html><body><main>Report</main></body></html>"
-    result = inject_prompt_footer(html, "<p>Prompt v0.6</p>")
-
-    assert "Prompt v0.6" in result
-    assert result.index("Prompt v0.6") < result.index("</body>")
+    assert strip_internal_report_metadata(html) == html
 
 
 def test_budget_breach_blocks_without_entering_retry_loop(tmp_path) -> None:

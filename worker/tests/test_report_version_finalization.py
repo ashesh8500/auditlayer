@@ -264,6 +264,18 @@ def test_same_path_reconciliation_rejects_conflicting_immutable_provenance() -> 
     assert "v_intelligence_run_id is distinct from p_intelligence_run_id" in sql
 
 
+def test_refinement_reconciles_committed_response_loss_without_second_call():
+    client = _ReconciliationClient(rpc_results=[ConnectionError('lost')], version_results=[[
+        {'version': 3, 'report_path': 'a/new.html', 'prompt_version': '1.9',
+         'template_version': 'master-skeleton-v1', 'agent_bundle_version': '1',
+         'intelligence_run_id': None}
+    ]])
+    assert _reconciliation_gateway(client).finalize_refinement_report(
+        audit_id='a', refinement_id='r', report_path='a/new.html',
+        prompt_version='1.9', agent_bundle_version='1') == 3
+    assert len(client.calls) == 1
+
+
 def test_refinement_finalization_delegates_version_allocation_to_database() -> None:
     gateway, client = _gateway([3])
 

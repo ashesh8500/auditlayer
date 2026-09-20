@@ -1,0 +1,43 @@
+{
+  "receipt_kind": "public-documentation-review-not-live-model-probe",
+  "observed_at": "2026-09-19T22:00:54Z",
+  "credential_access": false,
+  "paid_calls": 0,
+  "sources": [
+    {
+      "url": "https://api-docs.deepseek.com/quick_start/pricing",
+      "observed_model_id": "deepseek-v4-flash",
+      "observed_model_version": "DeepSeek-V4-Flash-0731",
+      "observed_data_route": "https://api.deepseek.com",
+      "usd_per_million_tokens": {"peak_input_cache_hit": "0.014", "peak_input_cache_miss": "0.44", "peak_output": "1.32", "off_peak_input_cache_hit": "0.007", "off_peak_input_cache_miss": "0.22", "off_peak_output": "0.66"},
+      "capabilities_observed": ["JSON output", "tool calls", "Responses API", "thinking and non-thinking"],
+      "documentation_limits": {"context": "1M", "maximum_output": "384K"},
+      "gap": "No immutable dispatch ID verified. Model version label is NOT assumed to be a callable model ID."
+    },
+    {
+      "url": "https://api-docs.deepseek.com/api/create-chat-completion",
+      "excerpts": ["Possible values: [deepseek-v4-flash, deepseek-v4-pro, deepseek-v4-flash-vision-exp]", "thinking: Possible values: [enabled, disabled]. Default value: enabled", "max_tokens: The maximum number of tokens that can be generated in the chat completion.", "Setting to {type: json_object} enables JSON Output."]
+    },
+    {
+      "url": "https://developers.openai.com/api/docs/models/gpt-5.6.md",
+      "observed_model_id": "gpt-5.6-sol",
+      "observed_snapshot": "gpt-5.6-sol",
+      "observed_alias_not_selected": "gpt-5.6",
+      "usd_per_million_tokens": {"input": "4", "cached_input": "0.4", "output": "20"},
+      "excerpts": ["Flagship model for complex professional work", "Cache writes are billed at 1.25x the uncached input token rate.", "Prompts with >272K input tokens are priced at 2x input and 1.5x output for the full request.", "GPT-5.6 Sol’s promotional pricing is available at least through November 21, 2026."],
+      "capabilities_observed": ["Chat Completions", "Responses", "structured_outputs", "function_calling", "reasoning effort none"],
+      "documentation_limits": {"context_tokens": 1050000, "maximum_input_tokens": 922000, "maximum_output_tokens": 128000},
+      "gap": "No product credentials, tenant entitlement, qualified tokenizer or behavioral/quality/latency probe."
+    },
+    {
+      "url": "https://developers.openai.com/api/docs/models/gpt-5.4",
+      "observed_snapshot": "gpt-5.4-2026-03-05",
+      "usd_per_million_tokens": {"input": "2.50", "cached_input": "0.25", "output": "15.00"},
+      "decision": "Reviewed; not added as a third option. Current docs navigation identified GPT-5.6, so evaluated that directly instead."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/openai/openai-python/main/README.md",
+      "decision": "Use released OpenAI Python SDK public chat.completions.create / with_options / model_dump interfaces; no bespoke HTTP provider client and no Hermes auto-provider credential resolution."
+    }
+  ]
+}

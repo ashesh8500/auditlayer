@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import random
 import time
 import traceback
@@ -10,13 +11,16 @@ import httpx
 from postgrest.exceptions import APIError
 
 from .account_homes import get_report_bundle_version
+from .billing import estimate_cost
+from .generation import GenerationStageError
 from .config import WorkerSettings
 from .core import PROMPT_VERSION, AuditRecord
 from .generation import HermesReportGenerator, MockReportGenerator, ReportGenerator
 from .hermes_runtime import HermesRuntime
+from .hermes_inprocess import run_bounded_refinement
 from .observability import WorkerHealth, log_event, start_health_server
 from .pipeline import GenerationPipeline, SupabaseEventSink
-from .supabase_client import AppSettings, SupabaseGateway
+from .supabase_client import AppSettings, SupabaseGateway, ReportFinalizationRejected
 
 
 # An observation budget, not an enforced provider timeout. Covers generation,
@@ -82,6 +86,11 @@ def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
     try:
         while True:
             try:
+                # Opt-in control-plane only; SQL queues the canonical executor.
+                # No scheduler or mail work runs from customer resource reads.
+                import os
+                from .brand_update_workflow import scheduler_tick
+                scheduler_tick(gateway, enabled=os.environ.get("ALM_BRAND_WORKFLOWS_ENABLED") == "1")
                 worked = _drain_once(settings, gateway, runtime, health=health)
                 retried = gateway.sweep_retryable()
                 if retried:
@@ -92,6 +101,7 @@ def run_worker_loop(settings: WorkerSettings, *, once: bool = False) -> None:
                 crashed_runs = gateway.sweep_stale_report_generation_runs()
                 if crashed_runs:
                     log_event("stale_generation_runs_reaped", count=crashed_runs)
+                gateway.sweep_stale_refinements()
                 runtime.tick_idle(worked)
                 # A returned failed job is not a successful health recovery.
                 # A subsequent successful idle poll or job can recover health.
@@ -176,7 +186,46 @@ def _drain_once(
     return False
 
 
+REFINEMENT_TOTAL_SECONDS = 900.0
+REFINEMENT_LEASE_RESERVE_SECONDS = 180.0
+
+
 def _process_refinement(
+    settings: WorkerSettings, gateway: SupabaseGateway, pipeline: GenerationPipeline, row: dict
+) -> bool:
+    # Keep the queue API stable, but never reuse parent HTTP pools in a fork.
+    del gateway, pipeline
+    started = time.monotonic()
+    try:
+        expires = datetime.fromisoformat(str(row['lease_expires_at']).replace('Z', '+00:00'))
+        remaining = (expires - datetime.now(timezone.utc)).total_seconds()
+        budget = min(REFINEMENT_TOTAL_SECONDS, remaining - REFINEMENT_LEASE_RESERVE_SECONDS)
+        if budget <= 0:
+            raise TimeoutError('Insufficient refinement lease remaining')
+        return run_bounded_refinement(
+            lambda: _refinement_child_attempt(settings, row), deadline=started + budget,
+        )
+    except (TimeoutError, KeyError, ValueError, TypeError, RuntimeError) as exc:
+        # Do not issue unbounded control-plane I/O after containment. A commit
+        # might have happened: leave done/known usage intact, unknown spend NULL.
+        # The existing fenced reaper reconciles source identity or fails terminally;
+        # it never requeues this paid attempt. Siblings stay excluded until then.
+        log_event('refinement_contained', level='error', refinement_id=str(row['id']),
+                  error_type=type(exc).__name__)
+        return False
+
+
+def _refinement_child_attempt(settings: WorkerSettings, row: dict) -> bool:
+    gateway = SupabaseGateway(settings)
+    runtime = HermesRuntime(settings)
+    try:
+        generator = build_generator(settings, gateway.get_app_settings(), runtime=runtime)
+        return _process_refinement_attempt(settings, gateway, GenerationPipeline(settings, generator), row)
+    finally:
+        runtime.shutdown()
+
+
+def _process_refinement_attempt(
     settings: WorkerSettings, gateway: SupabaseGateway, pipeline: GenerationPipeline, row: dict
 ) -> bool:
     refinement_id = str(row["id"])
@@ -200,9 +249,19 @@ def _process_refinement(
 
     sink = SupabaseEventSink(gateway, audit_id)
     finalization_started = False
+    def record_usage(tokens_in, tokens_out, estimated):
+        cost = estimate_cost(tokens_in, tokens_out, settings.price_in_per_mtok,
+                             settings.price_out_per_mtok, data_api_allowance_usd=0)
+        gateway.update_refinement(refinement_id, tokens_in=tokens_in, tokens_out=tokens_out,
+                                  cost_usd=cost.total_usd, usage_estimated=estimated,
+                                  usage_status="estimated" if estimated else "reported")
     try:
+        if row.get("base_report_version") is not None and row["base_report_version"] != audit.report_version:
+            raise ValueError("refinement base report changed before inference")
+        if row.get("lease_expires_at") and datetime.fromisoformat(row["lease_expires_at"].replace("Z", "+00:00")) <= datetime.now(timezone.utc):
+            raise ValueError("refinement lease expired before inference")
         current_html = _download_report(gateway, settings, report_path)
-        new_html, _t_in, _t_out = pipeline.refine(audit, current_html, section, instruction, sink)
+        new_html, _t_in, _t_out = pipeline.refine(audit, current_html, section, instruction, sink, usage_callback=record_usage)
         new_report_path, _ = gateway.upload_report(audit_id, new_html)
         finalization_started = True
         new_version = gateway.finalize_refinement_report(
@@ -220,7 +279,7 @@ def _process_refinement(
         )
         return True
     except Exception as exc:  # noqa: BLE001
-        if finalization_started:
+        if finalization_started and not isinstance(exc, ReportFinalizationRejected):
             # The RPC may have committed (or only the subsequent event failed).
             # Never overwrite done with failed or replay generation. Leave the
             # row for reconciliation and let the loop classify the exception.
@@ -233,7 +292,9 @@ def _process_refinement(
             error_type=type(exc).__name__,
             traceback_tail=traceback.format_exc()[-500:],
         )
-        public_error = "Refinement failed safely. The team has the diagnostic details."
+        if isinstance(exc, GenerationStageError):
+            record_usage(exc.tokens_in, exc.tokens_out, getattr(exc, "usage_estimated", True))
+        public_error = "Refinement failed safely. The previous report is retained."
         gateway.emit_event(
             audit_id,
             "failed",

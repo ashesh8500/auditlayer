@@ -55,8 +55,9 @@ class _Gateway:
 
 
 class _Pipeline:
-    def refine(self, *_args, **_kwargs):
-        return "<html>refined</html>", 10, 5
+    def refine(self, *_args, **kwargs):
+        kwargs['usage_callback'](1000000, 500000, False)
+        return "<html>refined</html>", 1000000, 500000
 
 
 def test_refinement_stamps_current_bundle_before_version_finalization(
@@ -68,6 +69,7 @@ def test_refinement_stamps_current_bundle_before_version_finalization(
     settings = SimpleNamespace(
         alm_profile_bundle_root=bundle,
         reports_bucket="reports",
+        price_in_per_mtok=0.14, price_out_per_mtok=0.28,
     )
     gateway = _Gateway(
         {
@@ -81,7 +83,7 @@ def test_refinement_stamps_current_bundle_before_version_finalization(
     )
     monkeypatch.setattr(worker, "_download_report", lambda *_args: "<html>old</html>")
 
-    worker._process_refinement(
+    worker._process_refinement_attempt(
         cast(Any, settings),
         cast(Any, gateway),
         cast(Any, _Pipeline()),
@@ -97,3 +99,9 @@ def test_refinement_stamps_current_bundle_before_version_finalization(
     assert "update_audit" not in names
     finalize = cast(dict[str, Any], next(payload for name, payload in gateway.calls if name == "finalize"))
     assert finalize["agent_bundle_version"] == "1.0.0"
+    usage = next(payload[1] for name, payload in gateway.calls if name == 'update_refinement')
+    assert usage['tokens_in'] == 1000000
+    assert usage['tokens_out'] == 500000
+    assert usage['cost_usd'] == 0.28
+    assert usage['usage_status'] == 'reported'
+    assert usage['usage_estimated'] is False

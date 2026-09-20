@@ -12,13 +12,14 @@ from auditlayer_worker.generation import _mock_report_html
 from auditlayer_worker.core import AuditRecord
 r = AuditRecord(id='test', handle='test', platform='instagram', goal='growth')
 html = _mock_report_html(r)
-assert 'PROMPT_VERSION_LINE' in html
-print('3. mock HTML has placeholder OK')
+assert 'PROMPT_VERSION_LINE' not in html
+assert 'Prompt v' not in html
+print('3. mock HTML has no internal placeholder OK')
 
 from pathlib import Path
 tmpl = Path(__file__).parent / 'auditlayer_worker' / 'templates' / 'master-skeleton.html'
-assert 'PROMPT_VERSION_LINE' in tmpl.read_text()
-print('4. template has placeholder OK')
+assert 'PROMPT_VERSION_LINE' not in tmpl.read_text()
+print('4. template has no internal placeholder OK')
 
 mig = Path(__file__).parent.parent / 'supabase' / 'migrations' / '0017_prompt_version.sql'
 assert mig.exists()

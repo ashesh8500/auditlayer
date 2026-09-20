@@ -33,6 +33,7 @@ from .core import (
     extract_fragment,
     html_looks_complete,
 )
+from .refinement_sections import replace_refinement_section
 from .hermes import HermesClient
 from .hermes_inprocess import _is_subject_relevant
 from .instagram_api import InstagramAPIError
@@ -83,6 +84,7 @@ class GenerationStageError(RuntimeError):
         self.stage_timings = dict(stage_timings or {})
         self.tokens_in = tokens_in
         self.tokens_out = tokens_out
+        self.usage_estimated = True
 
 
 @dataclass(frozen=True)
@@ -91,6 +93,7 @@ class RefinementResult:
     tokens_in: int
     tokens_out: int
     model: str
+    estimated: bool = True
 
 
 class ReportGenerator(Protocol):
@@ -231,6 +234,9 @@ def _append_evidence_sources(
         "<h3>Sources reviewed</h3>"
         f"{body}</aside>"
     )
+    footer = '<div class="report-footer">'
+    if footer in report_html:
+        return report_html.replace(footer, f"{aside}{footer}", 1)
     if "</body>" in report_html:
         return report_html.replace("</body>", f"{aside}</body>", 1)
     return f"{report_html}{aside}"
@@ -654,6 +660,8 @@ class HermesReportGenerator:
         self, audit: AuditRecord, current_html: str, section: str,
         instruction: str, progress: Progress,
     ) -> RefinementResult:
+        # Prove the requested section exists before any paid inference.
+        replace_refinement_section(current_html, section, "")
         progress("refinement", f"Refining section '{section}'")
         prompt = build_refinement_prompt(audit, current_html, section, instruction)
         result = self.client.chat(
@@ -662,17 +670,25 @@ class HermesReportGenerator:
                 {"role": "user", "content": prompt},
             ],
             model=self.model,
-            toolsets=self.toolsets,
+            toolsets=(),
             max_tokens=4000,
             temperature=self.temperature,
             stream=False,
         )
-        fragment = extract_fragment(result.content, expected_heading=section)
+        try:
+            fragment = extract_fragment(result.content, expected_heading=section)
+        except ValueError as exc:
+            failure = GenerationStageError(stage="refinement", error_code="invalid_refinement_output",
+                                           retryable=False, tokens_in=result.usage.tokens_in,
+                                           tokens_out=result.usage.tokens_out)
+            failure.usage_estimated = getattr(result.usage, "estimated", True)
+            raise failure from exc
         return RefinementResult(
             fragment=fragment,
             tokens_in=result.usage.tokens_in,
             tokens_out=result.usage.tokens_out,
             model=result.model,
+            estimated=getattr(result.usage, "estimated", True),
         )
 
 

@@ -12,6 +12,8 @@ only the ``EventSink`` and storage differ.
 
 from __future__ import annotations
 
+from .refinement_sections import replace_refinement_section
+
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
@@ -33,11 +35,9 @@ from .core import (
     Plan,
     Platform,
     PROMPT_VERSION,
-    build_prompt_footer_line,
     evaluate_intake,
-    inject_prompt_footer,
+    strip_internal_report_metadata,
     next_milestone,
-    replace_section,
 )
 from .generation import GenerationStageError, ReportGenerator
 from .account_homes import ensure_account_home, get_report_bundle_version
@@ -220,7 +220,15 @@ class GenerationPipeline:
         cost_cap_usd: float = 0.0,
         persist_report: bool = True,
         run_kind: str = "production",
+        workspace_execution=None,
     ) -> RunSummary:
+        # Explicit opt-in only. Never discover providers or substitute a workspace
+        # model for legacy paid/gift/trial/queued work. The workspace port has its
+        # own SQL admission and no ambient research/tool/credential access.
+        if workspace_execution is not None:
+            if not persist_report or gateway is None:
+                raise ValueError("workspace execution requires durable persistence")
+            return workspace_execution.run(audit, sink, gateway=gateway)
         started_at = time.monotonic()
         sink.emit("started", f"Worker claimed audit for @{audit.handle} ({audit.goal})")
 
@@ -481,16 +489,8 @@ class GenerationPipeline:
             self.settings.price_out_per_mtok,
         )
 
-        # Inject prompt version footer into the HTML for reproducibility.
-        generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-        footer_line = build_prompt_footer_line(
-            tokens_in=result.tokens_in,
-            tokens_out=result.tokens_out,
-            cost_usd=cost.total_usd,
-            generated_at=generated_at,
-            version=PROMPT_VERSION,
-        )
-        final_html = inject_prompt_footer(result.html, footer_line)
+        # Generation accounting belongs in run records/events, never the artifact.
+        final_html = strip_internal_report_metadata(result.html)
         quality = evaluate_report_quality(
             final_html,
             report_type=audit.report_type or "standard",
@@ -771,12 +771,15 @@ class GenerationPipeline:
         section: str,
         instruction: str,
         sink: EventSink,
+        *, usage_callback=None,
     ) -> tuple[str, int, int]:
         """Run a section-scoped refinement, returning (new_full_html, t_in, t_out)."""
         account_home = self._account_home(audit)
         with self._scoped_home(account_home):
             result = self.generator.refine(audit, current_html, section, instruction, sink.emit)
-        new_html = replace_section(current_html, section, result.fragment)
+        if usage_callback is not None:
+            usage_callback(result.tokens_in, result.tokens_out, result.estimated)
+        new_html = strip_internal_report_metadata(replace_refinement_section(current_html, section, result.fragment))
         return new_html, result.tokens_in, result.tokens_out
 
     # -- helpers -----------------------------------------------------------
