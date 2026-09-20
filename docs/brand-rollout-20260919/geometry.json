@@ -1,0 +1,142 @@
+[
+  {
+    "width": 320,
+    "scroll": 320,
+    "images": [
+      {
+        "width": 55,
+        "height": 30,
+        "naturalWidth": 275
+      },
+      {
+        "width": 55,
+        "height": 30,
+        "naturalWidth": 275
+      },
+      {
+        "width": 55,
+        "height": 30,
+        "naturalWidth": 275
+      }
+    ],
+    "links": [
+      {
+        "width": 55,
+        "height": 44
+      },
+      {
+        "width": 55,
+        "height": 44
+      },
+      {
+        "width": 167,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "scroll": 390,
+    "images": [
+      {
+        "width": 55,
+        "height": 30,
+        "naturalWidth": 275
+      },
+      {
+        "width": 55,
+        "height": 30,
+        "naturalWidth": 275
+      },
+      {
+        "width": 55,
+        "height": 30,
+        "naturalWidth": 275
+      }
+    ],
+    "links": [
+      {
+        "width": 55,
+        "height": 44
+      },
+      {
+        "width": 55,
+        "height": 44
+      },
+      {
+        "width": 167,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "width": 768,
+    "scroll": 768,
+    "images": [
+      {
+        "width": 55,
+        "height": 30,
+        "naturalWidth": 275
+      },
+      {
+        "width": 55,
+        "height": 30,
+        "naturalWidth": 275
+      },
+      {
+        "width": 55,
+        "height": 30,
+        "naturalWidth": 275
+      }
+    ],
+    "links": [
+      {
+        "width": 55,
+        "height": 44
+      },
+      {
+        "width": 55,
+        "height": 44
+      },
+      {
+        "width": 167,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "width": 1440,
+    "scroll": 1440,
+    "images": [
+      {
+        "width": 55,
+        "height": 30,
+        "naturalWidth": 275
+      },
+      {
+        "width": 55,
+        "height": 30,
+        "naturalWidth": 275
+      },
+      {
+        "width": 55,
+        "height": 30,
+        "naturalWidth": 275
+      }
+    ],
+    "links": [
+      {
+        "width": 55,
+        "height": 44
+      },
+      {
+        "width": 55,
+        "height": 44
+      },
+      {
+        "width": 167,
+        "height": 44
+      }
+    ]
+  }
+]
