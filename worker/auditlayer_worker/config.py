@@ -86,6 +86,18 @@ class WorkerSettings:
         load_env_files()
         toolsets = os.getenv("AUDITLAYER_TOOLSETS", "web,browser,x_search")
         repo_root = Path(__file__).resolve().parents[2]
+        # Explicit product config never inherits an engineering model/profile.
+        product_provider = os.getenv("ALM_INFERENCE_PROVIDER")
+        if product_provider is not None:
+            from .openrouter import MODEL
+            provider = product_provider
+            model = os.getenv("ALM_INFERENCE_MODEL", MODEL if provider == "openrouter" else "deepseek-v4-flash")
+            if provider == "openrouter" and model == "auto":
+                model = MODEL  # ALM Auto policy, never the openrouter/auto router.
+        else:
+            # Retained for an explicit rollback to the existing deployment.
+            provider = os.getenv("HERMES_PROVIDER", "deepseek")
+            model = os.getenv("HERMES_MODEL", "deepseek-v4-flash")
         return cls(
             supabase_url=os.getenv("SUPABASE_URL") or None,
             supabase_service_role_key=(
@@ -96,8 +108,8 @@ class WorkerSettings:
             hermes_mode=os.getenv("HERMES_MODE", "http").strip().lower(),
             hermes_api_base=os.getenv("HERMES_API_BASE", "http://127.0.0.1:8642/v1"),
             hermes_api_key=os.getenv("HERMES_API_KEY") or None,
-            hermes_model=os.getenv("HERMES_MODEL", "deepseek-v4-flash"),
-            hermes_provider=os.getenv("HERMES_PROVIDER", "deepseek"),
+            hermes_model=model,
+            hermes_provider=provider,
             hermes_timeout_seconds=float(os.getenv("HERMES_TIMEOUT_SECONDS", "600")),
             hermes_gateway_bin=os.getenv("HERMES_GATEWAY_BIN") or None,
             hermes_subprocess_idle_seconds=float(

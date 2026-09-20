@@ -375,13 +375,29 @@ class SupabaseGateway:
         ).execute()
         return run_id
 
+    def record_report_inference_calls(self, run_id: str, calls: list[dict]) -> None:
+        """Read-backed upstream reservation/receipt on the existing private run.
+
+        One claimed worker owns a run. This is not a cross-run customer-wallet
+        reservation; authoritative commercial admission remains in SQL.
+        """
+        from .openrouter import safe_receipts
+        safe = safe_receipts(calls)
+        table = self.client.table("report_generation_runs")
+        table.update({"stage_timings": {"_inference": safe}}).eq("id", run_id).eq("status", "running").execute()
+        rows = table.select("stage_timings").eq("id", run_id).eq("status", "running").execute().data
+        if (not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict)
+                or not isinstance(rows[0].get("stage_timings"), dict)
+                or rows[0]["stage_timings"].get("_inference") != safe):
+            raise RuntimeError("inference reservation ledger readback failed")
+
     def finish_report_generation_run(
         self,
         run_id: str,
         *,
         status: str,
         total_seconds: float,
-        stage_timings: dict[str, float] | None = None,
+        stage_timings: dict[str, Any] | None = None,
         tokens_in: int = 0,
         tokens_out: int = 0,
         cost_usd: float = 0.0,
@@ -393,11 +409,15 @@ class SupabaseGateway:
         error_code: str | None = None,
     ) -> None:
         """Finish an attempt with aggregate, non-customer telemetry only."""
-        safe_timings = {
+        safe_timings: dict[str, Any] = {
             key: round(max(0.0, float(value)), 3)
             for key, value in (stage_timings or {}).items()
             if key in ALLOWED_REPORT_STAGE_TIMINGS
         }
+        calls = (stage_timings or {}).get("_inference")
+        if isinstance(calls, list):
+            from .openrouter import safe_receipts
+            safe_timings["_inference"] = safe_receipts(calls)
         fields = {
             "status": status,
             "finished_at": _utcnow(),

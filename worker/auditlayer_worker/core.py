@@ -63,6 +63,8 @@ class Plan(str, Enum):
     FREE = "free"
     STARTER = "starter"
     PRO = "pro"
+    BRAND = "brand"
+    STUDIO = "studio"
     ENTERPRISE = "enterprise"
 
 
@@ -155,7 +157,9 @@ INSTAGRAM_LIMITATION = (
 #         preserve facts/source attribution and treat artifact text as untrusted.
 # v1.11 — Reject block-in-paragraph HTML repairs; preserve cross-language editability.
 # v1.12 — Enforce table/list/anchor content models before accepting refinement HTML.
-PROMPT_VERSION = "1.12"
+# v1.13 — Hold evidence-free reports; unverified data-only drafts use N/A scores
+#         and review status. OpenRouter refinements use a strict JSON envelope.
+PROMPT_VERSION = "1.13"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework
@@ -403,7 +407,9 @@ def evaluate_intake(
 
     if not clean:
         reasons.append("A valid public handle or profile URL is required.")
-    if gifted_audits <= 0 and completed_audits >= PLAN_LIMITS[plan]:
+    # New credit plans are admitted by the SQL wallet/cycle/brand transaction.
+    # Legacy report-count entitlements remain unchanged for purchased contracts.
+    if plan in PLAN_LIMITS and gifted_audits <= 0 and completed_audits >= PLAN_LIMITS[plan]:
         reasons.append(f"The {plan.value} plan has reached its audit limit.")
     if resolved == Platform.INSTAGRAM:
         limitations.append(INSTAGRAM_LIMITATION)
@@ -1083,6 +1089,7 @@ def assemble_structured_report_html(
     *,
     ig_metrics: Any = None,
     indexed_instagram_metrics: dict[str, str] | None = None,
+    suppress_unverified_scores: bool = False,
 ) -> str:
     """Validate report JSON and render heading-specific, escaped HTML locally."""
     payload = _extract_structured_payload(model_content)
@@ -1187,6 +1194,8 @@ def assemble_structured_report_html(
                 "" if raw_value in (None, "") else _structured_text(raw_value, "item value", 80),
             ))
 
+        if suppress_unverified_scores and heading in {"Executive Summary", "Score Breakdown", "Key Metrics"}:
+            clean_items = [(title, body, "N/A") for title, body, _ in clean_items]
         if not connected and heading == "Executive Summary":
             scored = all(value.isdigit() and 0 <= int(value) <= 100 for _, _, value in clean_items)
             overall: int | str = calculate_weighted_overall_score(clean_items) if scored else "N/A"

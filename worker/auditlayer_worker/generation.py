@@ -35,6 +35,8 @@ from .core import (
 )
 from .refinement_sections import replace_refinement_section
 from .hermes import HermesClient
+from .openrouter import ProviderCallError
+from .billing import InferenceReservationError
 from .hermes_inprocess import _is_subject_relevant
 from .instagram_api import InstagramAPIError
 from .observability import capture_worker_failure
@@ -51,8 +53,9 @@ class GenerationResult:
     estimated: bool = False
     research_cache: str = ""  # saved so retries can skip Stage 1
     tokens_saved: int = 0     # tokens avoided by using cache
-    stage_timings: dict[str, float] = field(default_factory=dict)
+    stage_timings: dict[str, Any] = field(default_factory=dict)
     evidence_items: int = 0
+    evidence_qualified: bool = True
     format_retry_used: bool = False
     research_cache_used: bool = False
     account_mode: str = "unknown"
@@ -72,7 +75,7 @@ class GenerationStageError(RuntimeError):
         error_code: str,
         retryable: bool,
         research_cache: str = "",
-        stage_timings: dict[str, float] | None = None,
+        stage_timings: dict[str, Any] | None = None,
         tokens_in: int = 0,
         tokens_out: int = 0,
     ) -> None:
@@ -94,6 +97,7 @@ class RefinementResult:
     tokens_out: int
     model: str
     estimated: bool = True
+    telemetry: dict = field(default_factory=dict)
 
 
 class ReportGenerator(Protocol):
@@ -373,7 +377,7 @@ class HermesReportGenerator:
         the public search sweep.
         """
         emitter = _PhaseEmitter(audit, progress, self.phase_interval)
-        stage_timings: dict[str, float] = {}
+        stage_timings: dict[str, Any] = {}
         total_tokens_in = 0
         total_tokens_out = 0
         format_retry_used = False
@@ -390,6 +394,16 @@ class HermesReportGenerator:
             retryable: bool,
             cause: BaseException,
         ) -> GenerationStageError:
+            nonlocal total_tokens_in, total_tokens_out
+            if isinstance(cause, InferenceReservationError):
+                retryable = False
+            if isinstance(cause, ProviderCallError):
+                stage_timings.setdefault("_inference", []).append(cause.telemetry)
+                total_tokens_in += cause.telemetry.get("tokens_in") or 0
+                total_tokens_out += cause.telemetry.get("tokens_out") or 0
+                retryable = False  # Unknown upstream liability must not auto-replay.
+            for call in stage_timings.get("_inference", []):
+                call["customer_charge_usd"] = 0
             error = GenerationStageError(
                 stage=stage,
                 error_code=code,
@@ -411,6 +425,9 @@ class HermesReportGenerator:
         collect_research = getattr(self.client, "collect_research", None)
 
         session_id = f"audit-{audit.id}"
+        begin_run = getattr(self.client, "begin_inference_run", None)
+        if callable(begin_run):
+            begin_run(session_id)
         emitter.advance_to("researching")
         if not research_cache and not callable(collect_research):
             raise RuntimeError("AuditLayer generation requires the bounded research collector")
@@ -502,6 +519,9 @@ class HermesReportGenerator:
             )
             if limitation not in audit.limitations:
                 audit.limitations.append(limitation)
+            if ig_metrics is None and not audit.context.strip():
+                raise fail("research", "insufficient_evidence", retryable=False,
+                           cause=ValueError("No subject evidence; factual report withheld"))
         emitter.advance_to("scoring")
         prompt = build_section_prompt(
             audit,
@@ -537,6 +557,8 @@ class HermesReportGenerator:
         timed("analysis", started)
         total_tokens_in += result.usage.tokens_in
         total_tokens_out += result.usage.tokens_out
+        if result.telemetry:
+            stage_timings.setdefault("_inference", []).append(dict(result.telemetry))
         emitter.advance_to("composing")
 
         started = time.monotonic()
@@ -546,10 +568,13 @@ class HermesReportGenerator:
                 result.content,
                 ig_metrics=ig_metrics,
                 indexed_instagram_metrics=indexed_instagram_metrics,
+                suppress_unverified_scores=not has_web_evidence and ig_metrics is None,
             )
             estimated = result.usage.estimated
         except ValueError as exc:
             timed("validation", started)
+            if result.telemetry:
+                stage_timings["_inference"][-1].update(status="format_rejected", customer_charge_usd=0)
             format_retry_used = True
             correction_started = time.monotonic()
             try:
@@ -587,11 +612,14 @@ class HermesReportGenerator:
                 )
                 total_tokens_in += retry_result.usage.tokens_in
                 total_tokens_out += retry_result.usage.tokens_out
+                if retry_result.telemetry:
+                    stage_timings.setdefault("_inference", []).append(dict(retry_result.telemetry))
                 report_html = assemble_structured_report_html(
                     audit,
                     retry_result.content,
                     ig_metrics=ig_metrics,
                     indexed_instagram_metrics=indexed_instagram_metrics,
+                    suppress_unverified_scores=not has_web_evidence and ig_metrics is None,
                 )
             except (TimeoutError, FutureTimeoutError) as correction_exc:
                 timed("format_correction", correction_started)
@@ -651,6 +679,7 @@ class HermesReportGenerator:
             model=result.model, estimated=estimated, research_cache=research_material,
             stage_timings=stage_timings,
             evidence_items=evidence_items,
+            evidence_qualified=has_web_evidence or ig_metrics is not None,
             format_retry_used=format_retry_used,
             research_cache_used=research_cache_used,
             account_mode=account_mode,
@@ -664,9 +693,13 @@ class HermesReportGenerator:
         replace_refinement_section(current_html, section, "")
         progress("refinement", f"Refining section '{section}'")
         prompt = build_refinement_prompt(audit, current_html, section, instruction)
+        from .openrouter import MODEL
+        system = REFINE_SYSTEM_PROMPT
+        if self.model == MODEL:
+            system += '\nReturn a strict JSON object with exactly one key, "fragment", whose string value is the requested section HTML. No fences or other keys.'
         result = self.client.chat(
             messages=[
-                {"role": "system", "content": REFINE_SYSTEM_PROMPT},
+                {"role": "system", "content": system},
                 {"role": "user", "content": prompt},
             ],
             model=self.model,
@@ -676,11 +709,22 @@ class HermesReportGenerator:
             stream=False,
         )
         try:
-            fragment = extract_fragment(result.content, expected_heading=section)
+            content = result.content
+            if self.model == MODEL:
+                if len(content) > 40000 or not content.strip().startswith("{"):
+                    raise ValueError("Invalid refinement JSON envelope")
+                pairs = json.loads(content, object_pairs_hook=list)
+                if not isinstance(pairs, list) or len(pairs) != 1 or pairs[0][0] != "fragment" or not isinstance(pairs[0][1], str):
+                    raise ValueError("Invalid refinement JSON envelope")
+                content = pairs[0][1]
+            fragment = extract_fragment(content, expected_heading=section)
         except ValueError as exc:
             failure = GenerationStageError(stage="refinement", error_code="invalid_refinement_output",
                                            retryable=False, tokens_in=result.usage.tokens_in,
                                            tokens_out=result.usage.tokens_out)
+            if getattr(result, "telemetry", None):
+                failure.stage_timings["_inference"] = [{**result.telemetry,
+                    "status": "format_rejected", "customer_charge_usd": 0}]
             failure.usage_estimated = getattr(result.usage, "estimated", True)
             raise failure from exc
         return RefinementResult(
@@ -689,6 +733,7 @@ class HermesReportGenerator:
             tokens_out=result.usage.tokens_out,
             model=result.model,
             estimated=getattr(result.usage, "estimated", True),
+            telemetry=getattr(result, "telemetry", {}),
         )
 
 

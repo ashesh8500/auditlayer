@@ -336,7 +336,7 @@ def run_bounded_refinement(operation, *, deadline: float) -> bool:
         context = multiprocessing.get_context('fork')
         receiver, sender = context.Pipe(duplex=False)
         process = context.Process(target=_refinement_process,
-                                  args=(operation, sender, os.getpid()), daemon=True)
+                                  args=(operation, sender, os.getpid()), daemon=False)
         if time.monotonic() >= deadline:
             raise TimeoutError('Refinement deadline exhausted before start')
         process.start()
@@ -389,6 +389,11 @@ class InProcessHermesClient:
         skip_memory: bool = False,
     ) -> None:
         self.settings = settings
+        from .billing import InferenceReservation
+        self._inference_reservation = InferenceReservation()
+        self._inference_run = ""
+        self._inference_receipts: list[dict] = []
+        self.inference_recorder: Callable[[list[dict]], None] | None = None
         self._hermes_home = hermes_home
         self._max_iterations = max_iterations or settings.hermes_max_iterations
         self._skip_memory = skip_memory
@@ -492,6 +497,19 @@ class InProcessHermesClient:
         return payload
 
 
+    def begin_inference_run(self, run_id: str) -> None:
+        from .billing import InferenceReservation
+        if run_id != self._inference_run:
+            self._inference_run = run_id
+            self._inference_reservation = InferenceReservation()
+            self._inference_receipts = []
+
+    def _record_inference(self, receipt: dict) -> None:
+        self._inference_receipts = [r for r in self._inference_receipts
+                                    if r["attempt_id"] != receipt["attempt_id"]] + [dict(receipt)]
+        if self.inference_recorder is not None:
+            self.inference_recorder(self._inference_receipts)
+
     def chat(
         self,
         messages: list[dict],
@@ -504,6 +522,13 @@ class InProcessHermesClient:
         on_delta: Callable[[str, str], None] | None = None,
         session_id: str = "",
     ) -> ChatResult:
+        if self.settings.hermes_provider == "openrouter":
+            from .openrouter import chat
+            return chat(self.settings, messages, model, toolsets=toolsets,
+                        max_tokens=max_tokens, temperature=temperature,
+                        correlation_id=session_id, reservation=self._inference_reservation,
+                        on_receipt=self._record_inference)
+
         del session_id  # In-process sessions are isolated through HERMES_HOME.
 
         if self.settings.hermes_provider != "deepseek" or model != "deepseek-v4-flash":

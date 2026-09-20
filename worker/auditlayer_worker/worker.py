@@ -39,13 +39,21 @@ def build_generator(
         return MockReportGenerator(phase_interval=settings.phase_interval_seconds)
 
     model = app_settings.hermes_model if app_settings else settings.hermes_model
-    if settings.hermes_provider != "deepseek" or model != "deepseek-v4-flash":
+    from .openrouter import MODEL
+    if settings.hermes_provider == "openrouter":
+        model = settings.hermes_model  # Product pin, never a mutable admin/coding default.
+    if (settings.hermes_provider, model) not in {("deepseek", "deepseek-v4-flash"), ("openrouter", MODEL)}:
         raise RuntimeError("AuditLayer generation requires DeepSeek V4 Flash")
     if settings.hermes_mode != "inprocess":
         raise RuntimeError("AuditLayer generation requires in-process bounded research")
     toolsets = app_settings.enabled_toolsets if app_settings else settings.enabled_toolsets
     hermes_runtime = runtime or HermesRuntime(settings)
     client = hermes_runtime.build_client()
+    if settings.hermes_provider == "openrouter" and app_settings is not None:
+        from dataclasses import replace
+        client.settings = replace(client.settings,
+            token_cap=min(settings.token_cap, app_settings.token_cap),
+            cost_cap_usd=min(settings.cost_cap_usd, app_settings.cost_cap_usd))
     interval = settings.phase_interval_seconds or 20.0
     return HermesReportGenerator(
         client=client,
@@ -249,12 +257,18 @@ def _process_refinement_attempt(
 
     sink = SupabaseEventSink(gateway, audit_id)
     finalization_started = False
-    def record_usage(tokens_in, tokens_out, estimated):
+    def record_usage(tokens_in, tokens_out, estimated, telemetry=None):
         cost = estimate_cost(tokens_in, tokens_out, settings.price_in_per_mtok,
-                             settings.price_out_per_mtok, data_api_allowance_usd=0)
+                             settings.price_out_per_mtok, data_api_allowance_usd=0,
+                             inference_calls=[telemetry] if telemetry else None)
+        unknown = bool(telemetry and telemetry.get("cost_source") == "unknown")
+        if telemetry:
+            from .openrouter import safe_receipts
+            log_event("refinement_inference_receipt", refinement_id=refinement_id,
+                      audit_id=audit_id, inference=safe_receipts([telemetry]))
         gateway.update_refinement(refinement_id, tokens_in=tokens_in, tokens_out=tokens_out,
-                                  cost_usd=cost.total_usd, usage_estimated=estimated,
-                                  usage_status="estimated" if estimated else "reported")
+                                  cost_usd=None if unknown else cost.total_usd, usage_estimated=estimated or unknown,
+                                  usage_status="unknown" if unknown else "estimated" if estimated else "reported")
     try:
         if row.get("base_report_version") is not None and row["base_report_version"] != audit.report_version:
             raise ValueError("refinement base report changed before inference")
@@ -292,8 +306,15 @@ def _process_refinement_attempt(
             error_type=type(exc).__name__,
             traceback_tail=traceback.format_exc()[-500:],
         )
-        if isinstance(exc, GenerationStageError):
-            record_usage(exc.tokens_in, exc.tokens_out, getattr(exc, "usage_estimated", True))
+        from .openrouter import ProviderCallError
+        if isinstance(exc, ProviderCallError):
+            receipt = exc.telemetry
+            record_usage(receipt.get("tokens_in") or 0, receipt.get("tokens_out") or 0,
+                         receipt.get("usage_status") != "actual", receipt)
+        elif isinstance(exc, GenerationStageError):
+            receipts = exc.stage_timings.get("_inference") or []
+            record_usage(exc.tokens_in, exc.tokens_out, getattr(exc, "usage_estimated", True),
+                         receipts[-1] if receipts else None)
         public_error = "Refinement failed safely. The previous report is retained."
         gateway.emit_event(
             audit_id,
