@@ -174,7 +174,7 @@ def test_reservation_ledger_requires_matching_running_row_readback(settings):
     receipt = {"attempt_id": "a1", "status": "reserved", "cost_usd": None}
     query = gateway.client.table.return_value
     query.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
-        {"stage_timings": {"_inference": [receipt]}}]
+        {"audit_id": None, "refinement_id": "ref-1", "stage_timings": {"_inference": [receipt]}}]
     gateway.record_report_inference_calls("run-1", [receipt])
     query.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = []
     with pytest.raises(RuntimeError, match="reservation ledger"):

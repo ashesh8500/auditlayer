@@ -261,6 +261,19 @@ def _filter_evidence_payload(
             "title": str(row.get("title") or "")[:500],
             "description": str(row.get("description") or "")[:2500],
         }
+        try:
+            source = urlsplit(candidate["url"])
+            usable_url = source.scheme in {"http", "https"} and source.hostname and not source.username
+        except ValueError:
+            usable_url = False
+        # A locator/name is identity, not evidence. Require substantive snippet
+        # content after removing the subject/platform labels.
+        factual = candidate["description"].lower()
+        for label in (handle.strip().lstrip("@").lower(), platform.lower()):
+            if label:
+                factual = factual.replace(label, " ")
+        if not usable_url or not re.search(r"[a-z0-9]{2,}", factual):
+            continue
         if not _is_subject_relevant(candidate, handle, platform):
             continue
         if row.get("evidence_mode") == "public_search_index":

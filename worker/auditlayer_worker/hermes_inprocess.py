@@ -444,7 +444,7 @@ class InProcessHermesClient:
             f'"{handle}" content creator brand',
         )
 
-        results = _managed_search_results(
+        results = [] if self.settings.commercial_execution else _managed_search_results(
             queries,
             str(audit.id),
             deadline=min(

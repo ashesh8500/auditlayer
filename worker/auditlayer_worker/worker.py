@@ -160,8 +160,25 @@ def _drain_once(
             audit = AuditRecord.from_row(audit_row)
             sink = SupabaseEventSink(gateway, audit.id)
             log_event("audit_claimed", audit_id=audit.id, handle=audit.handle)
-            summary = pipeline.run(audit, sink, gateway=gateway, token_cap=app_settings.token_cap,
-                                   cost_cap_usd=app_settings.cost_cap_usd)
+            pin = gateway.commercial_execution_claim(audit.id, settings.hermes_model)
+            run_settings = settings
+            if pin is not None:
+                from .commercial import pinned_settings, terminal_payload
+                run_settings = pinned_settings(settings, app_settings, pin)
+                audit.context = gateway.commercial_brief_context(audit_row, pin)
+                # A fresh client is essential: no inherited reservation or mutable
+                # settings from the legacy runtime. No research occurs in build.
+                generator = build_generator(run_settings, app_settings)
+                pipeline = GenerationPipeline(run_settings, generator)
+            summary = pipeline.run(audit, sink, gateway=gateway,
+                                   token_cap=run_settings.token_cap if pin is not None else app_settings.token_cap,
+                                   cost_cap_usd=run_settings.cost_cap_usd if pin is not None else app_settings.cost_cap_usd)
+            if pin is not None and summary.status in {"ready", "needs_review", "failed", "blocked"}:
+                calls = generator.client._inference_receipts
+                gateway.commercial_execution_finish(pin["reservation_id"], terminal_payload(
+                    audit.id, settings.worker_id, pin, summary, calls))
+            # An ambiguous finalization returns running: retain the hold, do not
+            # settle or replay. Existing immutable-version reconciliation owns it.
             error_type = "" if summary.status in {"ready", "needs_review"} else "AuditJobFailed"
         finally:
             health.end_job(error_type=error_type)
@@ -257,11 +274,31 @@ def _process_refinement_attempt(
 
     sink = SupabaseEventSink(gateway, audit_id)
     finalization_started = False
+    refinement_run_id = None
+    refinement_started = time.monotonic()
+
+    def finish_refinement_run(status):
+        if refinement_run_id is None:
+            return
+        try:
+            calls = client._inference_receipts
+            gateway.finish_report_generation_run(
+                refinement_run_id, status=status,
+                total_seconds=time.monotonic() - refinement_started,
+                stage_timings={"_inference": calls},
+                tokens_in=sum(c.get("tokens_in") or 0 for c in calls),
+                tokens_out=sum(c.get("tokens_out") or 0 for c in calls),
+                cost_usd=sum(c.get("cost_usd") or 0 for c in calls))
+        except Exception as exc:
+            log_event("refinement_metrics_finish_failed", level="warning",
+                      refinement_id=refinement_id, error_type=type(exc).__name__)
+
     def record_usage(tokens_in, tokens_out, estimated, telemetry=None):
         cost = estimate_cost(tokens_in, tokens_out, settings.price_in_per_mtok,
                              settings.price_out_per_mtok, data_api_allowance_usd=0,
                              inference_calls=[telemetry] if telemetry else None)
         unknown = bool(telemetry and telemetry.get("cost_source") == "unknown")
+        estimated = estimated or bool(telemetry and telemetry.get("cost_source") == "rate_estimated")
         if telemetry:
             from .openrouter import safe_receipts
             log_event("refinement_inference_receipt", refinement_id=refinement_id,
@@ -274,6 +311,16 @@ def _process_refinement_attempt(
             raise ValueError("refinement base report changed before inference")
         if row.get("lease_expires_at") and datetime.fromisoformat(row["lease_expires_at"].replace("Z", "+00:00")) <= datetime.now(timezone.utc):
             raise ValueError("refinement lease expired before inference")
+        from .hermes_inprocess import InProcessHermesClient
+        client = getattr(getattr(pipeline, "generator", None), "client", None)
+        if isinstance(client, InProcessHermesClient) and settings.hermes_provider == "openrouter":
+            refinement_run_id = gateway.start_report_generation_run(
+                audit_id=None, refinement_id=refinement_id, worker_id=settings.worker_id,
+                report_type="refinement", model=settings.hermes_model,
+                prompt_version=PROMPT_VERSION, bundle_version=get_report_bundle_version(settings.alm_profile_bundle_root),
+                cache_mode="fresh")
+            client.begin_inference_run("refinement-" + refinement_id)
+            client.inference_recorder = lambda calls: gateway.record_report_inference_calls(refinement_run_id, calls)
         current_html = _download_report(gateway, settings, report_path)
         new_html, _t_in, _t_out = pipeline.refine(audit, current_html, section, instruction, sink, usage_callback=record_usage)
         new_report_path, _ = gateway.upload_report(audit_id, new_html)
@@ -287,6 +334,7 @@ def _process_refinement_attempt(
             changed_section=section,
             change_summary=instruction,
         )
+        finish_refinement_run("ready")
         sink.emit(
             "refinement",
             f"Section '{section}' saved as report version {new_version}",
@@ -324,6 +372,7 @@ def _process_refinement_attempt(
             actor="worker",
         )
         gateway.update_refinement(refinement_id, status="failed", error=public_error)
+        finish_refinement_run("failed")
         return False
 
 

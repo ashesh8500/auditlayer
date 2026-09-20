@@ -80,6 +80,10 @@ class WorkerSettings:
     phase_interval_seconds: float
     worker_id: str
     output_dir: Path
+    max_input_tokens: int = 32000
+    max_inference_calls: int = 2
+    commercial_execution: bool = False
+    data_api_allowance_usd: float = 0.12
 
     @classmethod
     def from_env(cls) -> "WorkerSettings":

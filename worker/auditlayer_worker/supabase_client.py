@@ -87,6 +87,52 @@ class SupabaseGateway:
         self.settings = settings
         self.client = create_client(settings.supabase_url, settings.supabase_service_role_key)
 
+    def commercial_execution_claim(self, audit_id: str, model: str) -> dict | None:
+        data = self.client.rpc("commercial_execution_claim", {"p": {
+            "audit_id": audit_id, "worker_id": self.settings.worker_id, "model": model,
+        }}).execute().data
+        if data is not None and not isinstance(data, dict):
+            raise RuntimeError("invalid_commercial_claim_response")
+        return data
+
+    def commercial_execution_finish(self, reservation_id: str, payload: dict) -> None:
+        # Repeat only the exact settlement payload, never inference. A committed
+        # lost response is read back; SQL rejects a different terminal payload.
+        for attempt in range(2):
+            error = None
+            try:
+                self.client.rpc("commercial_execution_finish", {"p": payload}).execute()
+            except Exception as exc:
+                error = exc
+            rows = self.client.table("workspace_credit_reservations").select(
+                "state,terminal_payload").eq("id", reservation_id).limit(1).execute().data
+            if isinstance(rows, list) and len(rows) == 1 and rows[0].get("state") != "held":
+                terminal = rows[0].get("terminal_payload") or {}
+                if all(terminal.get(k) == v for k, v in payload.items() if k not in {"audit_id", "worker_id"}):
+                    return
+                raise RuntimeError("commercial_terminal_readback_mismatch")
+            if attempt:
+                raise RuntimeError("commercial_settlement_unconfirmed") from error
+
+    def commercial_brief_context(self, audit_row: dict, pin: dict) -> str:
+        import json
+        if audit_row.get("brief_version_id") != pin.get("brief_id"):
+            raise RuntimeError("commercial_brief_mismatch")
+        rows = self.client.table("living_brief_versions").select("*").eq(
+            "id", pin["brief_id"]).eq("confirmed", True).limit(1).execute().data
+        if not isinstance(rows, list) or len(rows) != 1:
+            raise RuntimeError("commercial_brief_unavailable")
+        brief = rows[0]
+        owners = self.client.table("subjects").select("id").eq("id", brief["subject_id"]).eq(
+            "user_id", audit_row["user_id"]).limit(1).execute().data
+        if not owners:
+            raise RuntimeError("commercial_brief_owner_mismatch")
+        fields = {k: brief[k] for k in ("identity", "audience", "positioning", "offers", "goals", "constraints", "experiments") if brief.get(k)}
+        context = json.dumps(fields, ensure_ascii=False) if fields else ""
+        if len(context.encode("utf-8")) > 12000:
+            raise RuntimeError("commercial_brief_input_bound")
+        return context
+
     # -- app settings ------------------------------------------------------
 
     def get_app_settings(self) -> AppSettings:
@@ -355,12 +401,14 @@ class SupabaseGateway:
         bundle_version: str | None,
         cache_mode: str,
         run_kind: str = "production",
+        refinement_id: str | None = None,
     ) -> str:
         """Persist a crash-detectable attempt before expensive work starts."""
         run_id = str(uuid4())
         self.client.table("report_generation_runs").insert(
             {
                 "id": run_id,
+                **({"refinement_id": refinement_id} if refinement_id else {}),
                 "audit_id": audit_id,
                 "run_kind": run_kind,
                 "worker_id": worker_id[:120],
@@ -385,11 +433,18 @@ class SupabaseGateway:
         safe = safe_receipts(calls)
         table = self.client.table("report_generation_runs")
         table.update({"stage_timings": {"_inference": safe}}).eq("id", run_id).eq("status", "running").execute()
-        rows = table.select("stage_timings").eq("id", run_id).eq("status", "running").execute().data
+        rows = table.select("stage_timings,audit_id,refinement_id").eq("id", run_id).eq("status", "running").execute().data
         if (not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict)
                 or not isinstance(rows[0].get("stage_timings"), dict)
                 or rows[0]["stage_timings"].get("_inference") != safe):
             raise RuntimeError("inference reservation ledger readback failed")
+        if rows[0].get("audit_id"):
+            fences = self.client.table("audit_inference_fences").select("run_id").eq(
+                "audit_id", rows[0]["audit_id"]).eq("run_id", run_id).execute().data
+            if not isinstance(fences, list) or len(fences) != 1 or fences[0].get("run_id") != run_id:
+                raise RuntimeError("inference admission fence readback failed")
+        elif not rows[0].get("refinement_id"):
+            raise RuntimeError("inference reservation ledger has no durable job identity")
 
     def finish_report_generation_run(
         self,

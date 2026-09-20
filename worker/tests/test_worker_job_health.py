@@ -10,6 +10,12 @@ from test_worker_recovery import StopLoop, loop_harness
 
 def job_harness(monkeypatch):
     settings, gateway, runtime, health = loop_harness(monkeypatch)
+    settings.hermes_model = "deepseek-v4-flash"
+    settings.token_cap = 120000
+    settings.cost_cap_usd = 3.0
+    gateway.commercial_execution_claim.return_value = None
+    gateway.get_app_settings.return_value.token_cap = 120000
+    gateway.get_app_settings.return_value.cost_cap_usd = 3.0
     gateway.claim_next_queued.return_value = {
         "id": "audit-1", "handle": "test", "platform": "instagram", "goal": "growth",
     }

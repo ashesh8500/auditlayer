@@ -52,7 +52,7 @@ def safe_receipts(calls):
     identifiers = {"attempt_id", "provider", "requested_model", "response_model", "response_id",
                    "upstream_provider", "correlation_id", "usage_status", "cost_source", "status"}
     numbers = {"tokens_in", "tokens_out", "cost_usd", "latency_ms", "retry_count",
-               "reserved_usd", "customer_charge_usd"}
+               "reserved_usd", "customer_charge_usd", "input_bound", "output_bound"}
     result = []
     for call in calls[:2]:
         if not isinstance(call, dict):
@@ -114,6 +114,8 @@ def chat(settings, messages, model, *, toolsets=(), max_tokens=32000,
         "provider": "openrouter", "requested_model": model,
         "correlation_id": correlation_id or uuid4().hex,
         "retry_count": reservation.calls - 1, "reserved_usd": reserved,
+        "input_bound": 1024 + sum(len(m["content"].encode("utf-8")) + 64 for m in messages),
+        "output_bound": max_tokens,
         "usage_status": "unknown", "cost_usd": None, "cost_source": "unknown",
         "tokens_in": None, "tokens_out": None,
         "attempt_id": uuid4().hex, "status": "reserved",

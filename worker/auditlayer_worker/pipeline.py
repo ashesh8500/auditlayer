@@ -366,6 +366,7 @@ class GenerationPipeline:
                         result.tokens_in, result.tokens_out,
                         self.settings.price_in_per_mtok,
                         self.settings.price_out_per_mtok,
+                        data_api_allowance_usd=self.settings.data_api_allowance_usd,
                         inference_calls=result.stage_timings.get("_inference"),
                     )
                     total_tokens = result.tokens_in + result.tokens_out
@@ -414,6 +415,7 @@ class GenerationPipeline:
                         spent_tokens_out,
                         self.settings.price_in_per_mtok,
                         self.settings.price_out_per_mtok,
+                        data_api_allowance_usd=self.settings.data_api_allowance_usd,
                         inference_calls=stage_error.stage_timings.get("_inference") if stage_error else None,
                     ).total_usd
                 )
@@ -501,6 +503,7 @@ class GenerationPipeline:
             result.tokens_out,
             self.settings.price_in_per_mtok,
             self.settings.price_out_per_mtok,
+            data_api_allowance_usd=self.settings.data_api_allowance_usd,
             inference_calls=result.stage_timings.get("_inference"),
         )
 

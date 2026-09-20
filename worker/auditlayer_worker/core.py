@@ -159,7 +159,8 @@ INSTAGRAM_LIMITATION = (
 # v1.12 — Enforce table/list/anchor content models before accepting refinement HTML.
 # v1.13 — Hold evidence-free reports; unverified data-only drafts use N/A scores
 #         and review status. OpenRouter refinements use a strict JSON envelope.
-PROMPT_VERSION = "1.13"
+# v1.14 — Require factual attributable snippets; enforce commercial quote bounds.
+PROMPT_VERSION = "1.14"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework

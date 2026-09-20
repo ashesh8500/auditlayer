@@ -39,7 +39,7 @@ class InferenceReservation:
 
     def reserve(self, settings, messages, max_tokens):
         import math
-        if type(max_tokens) is not int or not 1 <= max_tokens <= 32000:
+        if type(max_tokens) is not int or not 1 <= max_tokens <= min(32000, settings.max_tokens):
             raise InferenceReservationError("inference reservation output bound")
         # Conservative UTF-8 byte ceiling plus chat overhead, not actual usage.
         prompt_bound = 1024 + sum(len(m["content"].encode("utf-8")) + 64 for m in messages)
@@ -47,7 +47,7 @@ class InferenceReservation:
         if any(not math.isfinite(p) or p <= 0 for p in prices):
             raise InferenceReservationError("inference reservation requires positive rate ceilings")
         cost = (prompt_bound * prices[0] + max_tokens * prices[1]) / 1_000_000
-        if (prompt_bound > 32000 or self.calls >= 2 or settings.token_cap <= 0
+        if (prompt_bound > settings.max_input_tokens or self.calls >= settings.max_inference_calls or settings.token_cap <= 0
                 or not math.isfinite(settings.cost_cap_usd) or settings.cost_cap_usd <= 0
                 or self.tokens + prompt_bound + max_tokens > settings.token_cap
                 or self.usd + cost > settings.cost_cap_usd):
