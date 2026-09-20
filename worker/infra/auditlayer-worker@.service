@@ -25,7 +25,7 @@ WorkingDirectory=/opt/auditlayer/worker
 EnvironmentFile=/opt/auditlayer/worker/.env
 Environment=AUDITLAYER_WORKER_ID=worker-%i
 Environment=AUDITLAYER_OUTPUT_DIR=var/worker-out/%i
-ExecStart=/usr/local/bin/uv run python -m auditlayer_worker run
+ExecStart=/opt/auditlayer/worker/.venv/bin/python -m auditlayer_worker run
 Restart=on-failure
 RestartSec=30
 MemoryMax=1G

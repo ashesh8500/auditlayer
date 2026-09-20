@@ -26,7 +26,7 @@ smoke:
 # Cheat sheet: docs/agent-handoff.md
 
 web-check:
-	cd web && pnpm install && pnpm build && pnpm lint && pnpm typecheck && pnpm e2e
+	cd web && pnpm install --frozen-lockfile && pnpm test && pnpm build && pnpm lint && pnpm typecheck && pnpm e2e
 
 worker-check:
 	cd worker && uv run pytest
@@ -77,13 +77,13 @@ hermes-vm-ssh:
 hermes-vm-status:
 	ssh hermes-vm 'export PATH=$$HOME/.local/bin:$$PATH; \
 		echo "== hermes gateway =="; hermes gateway status 2>&1 | head -8; \
-		echo "== auditlayer worker =="; systemctl is-active auditlayer-worker 2>/dev/null || echo not-installed; \
+		echo "== auditlayer worker =="; systemctl is-active auditlayer-worker@1 auditlayer-worker@2 2>/dev/null || echo not-installed; \
 		echo "== diagnose-hermes =="; cd ~/projects/auditlayer/worker && uv run python -m auditlayer_worker diagnose-hermes 2>&1 | rg "ok|auth_ok|tcp_reachable|api_server"'
 
 promote-admin:
 	cd worker && uv run python ../scripts/promote-admin.py $(EMAIL)
 
+# Invoke on the deployment host with REVIEWED_REVISION, AUDITLAYER_REPO_DIR,
+# and DRAIN_HOOK explicitly set. No default-branch deployment.
 hermes-vm-worker:
-	ssh hermes-vm 'sudo cp ~/projects/auditlayer/worker/infra/auditlayer-worker.vm.service /etc/systemd/system/auditlayer-worker.service && \
-		sudo systemctl daemon-reload && sudo systemctl enable --now auditlayer-worker && \
-		systemctl status auditlayer-worker --no-pager'
+	bash worker/infra/deploy.sh

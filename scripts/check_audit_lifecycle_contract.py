@@ -325,6 +325,26 @@ def extract_ts_progress_route(text: str, params: dict) -> Extraction:
     )
 
 
+def extract_ts_customer_projection(text: str, params: dict) -> Extraction:
+    """Inspect the delegated projection, separating audit states from phases.
+
+    Include actual phase returns/assignments as well as message-map keys so a
+    drifted output cannot hide behind an unchanged type or map declaration.
+    """
+    audit: set[str] = set()
+    for symbol in ("ACTIVE", "TERMINAL"):
+        part = extract_ts_string_array(text, {"symbol": symbol})
+        if not part.ok:
+            return part
+        audit |= part.literals
+    phase_map = _matrix_block(text, "PHASE_MESSAGES")
+    if phase_map is None:
+        return Extraction(ok=False, reason="PHASE_MESSAGES map missing")
+    progress = set(re.findall(r"^\s*([a-z_]+):", phase_map, flags=re.MULTILINE))
+    progress |= set(re.findall(r'\b(?:phase:\s*|return\s+)"([a-z_]+)"', text))
+    return Extraction(literals=audit | progress, audit_literals=audit, progress_literals=progress)
+
+
 def extract_ts_generated_untyped(text: str, params: dict) -> Extraction:
     """Generated types keep the field as plain ``string`` (no union literal list).
 
@@ -414,6 +434,7 @@ EXTRACTORS: dict[str, Extractor] = {
     "ts_matrix_target_literals": extract_ts_matrix_target_literals,
     "sql_rpc_target_status": extract_sql_rpc_target_status,
     "ts_progress_route": extract_ts_progress_route,
+    "ts_customer_projection": extract_ts_customer_projection,
     "ts_generated_untyped": extract_ts_generated_untyped,
     "sql_status_literals": extract_sql_status_literals,
     "sql_default_status": extract_sql_default_status,
@@ -458,6 +479,16 @@ def _run_extractor(manifest_source: dict, root: Path) -> tuple[set[str], Extract
     if not path.exists():
         return set(), Extraction(ok=False, reason="source file missing"), path
     text = path.read_text(encoding="utf-8")
+    # Delegation is a checked edge, not an exemption: verify the caller wiring
+    # and recursively inspect the explicitly declared implementation.
+    for pattern in manifest_source.get("required_patterns", []):
+        if not re.search(pattern, text, flags=re.DOTALL):
+            return set(), Extraction(ok=False, reason=f"required delegation pattern missing: {pattern}"), path
+    if "delegate" in manifest_source:
+        literals, extraction, delegate_path = _run_extractor(manifest_source["delegate"], root)
+        if not extraction.ok:
+            extraction.reason = f"delegate {manifest_source['delegate']['path']}: {extraction.reason}"
+        return literals, extraction, path
     extraction = EXTRACTORS[kind](text, manifest_source)
     return extraction.literals, extraction, path
 
@@ -473,6 +504,8 @@ def _source_entry(
         "expected": sorted(expected),
         "status": status,
     }
+    if "delegate" in manifest_source:
+        entry["delegate"] = manifest_source["delegate"]
     if note:
         entry["note"] = note
     return entry

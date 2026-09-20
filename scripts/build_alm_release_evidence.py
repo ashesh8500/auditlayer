@@ -149,7 +149,7 @@ ROLLBACK_CHECKLIST: list[dict[str, str]] = [
     {
         "step": "3",
         "action": "Restore the worker revision",
-        "command": "sudo systemctl restart auditlayer-worker after reverting worker code on the VM (or redeploy the prior revision)",
+        "command": "Drain the entire fleet; restore the pre-overwrite worker, dependency environment, bundle and template-unit snapshot; verify schema compatibility and preflight before starting auditlayer-worker@1 and @2. See docs/admin-ops-remediation-20260919.md.",
     },
     {
         "step": "4",
