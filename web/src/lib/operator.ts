@@ -100,11 +100,11 @@ const ENTITY_DECODE: Record<string, string> = {
 };
 
 function reportText(html: string): string {
-  // End tags tolerate whitespace (</script >) so no script body survives.
+  // End tags tolerate whitespace/junk (</script >, </script\t\n bar>) so no script body survives.
   const text = html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, " ")
-    .replace(/<template\b[^>]*>[\s\S]*?<\/template\s*>/gi, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style[^>]*>/gi, " ")
+    .replace(/<template\b[^>]*>[\s\S]*?<\/template[^>]*>/gi, " ")
     .replace(/<!--([\s\S]*?)-->/g, " ")
     .replace(/<[^>]+>/g, " ")
     // Single pass: text that reads like an entity after decoding is never
