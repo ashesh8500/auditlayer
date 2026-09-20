@@ -9,7 +9,7 @@ import {
   supabaseUrl,
 } from "@/lib/env";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/audits", "/admin", "/subjects", "/accounts", "/settings"];
+const PROTECTED_PREFIXES = ["/dashboard", "/audits", "/admin", "/subjects", "/accounts", "/settings", "/commercial"];
 
 function isProtected(pathname: string): boolean {
   // /s/ routes are public share links — skip auth
@@ -47,6 +47,14 @@ export async function updateSession(
   if (request.nextUrl.pathname === "/auth/callback") return response;
 
   if (!isSupabaseConfigured()) {
+    if (isProtected(request.nextUrl.pathname)) {
+      const url = request.nextUrl.clone();
+      const next = safeNext(url.pathname + url.search);
+      url.pathname = "/login";
+      url.search = "";
+      url.searchParams.set("next", next);
+      return NextResponse.redirect(url);
+    }
     return response;
   }
 
