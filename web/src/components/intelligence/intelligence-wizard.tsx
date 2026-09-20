@@ -39,7 +39,7 @@ import {
   loadSubjectWizardContextAction,
   prepareAndSubmitIntelligenceBatch,
 } from "@/lib/actions/intelligence";
-import { allowedReportTypes, type Plan } from "@/lib/domain";
+import { allowedReportTypes, REPORT_TYPE_LABELS, type ReportType, type Plan } from "@/lib/domain";
 import { LivingBriefView } from "@/components/intelligence/living-brief-view";
 import { startNavigationProgress } from "@/components/navigation-progress";
 import {
@@ -50,7 +50,7 @@ import {
   suggestChannelsForInput,
 } from "@/lib/intelligence/channel-locator";
 
-type BatchReportType = "pulse" | "standard" | "extended" | "blueprint";
+type BatchReportType = ReportType;
 
 const PlatformIcon = ({ platform }: { platform: ChannelPlatform }) => {
   if (platform === "instagram") {
@@ -115,6 +115,8 @@ function initialWizardState(
 export function IntelligenceWizard({
   plan,
   initialSubjectId,
+  initialChannelId,
+  entitledReportTypes,
   initialSubjects = [],
   initialChannelsBySubject = {},
   initialBriefsBySubject = {},
@@ -122,14 +124,20 @@ export function IntelligenceWizard({
   plan: Plan;
   /** Pre-select this subject (e.g. from /audits/new?subject=…). */
   initialSubjectId?: string;
+  initialChannelId?: string;
+  entitledReportTypes?: ReportType[];
   initialSubjects?: SubjectSummary[];
   initialChannelsBySubject?: Record<string, ChannelSummary[]>;
   initialBriefsBySubject?: Record<string, LivingBriefVersion[]>;
 }) {
   const router = useRouter();
+  const reportTypes = entitledReportTypes ?? allowedReportTypes(plan);
+  const [contextRetry, setContextRetry] = useState(0);
   const [step, setStep] = useState(() => (initialSubjectId ? 1 : 0));
   const [state, setState] = useState<NewAuditState>(() =>
-    initialWizardState(plan, initialSubjectId),
+    ({ ...initialWizardState(plan, initialSubjectId),
+      selectedChannelIds: initialChannelId ? [initialChannelId] : [],
+      reportType: (entitledReportTypes ?? allowedReportTypes(plan)).includes("standard") ? "standard" : (entitledReportTypes ?? allowedReportTypes(plan))[0] ?? "pulse" }),
   );
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -171,6 +179,7 @@ export function IntelligenceWizard({
 
     setContextError(null);
     startContextLoad(async () => {
+      try {
       const result = await loadSubjectWizardContextAction({ subjectId });
       if (!result.ok) {
         setContextError(result.error);
@@ -185,8 +194,9 @@ export function IntelligenceWizard({
         ...prev,
         [subjectId]: result.briefs,
       }));
+      } catch { setContextError("Could not load channels. Please retry."); }
     });
-  }, [state.subjectId]);
+  }, [state.subjectId, contextRetry]);
 
   const channels = useMemo(() => {
     if (!state.subjectId || state.subjectId.startsWith("new-")) return [];
@@ -231,7 +241,7 @@ export function IntelligenceWizard({
       changeNotes: state.changeNotes,
       requests: state.batchRequests,
     };
-    return validateBatch(submission, effectiveChannels, plan);
+    return validateBatch(submission, effectiveChannels, plan, new Set(), entitledReportTypes);
   }, [
     state.batchRequests,
     state.subjectId,
@@ -239,6 +249,7 @@ export function IntelligenceWizard({
     currentBrief?.id,
     effectiveChannels,
     plan,
+    entitledReportTypes,
   ]);
 
   const update = (patch: Partial<NewAuditState>) =>
@@ -256,7 +267,7 @@ export function IntelligenceWizard({
       requests: state.batchRequests,
     };
 
-    const check = validateBatch(submission, effectiveChannels, plan);
+    const check = validateBatch(submission, effectiveChannels, plan, new Set(), entitledReportTypes);
     if (!check.valid) {
       setSubmitError(
         check.errors[0] ??
@@ -278,6 +289,7 @@ export function IntelligenceWizard({
     });
     const locators = channelMeta.map((c) => c.locator);
 
+    try {
     const outcome = await prepareAndSubmitIntelligenceBatch({
       submission,
       channelLocators: locators,
@@ -293,13 +305,13 @@ export function IntelligenceWizard({
     }
 
     setSubmitNotice(`Batch submitted — opening progress…`);
-    const progressId = outcome.auditIds[0];
     startNavigationProgress();
-    if (progressId) {
-      router.push(`/audits/${progressId}`);
-      return;
+    router.push(`/subjects/${outcome.subjectId}?batch=${encodeURIComponent(outcome.batchId)}`);
+    } catch {
+      setSubmitError("Submission could not be confirmed. Retry the same batch to recover it safely.");
+    } finally {
+      setSubmitting(false);
     }
-    router.push(`/subjects/${outcome.subjectId}`);
   };
 
   return (
@@ -339,8 +351,10 @@ export function IntelligenceWizard({
         />
       )}
 
+      {contextError && <Button type="button" variant="outline" onClick={() => setContextRetry((n) => n + 1)}>Retry loading channels</Button>}
       {step === 1 && (
         <ChannelStep
+          subjectId={state.subjectId}
           channels={effectiveChannels}
           selectedIds={state.selectedChannelIds}
           newWebsiteUrl={state.newWebsiteUrl}
@@ -408,6 +422,16 @@ export function IntelligenceWizard({
       )}
 
       {step === 3 && (
+        <div className="space-y-4">
+        <Label htmlFor="batch-report-type">Report type</Label>
+        <select id="batch-report-type" value={state.reportType} disabled={submitting}
+          className="h-11 w-full border border-border bg-card px-3"
+          onChange={(event) => {
+            const reportType = event.target.value as ReportType;
+            update({ reportType, batchRequests: state.batchRequests.map((request) => ({ ...request, reportType })) });
+          }}>
+          {reportTypes.map((type) => <option key={type} value={type}>{REPORT_TYPE_LABELS[type]}</option>)}
+        </select>
         <BatchStep
           batchRequests={state.batchRequests}
           channels={effectiveChannels}
@@ -435,6 +459,7 @@ export function IntelligenceWizard({
           submitNotice={submitNotice}
           onBack={() => setStep(2)}
         />
+        </div>
       )}
     </div>
   );
@@ -633,6 +658,7 @@ function SubjectStep({
 }
 
 function ChannelStep({
+  subjectId,
   channels,
   selectedIds,
   newWebsiteUrl,
@@ -644,6 +670,7 @@ function ChannelStep({
   onNext,
   onBack,
 }: {
+  subjectId: string;
   channels: ChannelSummary[];
   selectedIds: string[];
   newWebsiteUrl: string;
@@ -695,7 +722,9 @@ function ChannelStep({
       {managed.some((channel) => channel.reconnectRequired) && (
         <p className="text-sm text-muted-foreground">
           Instagram access needs to be restored before this channel can be audited.{" "}
-          <a href="/settings/connections?return_to=/audits/new" className="underline alm-focus">Reconnect from Connections</a>.
+          <a href={`/settings/connections?${new URLSearchParams({ return_to: `/audits/new?${new URLSearchParams({ subject: subjectId, ...(selectedIds[0] ? { channel: selectedIds[0] } : {}) })}` })}`}
+            onClick={(event) => { if (!window.confirm("Reconnect now? Your subject and channel will be kept, but unsaved notes and batch choices will be lost.")) event.preventDefault(); }}
+            className="underline alm-focus">Reconnect from Connections</a>. Unsaved notes and batch choices are not saved.
         </p>
       )}
 
@@ -958,6 +987,7 @@ function BatchStep({
   const availableChannels = channels.filter(
     (c) =>
       c.ownershipStatus !== "observed" &&
+      !c.reconnectRequired &&
       c.id !== "pending-channel" &&
       !batchRequests.some((r) => r.channelId === c.id),
   );
@@ -968,6 +998,7 @@ function BatchStep({
     standard: "Standard",
     extended: "Extended",
     blueprint: "Blueprint",
+    enterprise: "Enterprise",
   };
 
   return (

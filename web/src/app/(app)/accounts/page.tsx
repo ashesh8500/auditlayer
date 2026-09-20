@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { JourneyLoadError } from "@/components/journey-load-error";
 import { ArrowRight, Bot, Building2, Plus, TrendingDown, TrendingUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ export default async function AccountsPage() {
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const [{ data: accounts }, { data: progression }, { data: connections }] =
+  const [{ data: accounts, error: accountsError }, { data: progression, error: progressionError }, { data: connections, error: connectionsError }] =
     await Promise.all([
       (supabase as any)
         .from("accounts")
@@ -62,6 +63,8 @@ export default async function AccountsPage() {
         .select(INSTAGRAM_CONNECTION_HEALTH_FIELDS)
         .eq("user_id", profile.id),
     ]);
+
+  if (accountsError || progressionError || connectionsError) return <main className="alm-shell py-8"><h1>Accounts</h1><JourneyLoadError label="Accounts" /></main>;
 
   const list = (accounts ?? []) as AccountRow[];
   const pointsByAccount = new Map<string, ProgressionPoint[]>();

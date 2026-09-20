@@ -2,6 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 vi.mock("@/lib/actions/intelligence", () => ({resolveBriefProposalAction: vi.fn(), recordRecommendationDecisionAction: vi.fn(), saveLivingBriefAction: vi.fn()}));
+vi.mock("next/navigation",()=>({useRouter:()=>({refresh:vi.fn()})}));
 import { SubjectHome } from "./subject-home";
 const data = {
  subject: {id: "s", name: "Brand", type: "brand" as const, avatarUrl: null, channelCount: 1, lastAuditAt: null},

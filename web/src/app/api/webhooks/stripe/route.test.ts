@@ -35,6 +35,7 @@ type RpcFn = (name: string, args: Record<string, unknown>) => Promise<RpcRespons
 
 const RPC_PARAM_KEYS = [
   "p_current_period_end_epoch",
+  "p_current_period_start_epoch",
   "p_customer_id",
   "p_digest",
   "p_event_created",
@@ -53,7 +54,7 @@ function subscriptionFixture(overrides: Record<string, unknown> = {}) {
     status: "active",
     items: {
       data: [
-        { price: { id: "price_pro" }, current_period_end: 1_750_000_000 },
+        { price: { id: "price_pro" }, current_period_start: 1_747_400_000, current_period_end: 1_750_000_000 },
       ],
     },
     metadata: { profile_id: PROFILE_ID },
@@ -355,8 +356,9 @@ describe("stripe webhook route adapter", () => {
   });
 
   it("makes zero RPC calls for unsupported event types", async () => {
+    // invoice.paid is now a workspace-credit event (see workspace/payment-webhook.test.ts).
     const constructEvent = vi.fn(() =>
-      stripeEvent({ id: "evt_9", type: "invoice.paid" }),
+      stripeEvent({ id: "evt_9", type: "customer.created" }),
     );
     getStripeMock.mockReturnValue({
       webhooks: { constructEvent },

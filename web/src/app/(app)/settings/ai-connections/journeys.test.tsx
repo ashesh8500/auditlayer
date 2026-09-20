@@ -1,0 +1,22 @@
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { beforeEach, expect, it, vi } from "vitest";
+const m=vi.hoisted(()=>({fail:"",platform:"youtube",connection:false}));
+vi.mock("@/lib/auth",()=>({requireProfile:async()=>({id:"owner"}),requireUser:async()=>({id:"owner"})}));
+vi.mock("next/navigation",()=>({notFound:()=>{throw Error("404")},useRouter:()=>({refresh:vi.fn()})}));
+vi.mock("./actions",()=>({revokeAiConnection:vi.fn()}));
+vi.mock("@/lib/supabase/server",()=>({createClient:async()=>({auth:{oauth:{listGrants:async()=>({data:null,error:m.fail?{}:null})}},from:(table:string)=>{const q:any={};for(const k of ["select","eq","in","order","ilike","limit"])q[k]=()=>q;const result=()=>({data:table===m.fail?null:table==="accounts"?{id:"a",handle:"channel",platform:m.platform,ownership_status:"managed"}:table==="instagram_connections" && m.connection ? [{id:"connection-owner",is_active:false,connection_status:"reconnect_required"}] :[],error:table===m.fail?{}:null});q.maybeSingle=async()=>result();q.then=(resolve:any)=>Promise.resolve(result()).then(resolve);return q;}})}));
+import AccountDetail from "../../accounts/[id]/page";
+import Accounts from "../../accounts/page";
+import AiConnections from "./page";
+beforeEach(()=>{m.fail="";m.platform="youtube";m.connection=false});
+it("non-Instagram account never receives Instagram reconnect guidance",async()=>{const html=renderToStaticMarkup(await AccountDetail({params:Promise.resolve({id:"a"})}));expect(html).not.toContain("Reconnect Instagram");expect(html).not.toContain("Connect Instagram for live data");expect(html).toContain("Public data");});
+it("Instagram reconnect targets the owned connection and returns to the account",async()=>{
+ m.platform="instagram";m.connection=true;
+ const html=renderToStaticMarkup(await AccountDetail({params:Promise.resolve({id:"a"})}));
+ expect(html).toContain("connection_id=connection-owner");
+ expect(html).toContain("return_to=%2Faccounts%2Fa");
+});
+it("account query failure is not a missing owned account",async()=>{m.fail="accounts";const html=renderToStaticMarkup(await AccountDetail({params:Promise.resolve({id:"a"})}));expect(html).toContain("could not be loaded");expect(html).toContain("Try again");});
+it("list query failure is not empty workspace",async()=>{m.fail="accounts";const html=renderToStaticMarkup(await Accounts());expect(html).toContain("could not be loaded");expect(html).not.toContain("No connected accounts yet");});
+it("AI grant failure cannot claim no services have access",async()=>{m.fail="grants";const html=renderToStaticMarkup(await AiConnections());expect(html).toContain("could not be loaded");expect(html).not.toContain("No AI services have access yet");});

@@ -1,4 +1,6 @@
-import { Bot, Copy, ShieldCheck } from "lucide-react";
+import { JourneyLoadError } from "@/components/journey-load-error";
+import { ConnectorAddress } from "@/components/connector-address";
+import { Bot, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
@@ -12,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function AiConnectionsPage() {
   await requireUser();
   const supabase = await createClient();
-  const { data: grants } = await supabase.auth.oauth.listGrants();
+  const { data: grants, error: grantsError } = await supabase.auth.oauth.listGrants();
   const mcpUrl = `${siteUrl()}/mcp`;
 
   return (
@@ -30,10 +32,7 @@ export default async function AiConnectionsPage() {
           <Bot className="size-4 text-[color:var(--accent)]" />
           Connector address
         </div>
-        <div className="mt-3 flex items-center gap-2 rounded-[var(--radius)] bg-muted px-3 py-3">
-          <code className="min-w-0 flex-1 truncate text-xs">{mcpUrl}</code>
-          <Copy className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        </div>
+        <ConnectorAddress url={mcpUrl} />
         <p className="mt-3 text-xs leading-5 text-muted-foreground">
           Add this URL as a custom MCP server in ChatGPT, Claude, or another compatible AI tool. You will return here to approve access.
         </p>
@@ -44,7 +43,7 @@ export default async function AiConnectionsPage() {
           <ShieldCheck className="size-4 text-[color:var(--green)]" />
           Approved services
         </div>
-        {(grants ?? []).length ? (
+        {grantsError ? <JourneyLoadError label="Approved services" /> : (grants ?? []).length ? (
           <ul className="mt-4 divide-y divide-border">
             {(grants ?? []).map((grant) => (
               <li key={grant.client.id} className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">

@@ -1,5 +1,6 @@
 "use client";
 
+import { ReportFrame } from "@/components/report-frame";
 import { useActionState, useState } from "react";
 import { Download, Loader2, Wand2 } from "lucide-react";
 
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ALLOWED_REFINEMENT_SECTIONS } from "@/lib/refinement";
+import { useRefinementStatus } from "@/lib/use-refinement-status";
 import {
   requestRefinement,
   type RefinementState,
@@ -28,21 +29,29 @@ export function ReportViewer({
   auditId,
   reportReady,
   refinements,
+  editableSections = [],
+  reportVersion = 0,
 }: {
   auditId: string;
   reportReady: boolean;
   refinements: RefinementRow[];
+  editableSections?: string[];
+  reportVersion?: number;
 }) {
   const [state, action, pending] = useActionState(
     requestRefinement,
     initialState,
   );
   const [section, setSection] = useState<string>(
-    ALLOWED_REFINEMENT_SECTIONS[0],
+    editableSections[0] ?? "",
   );
 
-  const reportSrc = `/api/audits/${auditId}/report`;
-  const htmlDownload = `/api/audits/${auditId}/report?download=1`;
+  const observed = useRefinementStatus(auditId, refinements, reportVersion, state.refinementId);
+  const rows = observed.refinements;
+  const selectedSection = editableSections.includes(section) ? section : (editableSections[0] ?? "");
+  const versionQuery = observed.reportVersion > 0 ? `version=${observed.reportVersion}` : "";
+  const reportSrc = `/api/audits/${auditId}/report${versionQuery ? `?${versionQuery}` : ""}`;
+  const htmlDownload = `${reportSrc}${versionQuery ? "&" : "?"}download=1`;
 
   return (
     <div className="space-y-6">
@@ -50,7 +59,8 @@ export function ReportViewer({
         <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           Report
         </h2>
-        <div>
+        <div className="flex flex-wrap items-center gap-3">
+          {reportReady && <a className="inline-flex min-h-11 items-center text-sm underline alm-focus" href={`/audits/${auditId}/read`}>Read &amp; browse versions</a>}
           <a href={reportReady ? htmlDownload : undefined} download>
             <Button variant="outline" size="sm" disabled={!reportReady}>
               <Download className="size-4" />
@@ -62,7 +72,8 @@ export function ReportViewer({
 
       {reportReady ? (
         <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card shadow-[var(--shadow-md)]">
-          <iframe
+          <ReportFrame
+            key={reportSrc}
             title="Audit report"
             src={reportSrc}
             sandbox="allow-same-origin"
@@ -89,17 +100,18 @@ export function ReportViewer({
 
         <form action={action} className="mt-4 space-y-3">
           <input type="hidden" name="auditId" value={auditId} />
-          <input type="hidden" name="section" value={section} />
+          <input type="hidden" name="section" value={selectedSection} />
           <div className="grid gap-3 sm:grid-cols-[minmax(0,220px)_1fr]">
             <div className="space-y-1.5">
               <Label htmlFor="section-select">Section</Label>
               <select
+                disabled={!reportReady || !editableSections.length || pending}
                 id="section-select"
-                value={section}
+                value={selectedSection}
                 onChange={(e) => setSection(e.target.value)}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 focus-visible:outline-none"
               >
-                {ALLOWED_REFINEMENT_SECTIONS.map((s) => (
+                {editableSections.map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
@@ -109,6 +121,8 @@ export function ReportViewer({
             <div className="space-y-1.5">
               <Label htmlFor="instruction">Instruction</Label>
               <Textarea
+                disabled={!reportReady || !editableSections.length || pending}
+                maxLength={4000}
                 id="instruction"
                 name="instruction"
                 rows={3}
@@ -121,21 +135,23 @@ export function ReportViewer({
           {state.status === "error" && state.message && (
             <p className="text-xs text-[color:var(--red)]">{state.message}</p>
           )}
-          {state.status === "queued" && state.message && (
+          {state.status === "queued" && state.message && !rows.some(r => r.id === state.refinementId && ["done", "failed"].includes(r.status)) && (
             <p className="text-xs text-[color:var(--green)]">{state.message}</p>
           )}
 
           <div className="flex justify-end">
-            <Button type="submit" size="sm" disabled={pending}>
+            <Button type="submit" size="sm" disabled={pending || !reportReady || !selectedSection}>
               {pending && <Loader2 className="size-4 animate-spin" />}
               Queue refinement
             </Button>
           </div>
         </form>
 
-        {refinements.length > 0 && (
+        {observed.error && <p role="alert" className="mt-3 text-sm">{observed.error} <Button type="button" variant="ghost" size="sm" className="min-h-11 underline" onClick={() => window.location.reload()}>Refresh</Button></p>}
+        {reportReady && rows.some(r => r.status === "done") && !rows.some(r => ["queued", "running"].includes(r.status)) && <p role="status" className="mt-3 text-sm">Refinement complete. The latest report version is shown.</p>}
+        {rows.length > 0 && (
           <ul className="mt-5 space-y-2 border-t border-border pt-4">
-            {refinements.map((r) => (
+            {rows.map((r) => (
               <li
                 key={r.id}
                 className="flex items-start justify-between gap-3 text-xs"

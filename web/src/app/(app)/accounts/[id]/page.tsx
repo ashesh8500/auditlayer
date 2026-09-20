@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { JourneyLoadError } from "@/components/journey-load-error";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -63,7 +64,7 @@ export default async function AccountDetailPage({
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const { data: account } = await (supabase as any)
+  const { data: account, error: accountError } = await (supabase as any)
     .from("accounts")
     .select(
       "id, handle, platform, display_name, avatar_url, last_researched_at, cache_valid_until, ownership_status",
@@ -73,10 +74,11 @@ export default async function AccountDetailPage({
     .in("ownership_status", [...WORKSPACE_ACCOUNT_STATUSES])
     .maybeSingle();
 
+  if (accountError) return <main className="alm-shell py-8"><JourneyLoadError label="Account" /></main>;
   if (!account) notFound();
   const ownedAccount = account as AccountRow;
 
-  const [{ data: progression }, { data: audits }, { data: connections }] =
+  const [{ data: progression, error: progressionError }, { data: audits, error: auditsError }, { data: connections, error: connectionsError }] =
     await Promise.all([
       (supabase as any)
         .from("account_progression")
@@ -90,13 +92,15 @@ export default async function AccountDetailPage({
         .select("id, status, report_type, created_at, report_version, prompt_version")
         .eq("account_id", id)
         .order("created_at", { ascending: false }),
-      (supabase as any)
+      ownedAccount.platform !== "instagram" ? Promise.resolve({ data: [], error: null }) : (supabase as any)
         .from("instagram_connections")
-        .select(INSTAGRAM_CONNECTION_HEALTH_FIELDS)
+        .select(`id,${INSTAGRAM_CONNECTION_HEALTH_FIELDS}`)
         .eq("user_id", profile.id)
         .ilike("ig_username", ownedAccount.handle)
         .limit(1),
     ]);
+
+  if (progressionError || auditsError || connectionsError) return <main className="alm-shell py-8"><JourneyLoadError label="Account history and connection status" /></main>;
 
   const points = (progression ?? []) as AccountProgressionRow[];
   const history = [...points].reverse();
@@ -104,13 +108,18 @@ export default async function AccountDetailPage({
   const auditList = (audits ?? []) as AuditRow[];
   const connection = (connections ?? [])[0] as
     | {
+        id: string;
         is_active: boolean;
         long_lived_expires_at: string;
         last_refreshed_at: string | null;
         connection_status: "connected" | "reconnect_required";
       }
     | undefined;
-  const live = isLiveInstagramConnection(connection);
+  const live = ownedAccount.platform === "instagram" && isLiveInstagramConnection(connection);
+  const reconnectRequired = ownedAccount.platform === "instagram" && Boolean(connection) && !live;
+  const connectParams = new URLSearchParams({ return_to: `/accounts/${id}` });
+  if (connection) connectParams.set("connection_id", connection.id);
+  const connectHref = `/api/auth/instagram/start?${connectParams}`;
 
   return (
     <main className="alm-shell py-8 sm:py-12 animate-page-in">
@@ -142,7 +151,7 @@ export default async function AccountDetailPage({
                 {ownedAccount.display_name || `@${ownedAccount.handle}`}
               </h1>
               <Badge tone={live ? "success" : "warning"}>
-                {live ? "Live Instagram data" : "Reconnect Instagram"}
+                {live ? "Live Instagram data" : reconnectRequired ? "Reconnect Instagram" : "Public data"}
               </Badge>
             </div>
             <p className="mt-1 text-sm capitalize text-muted-foreground">
@@ -173,7 +182,7 @@ export default async function AccountDetailPage({
           value={summary.followers?.toLocaleString() ?? "Data needed"}
           detail={
             summary.followersDelta == null
-              ? "Connect Instagram for live data"
+              ? ownedAccount.platform === "instagram" ? "Connect Instagram for live data" : "No previous observation"
               : `${summary.followersDelta > 0 ? "+" : ""}${summary.followersDelta.toLocaleString()} since last audit`
           }
         />
@@ -271,9 +280,9 @@ export default async function AccountDetailPage({
             />
           </dl>
           {!live && ownedAccount.platform === "instagram" && (
-            <Link href="/settings/connections" className="mt-5 block">
+            <Link href={connectHref} prefetch={false} className="mt-5 block">
               <Button variant="outline" className="w-full">
-                Connect Instagram
+                {reconnectRequired ? "Reconnect Instagram" : "Connect Instagram"}
               </Button>
             </Link>
           )}
@@ -319,7 +328,6 @@ export default async function AccountDetailPage({
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                       v{audit.report_version ?? 1}
-                      {audit.prompt_version ? ` · ${audit.prompt_version}` : ""}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={audit.status} />

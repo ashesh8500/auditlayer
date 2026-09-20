@@ -59,6 +59,7 @@ export interface StripeReconciliationCommand {
   /** `free` only for a canceled/revoked subscription; else starter|pro. */
   plan: Plan;
   commandType: StripeReconciliationCommandType;
+  currentPeriodStartEpoch: number | null;
   currentPeriodEndEpoch: number | null;
   /** sha256 hex over the typed command — bounded audit evidence. */
   digest: string;
@@ -90,6 +91,7 @@ export interface StripeSubscriptionSnapshot {
   customerId: string;
   status: string;
   priceId: string | null | undefined;
+  currentPeriodStartEpoch: number | null | undefined;
   currentPeriodEndEpoch: number | null | undefined;
   profileId: string | null | undefined;
 }
@@ -132,6 +134,7 @@ function commandDigest(fields: {
   status: string;
   plan: Plan;
   commandType: StripeReconciliationCommandType;
+  currentPeriodStartEpoch: number | null;
   currentPeriodEndEpoch: number | null;
 }): string {
   const canonical = [
@@ -144,6 +147,7 @@ function commandDigest(fields: {
     fields.status,
     fields.plan,
     fields.commandType,
+    fields.currentPeriodStartEpoch == null ? "" : String(fields.currentPeriodStartEpoch),
     fields.currentPeriodEndEpoch == null
       ? ""
       : String(fields.currentPeriodEndEpoch),
@@ -228,19 +232,24 @@ export function reduceStripeSubscriptionEvent(
     plan = mapped;
     commandType = "plan_grant";
     if (
+      subscription.currentPeriodStartEpoch == null ||
+      !Number.isSafeInteger(subscription.currentPeriodStartEpoch) ||
+      subscription.currentPeriodStartEpoch <= 0 ||
       subscription.currentPeriodEndEpoch == null ||
-      !Number.isFinite(subscription.currentPeriodEndEpoch)
+      !Number.isSafeInteger(subscription.currentPeriodEndEpoch) ||
+      subscription.currentPeriodEndEpoch <= subscription.currentPeriodStartEpoch
     ) {
       return correction(
         eventId,
         eventType,
         eventCreated,
         "malformed_period",
-        "Active/trialing subscription is missing current_period_end.",
+        "Active/trialing subscription requires a valid exact current_period_start/end window.",
       );
     }
   }
 
+  const currentPeriodStartEpoch = subscription.currentPeriodStartEpoch ?? null;
   const currentPeriodEndEpoch = subscription.currentPeriodEndEpoch ?? null;
   const command: StripeReconciliationCommand = {
     eventId,
@@ -252,6 +261,7 @@ export function reduceStripeSubscriptionEvent(
     status,
     plan,
     commandType,
+    currentPeriodStartEpoch,
     currentPeriodEndEpoch,
     digest: commandDigest({
       eventId,
@@ -263,6 +273,7 @@ export function reduceStripeSubscriptionEvent(
       status,
       plan,
       commandType,
+      currentPeriodStartEpoch,
       currentPeriodEndEpoch,
     }),
   };

@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type Stripe from "stripe";
 
+import { reconcilePaidWorkspaceEvent } from "@/lib/workspace/payment-server";
+import { planForPriceId } from "@/lib/offer-pricing";
 import { getStripe } from "@/lib/stripe";
 import {
   reduceStripeSubscriptionEvent,
@@ -48,6 +50,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const workspacePayment = await reconcilePaidWorkspaceEvent(event, stripe);
+    if (workspacePayment) {
+      return NextResponse.json({ received: true, outcome: workspacePayment }, {
+        status: workspacePayment.status === "pending_reconciliation" ? 503 : 200,
+      });
+    }
     switch (event.type) {
       case "customer.subscription.created":
       case "customer.subscription.updated":
@@ -112,14 +120,17 @@ function subscriptionSnapshot(
   subscription: Stripe.Subscription,
   profileId: string | null | undefined,
 ): StripeSubscriptionSnapshot {
-  const item = subscription.items?.data?.[0];
+  // Use the unique mapped commercial item, not an arbitrary first add-on.
+  const mappedItems = subscription.items?.data?.filter((entry) => planForPriceId(entry.price?.id)) ?? [];
+  const item = mappedItems.length === 1 ? mappedItems[0] : undefined;
   const priceId = item?.price?.id;
-  // current_period_end lives on the subscription item in recent API versions.
-  const periodEndUnix =
-    (item as { current_period_end?: number } | undefined)
-      ?.current_period_end ??
-    (subscription as unknown as { current_period_end?: number })
-      .current_period_end;
+  const itemWindow = item as { current_period_start?: number; current_period_end?: number } | undefined;
+  const legacyWindow = subscription as unknown as { current_period_start?: number; current_period_end?: number };
+  // Never splice one item's start together with a subscription-level end.
+  const window = itemWindow?.current_period_start !== undefined || itemWindow?.current_period_end !== undefined
+    ? itemWindow : legacyWindow;
+  const periodStartUnix = window?.current_period_start;
+  const periodEndUnix = window?.current_period_end;
   const customerId =
     typeof subscription.customer === "string"
       ? subscription.customer
@@ -129,6 +140,7 @@ function subscriptionSnapshot(
     customerId: customerId ?? "",
     status: subscription.status,
     priceId: priceId ?? null,
+    currentPeriodStartEpoch: periodStartUnix ?? null,
     currentPeriodEndEpoch: periodEndUnix ?? null,
     profileId: profileId ?? null,
   };
@@ -167,6 +179,7 @@ async function applyCommand(
     p_profile_id: command.profileId as string,
     p_status: command.status,
     p_plan: command.plan,
+    p_current_period_start_epoch: command.currentPeriodStartEpoch as number,
     p_current_period_end_epoch: command.currentPeriodEndEpoch as number,
     p_digest: command.digest,
   });

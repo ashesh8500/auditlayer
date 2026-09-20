@@ -22,28 +22,7 @@ export function SettingsForm({ values }: { values: SettingsValues }) {
 
   return (
     <form action={action} className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="hermes_model">Hermes model</Label>
-        <Input
-          id="hermes_model"
-          name="hermes_model"
-          defaultValue={values.hermes_model}
-        />
-        <p className="text-xs text-muted-foreground">
-          Admin-only. Never exposed to end users.
-        </p>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="enabled_toolsets">Enabled toolsets</Label>
-        <Input
-          id="enabled_toolsets"
-          name="enabled_toolsets"
-          defaultValue={values.enabled_toolsets}
-          placeholder="web, browser, x_search"
-        />
-        <p className="text-xs text-muted-foreground">Comma-separated.</p>
-      </div>
+      <p className="text-sm text-muted-foreground">Production inference: DeepSeek V4 Flash, tool-free. Model and tool policy are fixed by the reviewed release, not editable settings.</p>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -52,7 +31,7 @@ export function SettingsForm({ values }: { values: SettingsValues }) {
             id="token_cap"
             name="token_cap"
             type="number"
-            min={1}
+            min={120000}
             defaultValue={values.token_cap}
           />
         </div>
@@ -62,7 +41,7 @@ export function SettingsForm({ values }: { values: SettingsValues }) {
             id="cost_cap_usd"
             name="cost_cap_usd"
             type="number"
-            min={0}
+            min={0.5}
             step="0.5"
             defaultValue={values.cost_cap_usd}
           />
