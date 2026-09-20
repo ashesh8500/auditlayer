@@ -15,7 +15,7 @@ it("mounts honest unavailable catalog and legacy wallet in the retained owner ca
     await act(async()=>root.render(tree(true)));
     await act(async()=>{await new Promise(r=>setTimeout(r,30));});
     expect(host.textContent).toContain("Existing reports, gifts and trial access are unchanged");
-    expect(host.textContent).toContain("Not available for enrollment");
+    expect(host.textContent).toContain("View Enrollment");
     expect(host.querySelector("select")).toBeNull();
     expect(host.textContent).toContain("deepseek-v4-flash");
     expect(host.textContent).toContain("gpt-5.6-sol");

@@ -13,12 +13,12 @@ export function CommercialOffers() {
           <p className="mt-4">{plan.brands} {plan.brands === 1 ? "brand" : "brands"} · One owner</p>
           <p>{plan.monthly_credits.toLocaleString("en-US")} credits / month{key === "studio" ? ", pooled" : ""}</p>
           {key === "free" && <p>Plus {commercial.welcome_credits} credits once at verified signup. No card; no paid top-ups.</p>}
-          <p className="mt-4 text-sm font-medium">Not available for enrollment</p>
+          <a href="/commercial" className="alm-focus mt-4 inline-flex min-h-11 items-center underline">View Enrollment</a>
         </> : <><p className="mt-4">Scope and usage agreed individually.</p><a className="alm-focus mt-4 inline-flex min-h-11 items-center underline" href="/enterprise">Contact Us</a></>}
       </article>)}
     </div>
     <p className="text-sm">{commercial.credits_per_usd} credits = $1 metered usage value, not cash. Paid plans: ${commercial.topup_usd} for {commercial.topup_credits.toLocaleString("en-US")} credits. No auto-reload or overages. Included credits do not roll over.</p>
-    <p className="text-sm text-muted-foreground">Enrollment opens after payment setup, evidence-backed execution, and final credit and retention terms are verified. No annual plans at launch.</p>
+    <p className="text-sm text-muted-foreground">Enrollment availability is shown after sign-in. Paid top-ups remain closed until their expiry and refund terms are published. No annual plans at launch.</p>
     <p className="text-sm">Existing reports, gifts and trial access are unchanged. Existing subscriptions keep their purchased entitlements.</p>
   </section>;
 }

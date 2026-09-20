@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type Stripe from "stripe";
 
+import { reconcileCommercialEvent } from "@/lib/commercial-webhook";
 import { reconcilePaidWorkspaceEvent } from "@/lib/workspace/payment-server";
 import { planForPriceId } from "@/lib/offer-pricing";
 import { getStripe } from "@/lib/stripe";
@@ -50,6 +51,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const commercialPayment = await reconcileCommercialEvent(event, stripe);
+    if (commercialPayment) return NextResponse.json({received:true,outcome:commercialPayment}, {status:commercialPayment.status === "pending_reconciliation" ? 503 : 200});
     const workspacePayment = await reconcilePaidWorkspaceEvent(event, stripe);
     if (workspacePayment) {
       return NextResponse.json({ received: true, outcome: workspacePayment }, {
