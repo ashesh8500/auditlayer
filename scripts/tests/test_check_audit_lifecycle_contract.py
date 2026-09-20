@@ -92,7 +92,7 @@ def test_artifact_invariants(artifact: dict) -> None:
     check(summary["status"] == "passed", "summary status must be passed")
     check(summary["states"] == 7, "summary must report 7 canonical states")
     check(summary["producers"] >= 7, "every declared producer must be discovered")
-    check(summary["consumers"] >= 14, "every declared consumer must be discovered")
+    check(summary["consumers"] == len(json.loads(MANIFEST.read_text())["consumers"]), "every declared consumer must be discovered")
     check(summary["separate_vocabularies"] >= 11, "separate vocabularies must be declared")
     check(summary["assertions"] > 0, "assertions must be counted")
     # every canonical state must have an explicit projection
@@ -138,6 +138,8 @@ def test_determinism() -> None:
         bytes_a = out_a.read_bytes()
         bytes_b = out_b.read_bytes()
         check(bytes_a == bytes_b, "artifact must be byte-identical across reruns")
+        check(bytes_a == (ROOT / "scripts/artifacts/alm-lifecycle-contract.json").read_bytes(),
+              "checked-in canonical artifact must match generated output")
         text = bytes_a.decode("utf-8")
         check("provider_calls" in text, "artifact must declare provider_calls")
         check('"provider_calls": 0' in text, "artifact must declare provider_calls=0")
@@ -194,7 +196,60 @@ def test_unknown_renders_exact_path() -> None:
     )
 
 
+def test_delegated_sources_fail_closed() -> None:
+    """Exercise current files, then mutate each authority/delegation in isolation."""
+    import shutil
+
+    manifest = json.loads(MANIFEST.read_text())
+    paths = set()
+
+    def collect(value):
+        if isinstance(value, dict):
+            if "path" in value:
+                paths.add(value["path"])
+            for child in value.values():
+                collect(child)
+        elif isinstance(value, list):
+            for child in value:
+                collect(child)
+
+    collect(manifest)
+    mutations = [
+        ("web/src/components/reports-library.tsx", '"draft"', '"crashed"'),
+        ("web/src/lib/domain.ts", '| "refinement"', '| "unknown_phase"'),
+        ("web/src/lib/intelligence/client-status.ts", 'phase: "delayed"', 'phase: "crashed"'),
+        ("web/src/app/api/audits/[id]/progress/route.ts", 'phase: projected.phase', 'phase: "crashed"'),
+        ("web/src/app/api/audits/[id]/progress/route.ts", 'audit.status as AuditStatus', '"ready" as AuditStatus'),
+        ("web/src/lib/actions/admin.ts", '.rpc("admin_finalize_manual_report",', '.rpc("retired_rpc",'),
+        ("supabase/migrations/20260919204034_admin_transactional_controls.sql", "status = 'ready'", "status = 'crashed'"),
+    ]
+    with tempfile.TemporaryDirectory(prefix="alm-lifecycle-delegates-") as tmp:
+        root = Path(tmp)
+        for path in paths:
+            source = ROOT / path
+            if source.is_file():
+                target = root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source, target)
+        baseline = run_tool("--root", str(root))
+        check(baseline.returncode == 0, f"unmutated delegated fixture must pass: {baseline.stderr}")
+        for path, old, new in mutations:
+            target = root / path
+            check(target.exists(), f"manifest must inspect current authority {path}")
+            original = target.read_text()
+            check(old in original, f"mutation anchor exists: {path}: {old}")
+            target.write_text(original.replace(old, new))
+            proc = run_tool("--root", str(root))
+            check(proc.returncode == 1, f"source mutation must fail closed: {path}: {old}")
+            target.write_text(original)
+        delegate = root / "web/src/lib/intelligence/client-status.ts"
+        delegate.unlink()
+        proc = run_tool("--root", str(root))
+        check(proc.returncode == 1 and "UNKNOWN" in proc.stderr, "missing delegate fails UNKNOWN")
+
+
 def main() -> int:
+    test_delegated_sources_fail_closed()
     artifact = test_real_repo_passes()
     test_artifact_invariants(artifact)
     test_separate_vocabularies_distinct(artifact)

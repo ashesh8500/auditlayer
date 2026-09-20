@@ -1,0 +1,1236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:alm:workspace:v1",
+  "title": "WorkspaceV1",
+  "$defs": {
+    "Money": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "type": "string",
+          "enum": [
+            "USD"
+          ]
+        },
+        "microusd": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "currency",
+        "microusd"
+      ],
+      "additionalProperties": false
+    },
+    "PinnedRefs": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "type": "string",
+          "enum": [
+            "workspace.v1"
+          ]
+        },
+        "policy_version": {
+          "type": "string",
+          "enum": [
+            "P-01.v1"
+          ]
+        },
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "subject_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "context_version_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "workflow_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "workflow_version_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "contract_version",
+        "policy_version",
+        "owner_id",
+        "subject_id",
+        "context_version_id",
+        "workflow_id",
+        "workflow_version_id"
+      ],
+      "additionalProperties": false
+    },
+    "ModelPin": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "model_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "data_route": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "model_version",
+        "data_route"
+      ],
+      "additionalProperties": false
+    },
+    "ModelOption": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "pin": {
+              "$ref": "#/$defs/ModelPin"
+            },
+            "availability": {
+              "type": "string",
+              "enum": [
+                "available"
+              ]
+            },
+            "unavailable_reason": {
+              "type": "null"
+            },
+            "capabilities": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "boolean"
+                },
+                "vision": {
+                  "type": "boolean"
+                },
+                "tools": {
+                  "type": "boolean"
+                },
+                "structured_output": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "text",
+                "vision",
+                "tools",
+                "structured_output"
+              ],
+              "additionalProperties": false
+            },
+            "allowed_tools": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              }
+            },
+            "rate_card_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          },
+          "required": [
+            "id",
+            "pin",
+            "availability",
+            "unavailable_reason",
+            "capabilities",
+            "allowed_tools",
+            "rate_card_version"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "pin": {
+              "$ref": "#/$defs/ModelPin"
+            },
+            "availability": {
+              "type": "string",
+              "enum": [
+                "unavailable"
+              ]
+            },
+            "unavailable_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "capabilities": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "boolean"
+                },
+                "vision": {
+                  "type": "boolean"
+                },
+                "tools": {
+                  "type": "boolean"
+                },
+                "structured_output": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "text",
+                "vision",
+                "tools",
+                "structured_output"
+              ],
+              "additionalProperties": false
+            },
+            "allowed_tools": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              }
+            },
+            "rate_card_version": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "pin",
+            "availability",
+            "unavailable_reason",
+            "capabilities",
+            "allowed_tools",
+            "rate_card_version"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "RateCard": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "model": {
+          "$ref": "#/$defs/ModelPin"
+        },
+        "effective_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+        },
+        "currency": {
+          "type": "string",
+          "enum": [
+            "USD"
+          ]
+        },
+        "input_microusd_per_million_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "cache_read_microusd_per_million_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "cache_write_microusd_per_million_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "output_microusd_per_million_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "tool_rates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "tool": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "microusd_per_call": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "tool",
+              "microusd_per_call"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "retail_multiplier": {
+          "type": "integer",
+          "const": 3
+        }
+      },
+      "required": [
+        "version",
+        "model",
+        "effective_at",
+        "source_url",
+        "verified_at",
+        "currency",
+        "input_microusd_per_million_tokens",
+        "cache_read_microusd_per_million_tokens",
+        "cache_write_microusd_per_million_tokens",
+        "output_microusd_per_million_tokens",
+        "tool_rates",
+        "retail_multiplier"
+      ],
+      "additionalProperties": false
+    },
+    "Quote": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "refs": {
+          "$ref": "#/$defs/PinnedRefs"
+        },
+        "model": {
+          "$ref": "#/$defs/ModelPin"
+        },
+        "rate_card_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "input_fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "customer_max": {
+          "$ref": "#/$defs/Money"
+        },
+        "upstream_max": {
+          "$ref": "#/$defs/Money"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+        }
+      },
+      "required": [
+        "id",
+        "refs",
+        "model",
+        "rate_card_version",
+        "input_fingerprint",
+        "customer_max",
+        "upstream_max",
+        "created_at",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "RunIntent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "quote": {
+          "$ref": "#/$defs/Quote"
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "requested_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+        },
+        "consent": {
+          "type": "object",
+          "properties": {
+            "model_data_route": {
+              "type": "boolean",
+              "const": true
+            },
+            "customer_max": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": [
+            "model_data_route",
+            "customer_max"
+          ],
+          "additionalProperties": false
+        },
+        "trigger": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "schedule"
+          ]
+        },
+        "schedule_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "quote",
+        "idempotency_key",
+        "requested_at",
+        "consent",
+        "trigger",
+        "schedule_id"
+      ],
+      "additionalProperties": false
+    },
+    "Reservation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "run_intent_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "quote_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "refs": {
+          "$ref": "#/$defs/PinnedRefs"
+        },
+        "customer_reserved": {
+          "$ref": "#/$defs/Money"
+        },
+        "upstream_reserved": {
+          "$ref": "#/$defs/Money"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "held",
+            "settled",
+            "released",
+            "pending_reconciliation"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+        }
+      },
+      "required": [
+        "id",
+        "run_intent_id",
+        "quote_id",
+        "refs",
+        "customer_reserved",
+        "upstream_reserved",
+        "status",
+        "created_at",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "UsageReceipt": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "run_intent_id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "reservation_id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "refs": {
+              "$ref": "#/$defs/PinnedRefs"
+            },
+            "model": {
+              "$ref": "#/$defs/ModelPin"
+            },
+            "rate_card_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "measurement": {
+              "type": "string",
+              "enum": [
+                "actual"
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "succeeded"
+              ]
+            },
+            "input_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "cache_read_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "cache_write_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "output_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "tool_calls": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "customer_charge": {
+              "$ref": "#/$defs/Money"
+            },
+            "successful_path_upstream_cost": {
+              "$ref": "#/$defs/Money"
+            },
+            "absorbed_retry_upstream_cost": {
+              "$ref": "#/$defs/Money"
+            },
+            "total_upstream_cost": {
+              "$ref": "#/$defs/Money"
+            },
+            "settled_at": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+            }
+          },
+          "required": [
+            "id",
+            "run_intent_id",
+            "reservation_id",
+            "refs",
+            "model",
+            "rate_card_version",
+            "measurement",
+            "status",
+            "input_tokens",
+            "cache_read_tokens",
+            "cache_write_tokens",
+            "output_tokens",
+            "tool_calls",
+            "customer_charge",
+            "successful_path_upstream_cost",
+            "absorbed_retry_upstream_cost",
+            "total_upstream_cost",
+            "settled_at"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "run_intent_id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "reservation_id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "refs": {
+              "$ref": "#/$defs/PinnedRefs"
+            },
+            "model": {
+              "$ref": "#/$defs/ModelPin"
+            },
+            "rate_card_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "measurement": {
+              "type": "string",
+              "enum": [
+                "actual"
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "failed"
+              ]
+            },
+            "input_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "cache_read_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "cache_write_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "output_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "tool_calls": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "customer_charge": {
+              "type": "object",
+              "properties": {
+                "currency": {
+                  "type": "string",
+                  "enum": [
+                    "USD"
+                  ]
+                },
+                "microusd": {
+                  "type": "integer",
+                  "const": 0
+                }
+              },
+              "required": [
+                "currency",
+                "microusd"
+              ],
+              "additionalProperties": false
+            },
+            "successful_path_upstream_cost": {
+              "$ref": "#/$defs/Money"
+            },
+            "absorbed_retry_upstream_cost": {
+              "$ref": "#/$defs/Money"
+            },
+            "total_upstream_cost": {
+              "$ref": "#/$defs/Money"
+            },
+            "settled_at": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+            }
+          },
+          "required": [
+            "id",
+            "run_intent_id",
+            "reservation_id",
+            "refs",
+            "model",
+            "rate_card_version",
+            "measurement",
+            "status",
+            "input_tokens",
+            "cache_read_tokens",
+            "cache_write_tokens",
+            "output_tokens",
+            "tool_calls",
+            "customer_charge",
+            "successful_path_upstream_cost",
+            "absorbed_retry_upstream_cost",
+            "total_upstream_cost",
+            "settled_at"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "run_intent_id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "reservation_id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "refs": {
+              "$ref": "#/$defs/PinnedRefs"
+            },
+            "model": {
+              "$ref": "#/$defs/ModelPin"
+            },
+            "rate_card_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "measurement": {
+              "type": "string",
+              "enum": [
+                "estimated"
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending_reconciliation"
+              ]
+            },
+            "input_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "cache_read_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "cache_write_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "output_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tool_calls": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "customer_charge": {
+              "type": "object",
+              "properties": {
+                "currency": {
+                  "type": "string",
+                  "enum": [
+                    "USD"
+                  ]
+                },
+                "microusd": {
+                  "type": "integer",
+                  "const": 0
+                }
+              },
+              "required": [
+                "currency",
+                "microusd"
+              ],
+              "additionalProperties": false
+            },
+            "successful_path_upstream_cost": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Money"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "absorbed_retry_upstream_cost": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Money"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "total_upstream_cost": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Money"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "settled_at": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "id",
+            "run_intent_id",
+            "reservation_id",
+            "refs",
+            "model",
+            "rate_card_version",
+            "measurement",
+            "status",
+            "input_tokens",
+            "cache_read_tokens",
+            "cache_write_tokens",
+            "output_tokens",
+            "tool_calls",
+            "customer_charge",
+            "successful_path_upstream_cost",
+            "absorbed_retry_upstream_cost",
+            "total_upstream_cost",
+            "settled_at"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "run_intent_id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "reservation_id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "refs": {
+              "$ref": "#/$defs/PinnedRefs"
+            },
+            "model": {
+              "$ref": "#/$defs/ModelPin"
+            },
+            "rate_card_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "measurement": {
+              "type": "string",
+              "enum": [
+                "unknown"
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending_reconciliation"
+              ]
+            },
+            "input_tokens": {
+              "type": "null"
+            },
+            "cache_read_tokens": {
+              "type": "null"
+            },
+            "cache_write_tokens": {
+              "type": "null"
+            },
+            "output_tokens": {
+              "type": "null"
+            },
+            "tool_calls": {
+              "type": "null"
+            },
+            "customer_charge": {
+              "type": "object",
+              "properties": {
+                "currency": {
+                  "type": "string",
+                  "enum": [
+                    "USD"
+                  ]
+                },
+                "microusd": {
+                  "type": "integer",
+                  "const": 0
+                }
+              },
+              "required": [
+                "currency",
+                "microusd"
+              ],
+              "additionalProperties": false
+            },
+            "successful_path_upstream_cost": {
+              "type": "null"
+            },
+            "absorbed_retry_upstream_cost": {
+              "type": "null"
+            },
+            "total_upstream_cost": {
+              "type": "null"
+            },
+            "settled_at": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "id",
+            "run_intent_id",
+            "reservation_id",
+            "refs",
+            "model",
+            "rate_card_version",
+            "measurement",
+            "status",
+            "input_tokens",
+            "cache_read_tokens",
+            "cache_write_tokens",
+            "output_tokens",
+            "tool_calls",
+            "customer_charge",
+            "successful_path_upstream_cost",
+            "absorbed_retry_upstream_cost",
+            "total_upstream_cost",
+            "settled_at"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "WalletLot": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "included",
+            "purchased"
+          ]
+        },
+        "granted": {
+          "$ref": "#/$defs/Money"
+        },
+        "balance": {
+          "$ref": "#/$defs/Money"
+        },
+        "reserved": {
+          "$ref": "#/$defs/Money"
+        },
+        "consumed": {
+          "$ref": "#/$defs/Money"
+        },
+        "granted_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+        },
+        "stripe_source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "granted",
+        "balance",
+        "reserved",
+        "consumed",
+        "granted_at",
+        "expires_at",
+        "stripe_source_id"
+      ],
+      "additionalProperties": false
+    },
+    "Wallet": {
+      "type": "object",
+      "properties": {
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "policy_version": {
+          "type": "string",
+          "enum": [
+            "P-01.v1"
+          ]
+        },
+        "currency": {
+          "type": "string",
+          "enum": [
+            "USD"
+          ]
+        },
+        "stripe_subscription_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "stripe_period_start": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+        },
+        "stripe_period_end": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+        },
+        "balance": {
+          "$ref": "#/$defs/Money"
+        },
+        "reserved": {
+          "$ref": "#/$defs/Money"
+        },
+        "consumed_this_cycle": {
+          "$ref": "#/$defs/Money"
+        },
+        "purchased_this_cycle": {
+          "$ref": "#/$defs/Money"
+        },
+        "upstream_exposure_this_cycle": {
+          "$ref": "#/$defs/Money"
+        },
+        "lots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WalletLot"
+          }
+        }
+      },
+      "required": [
+        "owner_id",
+        "policy_version",
+        "currency",
+        "stripe_subscription_id",
+        "stripe_period_start",
+        "stripe_period_end",
+        "balance",
+        "reserved",
+        "consumed_this_cycle",
+        "purchased_this_cycle",
+        "upstream_exposure_this_cycle",
+        "lots"
+      ],
+      "additionalProperties": false
+    },
+    "WorkspaceError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "INVALID_CONTRACT",
+            "OWNER_SCOPE_MISMATCH",
+            "QUOTE_EXPIRED",
+            "QUOTE_MISMATCH",
+            "MODEL_UNAVAILABLE",
+            "RATE_CARD_UNAVAILABLE",
+            "INSUFFICIENT_BALANCE",
+            "RUN_RESERVATION_LIMIT",
+            "CYCLE_PURCHASE_LIMIT",
+            "CYCLE_CONSUMPTION_LIMIT",
+            "UPSTREAM_EXPOSURE_LIMIT",
+            "IDEMPOTENCY_CONFLICT",
+            "USAGE_PENDING_RECONCILIATION",
+            "ENROLLMENT_BLOCKED",
+            "LEGACY_ENTITLEMENT_REQUIRED"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "request_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ModelOption"
+    },
+    {
+      "$ref": "#/$defs/RateCard"
+    },
+    {
+      "$ref": "#/$defs/Quote"
+    },
+    {
+      "$ref": "#/$defs/RunIntent"
+    },
+    {
+      "$ref": "#/$defs/Reservation"
+    },
+    {
+      "$ref": "#/$defs/UsageReceipt"
+    },
+    {
+      "$ref": "#/$defs/Wallet"
+    },
+    {
+      "$ref": "#/$defs/WorkspaceError"
+    }
+  ]
+}

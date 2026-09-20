@@ -1,0 +1,1603 @@
+[
+  {
+    "name": "Money valid",
+    "contract": "Money",
+    "valid": true,
+    "value": {
+      "currency": "USD",
+      "microusd": 0
+    }
+  },
+  {
+    "name": "Money unknown_field",
+    "contract": "Money",
+    "valid": false,
+    "value": {
+      "currency": "USD",
+      "microusd": 0,
+      "unexpected": 1
+    }
+  },
+  {
+    "name": "Money missing_field",
+    "contract": "Money",
+    "valid": false,
+    "value": {
+      "microusd": 0
+    }
+  },
+  {
+    "name": "PinnedRefs valid",
+    "contract": "PinnedRefs",
+    "valid": true,
+    "value": {
+      "contract_version": "workspace.v1",
+      "policy_version": "P-01.v1",
+      "owner_id": "00000000-0000-4000-8000-000000000001",
+      "subject_id": "00000000-0000-4000-8000-000000000001",
+      "context_version_id": "00000000-0000-4000-8000-000000000001",
+      "workflow_id": "00000000-0000-4000-8000-000000000001",
+      "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "name": "PinnedRefs unknown_field",
+    "contract": "PinnedRefs",
+    "valid": false,
+    "value": {
+      "contract_version": "workspace.v1",
+      "policy_version": "P-01.v1",
+      "owner_id": "00000000-0000-4000-8000-000000000001",
+      "subject_id": "00000000-0000-4000-8000-000000000001",
+      "context_version_id": "00000000-0000-4000-8000-000000000001",
+      "workflow_id": "00000000-0000-4000-8000-000000000001",
+      "workflow_version_id": "00000000-0000-4000-8000-000000000001",
+      "unexpected": 1
+    }
+  },
+  {
+    "name": "PinnedRefs missing_field",
+    "contract": "PinnedRefs",
+    "valid": false,
+    "value": {
+      "policy_version": "P-01.v1",
+      "owner_id": "00000000-0000-4000-8000-000000000001",
+      "subject_id": "00000000-0000-4000-8000-000000000001",
+      "context_version_id": "00000000-0000-4000-8000-000000000001",
+      "workflow_id": "00000000-0000-4000-8000-000000000001",
+      "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "name": "ModelPin valid",
+    "contract": "ModelPin",
+    "valid": true,
+    "value": {
+      "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "name": "ModelPin unknown_field",
+    "contract": "ModelPin",
+    "valid": false,
+    "value": {
+      "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "unexpected": 1
+    }
+  },
+  {
+    "name": "ModelPin missing_field",
+    "contract": "ModelPin",
+    "valid": false,
+    "value": {
+      "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "name": "ModelOption valid",
+    "contract": "ModelOption",
+    "valid": true,
+    "value": {
+      "id": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "pin": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "availability": "unavailable",
+      "unavailable_reason": "not_configured",
+      "capabilities": {
+        "text": false,
+        "vision": false,
+        "tools": false,
+        "structured_output": false
+      },
+      "allowed_tools": [],
+      "rate_card_version": null
+    }
+  },
+  {
+    "name": "ModelOption unknown_field",
+    "contract": "ModelOption",
+    "valid": false,
+    "value": {
+      "id": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "pin": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "availability": "unavailable",
+      "unavailable_reason": "not_configured",
+      "capabilities": {
+        "text": false,
+        "vision": false,
+        "tools": false,
+        "structured_output": false
+      },
+      "allowed_tools": [],
+      "rate_card_version": null,
+      "unexpected": 1
+    }
+  },
+  {
+    "name": "ModelOption missing_field",
+    "contract": "ModelOption",
+    "valid": false,
+    "value": {
+      "pin": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "availability": "unavailable",
+      "unavailable_reason": "not_configured",
+      "capabilities": {
+        "text": false,
+        "vision": false,
+        "tools": false,
+        "structured_output": false
+      },
+      "allowed_tools": [],
+      "rate_card_version": null
+    }
+  },
+  {
+    "name": "RateCard valid",
+    "contract": "RateCard",
+    "valid": true,
+    "value": {
+      "version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "effective_at": "2026-09-19T12:00:00Z",
+      "source_url": "https://example.invalid/fixture-only-not-real-rates",
+      "verified_at": "2026-09-19T12:00:00Z",
+      "currency": "USD",
+      "input_microusd_per_million_tokens": 0,
+      "cache_read_microusd_per_million_tokens": 0,
+      "cache_write_microusd_per_million_tokens": 0,
+      "output_microusd_per_million_tokens": 0,
+      "tool_rates": [],
+      "retail_multiplier": 3
+    }
+  },
+  {
+    "name": "RateCard unknown_field",
+    "contract": "RateCard",
+    "valid": false,
+    "value": {
+      "version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "effective_at": "2026-09-19T12:00:00Z",
+      "source_url": "https://example.invalid/fixture-only-not-real-rates",
+      "verified_at": "2026-09-19T12:00:00Z",
+      "currency": "USD",
+      "input_microusd_per_million_tokens": 0,
+      "cache_read_microusd_per_million_tokens": 0,
+      "cache_write_microusd_per_million_tokens": 0,
+      "output_microusd_per_million_tokens": 0,
+      "tool_rates": [],
+      "retail_multiplier": 3,
+      "unexpected": 1
+    }
+  },
+  {
+    "name": "RateCard missing_field",
+    "contract": "RateCard",
+    "valid": false,
+    "value": {
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "effective_at": "2026-09-19T12:00:00Z",
+      "source_url": "https://example.invalid/fixture-only-not-real-rates",
+      "verified_at": "2026-09-19T12:00:00Z",
+      "currency": "USD",
+      "input_microusd_per_million_tokens": 0,
+      "cache_read_microusd_per_million_tokens": 0,
+      "cache_write_microusd_per_million_tokens": 0,
+      "output_microusd_per_million_tokens": 0,
+      "tool_rates": [],
+      "retail_multiplier": 3
+    }
+  },
+  {
+    "name": "Quote valid",
+    "contract": "Quote",
+    "valid": true,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "input_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "customer_max": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "upstream_max": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "created_at": "2026-09-19T12:00:00Z",
+      "expires_at": "2026-09-19T12:00:00Z"
+    }
+  },
+  {
+    "name": "Quote unknown_field",
+    "contract": "Quote",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "input_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "customer_max": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "upstream_max": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "created_at": "2026-09-19T12:00:00Z",
+      "expires_at": "2026-09-19T12:00:00Z",
+      "unexpected": 1
+    }
+  },
+  {
+    "name": "Quote missing_field",
+    "contract": "Quote",
+    "valid": false,
+    "value": {
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "input_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "customer_max": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "upstream_max": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "created_at": "2026-09-19T12:00:00Z",
+      "expires_at": "2026-09-19T12:00:00Z"
+    }
+  },
+  {
+    "name": "RunIntent valid",
+    "contract": "RunIntent",
+    "valid": true,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "quote": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "refs": {
+          "contract_version": "workspace.v1",
+          "policy_version": "P-01.v1",
+          "owner_id": "00000000-0000-4000-8000-000000000001",
+          "subject_id": "00000000-0000-4000-8000-000000000001",
+          "context_version_id": "00000000-0000-4000-8000-000000000001",
+          "workflow_id": "00000000-0000-4000-8000-000000000001",
+          "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+        },
+        "model": {
+          "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+          "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+          "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+          "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+        },
+        "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "input_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "customer_max": {
+          "currency": "USD",
+          "microusd": 0
+        },
+        "upstream_max": {
+          "currency": "USD",
+          "microusd": 0
+        },
+        "created_at": "2026-09-19T12:00:00Z",
+        "expires_at": "2026-09-19T12:00:00Z"
+      },
+      "idempotency_key": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "requested_at": "2026-09-19T12:00:00Z",
+      "consent": {
+        "model_data_route": true,
+        "customer_max": true
+      },
+      "trigger": "manual",
+      "schedule_id": null
+    }
+  },
+  {
+    "name": "RunIntent unknown_field",
+    "contract": "RunIntent",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "quote": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "refs": {
+          "contract_version": "workspace.v1",
+          "policy_version": "P-01.v1",
+          "owner_id": "00000000-0000-4000-8000-000000000001",
+          "subject_id": "00000000-0000-4000-8000-000000000001",
+          "context_version_id": "00000000-0000-4000-8000-000000000001",
+          "workflow_id": "00000000-0000-4000-8000-000000000001",
+          "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+        },
+        "model": {
+          "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+          "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+          "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+          "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+        },
+        "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "input_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "customer_max": {
+          "currency": "USD",
+          "microusd": 0
+        },
+        "upstream_max": {
+          "currency": "USD",
+          "microusd": 0
+        },
+        "created_at": "2026-09-19T12:00:00Z",
+        "expires_at": "2026-09-19T12:00:00Z"
+      },
+      "idempotency_key": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "requested_at": "2026-09-19T12:00:00Z",
+      "consent": {
+        "model_data_route": true,
+        "customer_max": true
+      },
+      "trigger": "manual",
+      "schedule_id": null,
+      "unexpected": 1
+    }
+  },
+  {
+    "name": "RunIntent missing_field",
+    "contract": "RunIntent",
+    "valid": false,
+    "value": {
+      "quote": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "refs": {
+          "contract_version": "workspace.v1",
+          "policy_version": "P-01.v1",
+          "owner_id": "00000000-0000-4000-8000-000000000001",
+          "subject_id": "00000000-0000-4000-8000-000000000001",
+          "context_version_id": "00000000-0000-4000-8000-000000000001",
+          "workflow_id": "00000000-0000-4000-8000-000000000001",
+          "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+        },
+        "model": {
+          "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+          "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+          "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+          "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+        },
+        "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "input_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "customer_max": {
+          "currency": "USD",
+          "microusd": 0
+        },
+        "upstream_max": {
+          "currency": "USD",
+          "microusd": 0
+        },
+        "created_at": "2026-09-19T12:00:00Z",
+        "expires_at": "2026-09-19T12:00:00Z"
+      },
+      "idempotency_key": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "requested_at": "2026-09-19T12:00:00Z",
+      "consent": {
+        "model_data_route": true,
+        "customer_max": true
+      },
+      "trigger": "manual",
+      "schedule_id": null
+    }
+  },
+  {
+    "name": "Reservation valid",
+    "contract": "Reservation",
+    "valid": true,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "quote_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "customer_reserved": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "upstream_reserved": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "status": "held",
+      "created_at": "2026-09-19T12:00:00Z",
+      "expires_at": "2026-09-19T12:00:00Z"
+    }
+  },
+  {
+    "name": "Reservation unknown_field",
+    "contract": "Reservation",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "quote_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "customer_reserved": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "upstream_reserved": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "status": "held",
+      "created_at": "2026-09-19T12:00:00Z",
+      "expires_at": "2026-09-19T12:00:00Z",
+      "unexpected": 1
+    }
+  },
+  {
+    "name": "Reservation missing_field",
+    "contract": "Reservation",
+    "valid": false,
+    "value": {
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "quote_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "customer_reserved": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "upstream_reserved": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "status": "held",
+      "created_at": "2026-09-19T12:00:00Z",
+      "expires_at": "2026-09-19T12:00:00Z"
+    }
+  },
+  {
+    "name": "UsageReceipt valid",
+    "contract": "UsageReceipt",
+    "valid": true,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "reservation_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "measurement": "unknown",
+      "status": "pending_reconciliation",
+      "input_tokens": null,
+      "cache_read_tokens": null,
+      "cache_write_tokens": null,
+      "output_tokens": null,
+      "tool_calls": null,
+      "customer_charge": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "successful_path_upstream_cost": null,
+      "absorbed_retry_upstream_cost": null,
+      "total_upstream_cost": null,
+      "settled_at": null
+    }
+  },
+  {
+    "name": "UsageReceipt unknown_field",
+    "contract": "UsageReceipt",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "reservation_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "measurement": "unknown",
+      "status": "pending_reconciliation",
+      "input_tokens": null,
+      "cache_read_tokens": null,
+      "cache_write_tokens": null,
+      "output_tokens": null,
+      "tool_calls": null,
+      "customer_charge": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "successful_path_upstream_cost": null,
+      "absorbed_retry_upstream_cost": null,
+      "total_upstream_cost": null,
+      "settled_at": null,
+      "unexpected": 1
+    }
+  },
+  {
+    "name": "UsageReceipt missing_field",
+    "contract": "UsageReceipt",
+    "valid": false,
+    "value": {
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "reservation_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "measurement": "unknown",
+      "status": "pending_reconciliation",
+      "input_tokens": null,
+      "cache_read_tokens": null,
+      "cache_write_tokens": null,
+      "output_tokens": null,
+      "tool_calls": null,
+      "customer_charge": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "successful_path_upstream_cost": null,
+      "absorbed_retry_upstream_cost": null,
+      "total_upstream_cost": null,
+      "settled_at": null
+    }
+  },
+  {
+    "name": "WalletLot valid",
+    "contract": "WalletLot",
+    "valid": true,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "kind": "included",
+      "granted": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "balance": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "reserved": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "consumed": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "granted_at": "2026-09-19T12:00:00Z",
+      "expires_at": "2026-09-19T12:00:00Z",
+      "stripe_source_id": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "name": "WalletLot unknown_field",
+    "contract": "WalletLot",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "kind": "included",
+      "granted": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "balance": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "reserved": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "consumed": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "granted_at": "2026-09-19T12:00:00Z",
+      "expires_at": "2026-09-19T12:00:00Z",
+      "stripe_source_id": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "unexpected": 1
+    }
+  },
+  {
+    "name": "WalletLot missing_field",
+    "contract": "WalletLot",
+    "valid": false,
+    "value": {
+      "kind": "included",
+      "granted": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "balance": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "reserved": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "consumed": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "granted_at": "2026-09-19T12:00:00Z",
+      "expires_at": "2026-09-19T12:00:00Z",
+      "stripe_source_id": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "name": "Wallet valid",
+    "contract": "Wallet",
+    "valid": true,
+    "value": {
+      "owner_id": "00000000-0000-4000-8000-000000000001",
+      "policy_version": "P-01.v1",
+      "currency": "USD",
+      "stripe_subscription_id": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "stripe_period_start": "2026-09-19T12:00:00Z",
+      "stripe_period_end": "2026-09-19T12:00:00Z",
+      "balance": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "reserved": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "consumed_this_cycle": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "purchased_this_cycle": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "upstream_exposure_this_cycle": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "lots": []
+    }
+  },
+  {
+    "name": "Wallet unknown_field",
+    "contract": "Wallet",
+    "valid": false,
+    "value": {
+      "owner_id": "00000000-0000-4000-8000-000000000001",
+      "policy_version": "P-01.v1",
+      "currency": "USD",
+      "stripe_subscription_id": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "stripe_period_start": "2026-09-19T12:00:00Z",
+      "stripe_period_end": "2026-09-19T12:00:00Z",
+      "balance": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "reserved": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "consumed_this_cycle": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "purchased_this_cycle": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "upstream_exposure_this_cycle": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "lots": [],
+      "unexpected": 1
+    }
+  },
+  {
+    "name": "Wallet missing_field",
+    "contract": "Wallet",
+    "valid": false,
+    "value": {
+      "policy_version": "P-01.v1",
+      "currency": "USD",
+      "stripe_subscription_id": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "stripe_period_start": "2026-09-19T12:00:00Z",
+      "stripe_period_end": "2026-09-19T12:00:00Z",
+      "balance": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "reserved": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "consumed_this_cycle": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "purchased_this_cycle": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "upstream_exposure_this_cycle": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "lots": []
+    }
+  },
+  {
+    "name": "WorkspaceError valid",
+    "contract": "WorkspaceError",
+    "valid": true,
+    "value": {
+      "code": "INVALID_CONTRACT",
+      "message": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "retryable": false,
+      "request_id": "00000000-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "name": "WorkspaceError unknown_field",
+    "contract": "WorkspaceError",
+    "valid": false,
+    "value": {
+      "code": "INVALID_CONTRACT",
+      "message": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "retryable": false,
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "unexpected": 1
+    }
+  },
+  {
+    "name": "WorkspaceError missing_field",
+    "contract": "WorkspaceError",
+    "valid": false,
+    "value": {
+      "message": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "retryable": false,
+      "request_id": "00000000-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "name": "money negative",
+    "contract": "Money",
+    "valid": false,
+    "value": {
+      "currency": "USD",
+      "microusd": -1
+    }
+  },
+  {
+    "name": "money fraction",
+    "contract": "Money",
+    "valid": false,
+    "value": {
+      "currency": "USD",
+      "microusd": 0.1
+    }
+  },
+  {
+    "name": "money overflow",
+    "contract": "Money",
+    "valid": false,
+    "value": {
+      "currency": "USD",
+      "microusd": 9007199254740992
+    }
+  },
+  {
+    "name": "money string",
+    "contract": "Money",
+    "valid": false,
+    "value": {
+      "currency": "USD",
+      "microusd": "1"
+    }
+  },
+  {
+    "name": "money bool",
+    "contract": "Money",
+    "valid": false,
+    "value": {
+      "currency": "USD",
+      "microusd": true
+    }
+  },
+  {
+    "name": "money null",
+    "contract": "Money",
+    "valid": false,
+    "value": {
+      "currency": "USD",
+      "microusd": null
+    }
+  },
+  {
+    "name": "money max safe",
+    "contract": "Money",
+    "valid": true,
+    "value": {
+      "currency": "USD",
+      "microusd": 9007199254740991
+    }
+  },
+  {
+    "name": "money currency",
+    "contract": "Money",
+    "valid": false,
+    "value": {
+      "currency": "EUR",
+      "microusd": 1
+    }
+  },
+  {
+    "name": "PinnedRefs invalid owner_idperson@example.com",
+    "contract": "PinnedRefs",
+    "valid": false,
+    "value": {
+      "contract_version": "workspace.v1",
+      "policy_version": "P-01.v1",
+      "owner_id": "person@example.com",
+      "subject_id": "00000000-0000-4000-8000-000000000001",
+      "context_version_id": "00000000-0000-4000-8000-000000000001",
+      "workflow_id": "00000000-0000-4000-8000-000000000001",
+      "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "name": "PinnedRefs invalid policy_versionP-02",
+    "contract": "PinnedRefs",
+    "valid": false,
+    "value": {
+      "contract_version": "workspace.v1",
+      "policy_version": "P-02",
+      "owner_id": "00000000-0000-4000-8000-000000000001",
+      "subject_id": "00000000-0000-4000-8000-000000000001",
+      "context_version_id": "00000000-0000-4000-8000-000000000001",
+      "workflow_id": "00000000-0000-4000-8000-000000000001",
+      "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "name": "Quote invalid input_fingerprintabc",
+    "contract": "Quote",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "input_fingerprint": "abc",
+      "customer_max": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "upstream_max": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "created_at": "2026-09-19T12:00:00Z",
+      "expires_at": "2026-09-19T12:00:00Z"
+    }
+  },
+  {
+    "name": "Quote invalid expires_attomorrow",
+    "contract": "Quote",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "input_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "customer_max": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "upstream_max": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "created_at": "2026-09-19T12:00:00Z",
+      "expires_at": "tomorrow"
+    }
+  },
+  {
+    "name": "Quote invalid expires_at2026-99-19T12:00:00Z",
+    "contract": "Quote",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "input_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "customer_max": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "upstream_max": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "created_at": "2026-09-19T12:00:00Z",
+      "expires_at": "2026-99-19T12:00:00Z"
+    }
+  },
+  {
+    "name": "RunIntent invalid idempotency_keyshort",
+    "contract": "RunIntent",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "quote": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "refs": {
+          "contract_version": "workspace.v1",
+          "policy_version": "P-01.v1",
+          "owner_id": "00000000-0000-4000-8000-000000000001",
+          "subject_id": "00000000-0000-4000-8000-000000000001",
+          "context_version_id": "00000000-0000-4000-8000-000000000001",
+          "workflow_id": "00000000-0000-4000-8000-000000000001",
+          "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+        },
+        "model": {
+          "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+          "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+          "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+          "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+        },
+        "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "input_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "customer_max": {
+          "currency": "USD",
+          "microusd": 0
+        },
+        "upstream_max": {
+          "currency": "USD",
+          "microusd": 0
+        },
+        "created_at": "2026-09-19T12:00:00Z",
+        "expires_at": "2026-09-19T12:00:00Z"
+      },
+      "idempotency_key": "short",
+      "requested_at": "2026-09-19T12:00:00Z",
+      "consent": {
+        "model_data_route": true,
+        "customer_max": true
+      },
+      "trigger": "manual",
+      "schedule_id": null
+    }
+  },
+  {
+    "name": "ModelOption invalid availabilityprobably",
+    "contract": "ModelOption",
+    "valid": false,
+    "value": {
+      "id": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "pin": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "availability": "probably",
+      "unavailable_reason": null,
+      "capabilities": {
+        "text": false,
+        "vision": false,
+        "tools": false,
+        "structured_output": false
+      },
+      "allowed_tools": [],
+      "rate_card_version": null
+    }
+  },
+  {
+    "name": "RateCard invalid retail_multiplier4",
+    "contract": "RateCard",
+    "valid": false,
+    "value": {
+      "version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "effective_at": "2026-09-19T12:00:00Z",
+      "source_url": "https://example.invalid/fixture-only-not-real-rates",
+      "verified_at": "2026-09-19T12:00:00Z",
+      "currency": "USD",
+      "input_microusd_per_million_tokens": 0,
+      "cache_read_microusd_per_million_tokens": 0,
+      "cache_write_microusd_per_million_tokens": 0,
+      "output_microusd_per_million_tokens": 0,
+      "tool_rates": [],
+      "retail_multiplier": 4
+    }
+  },
+  {
+    "name": "WorkspaceError invalid codeoops",
+    "contract": "WorkspaceError",
+    "valid": false,
+    "value": {
+      "code": "oops",
+      "message": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "retryable": false,
+      "request_id": "00000000-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "name": "unknown charged",
+    "contract": "UsageReceipt",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "reservation_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "measurement": "unknown",
+      "status": "pending_reconciliation",
+      "input_tokens": null,
+      "cache_read_tokens": null,
+      "cache_write_tokens": null,
+      "output_tokens": null,
+      "tool_calls": null,
+      "customer_charge": {
+        "currency": "USD",
+        "microusd": 1
+      },
+      "successful_path_upstream_cost": null,
+      "absorbed_retry_upstream_cost": null,
+      "total_upstream_cost": null,
+      "settled_at": null
+    }
+  },
+  {
+    "name": "unknown settled",
+    "contract": "UsageReceipt",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "reservation_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "measurement": "unknown",
+      "status": "pending_reconciliation",
+      "input_tokens": null,
+      "cache_read_tokens": null,
+      "cache_write_tokens": null,
+      "output_tokens": null,
+      "tool_calls": null,
+      "customer_charge": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "successful_path_upstream_cost": null,
+      "absorbed_retry_upstream_cost": null,
+      "total_upstream_cost": null,
+      "settled_at": "2026-09-19T12:00:00Z"
+    }
+  },
+  {
+    "name": "actual missing usage",
+    "contract": "UsageReceipt",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "reservation_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "measurement": "actual",
+      "status": "succeeded",
+      "input_tokens": null,
+      "cache_read_tokens": null,
+      "cache_write_tokens": null,
+      "output_tokens": null,
+      "tool_calls": null,
+      "customer_charge": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "successful_path_upstream_cost": null,
+      "absorbed_retry_upstream_cost": null,
+      "total_upstream_cost": null,
+      "settled_at": null
+    }
+  },
+  {
+    "name": "failed charged",
+    "contract": "UsageReceipt",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "reservation_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "measurement": "actual",
+      "status": "failed",
+      "input_tokens": null,
+      "cache_read_tokens": null,
+      "cache_write_tokens": null,
+      "output_tokens": null,
+      "tool_calls": null,
+      "customer_charge": {
+        "currency": "USD",
+        "microusd": 1
+      },
+      "successful_path_upstream_cost": null,
+      "absorbed_retry_upstream_cost": null,
+      "total_upstream_cost": null,
+      "settled_at": null
+    }
+  },
+  {
+    "name": "available model without rate card",
+    "contract": "ModelOption",
+    "valid": false,
+    "value": {
+      "id": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "pin": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "availability": "available",
+      "unavailable_reason": null,
+      "capabilities": {
+        "text": false,
+        "vision": false,
+        "tools": false,
+        "structured_output": false
+      },
+      "allowed_tools": [],
+      "rate_card_version": null
+    }
+  },
+  {
+    "name": "receipt variant 0",
+    "contract": "UsageReceipt",
+    "valid": true,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "reservation_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "measurement": "actual",
+      "status": "succeeded",
+      "input_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "output_tokens": 0,
+      "tool_calls": 0,
+      "customer_charge": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "successful_path_upstream_cost": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "absorbed_retry_upstream_cost": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "total_upstream_cost": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "settled_at": "2026-09-19T12:00:00Z"
+    }
+  },
+  {
+    "name": "receipt variant 1",
+    "contract": "UsageReceipt",
+    "valid": true,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "reservation_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "measurement": "actual",
+      "status": "failed",
+      "input_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "output_tokens": 0,
+      "tool_calls": 0,
+      "customer_charge": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "successful_path_upstream_cost": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "absorbed_retry_upstream_cost": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "total_upstream_cost": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "settled_at": "2026-09-19T12:00:00Z"
+    }
+  },
+  {
+    "name": "receipt variant 2",
+    "contract": "UsageReceipt",
+    "valid": true,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "reservation_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "measurement": "estimated",
+      "status": "pending_reconciliation",
+      "input_tokens": null,
+      "cache_read_tokens": null,
+      "cache_write_tokens": null,
+      "output_tokens": null,
+      "tool_calls": null,
+      "customer_charge": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "successful_path_upstream_cost": null,
+      "absorbed_retry_upstream_cost": null,
+      "total_upstream_cost": null,
+      "settled_at": null
+    }
+  },
+  {
+    "name": "receipt variant 3",
+    "contract": "UsageReceipt",
+    "valid": true,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "run_intent_id": "00000000-0000-4000-8000-000000000001",
+      "reservation_id": "00000000-0000-4000-8000-000000000001",
+      "refs": {
+        "contract_version": "workspace.v1",
+        "policy_version": "P-01.v1",
+        "owner_id": "00000000-0000-4000-8000-000000000001",
+        "subject_id": "00000000-0000-4000-8000-000000000001",
+        "context_version_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_id": "00000000-0000-4000-8000-000000000001",
+        "workflow_version_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "model": {
+        "provider": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "model_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+        "data_route": "fixture-only-pinned-xxxxxxxxxxxxxxxx"
+      },
+      "rate_card_version": "fixture-only-pinned-xxxxxxxxxxxxxxxx",
+      "measurement": "unknown",
+      "status": "pending_reconciliation",
+      "input_tokens": null,
+      "cache_read_tokens": null,
+      "cache_write_tokens": null,
+      "output_tokens": null,
+      "tool_calls": null,
+      "customer_charge": {
+        "currency": "USD",
+        "microusd": 0
+      },
+      "successful_path_upstream_cost": null,
+      "absorbed_retry_upstream_cost": null,
+      "total_upstream_cost": null,
+      "settled_at": null
+    }
+  }
+]
