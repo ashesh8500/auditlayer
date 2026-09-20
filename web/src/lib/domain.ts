@@ -194,15 +194,45 @@ export function normalizeHandle(handle: string): string {
   return cleaned;
 }
 
+const PLATFORM_HOSTS: ReadonlyArray<readonly [Platform, readonly string[]]> = [
+  ["tiktok", ["tiktok.com"]],
+  ["youtube", ["youtube.com", "youtu.be"]],
+  ["x", ["x.com", "twitter.com"]],
+  ["linkedin", ["linkedin.com"]],
+  ["instagram", ["instagram.com"]],
+];
+
+/** Hostname of a URL or bare domain input; null when the input has no host. */
+function hostnameOf(value: string): string | null {
+  const candidate = value.includes("://") ? value : `https://${value}`;
+  try {
+    const host = new URL(candidate).hostname.toLowerCase();
+    return host.includes(".") ? host : null;
+  } catch {
+    return null;
+  }
+}
+
+function hostMatchesPlatform(host: string, domains: readonly string[]): boolean {
+  return domains.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
 export function detectPlatform(handleOrUrl: string): Platform {
   const value = handleOrUrl.toLowerCase();
-  if (value.includes("tiktok.com")) return "tiktok";
-  if (value.includes("youtube.com") || value.includes("youtu.be"))
-    return "youtube";
-  if (value.includes("x.com") || value.includes("twitter.com")) return "x";
-  if (value.includes("linkedin.com")) return "linkedin";
-  if (value.includes("instagram.com")) return "instagram";
   const trimmed = value.trim();
+  // A platform is recognised only by the host of URL-shaped input, never by a
+  // substring: 'evil.com/instagram.com' and 'instagram.com.evil.com' are not
+  // Instagram. Bare handles keep the original Instagram defaults below.
+  const urlShaped = /^[a-z][a-z0-9+.-]*:\/\//.test(trimmed)
+    || /^[a-z0-9_.-]+\.[a-z]{2,}(?:[/?#].*)?$/.test(trimmed);
+  if (urlShaped) {
+    const host = hostnameOf(trimmed);
+    if (host) {
+      for (const [platform, domains] of PLATFORM_HOSTS) {
+        if (hostMatchesPlatform(host, domains)) return platform;
+      }
+    }
+  }
   if (trimmed.startsWith("@")) return "instagram";
   // Bare username — default to Instagram. Accepts dotted handles like
   // 'dr.truptikaji'. Only reject strings that look like domains

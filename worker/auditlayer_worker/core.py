@@ -22,6 +22,7 @@ import math
 from pathlib import Path
 
 from typing import Any
+from urllib.parse import urlsplit
 import re
 
 
@@ -309,19 +310,45 @@ def normalize_handle(handle: str) -> str:
     return cleaned
 
 
+_PLATFORM_HOSTS: tuple[tuple[Platform, tuple[str, ...]], ...] = (
+    (Platform.TIKTOK, ("tiktok.com",)),
+    (Platform.YOUTUBE, ("youtube.com", "youtu.be")),
+    (Platform.X, ("x.com", "twitter.com")),
+    (Platform.LINKEDIN, ("linkedin.com",)),
+    (Platform.INSTAGRAM, ("instagram.com",)),
+)
+
+_URL_SHAPED = re.compile(r"^[a-z][a-z0-9+.-]*://|^[a-z0-9_.-]+\.[a-z]{2,}(?:[/?#].*)?$", re.IGNORECASE)
+
+
+def _host_of(value: str) -> str | None:
+    """Hostname of a URL or bare-domain input; None when the input has no host."""
+    candidate = value if "://" in value else "https://" + value
+    try:
+        host = urlsplit(candidate).hostname
+    except ValueError:
+        return None
+    if not host or "." not in host:
+        return None
+    return host.lower()
+
+
+def _host_matches(host: str, domains: tuple[str, ...]) -> bool:
+    return any(host == domain or host.endswith("." + domain) for domain in domains)
+
+
 def detect_platform(handle_or_url: str) -> Platform:
     value = handle_or_url.lower()
-    if "tiktok.com" in value:
-        return Platform.TIKTOK
-    if "youtube.com" in value or "youtu.be" in value:
-        return Platform.YOUTUBE
-    if "x.com" in value or "twitter.com" in value:
-        return Platform.X
-    if "linkedin.com" in value:
-        return Platform.LINKEDIN
-    if "instagram.com" in value:
-        return Platform.INSTAGRAM
     trimmed = value.strip()
+    # A platform is recognised only by the host of URL-shaped input, never by a
+    # substring: 'evil.com/instagram.com' and 'instagram.com.evil.com' are not
+    # Instagram. Bare handles keep the original Instagram defaults below.
+    if _URL_SHAPED.match(trimmed):
+        host = _host_of(trimmed)
+        if host:
+            for platform, domains in _PLATFORM_HOSTS:
+                if _host_matches(host, domains):
+                    return platform
     if trimmed.startswith("@"):
         return Platform.INSTAGRAM
     # Accept bare handles (Instagram) including those with dots in the middle

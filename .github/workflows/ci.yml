@@ -131,6 +131,18 @@ jobs:
       - name: Install pinned tsx runtime
         run: npm install --global tsx@4.22.4
 
+      # The cross-language parity tests import the real web module graph
+      # (web/src/lib/refinement.ts -> parse5), so the worker job needs web
+      # dependencies installed even though it runs no web tests.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install web dependencies for cross-language parity
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
       - name: Restore uv cache
         uses: actions/cache@v6
         with:
