@@ -84,8 +84,9 @@ def main() -> int:
     )
     check(
         "0.2 migration sorts after the W014/W015 additive migrations",
-        versions[-1] == "20260807170000",
-        versions[-1],
+        all(v in versions for v in ("20260807150000", "20260807160000", "20260807170000"))
+        and versions.index("20260807150000") < versions.index("20260807160000") < versions.index("20260807170000"),
+        "W014/W015 must precede provenance; newer migrations may follow",
     )
 
     sql = migration.read_text(encoding="utf-8")
