@@ -1,0 +1,143 @@
+{
+  "synthetic": true,
+  "audit": {
+    "id": "synthetic-business",
+    "handle": "synthetic_business",
+    "platform": "instagram",
+    "goal": "sales",
+    "context": "Business: repairable bags; explain product utility without discounts.",
+    "status": "queued",
+    "limitations": [
+      "Public web search returned no verifiable evidence during this run. Recommendations use the other supplied evidence and are not described as web-verified."
+    ],
+    "admin_notes": "",
+    "milestone_label": "10K",
+    "user_id": "synthetic-owner",
+    "model": null,
+    "research_cache": "",
+    "report_type": "standard",
+    "plan": "pro",
+    "prompt_version": "",
+    "force_refresh": false,
+    "report_path": "",
+    "report_version": 0
+  },
+  "metrics": {
+    "profile": {
+      "ig_user_id": 7,
+      "username": "synthetic_business",
+      "name": "",
+      "biography": "",
+      "followers_count": 4321,
+      "follows_count": null,
+      "media_count": null,
+      "profile_picture_url": "",
+      "website": "",
+      "account_type": "BUSINESS",
+      "fetched_at": "2026-09-20T12:00:00Z"
+    },
+    "recent_media": [
+      {
+        "id": "0",
+        "media_type": "VIDEO",
+        "caption": "Product demonstration: repairable zipper; day bag capacity; repair instructions.",
+        "permalink": "",
+        "timestamp": "2026-09-01T12:00:00Z",
+        "like_count": 40,
+        "comments_count": 2,
+        "reach": 900,
+        "engagement_rate": null
+      },
+      {
+        "id": "1",
+        "media_type": "VIDEO",
+        "caption": "Product demonstration: day bag capacity; repairable zipper; packing list.",
+        "permalink": "",
+        "timestamp": "2026-09-02T12:00:00Z",
+        "like_count": 43,
+        "comments_count": 3,
+        "reach": 950,
+        "engagement_rate": null
+      },
+      {
+        "id": "2",
+        "media_type": "VIDEO",
+        "caption": "Product demonstration: repairable zipper; day bag capacity; repair instructions.",
+        "permalink": "",
+        "timestamp": "2026-09-03T12:00:00Z",
+        "like_count": 46,
+        "comments_count": 4,
+        "reach": 1000,
+        "engagement_rate": null
+      },
+      {
+        "id": "3",
+        "media_type": "VIDEO",
+        "caption": "Product demonstration: day bag capacity; repairable zipper; packing list.",
+        "permalink": "",
+        "timestamp": "2026-09-04T12:00:00Z",
+        "like_count": 49,
+        "comments_count": 5,
+        "reach": 1050,
+        "engagement_rate": null
+      },
+      {
+        "id": "4",
+        "media_type": "CAROUSEL_ALBUM",
+        "caption": "Product demonstration: repairable zipper; day bag capacity; repair instructions.",
+        "permalink": "",
+        "timestamp": "2026-09-05T12:00:00Z",
+        "like_count": 52,
+        "comments_count": 6,
+        "reach": 1100,
+        "engagement_rate": null
+      },
+      {
+        "id": "5",
+        "media_type": "CAROUSEL_ALBUM",
+        "caption": "Product demonstration: day bag capacity; repairable zipper; packing list.",
+        "permalink": "",
+        "timestamp": "2026-09-06T12:00:00Z",
+        "like_count": 55,
+        "comments_count": 7,
+        "reach": 1150,
+        "engagement_rate": null
+      },
+      {
+        "id": "6",
+        "media_type": "CAROUSEL_ALBUM",
+        "caption": "Product demonstration: repairable zipper; day bag capacity; repair instructions.",
+        "permalink": "",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "like_count": 58,
+        "comments_count": 8,
+        "reach": 1200,
+        "engagement_rate": null
+      },
+      {
+        "id": "7",
+        "media_type": "CAROUSEL_ALBUM",
+        "caption": "Product demonstration: day bag capacity; repairable zipper; packing list.",
+        "permalink": "",
+        "timestamp": "2026-09-08T12:00:00Z",
+        "like_count": 61,
+        "comments_count": 9,
+        "reach": 1250,
+        "engagement_rate": null
+      }
+    ],
+    "avg_likes": null,
+    "avg_comments": null,
+    "avg_reach": null,
+    "reach_media_count": 0,
+    "reach_eligible_media_count": 0,
+    "avg_engagement_rate": null,
+    "posting_cadence": "",
+    "top_content_types": [],
+    "_raw": null,
+    "_credential_fence": [
+      "synthetic-connection",
+      "synthetic-version"
+    ]
+  }
+}

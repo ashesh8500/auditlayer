@@ -166,11 +166,12 @@ def test_connected_instagram_keeps_api_metrics_and_private_snapshot(settings, tm
     result = generator.generate(_audit(), lambda *_: None, research_cache='{"web":[]}', ig_metrics=metrics)
     assert '4,321' in result.html
     assert result.evidence_qualified and result.account_mode == 'connected_instagram'
-    snapshots = list(tmp_path.glob('research-evidence/connected-*.json'))
-    assert len(snapshots) == 1
-    snapshot = json.loads(snapshots[0].read_text())
+    # Connected diagnostics no longer have an independent local lifetime.
+    assert not list(tmp_path.glob('research-evidence/*.json'))
+    snapshot = json.loads(result.research_cache)['connected']
     assert snapshot['profile']['followers_count'] == 4321
     assert snapshot['profile']['fetched_at'] == metrics.profile.fetched_at
+    assert snapshot['binding']['audit_id'] == _audit().id
     assert 'IG#1' in result.html
 
 

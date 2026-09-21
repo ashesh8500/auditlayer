@@ -59,8 +59,13 @@ def non_subject_content(text):
     import re
     import unicodedata
     text = unicodedata.normalize('NFKC', text)
+    # A flattened demo/report panel has no reliable local boundary. Quarantine
+    # the whole excerpt when both markers occur, even far apart or on new lines.
+    if (re.search(r'\b(?:demo|demonstration)\b', text, re.I)
+            and re.search(r'\b(?:report|audit|score|metrics|panel)\b|/\s*100\b', text, re.I)):
+        return True
     return bool(re.search(
-        r'\b(?:fictional|fictitious|hypothetical|illustrative|synthetic|mock|demo)\b'
+        r'\b(?:fictional|fictitious|hypothetical|illustrative|synthetic|mock)\b'
         r'|\b(?:sample|example|demonstration)\s+(?:\w+\s+){0,2}(?:report|audit|account|brief|data|score|metrics)\b'
         r'|\bno\s+(?:real\s+)?client\s+data\b|\brepresentative\s+report\s+structure\b', text, re.I))
 
@@ -137,9 +142,25 @@ def persist_evidence(output_dir, name, value):
     encoded = json.dumps(value, ensure_ascii=False, allow_nan=False).encode('utf-8')
     if len(encoded) > 64000:
         raise ValueError('oversized evidence artifact')
-    directory = Path(output_dir) / 'research-evidence'
-    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-    fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    directory = Path(output_dir).absolute() / 'research-evidence'
+    # Walk every component relative to an already-open directory. Unlike a
+    # full-path O_NOFOLLOW open, this rejects ancestor symlinks too, without a
+    # check/open race. The configured root is trusted, but may not be a symlink.
+    fd = os.open(directory.anchor, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for component in directory.parts[1:]:
+            if component == '..':
+                raise OSError('parent traversal in evidence output root')
+            try:
+                os.mkdir(component, mode=0o700, dir_fd=fd)
+            except FileExistsError:
+                pass
+            child = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = child
+    except BaseException:
+        os.close(fd)
+        raise
     try:
         os.fchmod(fd, 0o700)
         filename = name + '.json'

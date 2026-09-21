@@ -164,7 +164,9 @@ INSTAGRAM_LIMITATION = (
 # evidence filtering and visible extractive provenance; report bounds unchanged.
 # v1.16 — Quarantine demo evidence; exact-excerpt factual form, unrated scores,
 # platform fail-closed scope, private evidence snapshots and neutral pricing CTA.
-PROMPT_VERSION = "1.16"
+# v1.17 — Bounded connected caption/metric analysis and creative experiments;
+# factual refinements fail closed; connected provenance uses the fenced audit.
+PROMPT_VERSION = "1.17"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework
@@ -1051,9 +1053,11 @@ def _instagram_metric_block(ig_metrics: Any) -> str:
         if eligible_count
         else "No eligible recent posts were available for reach Insights."
     )
+    if getattr(ig_metrics, '_factual_reach_sample', False):
+        reach_coverage = f'Reach available for {reach_count} of {eligible_count} admitted inspected posts.'
     details = html_lib.escape(
         f"Cadence: {cadence}. Format mix: {', '.join(formats) if formats else 'Unavailable'}. "
-        f"{reach_coverage}"
+        f"{reach_coverage}" + getattr(ig_metrics, '_factual_derived_note', '')
     )
     return (
         '<div class="callout accent"><strong>Connected Instagram Graph API</strong>'
