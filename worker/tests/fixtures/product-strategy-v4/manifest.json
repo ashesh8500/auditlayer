@@ -1,0 +1,40 @@
+{
+  "synthetic": true,
+  "live_calls": 0,
+  "prompt_version": "1.19",
+  "factual_contract": "strategy-v4",
+  "launch_qualified": false,
+  "provenance": "Authored synthetic forms through actual offline generator; source bytes pinned below, not a provider qualification.",
+  "source_sha256": {
+    "auditlayer_worker/strategic_analysis.py": "4e63c2d599424ff6aba5411de16c0237ac5f3c26bfa2c4280615540c686fddf1",
+    "auditlayer_worker/connected_analysis.py": "652ea1b43f41cdc7e61edf3e6883d3e9c53e6f39e78c78fd9eba46fd5d0daae0",
+    "auditlayer_worker/factual.py": "779d679e2832e7f5db8ee46006bfe9a0419f7c745b91f69876bdcb73c2424089",
+    "auditlayer_worker/core.py": "213b8d9c46511581418c5015fd3449b742192b33b303bd9eb8cba8adc187ab82",
+    "tests/build_strategy_v4_fixtures.py": "0a5179a15d064190ddebe69ee3bfc3fdb65100ecbb406566923a89a6db15b347",
+    "tests/product_strategy_fixtures.py": "4cf326e71864ec5f0309b13868a9493e7b19f70ee4b77cd9c17fcd37fec6e5bf"
+  },
+  "artifact_sha256": {
+    "business/evidence.json": "f28d7577b383d02305c7d4dd422371830aa5d4d6882d8fff38449aee0f58aa1e",
+    "business/form.json": "523d1ea375b107e0826027c045659ca64dd78a72b41709212f6aea5f8c6464b4",
+    "business/input.json": "0e4f85766dbcbd26249ea87fc782be8381540189f6ee906c34fc3f39a8b505a6",
+    "business/prompt.json": "03878c3148f29999b7d7c3c8b51cb7148616e56287b0a5d2142802ae0225ab86",
+    "business/report-text.txt": "2bb74d070bed292273e8a439325b684e58000439832b76177d231c2d06bbcc33",
+    "business/report.html": "04f0e2427818b49044127d07c43503ee64c3854d1b14940c726f5253a5a37c18",
+    "creator/evidence.json": "521d815467ed3eddca6b5943e6e7a747d510b6d200f67bc0c216cfef2d3b5265",
+    "creator/form.json": "e0796b07b74df54ca309d7cb1ed13a7bb822638b2ddd7c9f6f60a6beda1db4b4",
+    "creator/input.json": "4c4c05cbcb7eea36b923fb06095a493db05fc3a7a9bd5db990c9d2a44f2cbd57",
+    "creator/prompt.json": "75f61e9427685023649501f63d1d0ef6182d726e0cd76148c59ec52836f47905",
+    "creator/report-text.txt": "270f240b0ea2526c8e2aa33ffd8201a947758df5e9828f39954abb60f6ad2c92",
+    "creator/report.html": "08f3f50aa375470b038f613fdfbdc2923df7f41387bdf213e2f9d84e34aafada",
+    "public/evidence.json": "3080ba1a7be93a8eb61e5c3a205a24b6b82df39c55030407f4e2d86e0eab45cc",
+    "public/form.json": "42e1005de7d28b39b271bacf74dd1bc25cd4f3589aa0b3f9e6192d37e7cb9d88",
+    "public/input.json": "4fcd170c36263e124c2298e55355b6ebf34bfeea45d3b76a923bfd316d1aab23",
+    "public/prompt.json": "33dad8288ee9e4b6bb8964aeea7c7aab1ca93033baecf4d8647dc82baac86fc2",
+    "public/report-text.txt": "fcad0b8d7640dd5b32fb4c12f73214b6dac8e4f5ecacc87ca89eb58c8434d39d",
+    "public/report.html": "6e3e6c60d93cd0d859587acf076ba5fcf88067c355e121236a743bcfefa9817a",
+    "qualification.json": "576fd67d60bad1e9c2c28dcf38e6eb7f68b584139c9a38ed0dbfe7eb60715f51",
+    "sparse-public-negative-control.json": "6a4811219efe9d7927d2bb85a2432a635126ff74188a30de153ac80832912153",
+    "task-negative-controls.json": "f4024af32c26ce02cffe65158a1dadf642690d78b009f6edb1b15455beb13a87",
+    "website-negative-control.json": "8ee07bfaafe15f821e6f35548fae46b2ea21659ff32684b0c2ab164a9e78e740"
+  }
+}

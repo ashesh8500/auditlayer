@@ -15,13 +15,30 @@ OBJECTIVES = {
     'product_education': ('Explain product use before testing purchase intent', 'reach'),
     'repeatable_series': ('Develop a repeatable editorial series', None),
 }
-METHOD = 'METH#strategic-decisions-v1'
+METHOD = 'METH#strategic-decisions-v2'
 # Reject assertions masquerading as instructions. Facts belong in source IDs,
 # not task prose. This intentionally accepts original creative execution text.
 UNSAFE = re.compile(r'\d|[%$€£]|\b(?:zero|hundred|thousand|million|percent|score|guarantee\w*|'
     r'proven|causes?|caused|because|therefore|always|never|lacks?|missing|absent|'
     r'no funnel|has no|have no|without any|best.performing|outperform\w*|'
     r'website|checkout|SEO|demographics|followers are|audience is)\b', re.I)
+# Bounded English claim-risk grammar, NOT evidence entailment. Route all
+# measurement/result language to typed local facts instead of authorizing prose
+# merely because an observed post ID accompanies it. Creative topic vocabulary
+# stays open; reject the whole form (never silently strip a clause).
+CLAIM_RISK = re.compile(
+    r'\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|'
+    r'thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|'
+    r'thirty|forty|fifty|sixty|seventy|eighty|ninety|billion|trillion|'
+    r'once|twice|thrice|double\w*|triple\w*|half|quarter|ratio|rating|rated|'
+    r'percentile|engagement|performance|conversion|revenue|sales|'
+    r'earn\w*|generat\w*|receiv\w*|deliver\w*|achiev\w*|increas\w*|decreas\w*|'
+    r'prefer\w*|favou?r\w*|love[sd]?|hate[sd]?|respond\w*|resonat\w*|enjoy\w*|'
+    r'attract\w*|beat[sn]?|beating|dominat\w*|advantage|ahead|greater|greatest|'
+    r'fewest|highest|lowest|largest|smallest|dozen|[a-z]+fold|'
+    r'superior|inferior|successful|popular|winning|best|worst|better|worse|'
+    r'more|less|fewer|higher|lower|most|least|than|versus|vs|'
+    r'is|are|was|were|has|have|had|that|why)\b|[;:!?]|\.(?=\s*\S)', re.I)
 DIRECTIVE = re.compile(r'^(?:Film|Draft|Create|Show|Invite|Compare|Adapt|Record|Prepare|Test|'
     r'Edit|Sequence|Pair|Build|Ask|Use|Keep|Review|Publish|Repurpose|Collect|Confirm|'
     r'Label|Track|Plan|Schedule|Write|Design|Storyboard|Feature|Demonstrate)\b')
@@ -62,13 +79,23 @@ def instructions(snapshot):
         'only with comments_count, discovery/product_education only with reach; repeatable_series may '
         'use any measured metric. effort: low/medium/high editorial production estimate, NOT impact. '
         'horizon: next_batch or after_review. depends_on: earlier decision IDs, required for after_review. '
-        'tasks: 2-3 distinct original prospective imperative production instructions, each 20-180 '
+        'tasks: 2-3 typed objects, at least two {kind: creative_proposal, instruction: text}. '
+        'Optionally include one {kind: measured_fact, calculation_id: CALC#...} instead of a third proposal. '
+        'measured_fact has NO prose or value fields: select a calculation_id from the selected diagnosis; '
+        'local code alone supplies its complete measured description, sample size and limits. '
+        'Public positioning has no measured facts. Never turn a caption or citation into a result. '
+        'creative_proposal is an original prospective imperative production instruction, each 20-180 '
         'characters, starting with Film, Draft, Create, Show, Invite, Compare, Adapt, Record, Prepare, '
         'Test, Edit, Sequence, Pair, Build, Ask, Use, Keep, Review, Publish, Repurpose, Collect, Confirm, '
         'Label, Track, Plan, Schedule, Write, Design, Storyboard, Feature or Demonstrate. '
         'Use the client context and selected captions to devise NEW executions, not copied quotes. '
         'No metrics, scores, numeric claims, absence assertions, causal certainty, claims about existing '
-        'visuals/audiences or website work in tasks. Facts must use source IDs, not task prose. '
+        'visuals/audiences or website work in creative_proposal. Use a single English imperative sentence '
+        'about making an asset or inviting a response, not a declarative clause (even inside quotes). '
+        'No number words, ratings, performance/result vocabulary, audience preference predicates, '
+        'comparative/superlative outcome claims or that/why clauses. Evidence IDs establish creative '
+        'relevance, NOT entailment of instruction text. Facts/results MUST use measured_fact; '
+        'unavailable ratings, audience preferences and causal conclusions cannot be expressed as facts. '
         'Rank by relevance and production tradeoffs; do not claim the ranking predicts return. '
         'Propose a distinct follow-up decision after review, not an invented growth forecast. '
         'Local diagnosis catalogue: ' + json.dumps(catalogue) + '\n')
@@ -116,15 +143,34 @@ def validate(value, snapshot, observed):
         tasks = row['tasks']
         if not isinstance(tasks, list) or not 2 <= len(tasks) <= 3:
             raise ValueError('strategic production tasks required')
-        for task in tasks:
+        creative_count = 0
+        fact_ids = set()
+        for task_row in tasks:
+            if not isinstance(task_row, dict):
+                raise ValueError('production task requires an explicit fact/proposal kind')
+            if task_row.get('kind') == 'measured_fact':
+                keys(task_row, 'kind calculation_id')
+                cid = task_row['calculation_id']
+                if (not isinstance(cid, str) or cid not in diagnosis['calculation_ids']
+                        or cid in fact_ids):
+                    raise ValueError('measured fact must resolve to this local diagnosis')
+                fact_ids.add(cid)
+                continue
+            keys(task_row, 'kind instruction')
+            if task_row['kind'] != 'creative_proposal':
+                raise ValueError('unknown production task kind')
+            creative_count += 1
+            task = task_row['instruction']
             if (not isinstance(task, str) or not 20 <= len(task) <= 180 or not DIRECTIVE.match(task)
-                    or UNSAFE.search(task) or '\n' in task):
+                    or UNSAFE.search(task) or CLAIM_RISK.search(task) or '\n' in task):
                 raise ValueError('production task must be prospective, nonnumeric and scope-safe')
             _structured_text(task, 'proposed production instruction', 180)
             normal = ' '.join(task.casefold().split()).rstrip('.')
             if normal in tasks_seen:
                 raise ValueError('duplicate strategic production task')
             tasks_seen.add(normal)
+        if creative_count < 2:
+            raise ValueError('strategy must retain at least two original creative proposals')
         used.add(did)
         seen.add(sid)
     if used != set(selected) or not any(d['horizon'] == 'after_review' for d in decisions):
@@ -178,7 +224,13 @@ def sections(value, snapshot):
             f'Investigate {row["diagnosis_id"]}; reuse source material from ' + ', '.join(row['evidence_ids']) + '. '
             'Priority is an editorial choice to test, not a predicted return.'))
         for task in row['tasks']:
-            briefs.append(item('Proposed production task · ' + row['id'], task))
+            if task['kind'] == 'measured_fact':
+                calculation = next(c for c in snapshot['calculations']
+                                   if c['source_id'] == task['calculation_id'])
+                briefs.append(item('Measured reference · ' + row['id'],
+                                   calculation['source_id'] + '. ' + calculation['description']))
+            else:
+                briefs.append(item('Proposed production task · ' + row['id'], task['instruction']))
         if row['objective'] == 'product_education':
             strategy.append(item('Sales attribution boundary · ' + row['id'],
                 'Reach measures exposure, not purchases. Pair the proposed education test with owner-authorized '

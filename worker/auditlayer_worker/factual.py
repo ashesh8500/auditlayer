@@ -10,7 +10,7 @@ import json
 from .core import (_load_template_sections, _structured_text, assemble_structured_report_html)
 from .generation import _filter_evidence_payload
 
-VERSION = 'strategy-v3'
+VERSION = 'strategy-v4'
 ACTIONS = {
     'inventory': ('Build a dated inventory', 'Record publication dates and formats before assessing cadence or consistency.'),
     'measure': ('Establish an outcome baseline', 'Collect account-authorized reach, engagement and conversion measurements before judging performance.'),

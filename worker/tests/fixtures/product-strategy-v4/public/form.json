@@ -1,0 +1,70 @@
+{
+  "observations": [
+    {
+      "source_id": "WEB#1",
+      "excerpt": "example shares a pantry substitution tutorial and invites readers to suggest alternative ingredients."
+    },
+    {
+      "source_id": "WEB#2",
+      "excerpt": "example shares a lentil bowl recipe with a stepwise ingredient preparation sequence and serving suggestions."
+    }
+  ],
+  "actions": [
+    "measure"
+  ],
+  "strategy": {
+    "diagnosis_ids": [
+      "DIAG#public-positioning"
+    ],
+    "decisions": [
+      {
+        "id": "S1",
+        "rank": 1,
+        "diagnosis_id": "DIAG#public-positioning",
+        "evidence_ids": [
+          "WEB#1",
+          "WEB#2"
+        ],
+        "objective": "conversation",
+        "effort": "medium",
+        "horizon": "next_batch",
+        "depends_on": [],
+        "tasks": [
+          {
+            "kind": "creative_proposal",
+            "instruction": "Film a pantry-to-bowl transformation with the finished dish before ingredient handling."
+          },
+          {
+            "kind": "creative_proposal",
+            "instruction": "Invite viewers to suggest a pantry substitution in the closing caption."
+          }
+        ]
+      },
+      {
+        "id": "S2",
+        "rank": 2,
+        "diagnosis_id": "DIAG#public-positioning",
+        "evidence_ids": [
+          "WEB#1",
+          "WEB#2"
+        ],
+        "objective": "repeatable_series",
+        "effort": "low",
+        "horizon": "after_review",
+        "depends_on": [
+          "S1"
+        ],
+        "tasks": [
+          {
+            "kind": "creative_proposal",
+            "instruction": "Adapt the selected topic into a recurring sequence with a consistent opening."
+          },
+          {
+            "kind": "creative_proposal",
+            "instruction": "Compare the variants at a common post age before scheduling the next batch."
+          }
+        ]
+      }
+    ]
+  }
+}

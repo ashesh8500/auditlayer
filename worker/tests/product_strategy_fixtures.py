@@ -17,4 +17,6 @@ def strategy_form(kind='creator'):
          'objective': 'repeatable_series', 'effort': 'low', 'horizon': 'after_review', 'depends_on': ['S1'],
          'tasks': ['Adapt the selected topic into a recurring sequence with a consistent opening.',
                    'Compare the variants at a common post age before scheduling the next batch.']}]}
+    for row in data['strategy']['decisions']:
+        row['tasks'] = [dict(kind='creative_proposal', instruction=t) for t in row['tasks']]
     return data

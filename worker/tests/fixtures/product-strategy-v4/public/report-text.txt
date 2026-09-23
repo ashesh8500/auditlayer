@@ -1,0 +1,101 @@
+@example — AuditLayerMedia Standard Report
+@example · Instagram Audit · September 23, 2026
+AuditLayerMedia Standard Report
+@example
+@example — Standard social media analysis · Public profile
+Platform: Instagram
+Goal: Community
+Account Type: Calibrated in report
+September 23, 2026
+* Data-access note — Instagram is not directly connected for this subject; publicly indexed profile and content signals are used where available. Values marked * are index snapshots, not live account analytics; unavailable private metrics are shown as N/A rather than estimated.
+Executive Summary
+Not rated. No validated scoring rubric is available; source excerpts are not performance measurements.
+Overall Score
+N/A
+Key Metrics
+N/A
+Followers
+N/A
+Indexed post likes
+N/A
+Indexed post comments
+N/A
+Engagement rate
+Strengths
+Source statements are quoted below, not independently verified strengths or business outcomes.
+Weaknesses
+Source-limited positioning diagnosis; not an assertion of missing capabilities.
+Positioning diagnosis · DIAG#public-positioning
+The admitted statements supply editorial themes for a positioning test, not verified performance. Prioritize a concrete expression of those themes before drawing conclusions about audience fit.
+Source scope · DIAG#public-positioning
+Unmeasured public-source strategy. Basis: WEB#1, WEB#2. Source statements are attributed, not independent proof of visuals, audience preferences or results.
+Root Cause Analysis
+Data needed. No causal diagnosis can be established from the admitted source excerpts.
+Peer Comparison
+Data needed. No verified same-tier peer measurements are admitted; no comparison scores are assigned.
+Content Format Analysis
+Data needed. A dated content inventory and measured outcomes are required to compare format performance.
+Engagement Growth Strategy
+Proposed priorities from public material; outcomes are unmeasured.
+1
+Priority 1 · S1
+Invite a specific audience response. Proposed effort: medium; editorial estimate, not measured impact. Dependency: none.
+2
+Decision basis · S1
+Investigate DIAG#public-positioning; reuse source material from WEB#1, WEB#2. Priority is an editorial choice to test, not a predicted return.
+3
+Priority 2 · S2
+Develop a repeatable editorial series. Proposed effort: low; editorial estimate, not measured impact. Dependency: S1.
+4
+Decision basis · S2
+Investigate DIAG#public-positioning; reuse source material from WEB#1, WEB#2. Priority is an editorial choice to test, not a predicted return.
+5
+Production tradeoff · METH#strategic-decisions-v2
+Low effort: reuse assets; medium: new sequence or edit; high: new production setup. Estimates require owner confirmation. Start with the highest-priority feasible decision; defer dependent work until review.
+Content Calendar & Creative Board
+Original proposed execution, not a description of existing visuals.
+Educational & Strategy
+Proposed production task · S1
+Film a pantry-to-bowl transformation with the finished dish before ingredient handling.
+Educational & Strategy
+Proposed production task · S1
+Invite viewers to suggest a pantry substitution in the closing caption.
+Educational & Strategy
+Proposed production task · S2
+Adapt the selected topic into a recurring sequence with a consistent opening.
+Portfolio & Proof
+Proposed production task · S2
+Compare the variants at a common post age before scheduling the next batch.
+Quick Wins — This Week
+AuditLayer recommendations for collecting decision-relevant evidence, not diagnoses of missing business capabilities.
+Establish an outcome baseline
+AuditLayer recommendation: Collect account-authorized reach, engagement and conversion measurements before judging performance.
+Success Benchmarks
+Data needed. A measured baseline and an explicit evaluation rubric are required before assigning success thresholds.
+Audience Profile
+Data needed. Intended positioning in source copy does not verify audience demographics or behavior.
+Road to a Measured Baseline
+Decision sequence, not a growth forecast.
+Next batch · S1
+Prepare the proposed tasks, then compare owner-authorized outcomes at a common post age. Retain only a replicated direction; revise mixed results and stop a direction that does not justify its production effort.
+After evidence review · S2
+Prepare the proposed tasks, then compare owner-authorized outcomes at a common post age. Retain only a replicated direction; revise mixed results and stop a direction that does not justify its production effort.
+Audit Cadence
+AuditLayer recommendation: repeat the review after collecting comparable observations over a defined period.
+Get the Execution Plan
+Review current pricing and available options on the pricing page.
+View current pricing
+Source statements — not independently verified outcomes
+These are the exact admitted excerpts. Collection is partial; omitted content is unknown. A citation proves attribution, not the truth of a source claim or a causal relationship.
+WEB#1 — example pantry tutorial
+example shares a pantry substitution tutorial and invites readers to suggest alternative ingredients.
+WEB#2 — example lentil recipe
+example shares a lentil bowl recipe with a stepwise ingredient preparation sequence and serving suggestions.
+Sources reviewed
+Public research ·
+example pantry tutorial
+Public research ·
+example lentil recipe
+AuditLayerMedia
+@auditlayermedia on Instagram
+Follow us for social media optimization tips

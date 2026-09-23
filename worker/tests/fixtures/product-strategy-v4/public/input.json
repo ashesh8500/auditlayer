@@ -1,0 +1,22 @@
+{
+  "synthetic": true,
+  "evidence": {
+    "version": "strategy-v4",
+    "web": [
+      {
+        "url": "https://instagram.com/example/p/a/",
+        "title": "example pantry tutorial",
+        "description": "example shares a pantry substitution tutorial and invites readers to suggest alternative ingredients.",
+        "evidence_mode": "public_research",
+        "source_id": "WEB#1"
+      },
+      {
+        "url": "https://instagram.com/example/p/b/",
+        "title": "example lentil recipe",
+        "description": "example shares a lentil bowl recipe with a stepwise ingredient preparation sequence and serving suggestions.",
+        "evidence_mode": "public_research",
+        "source_id": "WEB#2"
+      }
+    ]
+  }
+}

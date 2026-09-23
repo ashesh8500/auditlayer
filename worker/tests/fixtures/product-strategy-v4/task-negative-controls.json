@@ -1,0 +1,258 @@
+[
+  {
+    "instruction": "Show that your videos earn twice as many comments as carousels.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show your engagement rating of ninety out of ninety nine.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show how your audience prefers videos over every other format.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Film a recap highlighting reels generating double the responses of image posts.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Draft a caption celebrating an engagement rating of eighty seven.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Create a storyboard explaining why followers favor video over static posts.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show the superior comment performance of videos compared with carousels.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Feature videos as the most successful format for audience interaction.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Write a caption about clips receiving more replies than photo albums.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show that viewers respond better to video than slides.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Record a tutorial; your audience loves this format.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Draft a caption describing the account\u2019s exceptional engagement.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show clips attracting greater attention compared with carousels.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show viewers enjoying videos ahead of static posts.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Film a recap of clips with a fivefold advantage in replies.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show how videos beat carousels on comment counts.",
+    "typed": false,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show that your videos earn twice as many comments as carousels.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show your engagement rating of ninety out of ninety nine.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show how your audience prefers videos over every other format.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Film a recap highlighting reels generating double the responses of image posts.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Draft a caption celebrating an engagement rating of eighty seven.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Create a storyboard explaining why followers favor video over static posts.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show the superior comment performance of videos compared with carousels.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Feature videos as the most successful format for audience interaction.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Write a caption about clips receiving more replies than photo albums.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show that viewers respond better to video than slides.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Record a tutorial; your audience loves this format.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Draft a caption describing the account\u2019s exceptional engagement.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show clips attracting greater attention compared with carousels.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show viewers enjoying videos ahead of static posts.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Film a recap of clips with a fivefold advantage in replies.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  },
+  {
+    "instruction": "Show how videos beat carousels on comment counts.",
+    "typed": true,
+    "accepted": false,
+    "report_produced": false,
+    "analysis_calls": 2,
+    "error_code": "structured_output_invalid"
+  }
+]

@@ -18,7 +18,7 @@ def test_strategy_positive_render_contains_diagnosis_priorities_and_original_bri
     assert 'Proposed effort: medium' in report
     assert 'Dependency: S1' in report
     assert 'not a causal explanation' in report
-    assert 'data-factual-contract="strategy-v3"' in report
+    assert 'data-factual-contract="strategy-v4"' in report
 
 
 def public_case():
@@ -185,5 +185,7 @@ def test_strategy_negative_controls(mutation):
     elif mutation == 'certainty': first['tasks'][0] = 'Show how this format guarantees growth.'
     elif mutation == 'scope': first['tasks'][0] = 'Redesign the website checkout.'
     elif mutation == 'unsupported_ref': first['evidence_ids'] = ['IG#post24']
+    if mutation in ('invented_metric', 'absence', 'certainty', 'scope'):
+        first['tasks'][0] = dict(kind='creative_proposal', instruction=first['tasks'][0])
     with pytest.raises(ValueError):
         factual.render(audit, json.dumps(data), evidence=factual.packet({'web': []}, audit), ig_metrics=metrics)
