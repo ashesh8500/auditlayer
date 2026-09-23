@@ -12,7 +12,7 @@ export function CommercialOffers() {
         {plan.brands !== null ? <>
           <p className="mt-4">{plan.brands} {plan.brands === 1 ? "brand" : "brands"} · One owner</p>
           <p>{plan.monthly_credits.toLocaleString("en-US")} credits / month{key === "studio" ? ", pooled" : ""}</p>
-          {key === "free" && <p>Plus {commercial.welcome_credits} credits once at verified signup. No card; no paid top-ups.</p>}
+          {key === "free" && <p>Plus {commercial.welcome_credits} credits once on explicit Free enrollment after email verification. No card; no paid top-ups.</p>}
           <a href="/commercial" className="alm-focus mt-4 inline-flex min-h-11 items-center underline">View Enrollment</a>
         </> : <><p className="mt-4">Scope and usage agreed individually.</p><a className="alm-focus mt-4 inline-flex min-h-11 items-center underline" href="/enterprise">Contact Us</a></>}
       </article>)}

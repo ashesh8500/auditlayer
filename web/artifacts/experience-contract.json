@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scanRoot": "web/",
   "routes": {
-    "total": 33,
+    "total": 34,
     "files": [
       "src/app/(app)/accounts/[id]/page.tsx",
       "src/app/(app)/accounts/page.tsx",
@@ -11,6 +11,7 @@
       "src/app/(app)/audits/[id]/read/page.tsx",
       "src/app/(app)/audits/new/page.tsx",
       "src/app/(app)/commercial/page.tsx",
+      "src/app/(app)/commercial/setup/page.tsx",
       "src/app/(app)/dashboard/page.tsx",
       "src/app/(app)/preview-setup/page.tsx",
       "src/app/(app)/settings/ai-connections/page.tsx",
@@ -72,6 +73,7 @@
       "src/components/alm-skeleton.tsx",
       "src/components/app-header.tsx",
       "src/components/brand.tsx",
+      "src/components/commercial-brand-setup.tsx",
       "src/components/commercial-enrollment.tsx",
       "src/components/commercial-offers.tsx",
       "src/components/connections-library.tsx",

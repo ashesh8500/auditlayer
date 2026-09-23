@@ -33,6 +33,9 @@ it("renders Free allowance as a UTC calendar period, never Stripe billing", asyn
   await act(async()=>{await new Promise(r=>setTimeout(r,50));});
   expect(host.textContent).toContain("Free allowance period (UTC calendar month)");
   expect(host.textContent).toContain("$10.00");
+  expect(host.querySelector('[aria-label="Credit wallet"]')?.textContent).toContain("Balance: 1,000 credits; reserved: 0 credits; available: 1,000 credits");
+  expect(host.textContent).not.toContain("No model is qualified");
+  expect(host.textContent).not.toContain("gpt-5.6-sol");
   expect(host.textContent).not.toContain("Last confirmed billing period");
  } finally {await act(async()=>root.unmount());vi.unstubAllGlobals();}
 });

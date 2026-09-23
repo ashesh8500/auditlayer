@@ -36,10 +36,10 @@ export function WorkspaceBilling() {
       {query.isPending && <p role="status">Loading saved wallet…</p>}
       {query.error && <p role="alert">Wallet could not be refreshed. Your existing report access is unchanged.</p>}
       {query.data && !wallet && <p>No workspace credit contract. Continue using your existing report access.</p>}
-      {wallet && <><p>Saved balance: {usd(wallet.balance.microusd)}; reserved: {usd(wallet.reserved.microusd)}.</p>
+      {wallet && <>{"pricing_version" in wallet && <p>Balance: {(wallet.balance.microusd/10000).toLocaleString("en-US")} credits; reserved: {(wallet.reserved.microusd/10000).toLocaleString("en-US")} credits; available: {((wallet.balance.microusd-wallet.reserved.microusd)/10000).toLocaleString("en-US")} credits. <a href="/commercial" className="alm-focus inline-flex min-h-11 items-center underline">Open Credits and Reports</a></p>}<p>Saved balance: {usd(wallet.balance.microusd)}; reserved: {usd(wallet.reserved.microusd)}.</p>
         <p>Available usage value: {usd(wallet.balance.microusd-wallet.reserved.microusd)}. Admission rechecks expiry and limits.</p>
         {"pricing_version" in wallet ? <p>{wallet.period_source === "calendar_month_utc" ? "Free allowance period (UTC calendar month)" : "Confirmed Stripe billing period"}: {wallet.period_start} to {wallet.period_end}. Pricing: {wallet.pricing_version}.</p> : <p>Last confirmed billing period: {wallet.stripe_period_start} to {wallet.stripe_period_end}.</p>}
         <ul>{wallet.lots.map(lot=><li key={lot.id}>{lot.kind}: {usd(lot.balance.microusd)} remaining{lot.expires_at ? `; expires ${lot.expires_at}` : "; no expiry recorded"}</li>)}</ul></>}
       <button className="alm-focus min-h-11 underline" disabled={query.isFetching} onClick={()=>void query.refetch({cancelRefetch:false})}>Refresh wallet</button>
-    </section><ModelAvailability /></div>;
+    </section>{query.data && (!wallet || !("pricing_version" in wallet)) && <ModelAvailability />}</div>;
 }
