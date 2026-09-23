@@ -283,6 +283,8 @@ def _indexed_instagram_metrics(payload: object, handle: str) -> dict[str, str]:
     for row in payload["web"]:
         if not isinstance(row, dict) or row.get("evidence_mode") != "public_search_index":
             continue
+        if not _is_subject_relevant(row, handle, "instagram"):
+            continue
         text = f"{row.get('title', '')} {row.get('description', '')}".lower()
         handle_in_text = re.search(
             rf"(?<![\w.])@?{re.escape(normalized_handle)}(?![\w.])", text
@@ -546,6 +548,7 @@ class HermesReportGenerator:
                 result.content,
                 ig_metrics=ig_metrics,
                 indexed_instagram_metrics=indexed_instagram_metrics,
+                public_index_only=ig_metrics is None,
             )
             estimated = result.usage.estimated
         except ValueError as exc:
@@ -565,7 +568,9 @@ class HermesReportGenerator:
                                 "scalar string, never an object, array, boolean, or null. Regenerate "
                                 "as the smallest acceptable report from the supplied evidence: use "
                                 "exactly 8 Executive summary items, exactly 4 Key metrics items, and "
-                                "exactly 1 item in every other section. Omit all tables and callouts. "
+                                "exactly 10 distinct creative ideas in Content Calendar & Creative Board "
+                                "with specific hooks and execution examples, and exactly 1 item in every "
+                                "remaining section. Omit all tables and callouts. "
                                 "Keep each lede under 25 words and each item body under 45 words. Stay "
                                 "under 1,200 words total. Do not explain or restate the contract."
                             ),
@@ -592,6 +597,7 @@ class HermesReportGenerator:
                     retry_result.content,
                     ig_metrics=ig_metrics,
                     indexed_instagram_metrics=indexed_instagram_metrics,
+                    public_index_only=ig_metrics is None,
                 )
             except (TimeoutError, FutureTimeoutError) as correction_exc:
                 timed("format_correction", correction_started)
@@ -710,6 +716,12 @@ def _mock_report_html(audit: AuditRecord) -> str:
                         for index, (title, _weight) in enumerate(SCORE_DIMENSIONS)
                     ]
                     if h == "Executive Summary"
+                    else [
+                        {"title": f"Mock idea {number}",
+                         "body": f"Deterministic creative example {number} for offline testing.",
+                         "value": "Test concept"}
+                        for number in range(1, 11)
+                    ] if h == "Content Calendar & Creative Board"
                     else [{"title": "Finding", "body": "Deterministic placeholder.", "value": ""}]
                 ),
             }

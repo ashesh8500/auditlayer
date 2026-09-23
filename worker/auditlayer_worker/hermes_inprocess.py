@@ -121,6 +121,14 @@ def _is_subject_relevant(
         expected_host
         and (host == expected_host or host.endswith(f".{expected_host}"))
     )
+    # Profile identity outranks brand words in a search title. Global post
+    # routes have no owner in the URL and still require textual attribution.
+    if normalized_platform == "instagram" and host_matches:
+        parts = [unquote(part).lower() for part in parsed.path.split("/") if part]
+        if len(parts) > 1 and parts[0] == "stories":
+            return parts[1] == normalized_handle
+        if parts and parts[0] not in {"p", "reel", "reels", "tv", "stories", "explore", "accounts"}:
+            return parts[0] == normalized_handle
     handle_in_text = bool(
         re.search(rf"(?<![\w.])@?{re.escape(normalized_handle)}(?![\w.])", text)
     )
@@ -461,6 +469,7 @@ class InProcessHermesClient:
                     "url": url,
                     "title": str(item.get("title") or "")[:500],
                     "description": str(item.get("description") or "")[:2500],
+                    "evidence_mode": "public_search_index",
                 }
                 if (
                     not url
