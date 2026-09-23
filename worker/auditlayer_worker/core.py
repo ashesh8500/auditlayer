@@ -155,7 +155,9 @@ INSTAGRAM_LIMITATION = (
 #         preserve facts/source attribution and treat artifact text as untrusted.
 # v1.11 — Reject block-in-paragraph HTML repairs; preserve cross-language editability.
 # v1.12 — Enforce table/list/anchor content models before accepting refinement HTML.
-PROMPT_VERSION = "1.12"
+# v1.13 — Exact profile attribution, public-index score/claim boundaries, distinct
+#         creative cards and bounded correction ideas; link to current pricing.
+PROMPT_VERSION = "1.13"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework
@@ -175,6 +177,7 @@ PROMPT_VERSION = "1.12"
 #   v1.2 — Enforce canonical print CSS in the deterministic quality gate
 #   v1.3 — Bound structured copy and compact the fresh-session format correction
 #   v1.4 — Add public-index fallback provenance and deterministic connector disclaimers
+#   v1.13 — Enforce index-only limitations, distinct creative output, and pricing-link CTA
 
 
 def build_prompt_footer_line(
@@ -617,6 +620,16 @@ document based on the skeleton. Do not return a research memo before the HTML.
 """
 
 
+PUBLIC_INDEX_LIMITATION = (
+    "Search-index evidence is a discovery snapshot, not a dated representative sample "
+    "or first-party analytics. It cannot establish present posting cadence, format proportions, "
+    "engagement health, audience composition, or achievable growth forecasts. "
+    "Strategy, audience segments, schedules, and milestones below are hypotheses and proposed "
+    "tests, not measured current performance or promised results. Validate with dated posts "
+    "and first-party analytics before forecasting."
+)
+
+
 def build_section_prompt(
     audit: AuditRecord,
     evidence: str,
@@ -627,6 +640,18 @@ def build_section_prompt(
 ) -> str:
     """Build a compact prompt for a validated structured report payload."""
     base = build_worker_prompt(audit, ig_metrics=ig_metrics, benchmarks=benchmarks, structured=True)
+    base += (
+        "\n## Public-index evidence boundary\n"
+        "Rows marked public_search_index (and unmarked web-search snippets) are discovery "
+        "evidence, not a representative content sample. " + PUBLIC_INDEX_LIMITATION + "\n"
+        "Do not infer present cadence or format proportions from snippets or lifetime post counts. "
+        "Do not present selected indexed likes/comments as averages or engagement rates. "
+        "Without a dated representative sample or first-party analytics, use N/A for "
+        "Content Consistency, Audience Fit, Engagement Health, and Growth Readiness scores. "
+        "Describe audience segments as hypotheses, format choices as proposed experiments, "
+        "and growth milestones as conditional goals, never achievable forecasts or timelines. "
+        "Keep specific creative hooks and execution examples; label them proposals, not observations.\n"
+    )
     if correction:
         return f"""{base}
 
@@ -644,7 +669,9 @@ Audience Fit 15%, Engagement Health 15%, Growth Readiness 15%, Conversion Path 1
 and Brand Differentiation 10%. Titles contain only the dimension name; weights
 are metadata and are not part of the title. Use integer score strings from 0 to 100, or N/A
 when evidence does not support scoring. Use exactly four Key Metrics items and
-exactly one item per other section. Omit tables and callouts entirely.
+exactly 10 distinct creative ideas in Content Calendar & Creative Board, each with
+a specific hook and execution example. Use exactly one item per remaining section.
+Omit tables and callouts entirely.
 Write one lede sentence of at most 15 words and each item body at most 20 words.
 Keep titles under six words, except exact dimension names. The entire JSON must
 stay under 1,200 words. Do not add fields, prose before/after JSON, HTML, or CSS.
@@ -1083,6 +1110,7 @@ def assemble_structured_report_html(
     *,
     ig_metrics: Any = None,
     indexed_instagram_metrics: dict[str, str] | None = None,
+    public_index_only: bool = False,
 ) -> str:
     """Validate report JSON and render heading-specific, escaped HTML locally."""
     payload = _extract_structured_payload(model_content)
@@ -1148,6 +1176,9 @@ def assemble_structured_report_html(
                 parts.append("</tr>")
             parts.append("</tbody></table></div>")
 
+    index_limited = ig_metrics is None and (
+        public_index_only or indexed_instagram_metrics is not None
+    )
     rendered: list[str] = []
     for index, (section, required_heading) in enumerate(zip(sections, expected, strict=True)):
         if not isinstance(section, dict):
@@ -1160,6 +1191,18 @@ def assemble_structured_report_html(
         lede = _structured_text(section.get("lede"), "lede", 360)
         esc = html_lib.escape
         parts = [f"<section><h2>{esc(heading)}</h2>"]
+        if index_limited:
+            note = {
+                "Executive Summary": PUBLIC_INDEX_LIMITATION,
+                "Content Format Analysis": "Proposed format tests only; indexed snippets do not establish current format proportions or cadence.",
+                "Audience Profile": "Audience hypotheses to validate, not measured demographics or audience composition.",
+                "Engagement Growth Strategy": "Recommended experiments, not a diagnosis of measured engagement performance.",
+                "Success Benchmarks": "Proposed measurement targets, not forecasts of achievable growth or verified current benchmarks.",
+            }.get(heading, "")
+            if heading.startswith("Road to "):
+                note = "Conditional milestone plan; timing and growth are not forecastable from this index snapshot."
+            if note:
+                parts.append('<div class="callout accent"><p>' + esc(note) + '</p></div>')
         instagram_key_metrics = (
             heading == "Key Metrics" and audit.platform.lower() == "instagram"
         )
@@ -1188,6 +1231,15 @@ def assemble_structured_report_html(
             ))
 
         if not connected and heading == "Executive Summary":
+            if index_limited:
+                # Reuse canonical label/count validation without treating unavailable
+                # dimensions as measured numeric scores.
+                calculate_weighted_overall_score([(title, body, "0") for title, body, _ in clean_items])
+                unsupported = {"Content Consistency", "Audience Fit", "Engagement Health", "Growth Readiness"}
+                clean_items = [
+                    (title, body, "N/A" if title.split(" (")[0] in unsupported else value)
+                    for title, body, value in clean_items
+                ]
             scored = all(value.isdigit() and 0 <= int(value) <= 100 for _, _, value in clean_items)
             overall: int | str = calculate_weighted_overall_score(clean_items) if scored else "N/A"
             suffix = '<span>/ 100</span>' if scored else ""
@@ -1230,8 +1282,7 @@ def assemble_structured_report_html(
                 parts.append("</div>")
         elif not connected and heading == "Content Calendar & Creative Board":
             pillars = ("Educational & Strategy", "Portfolio & Proof", "Engagement & Community", "Growth & Reach")
-            for number in range(10):
-                title, body, value = clean_items[number % len(clean_items)] if clean_items else ("Content idea", lede, "")
+            for number, (title, body, value) in enumerate(dict.fromkeys(clean_items)):
                 parts.append(f'<div class="idea-card"><div class="idea-meta">{esc(pillars[min(number // 3, 3)])}</div>'
                              f'<h4>{esc(title)}</h4><p>{esc(body)}</p>' +
                              (f'<div class="idea-meta">{esc(value)}</div>' if value else "") + "</div>")
@@ -1243,7 +1294,7 @@ def assemble_structured_report_html(
             parts.append('<div class="upgrade-box"><h3>Standard diagnosis → Extended operating system</h3>')
             for title, body, value in clean_items:
                 parts.append(f'<p><strong>{esc(title)}</strong> {esc(body)} {esc(value)}</p>')
-            parts.append('<a class="cta-btn" href="https://auditlayermedia.com/pricing?plan=pro">Upgrade to Extended — $50/month</a></div>')
+            parts.append('<a class="cta-btn" href="https://auditlayermedia.com/pricing?plan=pro">View Extended pricing</a></div>')
         elif not connected:
             for number, (title, body, value) in enumerate(clean_items, 1):
                 parts.append('<div class="rec-card">')
