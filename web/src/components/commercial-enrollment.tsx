@@ -14,6 +14,7 @@ export function CommercialEnrollment({subjects,freeEnabled,paidEnabled}:{subject
    <p>Free: 500 credits each UTC calendar month, plus 500 welcome credits once. Both expire at the end of the grant month. Renewal happens only when you request it or submit a report, never when viewing a page.</p>
    <Button disabled={!freeEnabled||busy} onClick={async()=>{setBusy(true);try{const r=await claimFreeAllowance();setMessage(r.ok?"Allowance confirmed. You can request a quote.":r.error);}finally{setBusy(false);}}}>Enroll or Renew Free</Button>
    <div className="flex flex-wrap gap-3"><Button disabled={!paidEnabled||busy} onClick={()=>startCommercialCheckout("brand")}>Brand — $199 / Month</Button><Button disabled={!paidEnabled||busy} onClick={()=>startCommercialCheckout("studio")}>Studio — $499 / Month</Button></div>
+   {!paidEnabled && <p className="text-sm text-muted-foreground">Paid subscriptions are not available yet.{freeEnabled ? " You can start with Free." : " Please check back."}</p>}
    <p className="text-sm text-muted-foreground">Paid top-ups are closed pending expiry and refund terms. No automatic overages. Existing subscriptions and gifts are not converted.</p>
   </section>
   <section className="alm-panel space-y-3 p-5"><h2 className="text-xl font-semibold">Quote a Report</h2>
