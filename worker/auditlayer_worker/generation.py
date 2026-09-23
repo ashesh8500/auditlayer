@@ -589,6 +589,12 @@ class HermesReportGenerator:
         if audit.platform.lower() == 'website':
             raise fail('research', 'unsupported_report_scope', retryable=False,
                        cause=ValueError('Website positioning evidence does not support this social report scope'))
+        if factual_mode:
+            connected_ready = factual.connected_strategy_ready(ig_snapshot)
+            public_ready = factual.public_strategy_snapshot(evidence_packet) is not None
+            if not connected_ready and not public_ready:
+                raise fail('research', 'insufficient_strategy_evidence', retryable=False,
+                           cause=ValueError('Insufficient material for a grounded strategic report; no extract-only substitute delivered'))
         emitter.advance_to("scoring")
         prompt = build_section_prompt(
             audit,
@@ -746,6 +752,14 @@ class HermesReportGenerator:
                 'report_sha256': sha256(strip_internal_report_metadata(report_html).encode()).hexdigest(),
             }
             try:
+                # Pin the accepted typed form to the same governed cache, with
+                # the same OAuth fence rechecked after inference. No new private
+                # filesystem copy; disconnect/deletion purge the existing cache.
+                research_material = json.dumps(dict(evidence_packet, analysis={
+                    key: value for key, value in proof.items() if key != 'packet'
+                }), ensure_ascii=False)
+                if recorder is not None:
+                    recorder(research_material)
                 if settings is not None and ig_metrics is None:
                     persist_evidence(settings.output_dir, 'factual-' + uuid4().hex, proof)
             except Exception as exc:

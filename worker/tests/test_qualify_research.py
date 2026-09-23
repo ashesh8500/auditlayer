@@ -4,7 +4,16 @@ from types import SimpleNamespace
 import pytest
 from test_openrouter_production import settings
 from test_openrouter_research import research_pin,research_response
-from test_factual_report import narrow_payload as _payload
+from test_product_strategy import public_case
+
+def _payload():
+    return json.dumps(public_case()[2])
+
+def rich_research_response():
+    raw = research_response()
+    raw['choices'][0]['message']['annotations'] = [dict(type='url_citation',
+        url_citation=dict(url=r['url'], title=r['title'], content=r['description'])) for r in public_case()[1]['web']]
+    return raw
 
 
 def test_qualification_harness_is_dry_by_default_and_never_replays(settings,tmp_path,monkeypatch):
@@ -19,7 +28,7 @@ def test_qualification_harness_is_dry_by_default_and_never_replays(settings,tmp_
         # Pre-dispatch receipt must already be on disk.
         files=list((tmp_path/'run').glob('receipt-*.json'))
         assert files and json.loads(sorted(files)[-1].read_text())[-1]['status']=='reserved'
-        raw=research_response() if request.research else dict(model=settings.hermes_model,id='report',
+        raw=rich_research_response() if request.research else dict(model=settings.hermes_model,id='report',
             choices=[dict(finish_reason='stop',message=dict(content=_payload()))],
             usage=dict(prompt_tokens=100,completion_tokens=50,cost=.00002))
         return {'raw':raw}
@@ -32,7 +41,7 @@ def test_qualification_harness_is_dry_by_default_and_never_replays(settings,tmp_
     assert result['factual_checks']['artifact_matches'] is True
     assert result['factual_checks']['raw_annotations_preserved'] is True
     assert result['factual_checks']['admitted_evidence_preserved'] is True
-    assert result['qualification_scope'] == 'extractive_contract_only'
+    assert result['qualification_scope'] == 'typed_strategy_contract_only'
     assert dispatches==[True,False]
     assert result['settlement_preview']['customer_debit_microusd']==21821
     assert json.loads((tmp_path/'run/result.json').read_text())==result

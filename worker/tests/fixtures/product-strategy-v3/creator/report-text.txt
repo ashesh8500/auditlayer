@@ -1,0 +1,178 @@
+@synthetic_creator — AuditLayerMedia Standard Report
+@synthetic_creator · Instagram Audit · September 23, 2026
+AuditLayerMedia Standard Report
+@synthetic_creator
+@synthetic_creator — Standard social media analysis · Public profile
+Platform: Instagram
+Goal: Community
+Account Type: Calibrated in report
+September 23, 2026
+This audit uses the account owner's authorized Instagram profile and recent-content data, with private Insights reach where returned by Instagram. Reach coverage is shown in Key Metrics. Public research is separately identified. Metrics reflect the snapshot at the time of analysis.
+Executive Summary
+Not rated. 8 dated posts admitted from 8 supplied; 0 excluded or outside the projection limit. Observed window: 2026-09-01T12:00:00Z to 2026-09-08T12:00:00Z. Partial collection, not the complete account history.
+Overall Score
+N/A
+Key Metrics
+Connected Instagram Graph API
+Cadence: Not inferred from partial inventory. Format mix: Carousel Album, Video. Reach available for 8 of 8 admitted inspected posts. Absent aggregates calculated locally from labelled counts (like_count: 8/8 admitted posts; comments_count: 8/8 admitted posts; reach: 8/8 admitted posts).
+4,321
+Followers
+N/A
+Average engagement
+135
+Average likes
+14
+Average comments
+1,350
+Average reach
+Strengths
+Protect: retain these existing creative inputs as test material; quotations are not independently verified outcomes.
+IG#post1
+· source statement
+Cooking demo: finished lentil bowl; ingredient prep; full recipe below.
+IG#post2
+· source statement
+Cooking demo: ingredient prep; finished lentil bowl; pantry substitutions.
+Weaknesses
+Improve: use the proposed contrast to investigate a question, not to assert a content deficit. Rebuild is not justified by this limited sample.
+Descriptive diagnosis · DIAG#VIDEO-CAROUSEL_ALBUM-comments_count
+VIDEO: mean comments per post 11.5 (4/4 measured). CAROUSEL_ALBUM: 15.5 (4/4 measured). This sample difference is not a causal explanation or an account-wide ranking.
+Diagnosis provenance · DIAG#VIDEO-CAROUSEL_ALBUM-comments_count
+Derived locally from
+CALC#VIDEO-comments_count
+,
+CALC#CAROUSEL_ALBUM-comments_count
+. Post age, topic and distribution are uncontrolled; do not infer format effects.
+Root Cause Analysis
+Historical counts do not identify causes. Topic, format, post age and distribution may differ; the hypotheses below require prospective testing.
+Hypothesis H1
+Could a different creative emphasis change comments per post? Topic: “finished lentil bowl”. Support:
+IG#post1
+,
+IG#post2
+. Untested; not a historical explanation.
+Creative brief A1
+Proposed A: “finished lentil bowl” (
+IG#post1
+); B: “ingredient prep” (
+IG#post2
+).
+Execution · A1
+Open variant A with the first topic and variant B with the second. Quoted topic anchors are not claims about existing visuals.
+Peer Comparison
+Data needed. No verified same-tier peer measurements are admitted; no comparison scores are assigned.
+Content Format Analysis
+Locally calculated descriptions of admitted posts; missing counts stay unavailable.
+CALC#VIDEO-like_count
+VIDEO: mean likes per post = 115; measured 4 of 4 admitted posts. Descriptive sample only; not a causal comparison.
+CALC#VIDEO-comments_count
+VIDEO: mean comments per post = 11.5; measured 4 of 4 admitted posts. Descriptive sample only; not a causal comparison.
+CALC#VIDEO-reach
+VIDEO: mean reach per post = 1150; measured 4 of 4 admitted posts. Descriptive sample only; not a causal comparison.
+CALC#CAROUSEL_ALBUM-like_count
+CAROUSEL_ALBUM: mean likes per post = 155; measured 4 of 4 admitted posts. Descriptive sample only; not a causal comparison.
+CALC#CAROUSEL_ALBUM-comments_count
+CAROUSEL_ALBUM: mean comments per post = 15.5; measured 4 of 4 admitted posts. Descriptive sample only; not a causal comparison.
+CALC#CAROUSEL_ALBUM-reach
+CAROUSEL_ALBUM: mean reach per post = 1550; measured 4 of 4 admitted posts. Descriptive sample only; not a causal comparison.
+Engagement Growth Strategy
+Ranked strategic choices: proposed priorities, effort estimates and decision basis; not proven growth drivers.
+1
+Priority 1 · S1
+Invite a specific audience response. Proposed effort: medium; editorial estimate, not measured impact. Dependency: none.
+2
+Decision basis · S1
+Investigate DIAG#VIDEO-CAROUSEL_ALBUM-comments_count; reuse source material from
+IG#post1
+,
+IG#post2
+. Priority is an editorial choice to test, not a predicted return.
+3
+Priority 2 · S2
+Develop a repeatable editorial series. Proposed effort: low; editorial estimate, not measured impact. Dependency: S1.
+4
+Decision basis · S2
+Investigate DIAG#VIDEO-CAROUSEL_ALBUM-comments_count; reuse source material from
+IG#post1
+,
+IG#post2
+. Priority is an editorial choice to test, not a predicted return.
+5
+Production tradeoff · METH#strategic-decisions-v1
+Low effort: reuse assets; medium: new sequence or edit; high: new production setup. Estimates require owner confirmation. Start with the highest-priority feasible decision; defer dependent work until review.
+Content Calendar & Creative Board
+Original prospective production instructions, not claims about existing visuals or audience preferences. Confirm capacity before scheduling.
+Educational & Strategy
+Proposed production task · S1
+Film a pantry-to-bowl transformation with the finished dish before ingredient handling.
+Educational & Strategy
+Proposed production task · S1
+Invite viewers to suggest a pantry substitution in the closing caption.
+Educational & Strategy
+Proposed production task · S2
+Adapt the selected topic into a recurring sequence with a consistent opening.
+Portfolio & Proof
+Proposed production task · S2
+Compare the variants at a common post age before scheduling the next batch.
+Quick Wins — This Week
+Choose an experiment, prepare both variants, and predeclare the measurement window.
+Experiment A1
+Test H1 over 6 future posts, split evenly. Format: VIDEO. Keep timing and distribution comparable; record deviations.
+Rationale · A1
+Reuse material from
+IG#post1
+,
+IG#post2
+; compare against
+CALC#VIDEO-comments_count
+. This tests an existing creative direction without assuming a deficit.
+Success Benchmarks
+A higher mean is a signal for replication, not proof of causation or a promised gain. Reach and engagement are proxies, not verified sales or audience trust.
+Success measure · A1
+Compare mean comments per post in A versus B at the same post age. Report sample sizes and missing values. Historical reference: 11.5 from 4 measured VIDEO posts (
+CALC#VIDEO-comments_count
+).
+Audience Profile
+Data needed. Intended positioning in source copy does not verify audience demographics or behavior.
+Road to a Measured Baseline
+Decision milestone: complete the comparison, record uncertainty, then retain, revise or stop the tested direction. No follower or revenue forecast is inferred.
+Next batch · S1
+Prepare the proposed tasks, then compare comments per post at a common post age. Retain only a replicated direction; revise mixed results and stop a direction that does not justify its production effort.
+After evidence review · S2
+Prepare the proposed tasks, then compare comments per post at a common post age. Retain only a replicated direction; revise mixed results and stop a direction that does not justify its production effort.
+Audit Cadence
+Review after the proposed test batch has reached a common measurement age. Keep captions, dates, variants and labelled outcomes so the next report can compare like with like.
+Get the Execution Plan
+Review current pricing and available options on the pricing page.
+View current pricing
+Source statements — not independently verified outcomes
+These are the exact admitted excerpts. Collection is partial; omitted content is unknown. A citation proves attribution, not the truth of a source claim or a causal relationship.
+IG#1 · Connected Instagram API snapshot · observed at 2026-09-20T12:00:00Z
+Connected source ledger — partial inspected coverage
+IG#post1 · 2026-09-01T12:00:00Z · VIDEO · like_count: 100; comments_count: 10; reach: 1000
+Cooking demo: finished lentil bowl; ingredient prep; full recipe below.
+IG#post2 · 2026-09-02T12:00:00Z · VIDEO · like_count: 110; comments_count: 11; reach: 1100
+Cooking demo: ingredient prep; finished lentil bowl; pantry substitutions.
+IG#post3 · 2026-09-03T12:00:00Z · VIDEO · like_count: 120; comments_count: 12; reach: 1200
+Cooking demo: finished lentil bowl; ingredient prep; full recipe below.
+IG#post4 · 2026-09-04T12:00:00Z · VIDEO · like_count: 130; comments_count: 13; reach: 1300
+Cooking demo: ingredient prep; finished lentil bowl; pantry substitutions.
+IG#post5 · 2026-09-05T12:00:00Z · CAROUSEL_ALBUM · like_count: 140; comments_count: 14; reach: 1400
+Cooking demo: finished lentil bowl; ingredient prep; full recipe below.
+IG#post6 · 2026-09-06T12:00:00Z · CAROUSEL_ALBUM · like_count: 150; comments_count: 15; reach: 1500
+Cooking demo: ingredient prep; finished lentil bowl; pantry substitutions.
+IG#post7 · 2026-09-07T12:00:00Z · CAROUSEL_ALBUM · like_count: 160; comments_count: 16; reach: 1600
+Cooking demo: finished lentil bowl; ingredient prep; full recipe below.
+IG#post8 · 2026-09-08T12:00:00Z · CAROUSEL_ALBUM · like_count: 170; comments_count: 17; reach: 1700
+Cooking demo: ingredient prep; finished lentil bowl; pantry substitutions.
+CALC#VIDEO-like_count · VIDEO: mean likes per post = 115; measured 4 of 4 admitted posts. Descriptive sample only; not a causal comparison. Inputs: IG#post1, IG#post2, IG#post3, IG#post4
+CALC#VIDEO-comments_count · VIDEO: mean comments per post = 11.5; measured 4 of 4 admitted posts. Descriptive sample only; not a causal comparison. Inputs: IG#post1, IG#post2, IG#post3, IG#post4
+CALC#VIDEO-reach · VIDEO: mean reach per post = 1150; measured 4 of 4 admitted posts. Descriptive sample only; not a causal comparison. Inputs: IG#post1, IG#post2, IG#post3, IG#post4
+CALC#CAROUSEL_ALBUM-like_count · CAROUSEL_ALBUM: mean likes per post = 155; measured 4 of 4 admitted posts. Descriptive sample only; not a causal comparison. Inputs: IG#post5, IG#post6, IG#post7, IG#post8
+CALC#CAROUSEL_ALBUM-comments_count · CAROUSEL_ALBUM: mean comments per post = 15.5; measured 4 of 4 admitted posts. Descriptive sample only; not a causal comparison. Inputs: IG#post5, IG#post6, IG#post7, IG#post8
+CALC#CAROUSEL_ALBUM-reach · CAROUSEL_ALBUM: mean reach per post = 1550; measured 4 of 4 admitted posts. Descriptive sample only; not a causal comparison. Inputs: IG#post5, IG#post6, IG#post7, IG#post8
+Sources reviewed
+Connected Instagram first-party metrics supplied by the account owner.
+AuditLayerMedia
+@auditlayermedia on Instagram
+Follow us for social media optimization tips

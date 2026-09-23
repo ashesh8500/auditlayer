@@ -1,0 +1,83 @@
+{
+  "version": "strategy-v3",
+  "web": [
+    {
+      "url": "https://instagram.com/example/p/a/",
+      "title": "example pantry tutorial",
+      "description": "example shares a pantry substitution tutorial and invites readers to suggest alternative ingredients.",
+      "evidence_mode": "public_research",
+      "source_id": "WEB#1"
+    },
+    {
+      "url": "https://instagram.com/example/p/b/",
+      "title": "example lentil recipe",
+      "description": "example shares a lentil bowl recipe with a stepwise ingredient preparation sequence and serving suggestions.",
+      "evidence_mode": "public_research",
+      "source_id": "WEB#2"
+    }
+  ],
+  "analysis": {
+    "audit_id": "runtime-standard",
+    "version": "strategy-v3",
+    "form": {
+      "observations": [
+        {
+          "source_id": "WEB#1",
+          "excerpt": "example shares a pantry substitution tutorial and invites readers to suggest alternative ingredients."
+        },
+        {
+          "source_id": "WEB#2",
+          "excerpt": "example shares a lentil bowl recipe with a stepwise ingredient preparation sequence and serving suggestions."
+        }
+      ],
+      "actions": [
+        "measure"
+      ],
+      "strategy": {
+        "diagnosis_ids": [
+          "DIAG#public-positioning"
+        ],
+        "decisions": [
+          {
+            "id": "S1",
+            "rank": 1,
+            "diagnosis_id": "DIAG#public-positioning",
+            "evidence_ids": [
+              "WEB#1",
+              "WEB#2"
+            ],
+            "objective": "conversation",
+            "effort": "medium",
+            "horizon": "next_batch",
+            "depends_on": [],
+            "tasks": [
+              "Film a pantry-to-bowl transformation with the finished dish before ingredient handling.",
+              "Invite viewers to suggest a pantry substitution in the closing caption."
+            ]
+          },
+          {
+            "id": "S2",
+            "rank": 2,
+            "diagnosis_id": "DIAG#public-positioning",
+            "evidence_ids": [
+              "WEB#1",
+              "WEB#2"
+            ],
+            "objective": "repeatable_series",
+            "effort": "low",
+            "horizon": "after_review",
+            "depends_on": [
+              "S1"
+            ],
+            "tasks": [
+              "Adapt the selected topic into a recurring sequence with a consistent opening.",
+              "Compare the variants at a common post age before scheduling the next batch."
+            ]
+          }
+        ]
+      }
+    },
+    "connected": false,
+    "report_sha256": "04fc0b38c0f47b8d2d5ced6ab5d5f934d327874dcd019554021f3758a7903a4a"
+  }
+}

@@ -7,8 +7,8 @@ import pytest
 
 pytestmark = pytest.mark.usefixtures("fake_agent_root")
 from test_runtime_sql_integration import db, Client, literal
-from test_openrouter_research import POLICY, research_response
-from test_factual_report import narrow_payload as _payload
+from test_openrouter_research import POLICY
+from test_qualify_research import rich_research_response as research_response, _payload
 
 
 def research_audit(db):
@@ -64,7 +64,7 @@ def test_research_ordinary_path(db, tmp_path, monkeypatch, mode):
         assert 'Pinned marker' in str(request.messages)
         assert 'GENERATED NOT EVIDENCE' not in str(request.messages)
         if mode=='report_timeout': raise TimeoutError('unknown report liability')
-        assert 'weekly cooking tutorials' in str(request.messages)
+        assert 'pantry substitution tutorial' in str(request.messages)
         cache = json.loads(db.sql(f"select research_cache from audits where id='{aid}'"))
         assert cache['web'][0]['source_id'] == 'WEB#1'
         assert cache['web'][0]['description'] in str(request.messages)

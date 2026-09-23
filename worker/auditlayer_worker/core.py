@@ -166,7 +166,8 @@ INSTAGRAM_LIMITATION = (
 # platform fail-closed scope, private evidence snapshots and neutral pricing CTA.
 # v1.17 — Bounded connected caption/metric analysis and creative experiments;
 # factual refinements fail closed; connected provenance uses the fenced audit.
-PROMPT_VERSION = "1.17"
+# v1.18 — Typed local diagnoses, ranked strategy and original production briefs.
+PROMPT_VERSION = "1.18"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework

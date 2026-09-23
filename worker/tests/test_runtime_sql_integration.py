@@ -117,10 +117,13 @@ def test_actual_ordinary_worker_claim_to_settlement(db,tmp_path,monkeypatch,mode
     from auditlayer_worker.hermes_runtime import HermesRuntime
     from auditlayer_worker.observability import WorkerHealth
     from auditlayer_worker.worker import _drain_once
+    from test_product_strategy import public_case
+    _, public, form = public_case()
+    for i, row in enumerate(public['web']):
+        row['url'] = f'https://youtube.com/@example/video{i}'
+        row['title'] = 'example YouTube tutorial'
     def _payload():
-        return json.dumps({'observations': [{'source_id': 'WEB#1',
-            'excerpt': 'Example publishes weekly tutorials with 1000 subscribers.'}],
-            'actions': ['inventory', 'measure']})
+        return json.dumps(form)
     from auditlayer_worker.openrouter import MODEL
     aid,quote=commercial_audit(db,max_calls=1 if mode=="call_cap" else 2,max_input=1 if mode=="input_cap" else 32000)
     monkeypatch.setattr('auditlayer_worker.config.load_env_files',lambda:None)
@@ -147,7 +150,7 @@ def test_actual_ordinary_worker_claim_to_settlement(db,tmp_path,monkeypatch,mode
                 return SimpleNamespace(execute=execute)
             return call
         gateway.client.rpc=lost_rpc
-    monkeypatch.setattr('auditlayer_worker.hermes_inprocess._public_search_index',lambda *a,**kw:[] if mode=='review' else [dict(url='https://youtube.com/@example',title='example YouTube',description='Example publishes weekly tutorials with 1000 subscribers.')])
+    monkeypatch.setattr('auditlayer_worker.hermes_inprocess._public_search_index',lambda *a,**kw:[] if mode=='review' else public['web'])
     def sdk_complete(self,request,model):
         assert 'Pinned marker' in str(request.messages)
         # Executed inside the REAL bounded child after durable parent reserve.

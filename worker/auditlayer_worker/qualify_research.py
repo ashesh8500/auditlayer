@@ -110,7 +110,7 @@ def qualify(settings, candidate, output, *, execute=False):
                  and any(c.get('stage') == 'research' and c.get('status') == 'completed' for c in calls)
                  and all(c.get('cost_source') == 'provider_actual' for c in calls))
     result = dict(status='candidate_pass' if qualified else 'candidate_blocked',
-                  launch_qualified=False, qualification_scope='extractive_contract_only',
+                  launch_qualified=False, qualification_scope='typed_strategy_contract_only',
                   factual_checks=checks, summary=asdict(summary),
                   receipts=safe_receipts(calls), settlement_preview=preview)
     _durable_json(output/'result.json', result)

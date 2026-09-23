@@ -1,0 +1,87 @@
+{
+  "observations": [
+    {
+      "source_id": "IG#post1",
+      "excerpt": "Product demonstration: repairable zipper; day bag capacity; repair instructions."
+    },
+    {
+      "source_id": "IG#post2",
+      "excerpt": "Product demonstration: day bag capacity; repairable zipper; packing list."
+    }
+  ],
+  "interpretations": [
+    {
+      "id": "H1",
+      "observation_ids": [
+        "IG#post1",
+        "IG#post2"
+      ],
+      "question": "creative_emphasis",
+      "metric": "reach",
+      "focus": {
+        "source_id": "IG#post1",
+        "phrase": "repairable zipper"
+      }
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "A1",
+      "hypothesis_id": "H1",
+      "change": "sequence",
+      "treatment": {
+        "source_id": "IG#post1",
+        "phrase": "repairable zipper"
+      },
+      "control": {
+        "source_id": "IG#post2",
+        "phrase": "day bag capacity"
+      },
+      "format": "VIDEO",
+      "evaluation_posts": 6
+    }
+  ],
+  "strategy": {
+    "diagnosis_ids": [
+      "DIAG#VIDEO-CAROUSEL_ALBUM-reach"
+    ],
+    "decisions": [
+      {
+        "id": "S1",
+        "rank": 1,
+        "diagnosis_id": "DIAG#VIDEO-CAROUSEL_ALBUM-reach",
+        "evidence_ids": [
+          "IG#post1",
+          "IG#post2"
+        ],
+        "objective": "product_education",
+        "effort": "medium",
+        "horizon": "next_batch",
+        "depends_on": [],
+        "tasks": [
+          "Film the zipper replacement as a stepwise demonstration alongside the packed bag.",
+          "Invite viewers to choose between a repair walkthrough and a packing demonstration."
+        ]
+      },
+      {
+        "id": "S2",
+        "rank": 2,
+        "diagnosis_id": "DIAG#VIDEO-CAROUSEL_ALBUM-reach",
+        "evidence_ids": [
+          "IG#post1",
+          "IG#post2"
+        ],
+        "objective": "repeatable_series",
+        "effort": "low",
+        "horizon": "after_review",
+        "depends_on": [
+          "S1"
+        ],
+        "tasks": [
+          "Adapt the selected topic into a recurring sequence with a consistent opening.",
+          "Compare the variants at a common post age before scheduling the next batch."
+        ]
+      }
+    ]
+  }
+}
