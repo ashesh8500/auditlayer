@@ -929,7 +929,7 @@ def assemble_report_html(
             ),
         )
     report = re.sub(
-        r"<!--\s*═+ SECTION SLOTS ═+.*?-->",
+        r"(?m)^[ \t]*<!--\s*═+ SECTION SLOTS ═+.*?-->",
         "",
         report,
         flags=re.DOTALL,

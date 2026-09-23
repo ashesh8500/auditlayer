@@ -18,4 +18,3 @@ def strategy_form(kind='creator'):
          'tasks': ['Adapt the selected topic into a recurring sequence with a consistent opening.',
                    'Compare the variants at a common post age before scheduling the next batch.']}]}
     return data
-
