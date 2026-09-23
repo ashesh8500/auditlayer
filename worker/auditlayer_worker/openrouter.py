@@ -79,13 +79,19 @@ class ProviderCallError(RuntimeError):
         self.telemetry = {**telemetry, "status": "failed", "customer_charge_usd": 0}
 
 
+class InsufficientPublicEvidence(ProviderCallError):
+    def __init__(self, platform, telemetry):
+        super().__init__('insufficient_public_' + platform + '_evidence', telemetry)
+        self.next_action = 'connect_instagram' if platform == 'instagram' else 'provide_public_evidence'
+
+
 class _SDKCall:
     def __init__(self, key, timeout, prices):
         self.key, self.timeout, self.prices = key, timeout, prices
 
     def complete(self, request, model):
         from openai import OpenAI
-        from .research import PLUGIN
+        from .research import research_plugin
         research = getattr(request, "research", False)
         with OpenAI(api_key=self.key, base_url=BASE_URL, max_retries=0,
                     timeout=self.timeout,
@@ -98,7 +104,7 @@ class _SDKCall:
                 extra_body={"provider": {"allow_fallbacks": False, "require_parameters": True,
                                          "max_price": {"prompt": self.prices[0], "completion": self.prices[1], "request": 0}},
                             "reasoning": {"enabled": False}, "usage": {"include": True},
-                            **({"plugins": [PLUGIN]} if research else {})},
+                            **({"plugins": [research_plugin(*request.research_subject)]} if research else {})},
             ).model_dump()
 
 
@@ -161,7 +167,7 @@ def _complete(settings, messages, model, *, toolsets=(), max_tokens=32000,
     record("openrouter_reservation_persistence_failed")
     envelope = one_call(_SDKCall(key, timeout, (settings.price_in_per_mtok, settings.price_out_per_mtok)), SimpleNamespace(
         model=model, messages=messages, max_tokens=max_tokens, temperature=temperature,
-        research=is_research), started + timeout)
+        research=is_research, research_subject=research_subject), started + timeout)
     telemetry["latency_ms"] = round((time.monotonic() - started) * 1000, 3)
     if "error" in envelope:
         telemetry.update(status="failed", customer_charge_usd=0)
@@ -227,7 +233,7 @@ def _complete(settings, messages, model, *, toolsets=(), max_tokens=32000,
         record("openrouter_receipt_persistence_failed")
         raise ProviderCallError("openrouter_response_rejected", telemetry)
     if is_research:
-        from .research import annotation_evidence, persist_evidence
+        from .research import annotation_evidence, persist_evidence, NoExtractiveSubjectEvidence
         from datetime import datetime, timezone
         try:
             annotations = choice.get("message", {}).get("annotations")
@@ -238,6 +244,10 @@ def _complete(settings, messages, model, *, toolsets=(), max_tokens=32000,
                 'correlation_id': correlation_id, 'annotations': annotations,
             })
             content = annotation_evidence(annotations, *research_subject)
+        except NoExtractiveSubjectEvidence as exc:
+            telemetry.update(status="failed", customer_charge_usd=0)
+            record("openrouter_receipt_persistence_failed")
+            raise InsufficientPublicEvidence(research_subject[1], telemetry) from exc
         except (ValueError, TypeError, OSError, RuntimeError) as exc:
             telemetry.update(status="failed", customer_charge_usd=0)
             record("openrouter_receipt_persistence_failed")

@@ -75,7 +75,14 @@ def test_fixed_research_sdk_annotation_only_and_shared_reservation(settings, mon
     evidence = json.loads(client.collect_research(SimpleNamespace(id='audit', handle='example', platform='instagram')))
     assert len(evidence['web']) == 1
     assert 'GENERATED' not in str(evidence)
-    assert requests[0]['plugins'] == [{'id':'web','engine':'exa','mode':'fast','max_results':3}]
+    assert requests[0]['plugins'] == [{'id':'web','engine':'exa','mode':'fast','max_results':3,
+                                       'include_domains':['instagram.com']}]
+    target = json.loads(requests[0]['messages'][1]['content'])
+    assert target['subject'] == 'example' and target['platform'] == 'instagram'
+    assert target['profile_url'] == 'https://www.instagram.com/example/'
+    assert '"example"' in target['query']
+    assert 'Instagram' in target['query']
+    assert 'not a company homepage' in requests[0]['messages'][0]['content']
     assert requests[0]['provider']['max_price'] == {'prompt':.14,'completion':.28,'request':0}
     assert requests[0]['max_tokens'] == 256
     assert 'response_format' not in requests[0] and 'tools' not in requests[0]
