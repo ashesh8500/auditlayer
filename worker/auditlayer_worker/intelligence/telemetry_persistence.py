@@ -327,7 +327,10 @@ def normalize_latency_ms(stage_timings: Any, latency_ms: int | None) -> int:
     if latency_ms is not None:
         return max(0, int(latency_ms))
     timings = stage_timings if isinstance(stage_timings, Mapping) else {}
-    total = sum(max(0.0, float(value)) for value in timings.values())
+    import math
+    total = sum(max(0.0, float(value)) for key, value in timings.items()
+                if key in (*REPORT_STAGE_WHITELIST, *RUNTIME_STAGE_KEYS) and type(value) in (int, float)
+                and math.isfinite(value))
     return max(0, int(round(total * 1000)))
 
 
@@ -336,7 +339,10 @@ def normalize_total_seconds(stage_timings: Any, total_seconds: float | None) -> 
     if total_seconds is not None:
         return round(max(0.0, float(total_seconds)), 3)
     timings = stage_timings if isinstance(stage_timings, Mapping) else {}
-    total = sum(max(0.0, float(value)) for value in timings.values())
+    import math
+    total = sum(max(0.0, float(value)) for key, value in timings.items()
+                if key in (*REPORT_STAGE_WHITELIST, *RUNTIME_STAGE_KEYS) and type(value) in (int, float)
+                and math.isfinite(value))
     return round(max(0.0, total), 3)
 
 

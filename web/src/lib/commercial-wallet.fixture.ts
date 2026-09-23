@@ -1,0 +1,2 @@
+const money = {currency:"USD",microusd:10000000};
+export const freeWallet = { owner_id:"00000000-0000-4000-8000-000000000001", policy_version:"P-01.v1", currency:"USD", pricing_version:"ALM-2026-09.v1", commercial_plan:"free", period_source:"calendar_month_utc", subscription_id:null, period_start:"2026-09-01T00:00:00.000000Z", period_end:"2026-10-01T00:00:00.000000Z", balance:money, reserved:{...money,microusd:0}, consumed_this_cycle:{...money,microusd:0},purchased_this_cycle:{...money,microusd:0},upstream_exposure_this_cycle:{...money,microusd:0},lots:[] };

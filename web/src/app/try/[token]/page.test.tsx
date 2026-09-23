@@ -5,6 +5,6 @@ vi.mock("@/lib/trials",()=>({validateTrialToken:async()=>({valid:false,reason:"e
 import TryPage from "./page";
 it("an exhausted offer still provides an authenticated recovery path for prior claimants",async()=>{
  const html=renderToStaticMarkup(await TryPage({params:Promise.resolve({token:"invite"})}));
- expect(html).toContain("/login?trial=invite");
+ expect(html).toContain("/login?trial=invite&amp;next=%2Fcommercial");
  expect(html).toContain("Already claimed");
 });

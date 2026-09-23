@@ -1,0 +1,55 @@
+{
+  "version": "ALM-2026-09.v1",
+  "currency": "USD",
+  "credits_per_usd": 100,
+  "reference_tariff_multiplier": 3,
+  "welcome_credits": 500,
+  "run_ceiling_microusd": 15000000,
+  "topup_usd": 10,
+  "topup_credits": 1000,
+  "purchased_expiry": null,
+  "refund_terms": null,
+  "annual": false,
+  "plans": {
+    "free": {
+      "name": "Free",
+      "monthly_usd": 0,
+      "brands": 1,
+      "monthly_credits": 500,
+      "owners": 1,
+      "topup_cap_microusd": 0,
+      "consumption_cap_microusd": 10000000,
+      "upstream_cap_microusd": 6000000
+    },
+    "brand": {
+      "name": "Brand",
+      "monthly_usd": 199,
+      "brands": 1,
+      "monthly_credits": 5000,
+      "owners": 1,
+      "topup_cap_microusd": 50000000,
+      "consumption_cap_microusd": 100000000,
+      "upstream_cap_microusd": 60000000
+    },
+    "studio": {
+      "name": "Studio",
+      "monthly_usd": 499,
+      "brands": 5,
+      "monthly_credits": 15000,
+      "owners": 1,
+      "topup_cap_microusd": 150000000,
+      "consumption_cap_microusd": 300000000,
+      "upstream_cap_microusd": 180000000
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "monthly_usd": null,
+      "brands": null,
+      "monthly_credits": null,
+      "owners": null,
+      "topup_cap_microusd": null,
+      "consumption_cap_microusd": null,
+      "upstream_cap_microusd": null
+    }
+  }
+}

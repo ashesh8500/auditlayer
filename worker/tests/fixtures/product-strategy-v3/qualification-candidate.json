@@ -1,0 +1,29 @@
+{
+  "handle": "auditlayermedia",
+  "platform": "instagram",
+  "goal": "growth",
+  "operator_note": "Public-social candidate only. Fee ceilings revalidated 2026-09-23 against official OpenRouter model endpoints and Exa fast documentation; see worker/qualification/20260923/. Retain explicit 0.14/0.28 USD per million rate ceilings (not the catalog's default route prices); eligible endpoints exist at/below both. Full-context research reservation is NOT admitted by current 120000-token app contract. No live dispatch or customer wallet write is authorized by this file.",
+  "pin": {
+    "provider": "openrouter",
+    "model": "deepseek/deepseek-v4-flash-0731",
+    "data_route": "https://openrouter.ai/api/v1",
+    "rate_version": "LOCAL-20260923-OPENROUTER-EXA-FAST-CEILINGS-V1",
+    "input_microusd_per_mtok": 140000,
+    "output_microusd_per_mtok": 280000,
+    "max_input_tokens": 32000,
+    "max_output_tokens": 12000,
+    "max_calls": 2,
+    "research_microusd": 0,
+    "research_policy": {
+      "version": "openrouter-exa-fast-v1",
+      "context_tokens": 1310720,
+      "output_tokens": 256,
+      "search_fee_microusd": 7000,
+      "reservation_microusd": 190573,
+      "aggregate_token_cap": 1398976
+    },
+    "upstream_microusd": 206253,
+    "retail_microusd": 618759,
+    "reservation_id": "LOCAL-QUALIFICATION-NOT-A-WALLET-RESERVATION"
+  }
+}

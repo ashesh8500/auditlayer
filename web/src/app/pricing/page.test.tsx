@@ -14,15 +14,15 @@ function elements(node: ReactNode): ReactElement<Record<string, unknown>>[] {
 it('provides the missing pricing route', () => {
   expect(existsSync('src/app/pricing/page.tsx')).toBe(true);
 });
-it('keeps each plan through sign-in and shows billing forms only when signed in', async () => {
+it('offers existing subscription management without creating new legacy checkout', async () => {
   const { default: Page } = await import('./page');
   mocks.profile.mockResolvedValue(null);
   const anonymous = elements(await Page({ searchParams: Promise.resolve({ plan: 'pro' }) }));
-  expect(anonymous.filter(e => e.type === 'a').map(e => e.props.href)).toContain('/login?next=%2Fpricing%3Fplan%3Dpro');
+  expect(anonymous.filter(e => e.type === 'a').map(e => e.props.href)).not.toContain('/login?next=%2Fpricing%3Fplan%3Dpro');
   expect(anonymous.filter(e => e.type === 'form')).toHaveLength(0);
-  mocks.profile.mockResolvedValue({ plan: 'free' });
+  mocks.profile.mockResolvedValue({ plan: 'pro', stripe_customer_id: 'cus_existing' });
   const signedIn = elements(await Page({ searchParams: Promise.resolve({ plan: 'pro' }) }));
-  expect(signedIn.filter(e => e.type === 'form')).toHaveLength(2);
+  expect(signedIn.filter(e => e.type === 'form')).toHaveLength(1);
   expect(mocks.checkout).not.toHaveBeenCalled();
 });
 it('rechecks auth on submit and resumes the selected plan after an expired session', async () => {

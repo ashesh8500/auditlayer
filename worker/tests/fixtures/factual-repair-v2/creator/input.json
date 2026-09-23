@@ -1,0 +1,143 @@
+{
+  "synthetic": true,
+  "audit": {
+    "id": "synthetic-creator",
+    "handle": "synthetic_creator",
+    "platform": "instagram",
+    "goal": "community",
+    "context": "Creator: affordable cooking; keep recipes accessible.",
+    "status": "queued",
+    "limitations": [
+      "Public web search returned no verifiable evidence during this run. Recommendations use the other supplied evidence and are not described as web-verified."
+    ],
+    "admin_notes": "",
+    "milestone_label": "10K",
+    "user_id": "synthetic-owner",
+    "model": null,
+    "research_cache": "",
+    "report_type": "standard",
+    "plan": "pro",
+    "prompt_version": "",
+    "force_refresh": false,
+    "report_path": "",
+    "report_version": 0
+  },
+  "metrics": {
+    "profile": {
+      "ig_user_id": 7,
+      "username": "synthetic_creator",
+      "name": "",
+      "biography": "",
+      "followers_count": 4321,
+      "follows_count": null,
+      "media_count": null,
+      "profile_picture_url": "",
+      "website": "",
+      "account_type": "CREATOR",
+      "fetched_at": "2026-09-20T12:00:00Z"
+    },
+    "recent_media": [
+      {
+        "id": "0",
+        "media_type": "VIDEO",
+        "caption": "Cooking demo: finished lentil bowl; ingredient prep; full recipe below.",
+        "permalink": "",
+        "timestamp": "2026-09-01T12:00:00Z",
+        "like_count": 100,
+        "comments_count": 10,
+        "reach": 1000,
+        "engagement_rate": null
+      },
+      {
+        "id": "1",
+        "media_type": "VIDEO",
+        "caption": "Cooking demo: ingredient prep; finished lentil bowl; pantry substitutions.",
+        "permalink": "",
+        "timestamp": "2026-09-02T12:00:00Z",
+        "like_count": 110,
+        "comments_count": 11,
+        "reach": 1100,
+        "engagement_rate": null
+      },
+      {
+        "id": "2",
+        "media_type": "VIDEO",
+        "caption": "Cooking demo: finished lentil bowl; ingredient prep; full recipe below.",
+        "permalink": "",
+        "timestamp": "2026-09-03T12:00:00Z",
+        "like_count": 120,
+        "comments_count": 12,
+        "reach": 1200,
+        "engagement_rate": null
+      },
+      {
+        "id": "3",
+        "media_type": "VIDEO",
+        "caption": "Cooking demo: ingredient prep; finished lentil bowl; pantry substitutions.",
+        "permalink": "",
+        "timestamp": "2026-09-04T12:00:00Z",
+        "like_count": 130,
+        "comments_count": 13,
+        "reach": 1300,
+        "engagement_rate": null
+      },
+      {
+        "id": "4",
+        "media_type": "CAROUSEL_ALBUM",
+        "caption": "Cooking demo: finished lentil bowl; ingredient prep; full recipe below.",
+        "permalink": "",
+        "timestamp": "2026-09-05T12:00:00Z",
+        "like_count": 140,
+        "comments_count": 14,
+        "reach": 1400,
+        "engagement_rate": null
+      },
+      {
+        "id": "5",
+        "media_type": "CAROUSEL_ALBUM",
+        "caption": "Cooking demo: ingredient prep; finished lentil bowl; pantry substitutions.",
+        "permalink": "",
+        "timestamp": "2026-09-06T12:00:00Z",
+        "like_count": 150,
+        "comments_count": 15,
+        "reach": 1500,
+        "engagement_rate": null
+      },
+      {
+        "id": "6",
+        "media_type": "CAROUSEL_ALBUM",
+        "caption": "Cooking demo: finished lentil bowl; ingredient prep; full recipe below.",
+        "permalink": "",
+        "timestamp": "2026-09-07T12:00:00Z",
+        "like_count": 160,
+        "comments_count": 16,
+        "reach": 1600,
+        "engagement_rate": null
+      },
+      {
+        "id": "7",
+        "media_type": "CAROUSEL_ALBUM",
+        "caption": "Cooking demo: ingredient prep; finished lentil bowl; pantry substitutions.",
+        "permalink": "",
+        "timestamp": "2026-09-08T12:00:00Z",
+        "like_count": 170,
+        "comments_count": 17,
+        "reach": 1700,
+        "engagement_rate": null
+      }
+    ],
+    "avg_likes": null,
+    "avg_comments": null,
+    "avg_reach": null,
+    "reach_media_count": 0,
+    "reach_eligible_media_count": 0,
+    "avg_engagement_rate": null,
+    "posting_cadence": "",
+    "top_content_types": [],
+    "_raw": null,
+    "_credential_fence": [
+      "synthetic-connection",
+      "synthetic-version"
+    ]
+  }
+}

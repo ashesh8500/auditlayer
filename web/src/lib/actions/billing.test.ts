@@ -117,7 +117,7 @@ describe("checkout-intent.ts — production surface contract (static)", () => {
     const sessionCreateAt = src.indexOf("await stripe.checkout.sessions.create(");
     expect(sessionCreateAt).toBeGreaterThan(-1);
     const sessionCreate = src.slice(sessionCreateAt, sessionCreateAt + 700);
-    expect(sessionCreate).toContain("{ idempotencyKey: keys.sessionIdempotencyKey }");
+    expect(sessionCreate).toContain("{ idempotencyKey: `checkout:legacy:${intent.id}` }");
   });
 
   it("stops before session creation on every persistence failure", () => {

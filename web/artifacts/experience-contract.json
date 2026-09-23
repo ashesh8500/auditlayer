@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "scanRoot": "web/",
   "routes": {
-    "total": 32,
+    "total": 34,
     "files": [
       "src/app/(app)/accounts/[id]/page.tsx",
       "src/app/(app)/accounts/page.tsx",
       "src/app/(app)/audits/[id]/page.tsx",
       "src/app/(app)/audits/[id]/read/page.tsx",
       "src/app/(app)/audits/new/page.tsx",
+      "src/app/(app)/commercial/page.tsx",
+      "src/app/(app)/commercial/setup/page.tsx",
       "src/app/(app)/dashboard/page.tsx",
       "src/app/(app)/preview-setup/page.tsx",
       "src/app/(app)/settings/ai-connections/page.tsx",
@@ -71,6 +73,9 @@
       "src/components/alm-skeleton.tsx",
       "src/components/app-header.tsx",
       "src/components/brand.tsx",
+      "src/components/commercial-brand-setup.tsx",
+      "src/components/commercial-enrollment.tsx",
+      "src/components/commercial-offers.tsx",
       "src/components/connections-library.tsx",
       "src/components/connector-address.tsx",
       "src/components/immersive-report.tsx",
@@ -149,7 +154,7 @@
     },
     "panel": {
       "status": "exceptions",
-      "findings": 46,
+      "findings": 45,
       "violations": [],
       "exceptions": [
         {
@@ -421,12 +426,6 @@
           "path": "src/app/oauth/consent/page.tsx",
           "line": 114,
           "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
-        },
-        {
-          "rule": "panel",
-          "path": "src/app/page.tsx",
-          "line": 162,
-          "detail": "raw panel-like surface (border border-border bg-card) without alm-panel/Card"
         }
       ],
       "exceptionIds": [
@@ -442,7 +441,6 @@
         "panel-enterprise-legacy",
         "panel-live-brief-editor-legacy",
         "panel-live-brief-view-legacy",
-        "panel-marketing-legacy",
         "panel-oauth-consent-legacy",
         "panel-operator-panel-legacy",
         "panel-preview-setup-legacy",
@@ -996,7 +994,6 @@
     "Adopt Card/alm-panel on next share-surface touch.",
     "Adopt Card/alm-panel on next viewer touch.",
     "Enforce 44px targets during admin cleanup; verify with TARGET_44_PX_PROBE.",
-    "If the landing is ever rebuilt, route its surfaces through Card/alm-panel; do not assert compliance for marketing fixtures.",
     "Keep or migrate to Button icon variant during marketing refresh.",
     "Keep the four brand hex values isolated inside GoogleGlyph so token drift stays impossible; if a future brand-token layer is added, move them there.",
     "Migrate to Button during admin cleanup.",

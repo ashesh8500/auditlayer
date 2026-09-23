@@ -1,0 +1,17 @@
+{
+  "synthetic": true,
+  "input": {
+    "web": [
+      {
+        "url": "https://auditlayermedia.com/",
+        "title": "AuditLayerMedia",
+        "description": "Competitive intelligence for creators and brands.",
+        "evidence_mode": "openrouter_exa"
+      }
+    ]
+  },
+  "error_code": "unsupported_report_scope",
+  "analysis_calls": 0,
+  "report_produced": false,
+  "reason": "Website copy cannot qualify a social report."
+}

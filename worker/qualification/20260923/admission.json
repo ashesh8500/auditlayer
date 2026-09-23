@@ -1,0 +1,297 @@
+{
+  "base_commit": "e8eea1b585efe09d350a12a3cc38276d65f0e41b",
+  "status": "blocked_before_dispatch",
+  "launch_qualified": false,
+  "app_contract_source": "parent supplied read-only app query; not independently queried in this lane",
+  "app_token_cap": 120000,
+  "app_cost_cap_usd": 3,
+  "required_tokens": 1398976,
+  "research_reserved_usd": "0.19057248",
+  "research_reserved_microusd": 190573,
+  "report_reserved_microusd": 15680,
+  "total_reserved_microusd": 206253,
+  "live_calls": 0,
+  "provider_inference_spend_usd": 0,
+  "customer_wallet_writes": 0,
+  "provider_receipts": [],
+  "eligible_endpoint_metadata": [
+    {
+      "provider_name": "StreamLake",
+      "tag": "streamlake/fp8",
+      "context_length": 1024000,
+      "pricing": {
+        "prompt": "0.0000000528",
+        "completion": "0.0000001584",
+        "input_cache_read": "0.00000000168",
+        "discount": 0.88
+      },
+      "supported_parameters": [
+        "reasoning",
+        "include_reasoning",
+        "response_format",
+        "tools",
+        "tool_choice",
+        "logprobs",
+        "top_logprobs",
+        "max_tokens",
+        "temperature",
+        "top_p",
+        "stop",
+        "reasoning_effort"
+      ]
+    },
+    {
+      "provider_name": "DeepInfra",
+      "tag": "deepinfra/fp8",
+      "context_length": 1048576,
+      "pricing": {
+        "prompt": "0.00000006",
+        "completion": "0.00000018",
+        "input_cache_read": "0.000000015",
+        "discount": 0
+      },
+      "supported_parameters": [
+        "reasoning",
+        "include_reasoning",
+        "max_tokens",
+        "temperature",
+        "top_p",
+        "stop",
+        "frequency_penalty",
+        "presence_penalty",
+        "repetition_penalty",
+        "top_k",
+        "seed",
+        "min_p",
+        "tools",
+        "tool_choice",
+        "structured_outputs",
+        "logit_bias",
+        "response_format",
+        "reasoning_effort"
+      ]
+    },
+    {
+      "provider_name": "Makora",
+      "tag": "makora",
+      "context_length": 1000000,
+      "pricing": {
+        "prompt": "0.00000009",
+        "completion": "0.000000195",
+        "input_cache_read": "0.0000000196",
+        "discount": 0
+      },
+      "supported_parameters": [
+        "reasoning",
+        "include_reasoning",
+        "structured_outputs",
+        "response_format",
+        "temperature",
+        "top_p",
+        "top_k",
+        "frequency_penalty",
+        "presence_penalty",
+        "repetition_penalty",
+        "stop",
+        "max_tokens",
+        "seed",
+        "tools",
+        "tool_choice",
+        "logprobs",
+        "top_logprobs",
+        "reasoning_effort"
+      ]
+    },
+    {
+      "provider_name": "DigitalOcean",
+      "tag": "digitalocean",
+      "context_length": 1048576,
+      "pricing": {
+        "prompt": "0.000000119",
+        "completion": "0.000000238",
+        "input_cache_read": "0.0000000238",
+        "discount": 0
+      },
+      "supported_parameters": [
+        "reasoning",
+        "include_reasoning",
+        "temperature",
+        "top_p",
+        "max_tokens",
+        "response_format",
+        "tools",
+        "tool_choice",
+        "logprobs",
+        "top_logprobs",
+        "reasoning_effort"
+      ]
+    },
+    {
+      "provider_name": "Nebius",
+      "tag": "nebius/fp8",
+      "context_length": 1024000,
+      "pricing": {
+        "prompt": "0.00000014",
+        "completion": "0.00000028",
+        "discount": 0
+      },
+      "supported_parameters": [
+        "reasoning",
+        "include_reasoning",
+        "max_tokens",
+        "temperature",
+        "top_p",
+        "stop",
+        "frequency_penalty",
+        "presence_penalty",
+        "seed",
+        "top_k",
+        "logit_bias",
+        "repetition_penalty",
+        "response_format",
+        "structured_outputs",
+        "tools",
+        "tool_choice",
+        "reasoning_effort"
+      ]
+    },
+    {
+      "provider_name": "Cohere",
+      "tag": "cohere",
+      "context_length": 1048576,
+      "pricing": {
+        "prompt": "0.00000014",
+        "completion": "0.00000028",
+        "input_cache_read": "0.00000007",
+        "discount": 0
+      },
+      "supported_parameters": [
+        "reasoning",
+        "include_reasoning",
+        "max_tokens",
+        "temperature",
+        "top_p",
+        "stop",
+        "frequency_penalty",
+        "presence_penalty",
+        "top_k",
+        "seed",
+        "structured_outputs",
+        "response_format",
+        "tools",
+        "tool_choice",
+        "parallel_tool_calls",
+        "logprobs",
+        "top_logprobs",
+        "repetition_penalty",
+        "reasoning_effort"
+      ]
+    },
+    {
+      "provider_name": "Together",
+      "tag": "together",
+      "context_length": 1048576,
+      "pricing": {
+        "prompt": "0.00000014",
+        "completion": "0.00000028",
+        "input_cache_read": "0.00000003",
+        "discount": 0
+      },
+      "supported_parameters": [
+        "reasoning",
+        "include_reasoning",
+        "max_tokens",
+        "temperature",
+        "top_p",
+        "stop",
+        "frequency_penalty",
+        "presence_penalty",
+        "top_k",
+        "repetition_penalty",
+        "logit_bias",
+        "min_p",
+        "response_format",
+        "structured_outputs",
+        "tools",
+        "tool_choice",
+        "reasoning_effort"
+      ]
+    },
+    {
+      "provider_name": "Parasail",
+      "tag": "parasail/fp8",
+      "context_length": 1048576,
+      "pricing": {
+        "prompt": "0.00000014",
+        "completion": "0.00000028",
+        "input_cache_read": "0.00000005",
+        "discount": 0
+      },
+      "supported_parameters": [
+        "reasoning",
+        "include_reasoning",
+        "max_tokens",
+        "temperature",
+        "top_p",
+        "frequency_penalty",
+        "presence_penalty",
+        "repetition_penalty",
+        "seed",
+        "stop",
+        "top_k",
+        "logit_bias",
+        "structured_outputs",
+        "response_format",
+        "tools",
+        "tool_choice",
+        "logprobs",
+        "top_logprobs",
+        "reasoning_effort"
+      ]
+    }
+  ],
+  "admission_checks": [
+    {
+      "args": [
+        ".venv/bin/python",
+        "-m",
+        "auditlayer_worker.qualify_research",
+        "--candidate",
+        "tests/fixtures/product-strategy-v3/qualification-candidate.json",
+        "--output",
+        "/home/asheshkaji/.hermes/cache/scratch/alm-live-qualification-uncreated-120000",
+        "--token-cap",
+        "120000",
+        "--cost-cap-usd",
+        "3"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/home/asheshkaji/projects/auditlayer/.worktrees/alm-gtm-integration/worker/auditlayer_worker/qualify_research.py\", line 135, in <module>\n    raise SystemExit(main())\n                     ~~~~^^\n  File \"/home/asheshkaji/projects/auditlayer/.worktrees/alm-gtm-integration/worker/auditlayer_worker/qualify_research.py\", line 129, in main\n    result = qualify(settings, json.loads(args.candidate.read_text()), args.output, execute=args.live)\n  File \"/home/asheshkaji/projects/auditlayer/.worktrees/alm-gtm-integration/worker/auditlayer_worker/qualify_research.py\", line 79, in qualify\n    config = pinned_settings(settings, app, pin)\n  File \"/home/asheshkaji/projects/auditlayer/.worktrees/alm-gtm-integration/worker/auditlayer_worker/commercial.py\", line 33, in pinned_settings\n    raise RuntimeError(f'research_operator_budget: token_cap>={token_budget}; cost_cap_usd>={inference_budget}; max_tokens>=256')\nRuntimeError: research_operator_budget: token_cap>=1398976; cost_cap_usd>=0.206253; max_tokens>=256\n"
+    },
+    {
+      "args": [
+        ".venv/bin/python",
+        "-m",
+        "auditlayer_worker.qualify_research",
+        "--candidate",
+        "tests/fixtures/product-strategy-v3/qualification-candidate.json",
+        "--output",
+        "/home/asheshkaji/.hermes/cache/scratch/alm-live-qualification-uncreated-1398976",
+        "--token-cap",
+        "1398976",
+        "--cost-cap-usd",
+        "3"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"status\": \"dry_run\",\n  \"model\": \"deepseek/deepseek-v4-flash-0731\",\n  \"token_cap\": 1398976,\n  \"upstream_ceiling_usd\": 0.206253,\n  \"research_policy\": {\n    \"version\": \"openrouter-exa-fast-v1\",\n    \"context_tokens\": 1310720,\n    \"output_tokens\": 256,\n    \"search_fee_microusd\": 7000,\n    \"reservation_microusd\": 190573,\n    \"aggregate_token_cap\": 1398976\n  }\n}\n",
+      "stderr": ""
+    }
+  ],
+  "metadata_sources": [
+    "https://openrouter.ai/api/v1/models",
+    "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-flash-0731/endpoints",
+    "https://openrouter.ai/docs/guides/features/plugins/web-search.md"
+  ],
+  "observed_at": "2026-09-23T15:40:32.949917+00:00"
+}

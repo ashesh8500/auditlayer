@@ -1,0 +1,44 @@
+{
+  "observations": [
+    {
+      "source_id": "IG#post1",
+      "excerpt": "Cooking demo: finished lentil bowl; ingredient prep; full recipe below."
+    },
+    {
+      "source_id": "IG#post2",
+      "excerpt": "Cooking demo: ingredient prep; finished lentil bowl; pantry substitutions."
+    }
+  ],
+  "interpretations": [
+    {
+      "id": "H1",
+      "observation_ids": [
+        "IG#post1",
+        "IG#post2"
+      ],
+      "question": "creative_emphasis",
+      "metric": "comments_count",
+      "focus": {
+        "source_id": "IG#post1",
+        "phrase": "finished lentil bowl"
+      }
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "A1",
+      "hypothesis_id": "H1",
+      "change": "opening",
+      "treatment": {
+        "source_id": "IG#post1",
+        "phrase": "finished lentil bowl"
+      },
+      "control": {
+        "source_id": "IG#post2",
+        "phrase": "ingredient prep"
+      },
+      "format": "VIDEO",
+      "evaluation_posts": 6
+    }
+  ]
+}

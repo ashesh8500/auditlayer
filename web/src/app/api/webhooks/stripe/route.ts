@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type Stripe from "stripe";
 
+import { reconcileCommercialEvent } from "@/lib/commercial-webhook";
 import { reconcilePaidWorkspaceEvent } from "@/lib/workspace/payment-server";
 import { planForPriceId } from "@/lib/offer-pricing";
 import { getStripe } from "@/lib/stripe";
@@ -25,6 +26,7 @@ import { isSupabaseAdminConfigured } from "@/lib/env";
  * data and performs zero profile mutations. No raw Stripe/customer payload is
  * ever logged or stored.
  */
+type PendingCheckoutDB = {rpc(name:string,args:{p:Record<string,unknown>}):Promise<{data:unknown;error:unknown}>};
 export async function POST(request: NextRequest) {
   const stripe = getStripe();
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -50,6 +52,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const commercialPayment = await reconcileCommercialEvent(event, stripe);
+    if (commercialPayment) return NextResponse.json({received:true,outcome:commercialPayment}, {status:commercialPayment.status === "pending_reconciliation" ? 503 : 200});
     const workspacePayment = await reconcilePaidWorkspaceEvent(event, stripe);
     if (workspacePayment) {
       return NextResponse.json({ received: true, outcome: workspacePayment }, {
@@ -71,6 +75,13 @@ export async function POST(request: NextRequest) {
           ),
         });
         return await reconcileResult(result);
+      }
+      case "checkout.session.expired": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (!session.metadata?.checkout_intent_id) return NextResponse.json({received:true,outcome:{applied:false,code:"unsupported_event_type",eventType:event.type}});
+        const db = createAdminClient() as unknown as PendingCheckoutDB;
+        const result = await db.rpc("commercial_checkout_expire", {p:{owner_id:session.metadata.profile_id,id:session.metadata.checkout_intent_id,session_id:session.id}});
+        return NextResponse.json({received:true}, {status:result.error ? 503 : 200});
       }
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -96,6 +107,16 @@ export async function POST(request: NextRequest) {
               null,
           ),
         });
+        if (session.metadata?.checkout_intent_id) {
+          if (result.kind !== "command") return NextResponse.json({error:"checkout_requires_reconciliation"}, {status:503});
+          const c = result.command;
+          if (session.metadata.profile_id !== c.profileId || session.metadata.plan !== c.plan || subscription.metadata.checkout_intent_id !== session.metadata.checkout_intent_id) {
+            return NextResponse.json({error:"checkout_binding_mismatch"}, {status:503});
+          }
+          const db = createAdminClient() as unknown as PendingCheckoutDB;
+          const applied = await db.rpc("legacy_checkout_apply", {p:{owner_id:c.profileId,checkout_id:session.metadata.checkout_intent_id,session_id:session.id,event_id:c.eventId,event_type:c.eventType,event_created:c.eventCreated,customer_id:c.customerId,subscription_id:c.subscriptionId,status:c.status,plan:c.plan,period_start:c.currentPeriodStartEpoch,period_end:c.currentPeriodEndEpoch,digest:c.digest}});
+          return NextResponse.json({received:true,outcome:applied.data}, {status:applied.error ? 503 : 200});
+        }
         return await reconcileResult(result);
       }
       default: {

@@ -7,7 +7,7 @@ the model researches and composes the report.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import socket
@@ -23,6 +23,8 @@ class Usage:
     tokens_in: int
     tokens_out: int
     estimated: bool = False
+    cost_usd: float | None = None
+    cost_source: str = "unknown"
 
 
 @dataclass(frozen=True)
@@ -31,6 +33,7 @@ class ChatResult:
     usage: Usage
     model: str
     session_id: str = ""  # returned by Hermes for session resume
+    telemetry: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

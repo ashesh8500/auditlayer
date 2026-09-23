@@ -110,6 +110,98 @@ def _generator(client: _Client, *, instagram_timeout_seconds: float = 0.05) -> H
     )
 
 
+def test_evidence_free_report_is_held_before_inference() -> None:
+    client = _Client([_payload(body="Unsupported high confidence finding")])
+    with pytest.raises(GenerationStageError) as error:
+        _generator(client).generate(_audit(), lambda *_args: None, research_cache='{"web": []}')
+    assert error.value.error_code == "insufficient_evidence"
+    assert error.value.retryable is False
+    assert client.calls == []
+
+
+def test_supplied_data_only_workflow_remains_available() -> None:
+    client = _Client([_payload()])
+    audit = _audit()
+    audit.context = "User supplied profile data: 120 followers; 4 posts last month."
+    result = _generator(client).generate(audit, lambda *_args: None, research_cache='{"web": []}')
+    assert result.evidence_items == 0
+    assert result.evidence_qualified is False
+    assert "not described as web-verified" in " ".join(audit.limitations)
+    assert "N/A" in result.html
+    assert len(client.calls) == 1
+
+
+def test_provider_failure_telemetry_survives_generation_boundary() -> None:
+    from auditlayer_worker.openrouter import ProviderCallError
+    telemetry = {"provider": "openrouter", "response_id": "gen-failure", "cost_usd": 0.004,
+                 "cost_source": "provider_actual", "tokens_in": 20, "tokens_out": 5,
+                 "usage_status": "actual"}
+    client = _Client([ProviderCallError("openrouter_response_rejected", telemetry)])
+    with pytest.raises(GenerationStageError) as error:
+        _generator(client).generate(_audit(), lambda *_args: None)
+    assert error.value.retryable is False
+    assert error.value.tokens_in == 20
+    assert error.value.stage_timings["_inference"][0]["cost_usd"] == 0.004
+    assert error.value.stage_timings["_inference"][0]["customer_charge_usd"] == 0
+
+
+def test_completed_calls_and_correction_cost_are_retained() -> None:
+    class Client(_Client):
+        def chat(self, **kwargs):
+            result = super().chat(**kwargs)
+            from dataclasses import replace
+            return replace(result, telemetry={"provider": "openrouter", "response_id": "gen-" + str(len(self.calls)),
+                           "cost_usd": 0.003, "cost_source": "provider_actual", "tokens_in": 1200,
+                           "tokens_out": 800, "usage_status": "actual"})
+    client = Client(["not json", _payload()])
+    result = _generator(client).generate(_audit(), lambda *_args: None)
+    calls = result.stage_timings["_inference"]
+    assert len(calls) == 2
+    assert calls[0]["status"] == "format_rejected"
+    assert calls[0]["customer_charge_usd"] == 0
+    assert sum(call["cost_usd"] for call in calls) == 0.006
+
+
+def test_openrouter_refinement_uses_strict_json_envelope() -> None:
+    from auditlayer_worker.openrouter import MODEL
+    from auditlayer_worker.generation import MockReportGenerator
+    client = _Client([json.dumps({"fragment": '<section><h2>Key Gaps</h2><p>Observed 123.</p></section>'})])
+    generator = _generator(client)
+    generator.model = MODEL
+    audit = _audit("pulse")
+    current = MockReportGenerator().generate(audit, lambda *_: None).html
+    result = generator.refine(audit, current, "Key Gaps", "Clarify supplied evidence", lambda *_: None)
+    assert "Observed 123" in result.fragment
+    assert '"fragment"' in client.calls[0]["messages"][0]["content"]
+
+
+@pytest.mark.parametrize("invalid", [False, True])
+def test_refinement_retains_provider_receipt_for_settlement(invalid) -> None:
+    from dataclasses import replace
+    from auditlayer_worker.generation import MockReportGenerator
+    class Client(_Client):
+        def chat(self, **kwargs):
+            return replace(super().chat(**kwargs), telemetry={"cost_usd": 0.004, "cost_source": "provider_actual"})
+    client = Client(['unsafe' if invalid else '<section><h2>Key Gaps</h2><p>Observed 123.</p></section>'])
+    audit = _audit("pulse")
+    current = MockReportGenerator().generate(audit, lambda *_: None).html
+    if invalid:
+        with pytest.raises(GenerationStageError) as error:
+            _generator(client).refine(audit, current, "Key Gaps", "Clarify", lambda *_: None)
+        assert error.value.stage_timings["_inference"][0]["cost_usd"] == 0.004
+        return
+    result = _generator(client).refine(audit, current, "Key Gaps", "Clarify", lambda *_: None)
+    assert result.telemetry["cost_usd"] == 0.004
+
+
+def test_reservation_rejection_cannot_enter_paid_queue_retry() -> None:
+    from auditlayer_worker.billing import InferenceReservationError
+    client = _Client([InferenceReservationError("inference reservation budget exhausted")])
+    with pytest.raises(GenerationStageError) as error:
+        _generator(client).generate(_audit(), lambda *_: None)
+    assert error.value.retryable is False
+
+
 def test_success_records_bounded_stage_metrics() -> None:
     client = _Client([_payload()])
     result = _generator(client).generate(_audit(), lambda *_args: None)
@@ -357,8 +449,10 @@ def test_filtered_cache_not_original_payload_reaches_model_prompt() -> None:
         }
     )
 
+    audit = _audit()
+    audit.context = "Supplied data: four posts this month."
     result = _generator(client).generate(
-        _audit(), lambda *_args: None, research_cache=cache
+        audit, lambda *_args: None, research_cache=cache
     )
 
     prompt = client.calls[0]["messages"][1]["content"]

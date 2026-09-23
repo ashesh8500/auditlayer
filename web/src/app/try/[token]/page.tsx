@@ -59,7 +59,7 @@ export default async function TryPage({
           </div>
           <h1 className="text-xl font-bold tracking-tight">{err.title}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{err.body}</p>
-          <Link href={`/login?trial=${encodeURIComponent(token)}`} className="alm-focus mt-4 inline-flex min-h-11 items-center text-sm underline">
+          <Link href={`/login?trial=${encodeURIComponent(token)}&next=%2Fcommercial`} className="alm-focus mt-4 inline-flex min-h-11 items-center text-sm underline">
             Already claimed? Sign in to check your invite
           </Link>
           <Link
@@ -103,19 +103,19 @@ export default async function TryPage({
 
           <div className="mt-8 space-y-3">
             <Button asChild size="lg" className="w-full font-semibold">
-              <Link href={`/login?trial=${encodeURIComponent(token)}`}>
+              <Link href={`/login?trial=${encodeURIComponent(token)}&next=%2Fcommercial`}>
                 Claim trial access
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="w-full font-medium">
-              <Link href={`/login?trial=${encodeURIComponent(token)}`}>
+              <Link href={`/login?trial=${encodeURIComponent(token)}&next=%2Fcommercial`}>
                 I already have an account
               </Link>
             </Button>
           </div>
 
           <p className="mt-5 text-xs text-muted-foreground">
-            No credit card required. Credits and report access expire with the offer window.
+            No credit card required. Gifted audits and trial report access expire with the offer window. Free credits require separate enrollment in Credits and Reports; your gifts are not converted.
           </p>
           </div>
         </div>

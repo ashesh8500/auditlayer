@@ -18,11 +18,10 @@ import { SampleReportPreview } from "@/components/sample-report-preview";
 import { TestimonialCarousel } from "@/components/testimonial-carousel";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
+import { CommercialOffers } from "@/components/commercial-offers";
 import { PUBLIC_BRAND_KICKER } from "@/lib/brand-positioning";
 import {
   deriveBlueprintCopy,
-  deriveEnterpriseCopy,
-  derivePublicPricing,
 } from "@/lib/offer-contract";
 
 const REPORT_ANSWERS = [
@@ -36,11 +35,6 @@ export default async function Home() {
   const user = await getSession();
   if (user) redirect("/accounts");
 
-  // Pricing surface is a projection of the canonical offer contract
-  // (`src/lib/offer-contract.ts`); the landing keeps no second static plan
-  // table. Contract promises classified `unknown` are never rendered here.
-  const PRICING = derivePublicPricing();
-  const ENTERPRISE = deriveEnterpriseCopy();
   const BLUEPRINT = deriveBlueprintCopy();
 
   return (
@@ -150,24 +144,8 @@ export default async function Home() {
 
         <section id="pricing" className="scroll-mt-16 border-y border-border bg-[color:var(--panel)] py-20">
           <div className="alm-shell">
-            <div className="max-w-2xl"><p className="alm-kicker">Pricing</p><h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">Start with a Pulse. Upgrade for depth.</h2><p className="mt-4 text-muted-foreground">The free Pulse identifies the decision. Paid plans add complete evidence, peer context, execution detail, and refinements.</p></div>
-            <div className="mt-10 grid gap-4 lg:grid-cols-3">
-              {PRICING.map((tier) => <article key={tier.name} className={`flex min-h-[24rem] flex-col border p-6 ${tier.featured ? "border-[color:var(--forest)] bg-[color:var(--forest)] text-white shadow-[var(--shadow-lg)]" : "border-border bg-card"}`}>
-                <div className="flex items-center justify-between"><h3 className="text-xl font-semibold">{tier.name}</h3>{tier.featured && <span className="font-mono text-xs uppercase tracking-widest text-[color:var(--teal-on-forest)]">Most popular</span>}</div>
-                <div className="mt-9"><b className="font-mono text-4xl">{tier.price}</b><span className={`text-xs ${tier.featured ? "text-white/60" : "text-muted-foreground"}`}>{tier.cadence}</span><p className={`mt-2 text-xs ${tier.featured ? "text-white/60" : "text-muted-foreground"}`}>{tier.note}</p></div>
-                <ul className="mt-8 flex-1 space-y-3">{tier.features.map(feature => <li key={feature} className={`flex gap-2 text-sm ${tier.featured ? "text-white/80" : "text-muted-foreground"}`}><Check className="mt-0.5 size-4 shrink-0 text-[color:var(--accent)]" />{feature}</li>)}</ul>
-                <Button asChild variant={tier.featured ? "secondary" : "outline"} className="mt-8 min-h-11 w-full"><Link href={tier.href}>{tier.cta}</Link></Button>
-              </article>)}
-            </div>
-            <div className="mt-6 flex flex-col items-start justify-between gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
-              <div>
-                <p className="text-sm font-semibold">{ENTERPRISE.title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{ENTERPRISE.blurb}</p>
-              </div>
-              <Button asChild variant="outline" className="min-h-10 shrink-0 px-4">
-                <Link href={ENTERPRISE.href}>{ENTERPRISE.cta} <ArrowRight className="size-4" /></Link>
-              </Button>
-            </div>
+            <div className="max-w-2xl"><p className="alm-kicker">Pricing</p><h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">One brand or a growing portfolio.</h2></div>
+            <CommercialOffers />
           </div>
         </section>
 

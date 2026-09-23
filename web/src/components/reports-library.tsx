@@ -17,8 +17,6 @@ import {
   type Platform,
 } from "@/lib/domain";
 import {
-  startStarterCheckout,
-  startProCheckout,
   openBillingPortal,
 } from "@/lib/actions/billing";
 
@@ -165,27 +163,9 @@ export function ReportsLibrary({ params }: { params: { billing?: string; status?
             Plan
           </span>
           <div className="mt-3 flex flex-col gap-2">
-            {!isAdminUnlimited(profile.role) &&
-              profile.plan !== "pro" &&
-              profile.plan !== "enterprise" && (
-              <form action={startProCheckout}>
-                <Button type="submit" size="sm" className="w-full font-medium">
-                  Upgrade to Pro · $50/mo
-                </Button>
-              </form>
-            )}
-            {profile.plan === "free" && (
-              <form action={startStarterCheckout}>
-                <Button
-                  type="submit"
-                  size="sm"
-                  variant="outline"
-                  className="w-full font-medium"
-                >
-                  Starter · $30/mo
-                </Button>
-              </form>
-            )}
+            <Link href="/commercial" className="text-sm font-semibold text-[color:var(--accent)]">
+              View current plans and report credits
+            </Link>
             {profile.hasBilling && (
               <form action={openBillingPortal}>
                 <Button

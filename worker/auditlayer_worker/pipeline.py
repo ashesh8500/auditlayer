@@ -24,7 +24,7 @@ from pathlib import Path
 import re
 import threading
 import time
-from typing import Protocol
+from typing import Any, Protocol
 
 from .billing import estimate_cost
 from .config import WorkerSettings
@@ -160,7 +160,7 @@ class RunSummary:
     report_path: str | None = None
     report_url: str | None = None
     note: str = ""
-    stage_timings: dict[str, float] = field(default_factory=dict)
+    stage_timings: dict[str, Any] = field(default_factory=dict)
     quality_score: int | None = None
     account_mode: str = "unknown"
     cache_mode: str = "fresh"
@@ -221,6 +221,7 @@ class GenerationPipeline:
         persist_report: bool = True,
         run_kind: str = "production",
         workspace_execution=None,
+        local_inference_recorder=None,
     ) -> RunSummary:
         # Explicit opt-in only. Never discover providers or substitute a workspace
         # model for legacy paid/gift/trial/queued work. The workspace port has its
@@ -343,6 +344,19 @@ class GenerationPipeline:
         result = None
         with self._scoped_home(account_home), _Heartbeat(sink) as hb:
             try:
+                from .hermes_inprocess import InProcessHermesClient
+                inference_client = getattr(self.generator, "client", None)
+                if isinstance(inference_client, InProcessHermesClient) and self.settings.hermes_provider == "openrouter":
+                    if gateway is not None and persist_report:
+                        if generation_run_id is None:
+                            raise GenerationStageError(stage="admission", error_code="inference_ledger_unavailable", retryable=False)
+                        inference_client.inference_recorder = lambda calls: gateway.record_report_inference_calls(generation_run_id, calls)
+                    else:
+                        # Explicit local qualification only; cannot replace SQL admission.
+                        inference_client.inference_recorder = local_inference_recorder if not persist_report and gateway is None else None
+                    self.generator.evidence_recorder = (
+                        lambda payload: _persist_admitted_evidence(gateway, audit, ig_future, payload)
+                    ) if gateway is not None and persist_report else None
                 result = self.generator.generate(
                     audit, hb.progress,
                     research_cache=research_cache,
@@ -357,6 +371,8 @@ class GenerationPipeline:
                         result.tokens_in, result.tokens_out,
                         self.settings.price_in_per_mtok,
                         self.settings.price_out_per_mtok,
+                        data_api_allowance_usd=self.settings.data_api_allowance_usd,
+                        inference_calls=result.stage_timings.get("_inference"),
                     )
                     total_tokens = result.tokens_in + result.tokens_out
                     if (token_cap > 0 and total_tokens > token_cap) or \
@@ -365,6 +381,9 @@ class GenerationPipeline:
             except Exception as exc:  # noqa: BLE001 - record failure, never crash the loop
                 is_budget_block = isinstance(exc, CostCapExceeded)
                 stage_error = exc if isinstance(exc, GenerationStageError) else None
+                failure_timings = stage_error.stage_timings if stage_error else result.stage_timings if result else {}
+                for receipt in failure_timings.get("_inference", []):
+                    receipt["customer_charge_usd"] = 0
                 fail_reason = (
                     "cost_cap"
                     if is_budget_block
@@ -401,6 +420,8 @@ class GenerationPipeline:
                         spent_tokens_out,
                         self.settings.price_in_per_mtok,
                         self.settings.price_out_per_mtok,
+                        data_api_allowance_usd=self.settings.data_api_allowance_usd,
+                        inference_calls=stage_error.stage_timings.get("_inference") if stage_error else None,
                     ).total_usd
                 )
                 spent_model = (
@@ -451,7 +472,7 @@ class GenerationPipeline:
                             generation_run_id,
                             status=status.value,
                             total_seconds=time.monotonic() - started_at,
-                            stage_timings=(stage_error.stage_timings if stage_error else {}),
+                            stage_timings=failure_timings,
                             tokens_in=spent_tokens_in,
                             tokens_out=spent_tokens_out,
                             cost_usd=spent_cost,
@@ -475,7 +496,7 @@ class GenerationPipeline:
                     model=spent_model,
                     estimated_tokens=False,
                     note=fail_reason,
-                    stage_timings=(stage_error.stage_timings if stage_error else {}),
+                    stage_timings=failure_timings,
                     cache_mode=cache_mode,
                 )
 
@@ -487,6 +508,8 @@ class GenerationPipeline:
             result.tokens_out,
             self.settings.price_in_per_mtok,
             self.settings.price_out_per_mtok,
+            data_api_allowance_usd=self.settings.data_api_allowance_usd,
+            inference_calls=result.stage_timings.get("_inference"),
         )
 
         # Generation accounting belongs in run records/events, never the artifact.
@@ -496,6 +519,11 @@ class GenerationPipeline:
             report_type=audit.report_type or "standard",
             ig_metrics=ig_metrics,
         )
+        if not result.evidence_qualified:
+            from .quality import QualityResult
+            quality = QualityResult(False, 0,
+                quality.blockers + ("Supplied-data-only draft: no independently verified subject evidence; review required",),
+                quality.warnings)
         if not quality.passed:
             capture_worker_failure(
                 RuntimeError("Report quality gate blocked delivery"),
@@ -778,7 +806,10 @@ class GenerationPipeline:
         with self._scoped_home(account_home):
             result = self.generator.refine(audit, current_html, section, instruction, sink.emit)
         if usage_callback is not None:
-            usage_callback(result.tokens_in, result.tokens_out, result.estimated)
+            if result.telemetry:
+                usage_callback(result.tokens_in, result.tokens_out, result.estimated, result.telemetry)
+            else:
+                usage_callback(result.tokens_in, result.tokens_out, result.estimated)
         new_html = strip_internal_report_metadata(replace_refinement_section(current_html, section, result.fragment))
         return new_html, result.tokens_in, result.tokens_out
 
@@ -1096,6 +1127,24 @@ def _extract_overall_score(report_html: str) -> int | None:
         return None
     score = int(match.group(1))
     return score if 0 <= score <= 100 else None
+
+
+def _persist_admitted_evidence(gateway, audit, ig_future, checkpoint):
+    """Pre-analysis audit cache. Connected writes cannot bypass OAuth lifetime."""
+    metrics = ig_future.result() if ig_future is not None else None
+    if metrics is None:
+        gateway.update_audit(audit.id, research_cache=checkpoint)
+        return
+    fence = getattr(metrics, '_credential_fence', None)
+    if not fence or not fence[0] or not fence[1]:
+        raise RuntimeError('connected evidence checkpoint requires credential fence')
+    response = gateway.client.rpc('write_instagram_worker_state', {
+        'p_user_id': audit.user_id, 'p_connection_id': fence[0],
+        'p_credential_version': fence[1], 'p_action': 'cache',
+        'p_payload': {'audit_id': audit.id, 'research_cache': checkpoint},
+    }).execute()
+    if response.data != fence[1]:
+        raise RuntimeError('connected evidence checkpoint rejected')
 
 
 def _checkpoint_cache(gateway, audit, ig_future, checkpoint) -> dict:

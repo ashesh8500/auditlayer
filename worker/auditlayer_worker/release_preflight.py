@@ -1,7 +1,7 @@
 """Non-mutating production preflight for schema and embedded Hermes runtime."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 import httpx
@@ -119,6 +119,7 @@ class PreflightResult:
     token_cap: int
     cost_cap_usd: float
     errors: tuple[str, ...]
+    provider_key_metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -150,15 +151,31 @@ def run_preflight(settings: WorkerSettings) -> PreflightResult:
     rpcs: list[str] = []
     token_cap = 0
     cost_cap = 0.0
+    key_metadata: dict[str, Any] = {}
 
     if settings.generator != "hermes":
         errors.append("AUDITLAYER_GENERATOR must be hermes")
     if settings.hermes_mode != "inprocess":
         errors.append("HERMES_MODE must be inprocess")
-    if settings.hermes_model != "deepseek-v4-flash":
-        errors.append("HERMES_MODEL must be deepseek-v4-flash")
-    if settings.hermes_provider != "deepseek":
-        errors.append("HERMES_PROVIDER must be deepseek")
+    from .openrouter import MODEL
+    import os
+    if settings.hermes_provider == "openrouter":
+        if settings.hermes_model != MODEL:
+            errors.append("ALM_INFERENCE_MODEL must be " + MODEL)
+        if not os.environ.get("ALM_OPENROUTER_API_KEY"):
+            errors.append("ALM_OPENROUTER_API_KEY is required")
+        else:
+            from .openrouter import inspect_key_policy
+            try:
+                key_metadata, key_errors = inspect_key_policy(os.environ["ALM_OPENROUTER_API_KEY"])
+                errors.extend(key_errors)
+            except Exception as exc:
+                errors.append("OpenRouter key metadata probe failed: " + type(exc).__name__)
+    else:
+        if settings.hermes_model != "deepseek-v4-flash":
+            errors.append("HERMES_MODEL must be deepseek-v4-flash")
+        if settings.hermes_provider != "deepseek":
+            errors.append("HERMES_PROVIDER must be deepseek or openrouter")
     if settings.hermes_max_iterations > 3:
         errors.append("HERMES_MAX_ITERATIONS must be at most 3")
     if not settings.has_supabase:
@@ -211,7 +228,7 @@ def run_preflight(settings: WorkerSettings) -> PreflightResult:
                     row = rows[0]
                     token_cap = int(row["token_cap"])
                     cost_cap = float(row["cost_cap_usd"])
-                    if row["hermes_model"] != "deepseek-v4-flash":
+                    if settings.hermes_provider != "openrouter" and row["hermes_model"] != "deepseek-v4-flash":
                         errors.append("app_settings.hermes_model must be deepseek-v4-flash")
                     if token_cap < 120_000:
                         errors.append("app_settings.token_cap must be at least 120000 combined tokens")
@@ -230,4 +247,5 @@ def run_preflight(settings: WorkerSettings) -> PreflightResult:
         token_cap=token_cap,
         cost_cap_usd=cost_cap,
         errors=tuple(errors),
+        provider_key_metadata=key_metadata,
     )

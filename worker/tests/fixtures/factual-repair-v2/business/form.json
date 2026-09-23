@@ -1,0 +1,44 @@
+{
+  "observations": [
+    {
+      "source_id": "IG#post1",
+      "excerpt": "Product demonstration: repairable zipper; day bag capacity; repair instructions."
+    },
+    {
+      "source_id": "IG#post2",
+      "excerpt": "Product demonstration: day bag capacity; repairable zipper; packing list."
+    }
+  ],
+  "interpretations": [
+    {
+      "id": "H1",
+      "observation_ids": [
+        "IG#post1",
+        "IG#post2"
+      ],
+      "question": "creative_emphasis",
+      "metric": "reach",
+      "focus": {
+        "source_id": "IG#post1",
+        "phrase": "repairable zipper"
+      }
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "A1",
+      "hypothesis_id": "H1",
+      "change": "sequence",
+      "treatment": {
+        "source_id": "IG#post1",
+        "phrase": "repairable zipper"
+      },
+      "control": {
+        "source_id": "IG#post2",
+        "phrase": "day bag capacity"
+      },
+      "format": "VIDEO",
+      "evaluation_posts": 6
+    }
+  ]
+}

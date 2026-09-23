@@ -9,10 +9,10 @@ test.describe("public smoke (no Supabase creds required)", () => {
       }),
     ).toBeVisible();
     await expect(page.getByText(/sample intelligence brief/i)).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Starter" }),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Pro" })).toBeVisible();
+    for (const name of ["Free", "Brand", "Studio", "Enterprise"]) {
+      await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+    }
+    await expect(page.getByRole("heading", { name: /^(Starter|Pro|Workspace)$/ })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /loved by our community/i })).toBeVisible();
     await expect(page.getByText("Kas di Kos Team")).toHaveCount(0);
     await expect(page.getByText(/client feedback · excerpt/i)).toHaveCount(0);

@@ -1,0 +1,87 @@
+{
+  "observations": [
+    {
+      "source_id": "IG#post1",
+      "excerpt": "Cooking demo: finished lentil bowl; ingredient prep; full recipe below."
+    },
+    {
+      "source_id": "IG#post2",
+      "excerpt": "Cooking demo: ingredient prep; finished lentil bowl; pantry substitutions."
+    }
+  ],
+  "interpretations": [
+    {
+      "id": "H1",
+      "observation_ids": [
+        "IG#post1",
+        "IG#post2"
+      ],
+      "question": "creative_emphasis",
+      "metric": "comments_count",
+      "focus": {
+        "source_id": "IG#post1",
+        "phrase": "finished lentil bowl"
+      }
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "A1",
+      "hypothesis_id": "H1",
+      "change": "opening",
+      "treatment": {
+        "source_id": "IG#post1",
+        "phrase": "finished lentil bowl"
+      },
+      "control": {
+        "source_id": "IG#post2",
+        "phrase": "ingredient prep"
+      },
+      "format": "VIDEO",
+      "evaluation_posts": 6
+    }
+  ],
+  "strategy": {
+    "diagnosis_ids": [
+      "DIAG#VIDEO-CAROUSEL_ALBUM-comments_count"
+    ],
+    "decisions": [
+      {
+        "id": "S1",
+        "rank": 1,
+        "diagnosis_id": "DIAG#VIDEO-CAROUSEL_ALBUM-comments_count",
+        "evidence_ids": [
+          "IG#post1",
+          "IG#post2"
+        ],
+        "objective": "conversation",
+        "effort": "medium",
+        "horizon": "next_batch",
+        "depends_on": [],
+        "tasks": [
+          "Film a pantry-to-bowl transformation with the finished dish before ingredient handling.",
+          "Invite viewers to suggest a pantry substitution in the closing caption."
+        ]
+      },
+      {
+        "id": "S2",
+        "rank": 2,
+        "diagnosis_id": "DIAG#VIDEO-CAROUSEL_ALBUM-comments_count",
+        "evidence_ids": [
+          "IG#post1",
+          "IG#post2"
+        ],
+        "objective": "repeatable_series",
+        "effort": "low",
+        "horizon": "after_review",
+        "depends_on": [
+          "S1"
+        ],
+        "tasks": [
+          "Adapt the selected topic into a recurring sequence with a consistent opening.",
+          "Compare the variants at a common post age before scheduling the next batch."
+        ]
+      }
+    ]
+  }
+}
