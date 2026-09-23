@@ -40,6 +40,7 @@ from .billing import InferenceReservationError
 from .hermes_inprocess import _is_subject_relevant
 from .instagram_api import InstagramAPIError
 from .observability import capture_worker_failure
+from .validation_diagnostics import safe_validation_reason
 
 Progress = Callable[[str, str], None]
 
@@ -650,19 +651,23 @@ class HermesReportGenerator:
             )
             estimated = result.usage.estimated
         except ValueError as exc:
+            reason = safe_validation_reason(exc)
+            stage_timings.setdefault("_validation", []).append(dict(stage="analysis", **reason))
             timed("validation", started)
             if result.telemetry:
                 stage_timings["_inference"][-1].update(status="format_rejected", customer_charge_usd=0)
             format_retry_used = True
             correction_started = time.monotonic()
+            retry_result = None
             try:
                 retry_result = self.client.chat(
                     messages=[
                         {
                             "role": "system",
-                            "content": ("Return the supplied typed factual analysis JSON contract only. Do not add claims or scores." if factual_mode else (
+                            "content": (("Return the supplied typed factual analysis JSON contract only. Do not add claims or scores. "
+                                "Previous response rejected by local validation: " + json.dumps(reason)) if factual_mode else (
                                 "Formatting correction only. The previous response failed local "
-                                f"validation with: {exc}. Return one valid JSON object now. "
+                                f"validation with: {json.dumps(reason)}. Return one valid JSON object now. "
                                 "The first character must be { and the root must contain only sections. "
                                 "Every heading, lede, callout, title, body, and value must be a JSON "
                                 "scalar string, never an object, array, boolean, or null. Regenerate "
@@ -710,6 +715,10 @@ class HermesReportGenerator:
                     cause=correction_exc,
                 ) from correction_exc
             except ValueError as correction_exc:
+                stage_timings.setdefault("_validation", []).append(
+                    dict(stage="format_correction", **safe_validation_reason(correction_exc)))
+                if retry_result is not None and retry_result.telemetry:
+                    stage_timings["_inference"][-1].update(status="format_rejected", customer_charge_usd=0)
                 timed("format_correction", correction_started)
                 capture_worker_failure(
                     correction_exc,

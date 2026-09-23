@@ -169,7 +169,9 @@ INSTAGRAM_LIMITATION = (
 # v1.18 — Typed local diagnoses, ranked strategy and original production briefs.
 # v1.19 — Separate creative proposals from locally resolved measured facts;
 # bounded task claim-risk validation, no free-text result assertions.
-PROMPT_VERSION = "1.19"
+# v1.20 — Static validation reasons in bounded correction; explicit connected
+# measured support, focus/treatment and question/change constraints.
+PROMPT_VERSION = "1.20"
 
 # Prompt changelog — every version bump must add an entry here:
 #   v0.1 — Initial two-phase prompt (research → compose), 15-section framework

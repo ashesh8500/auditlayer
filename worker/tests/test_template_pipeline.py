@@ -755,7 +755,7 @@ def test_bounded_generator_retries_one_format_miss(sample_audit):
     assert "recovered" in result.html
 
 
-def test_format_retry_names_invalid_field_and_requires_scalar_strings(sample_audit):
+def test_format_retry_uses_safe_reason_and_requires_scalar_strings(sample_audit):
     class InvalidLedeClient:
         def __init__(self):
             self.calls: list[dict] = []
@@ -790,7 +790,8 @@ def test_format_retry_names_invalid_field_and_requires_scalar_strings(sample_aud
     result = generator.generate(sample_audit, lambda _phase, _detail: None)
 
     correction = client.calls[1]["messages"][0]["content"]
-    assert "Invalid structured report field: lede" in correction
+    assert "analysis_contract_invalid" in correction
+    assert "Invalid structured report field: lede" not in correction
     assert "heading, lede, callout, title, body, and value" in correction
     assert "JSON scalar string" in correction
     assert "exactly 1 item in every other section" in correction

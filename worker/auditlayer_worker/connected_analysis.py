@@ -10,6 +10,7 @@ import re
 from datetime import datetime
 from .core import _structured_text
 from .research import non_subject_content
+from .validation_diagnostics import AnalysisValidationError, ValidationCode
 
 MAX_MEDIA = 24
 METRICS = {'like_count': 'likes per post', 'comments_count': 'comments per post', 'reach': 'reach per post'}
@@ -79,19 +80,27 @@ def prompt(audit, evidence, snapshot):
         'a supplied source. At least two must be distinct IG#post captions. Select meaningful evidence '
         'for the client goal, not an inventory request. Calculations are local descriptions, not scores. '
         'Interpretations: 1-3 objects {id, observation_ids, question, metric, focus}. id is H1..H3. '
-        'observation_ids contains 2-4 selected observation source IDs. question is creative_emphasis, '
+        'observation_ids contains 2-4 distinct selected observation source IDs. question is creative_emphasis, '
         'repeatability or format_transfer. metric is like_count, comments_count or reach, available on '
-        'at least two supporting posts. focus is {source_id, phrase}: a contiguous 3-100 character '
+        'at least two distinct selected IG#post observations explicitly listed in observation_ids. '
+        'Each of those posts must have a non-null value for that metric. CALC and WEB sources do not '
+        'count as measured posts; a calculation does not implicitly select or support its input posts. '
+        'focus is {source_id, phrase}: a contiguous 3-100 character '
         'caption phrase from a supporting observed post. It is a proposed creative topic, not a factual '
         'claim. No free-text diagnosis, hypothesis prose, rationale, score, causal or absence assertion '
         'is accepted. Local code renders the hypothesis as a test question. '
         'Recommendations: exactly one per hypothesis, objects {id, hypothesis_id, change, treatment, '
         'control, format, evaluation_posts}. id is A1..A3. change is opening, sequence or format. '
         'treatment and control are caption anchors {source_id, phrase} from supporting observations; '
-        'choose distinct creative topics and a concrete contrast relevant to the client goal. format '
+        'treatment must exactly equal the linked hypothesis focus (both source_id and phrase). '
+        'Treatment and control phrases must differ case-insensitively. Use a unique experiment design '
+        '(change, format, case-insensitive treatment phrase, case-insensitive control phrase). format '
         'is VIDEO, IMAGE or CAROUSEL_ALBUM and must have at least two measured posts for this metric. '
         'evaluation_posts is an even integer 4-12, split evenly between variants. For format change, '
-        'control post must use a different format. Local code renders the rationale, baseline and '
+        'control post must use a different format. change=format if and only if question=format_transfer; '
+        'creative_emphasis and repeatability require opening or sequence. Observation source IDs, '
+        'hypothesis IDs and recommendation IDs must each be unique, and each hypothesis must be '
+        'linked exactly once. Do not add fields to any object. Local code renders the rationale, baseline and '
         'success measure from your choices. These are proposed exploratory tests, never predicted gains. '
         'Do not infer what the visuals show from captions, private audiences, sales, absent capabilities '
         'or causal proof. Do not ask for the inventory already supplied.\n' + json.dumps({
@@ -145,9 +154,9 @@ def validate(data, evidence, snapshot):
                 or len(set(support)) != len(support)
                 or not isinstance(metric, str) or metric not in METRICS
                 or not isinstance(row['question'], str) or row['question'] not in QUESTIONS):
-            raise ValueError('invalid hypothesis support or question')
+            raise AnalysisValidationError(ValidationCode.SUPPORT_DOMAIN)
         if sum(s in posts and posts[s][metric] is not None for s in support) < 2:
-            raise ValueError('hypothesis measure requires two supported measured posts')
+            raise AnalysisValidationError(ValidationCode.MEASURED_SUPPORT)
         anchor(row['focus'], support)
         hypotheses[hid] = row
     rows(data['recommendations'], len(hypotheses), len(hypotheses))
@@ -162,7 +171,7 @@ def validate(data, evidence, snapshot):
         anchor(row['treatment'], hypothesis['observation_ids'])
         anchor(row['control'], hypothesis['observation_ids'])
         if row['treatment'] != hypothesis['focus']:
-            raise ValueError('experiment must test its hypothesis focus')
+            raise AnalysisValidationError(ValidationCode.FOCUS)
         if row['treatment']['phrase'].casefold() == row['control']['phrase'].casefold():
             raise ValueError('experiment needs distinct creative variants')
         fmt, n = row['format'], row['evaluation_posts']
@@ -175,7 +184,7 @@ def validate(data, evidence, snapshot):
         if row['change'] == 'format' and posts[row['control']['source_id']]['media_type'] == fmt:
             raise ValueError('format experiment needs a different control format')
         if (hypothesis['question'] == 'format_transfer') != (row['change'] == 'format'):
-            raise ValueError('question and experiment design mismatch')
+            raise AnalysisValidationError(ValidationCode.QUESTION_CHANGE)
         design = (row['change'], fmt, row['treatment']['phrase'].casefold(), row['control']['phrase'].casefold())
         if design in designs:
             raise ValueError('duplicate creative experiment')
